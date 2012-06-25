@@ -64,6 +64,17 @@ void test_setup_with_null_buffer() {
 	free(actual_result);
 }
 
+void test_setup_with_null_connection() {
+	struct ff_result *actual_result;
+	unsigned char buffer[4];
+
+	actual_result = ariel_setup(NULL, buffer, 100, FIREFLY_DATA_TYPE_RAW);
+
+	CU_ASSERT_EQUAL(actual_result->type, FIREFLY_NULL_CONNECTION);
+
+	free(actual_result);
+}
+
 void test_setup_invalid_beat_rate()
 {
 	unsigned char buffer[4];
@@ -78,6 +89,31 @@ void test_setup_invalid_beat_rate()
 	res = ariel_setup(&conn, buffer, invalid_beat_rate_low, FIREFLY_DATA_TYPE_RAW);
 	CU_ASSERT_EQUAL(res->type, FIREFLY_INVALID_BEAT_RATE);
 	free(res);
+}
+
+void test_setup_parse_null_buffer() {
+	struct ariel_connection conn;
+	struct ff_result *actual_result;
+	unsigned char *buffer;
+
+	buffer = NULL;
+
+	actual_result = ariel_setup_parse(&conn, buffer);
+
+	CU_ASSERT_EQUAL(actual_result->type, FIREFLY_NULL_BUFFER);
+
+	free(actual_result);
+}
+
+void test_setup_parse_null_connection() {
+	struct ff_result *actual_result;
+	unsigned char buffer[4];
+
+	actual_result = ariel_setup_parse(NULL, buffer);
+
+	CU_ASSERT_EQUAL(actual_result->type, FIREFLY_NULL_CONNECTION);
+
+	free(actual_result);
 }
 
 static bool successfully_decoded_data = false;
@@ -108,14 +144,17 @@ void test_setup_parse_simple()
 	CU_ASSERT_EQUAL(res->type, FIREFLY_RESULT_OK);
 
 	conn.decoder_mcontext->enc_data = labcomm_data;
-	labcomm_decoder_register_firefly_sample_data(conn.decoder, handle_firefly_data, NULL);
 	conn.decoder_mcontext->size = sizeof(labcomm_data);
 
+	labcomm_decoder_register_firefly_sample_data(conn.decoder, handle_firefly_data, NULL);
 	labcomm_decoder_decode_one(conn.decoder);
 
 	CU_ASSERT_TRUE(successfully_decoded_data);
+	free(res);
 
 }
+
+// TODO test incorrect firt byte in serenity setup
 
 int main()
 {
@@ -136,7 +175,11 @@ int main()
 	if (
 		(CU_add_test(pSuite, "test_setup_simple", test_setup_simple) == NULL) ||
 		(CU_add_test(pSuite, "test_setup_with_null_buffer", test_setup_with_null_buffer) == NULL) ||
-		(CU_add_test(pSuite, "test_setup_invalid_beat_rate", test_setup_invalid_beat_rate) == NULL)
+		(CU_add_test(pSuite, "test_setup_with_null_connection", test_setup_with_null_connection) == NULL) ||
+		(CU_add_test(pSuite, "test_setup_invalid_beat_rate", test_setup_invalid_beat_rate) == NULL) ||
+		(CU_add_test(pSuite, "test_setup_parse_null_buffer", test_setup_parse_null_buffer) == NULL) ||
+		(CU_add_test(pSuite, "test_setup_parse_null_connection", test_setup_parse_null_connection) == NULL) ||
+		(CU_add_test(pSuite, "test_setup_parse_simple", test_setup_parse_simple) == NULL)
 	   ) {
 		CU_cleanup_registry();
 		return CU_get_error();

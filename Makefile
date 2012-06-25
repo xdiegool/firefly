@@ -50,7 +50,7 @@ $(BUILD_DIR)/%.o: %.c %.h
 install: $(LIB_DIR) $(LIBS)
 	install -C $(filter-out $(LIB_DIR), $^) $(LIB_DIR)
 
-$(BUILD_DIR)/test/%: test/%.c
+$(BUILD_DIR)/test/%: test/%.c $(BUILD_DIR)/libarielprotocol.a
 	mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -L$(BUILD_DIR) -L$(LABCOMMLIBPATH) $< -lcunit -larielprotocol -llabcomm -o $@
 
