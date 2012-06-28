@@ -4,7 +4,7 @@
 CC = $(shell hash clang 2>/dev/null && echo clang || echo gcc)
 CFLAGS= -g -O2 -std=c99 -Wall -Werror -I ./include -I $(LABCOMMLIBPATH) -I $(GEN_DIR)/ -I.
 
-LIBPATH=../../lib
+LIBPATH=../lib
 LABCOMMPATH=$(LIBPATH)/labcomm
 LABCOMMLIBPATH=$(LABCOMMPATH)/lib/c
 LABCOMMC=$(LABCOMMPATH)/compiler/labComm.jar
