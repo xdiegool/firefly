@@ -1,0 +1,58 @@
+* Define message lengths in header files
+* ff_error_type should be known by both sides
+
+
+enum ff_error_type {
+	UNPARSABLE;
+	BAD_BEAT_RATE;
+	TEARDOWN;
+	TIMED_OUT;
+}
+
+typedef struct ft_exception {
+	ff_error_type type;
+	char *msg;
+} ft_exception_t;
+
+typedef struct ariel_connection {
+	size_t beat_rate;
+	data_type_t type;
+	labcomm_decoder decoder;
+} ariel_connection_t;
+
+typedef struct serenity_connection {
+	size_t beat_rate;
+	data_type_t type;
+	labcomm_encoder encoder;
+} serenity_connection_t;
+
+
+
+__ariel_protocol.c__
+
+ff_error_type : ariel_setup(ariel_connection_t *conn, unsigned char *buffer,
+							size_t beat_rate, data_type_t type);
+
+ff_error_type : ariel_setup_parse(ariel_connection_t *conn,
+									unsigned char *buffer);
+
+ff_error_type : ariel_data_parse(ariel_connection_t *conn,
+									unsigned char *buffer, ft_sample *data);
+
+ff_error_type : ariel_teardown(ariel_connection_t *conn);
+
+
+
+__serenity_protocol.c__
+
+ff_error_type : serenity_setup_parse(serenity_connection_t *conn,
+									unsigned char *buffer);
+
+ff_error_type : serenity_setup(serenity_connection_t *conn,
+								unsigned char *buffer);
+
+ff_error_type : serenity_data(serenity_connection_t *conn, ft_sample *data,
+							unsigned char *buffer);
+
+ff_error_type : serenity_teardown(serenity_connection_t *conn,
+								teardown_reason_t reason);
