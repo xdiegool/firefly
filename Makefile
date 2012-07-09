@@ -16,17 +16,14 @@ GEN_DIR=gen
 SRC_DIR=src
 VPATH=$(SRC_DIR) $(INCLUDE_DIR)
 
-ARIEL_SRC=ariel_protocol.c
-ARIEL_OBJS=$(patsubst %.c, $(BUILD_DIR)/%.o, $(ARIEL_SRC))
-
-SERENITY_SRC=serenity_protocol.c
-SERENITY_OBJS=$(patsubst %.c,$(BUILD_DIR)/%.o,$(SERENITY_SRC))
+FIREFLY_SRC=firefly_protocol.c
+FIREFLY_OBJS=$(patsubst %.c,$(BUILD_DIR)/%.o,$(FIREFLY_SRC))
 
 SAMPLE_TEST_BINS= $(patsubst %,$(BUILD_DIR)/test/%,labcomm_test_decoder labcomm_test_encoder)
 
-LIBS=$(patsubst %,$(BUILD_DIR)/lib%protocol.a,ariel serenity)
+LIBS=$(patsubst %,$(BUILD_DIR)/lib%protocol.a,firefly)
 
-TEST_PROGS=test/test_ariel
+#TEST_PROGS=test/test_ariel
 
 ## Targets
 
@@ -38,10 +35,7 @@ $(BUILD_DIR) $(LIB_DIR):
 	mkdir -p $@
 
 
-$(BUILD_DIR)/libarielprotocol.a: $(ARIEL_OBJS) $(GEN_DIR)/firefly_sample.o
-	ar -rc $@ $^
-
-$(BUILD_DIR)/libserenityprotocol.a: $(SERENITY_OBJS) $(GEN_DIR)/firefly_sample.o
+$(BUILD_DIR)/libfirefly.a: $(FIREFLY_OBJS) $(GEN_DIR)/firefly_sample.o
 	ar -rc $@ $^
 
 $(BUILD_DIR)/%.o: %.c %.h
@@ -50,9 +44,9 @@ $(BUILD_DIR)/%.o: %.c %.h
 install: $(LIB_DIR) $(LIBS)
 	install -C $(filter-out $(LIB_DIR), $^) $(LIB_DIR)
 
-$(BUILD_DIR)/test/%: test/%.c $(BUILD_DIR)/libarielprotocol.a
+$(BUILD_DIR)/test/%: test/%.c $(BUILD_DIR)/libfirefly.a
 	mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -L$(BUILD_DIR) -L$(LABCOMMLIBPATH) $< -lcunit -larielprotocol -llabcomm -o $@
+	$(CC) $(CFLAGS) -L$(BUILD_DIR) -L$(LABCOMMLIBPATH) $< -lcunit -lfirefly -llabcomm -o $@
 
 # Run all tests.
 test: $(BUILD_DIR) $(LIBS) $(LABCOMMLIBPATH)/liblabcomm.a $(patsubst %,$(BUILD_DIR)/%,$(TEST_PROGS)) 
@@ -78,11 +72,10 @@ $(GEN_DIR)/firefly_sample.h $(GEN_DIR)/firefly_sample.c: firefly_sample.lc $(LAB
 
 $(GEN_DIR)/firefly_sample.o: $(GEN_DIR)/firefly_sample.c
 
-$(INCLUDE_DIR)/ariel_protocol.h: $(GEN_DIR)/firefly_sample.h
+#$(INCLUDE_DIR)/ariel_protocol.h: $(GEN_DIR)/firefly_sample.h
 
 clean:
-	$(RM) $(ARIEL_OBJS)
-	$(RM) $(SERENITY_OBJS)
+	$(RM) $(FIREFLY_OBJS)
 	$(RM) -r $(GEN_DIR)/
 	$(MAKE) -C $(LABCOMMLIBPATH) distclean
 
