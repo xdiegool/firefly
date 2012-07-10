@@ -5,6 +5,9 @@
 #define _POSIX_C_SOURCE (200112L)
 #include <string.h>
 
+#include <transport/firefly_transport_udp_posix.h>
+#include "transport/firefly_transport_udp_posix_private.h"
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
@@ -12,12 +15,10 @@
 
 
 #include <firefly_errors.h>
-#include <transport/firefly_transport_udp_posix.h>
-#include "transport/firefly_transport_udp_posix_private.h"
 #include "protocol/firefly_protocol_private.h"
 
 
-#define ERROR_STR_MAX_LEN (256)
+#define ERROR_STR_MAX_LEN	 (256)
 // TODO better buffer size
 #define READ_BUFFER_SIZE	(16)
 
