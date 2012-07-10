@@ -8,13 +8,22 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
+#include <unistd.h>
 
 
 #include <firefly_errors.h>
 #include <transport/firefly_transport_udp_posix.h>
+#include "transport/firefly_transport_udp_posix_private.h"
+#include "protocol/firefly_protocol_private.h"
 
 
 #define ERROR_STR_MAX_LEN (256)
+// TODO better buffer size
+#define READ_BUFFER_SIZE	(16)
+
+#define SOCKADDR_IN_EQ(this, other) (memcmp(&this->sin_port, &other->sin_port, \
+		sizeof(this->sin_port)) == 0 && memcmp(&this->sin_addr, \
+		&other->sin_addr, sizeof(this->sin_addr)) == 0)
 
 struct transport_llp *transport_llp_udp_posix_new(unsigned short local_udp_port,
 	       	application_on_conn_recv_cb on_conn_recv)
@@ -22,11 +31,13 @@ struct transport_llp *transport_llp_udp_posix_new(unsigned short local_udp_port,
 	struct transport_llp_udp_posix *llp_udp =
 	       	malloc(sizeof(struct transport_llp_udp_posix));
 	if (llp_udp == NULL) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 2, "Failed in %s.\n", __FUNCTION__);
+		firefly_error(FIREFLY_ERROR_ALLOC, 2,
+				"Failed in %s.\n", __FUNCTION__);
 	}
-	llp_udp->local_addr = malloc(sizeof(struct sockaddr_in));
+	llp_udp->local_addr = calloc(1, sizeof(struct sockaddr_in));
 	if (llp_udp->local_addr == NULL) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 2, "Failed in %s.\n", __FUNCTION__);
+		firefly_error(FIREFLY_ERROR_ALLOC, 2,
+				"Failed in %s.\n", __FUNCTION__);
 	}
 
 	llp_udp->local_addr->sin_family = AF_INET;
@@ -37,12 +48,23 @@ struct transport_llp *transport_llp_udp_posix_new(unsigned short local_udp_port,
 	if (llp_udp->local_udp_socket == -1) {
 		char err_buf[ERROR_STR_MAX_LEN];
 		strerror_r(errno, err_buf, ERROR_STR_MAX_LEN);
-		firefly_error(FIREFLY_ERROR_SOCKET, 3, "Failed in %s.\n%s\n", __FUNCTION__, err_buf);
+		firefly_error(FIREFLY_ERROR_SOCKET, 3,
+				"Failed in %s.\n%s\n", __FUNCTION__, err_buf);
+	}
+	int res = bind(llp_udp->local_udp_socket,
+			(struct sockaddr *) llp_udp->local_addr,
+			sizeof(struct sockaddr_in));
+	if (res == -1) {
+		char err_buf[ERROR_STR_MAX_LEN];
+		strerror_r(errno, err_buf, ERROR_STR_MAX_LEN);
+		firefly_error(FIREFLY_ERROR_SOCKET, 3,
+				"Failed in %s.\n%s\n", __FUNCTION__, err_buf);
 	}
 
 	struct transport_llp *llp = malloc(sizeof(struct transport_llp));
 	if (llp == NULL) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 2, "Failed in %s.\n", __FUNCTION__);
+		firefly_error(FIREFLY_ERROR_ALLOC, 2,
+				"Failed in %s.\n", __FUNCTION__);
 	}
 
 	llp->llp_platspec = llp_udp;
@@ -50,22 +72,88 @@ struct transport_llp *transport_llp_udp_posix_new(unsigned short local_udp_port,
 	return llp;
 }
 
+void transport_llp_udp_posix_free(struct transport_llp **llp)
+{
+	struct transport_llp_udp_posix *llp_udp =
+		(struct transport_llp_udp_posix *) (*llp)->llp_platspec;
+	close(llp_udp->local_udp_socket);
+	struct llp_connection_list_node *head = (*llp)->conn_list;
+	struct llp_connection_list_node *tmp = NULL;
+	while(head != NULL) {
+		tmp = head->next;
+		transport_connection_udp_posix_free(&head->conn);
+		free(head);
+		head = tmp;
+	}
+	free(llp_udp->local_addr);
+	free(llp_udp);
+	free((*llp));
+	*llp = NULL;
+}
+
+void transport_connection_udp_posix_free(struct connection **conn)
+{
+	struct protocol_connection_udp_posix *conn_udp =
+		(struct protocol_connection_udp_posix *)
+		(*conn)->transport_conn_platspec;
+	free(conn_udp->remote_addr);
+	free(conn_udp);
+	free((*conn));
+	*conn = NULL;
+}
+
 void transport_llp_udp_posix_read(struct transport_llp *llp)
 {
-	struct sockaddr_in *si_remote = malloc(sizeof(struct sockaddr_in));
-	char buf[16];
-	struct transport_llp_udp_posix *llp_udp = (struct transport_llp_udp_posix *) llp->llp_platspec;
+	struct sockaddr_in *remote_addr = malloc(sizeof(struct sockaddr_in));
+	struct transport_llp_udp_posix *llp_udp =
+		(struct transport_llp_udp_posix *) llp->llp_platspec;
+
+	// Read data from socket
 	socklen_t len = sizeof(struct sockaddr_in);
-	int res = recvfrom(llp_udp->local_udp_socket, buf, 16, 0, (struct sockaddr *) si_remote, &len);
+	unsigned char buf[READ_BUFFER_SIZE];
+	int res = recvfrom(llp_udp->local_udp_socket, buf, READ_BUFFER_SIZE, 0,
+			(struct sockaddr *) remote_addr, &len);
 	if (res == -1) {
 		char err_buf[ERROR_STR_MAX_LEN];
 		strerror_r(errno, err_buf, ERROR_STR_MAX_LEN);
-		firefly_error(FIREFLY_ERROR_SOCKET, 3, "Failed in %s.\n%s\n", __FUNCTION__, err_buf);
+		firefly_error(FIREFLY_ERROR_SOCKET, 3,
+				"Failed in %s.\n%s\n", __FUNCTION__, err_buf);
 	}
-	struct connection *conn = malloc(sizeof(struct connection));
-	struct protocol_connection_udp_posix *conn_udp = malloc(sizeof(struct protocol_connection_udp_posix));
-	conn_udp->remote_addr = si_remote;	
-	conn->transport_conn_platspec = conn_udp;
-	llp->on_conn_recv(conn);
 
+	// Find existing connection or create new
+	struct connection *conn = find_connection_by_addr(remote_addr, llp);
+
+	if (conn == NULL) {
+		struct connection *conn = malloc(sizeof(struct connection));
+		struct protocol_connection_udp_posix *conn_udp = malloc(
+				sizeof(struct protocol_connection_udp_posix));
+		conn_udp->remote_addr = remote_addr;
+		conn->transport_conn_platspec = conn_udp;
+		llp->on_conn_recv(conn);
+		free(conn_udp);
+		free(conn);
+	} else {
+		protocol_data_received(conn, buf, READ_BUFFER_SIZE);
+	}
+	free(remote_addr);
+
+}
+
+struct connection *find_connection_by_addr(struct sockaddr_in *addr,
+		struct transport_llp *llp)
+{
+	struct llp_connection_list_node *head = llp->conn_list;
+	struct protocol_connection_udp_posix *udp_conn;
+
+	while (head != NULL) {
+		udp_conn = (struct protocol_connection_udp_posix *)
+			head->conn->transport_conn_platspec;
+		if (SOCKADDR_IN_EQ(udp_conn->remote_addr, addr)) {
+			return head->conn;
+		} else {
+			head = head->next;
+		}
+	}
+
+	return NULL;
 }

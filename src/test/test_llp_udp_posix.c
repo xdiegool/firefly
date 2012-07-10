@@ -8,9 +8,12 @@
 #include <netinet/in.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <unistd.h>
 
 #include <transport/firefly_transport_udp_posix.h>
 #include <protocol/firefly_protocol.h>
+
+#define SEND_BUF_SIZE	(16)
 
 int init_suit()
 {
@@ -25,21 +28,21 @@ int clean_suit()
 }
 
 static bool good_conn_received = false;
-static unsigned short local_port = 1025;
-static unsigned short remote_port = 1024;
+static unsigned short local_port = 55555;
+static unsigned short remote_port = 55556;
+static unsigned char send_buf[] = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16};
 
 /* Callback when a new connection arrives at transport layer. */
-bool app_connection_new(struct connection *conn)
+bool recv_conn_recv_conn(struct connection *conn)
 {
 	struct protocol_connection_udp_posix *pcup =
 	       	(struct protocol_connection_udp_posix *)
 	       	conn->transport_conn_platspec;
 
 	char ipaddr[INET_ADDRSTRLEN];
-	inet_ntop(AF_INET, &pcup->remote_addr, ipaddr, INET_ADDRSTRLEN);
+	inet_ntop(AF_INET, &pcup->remote_addr->sin_addr, ipaddr, INET_ADDRSTRLEN);
 	CU_ASSERT_STRING_EQUAL(ipaddr, "127.0.0.1");
-
-	CU_ASSERT_EQUAL(pcup->remote_addr->sin_port, remote_port);
+	CU_ASSERT_EQUAL(ntohs(pcup->remote_addr->sin_port), remote_port);
 
 	return good_conn_received = true;
 }
@@ -48,7 +51,7 @@ bool app_connection_new(struct connection *conn)
 void test_recv_connection()
 {
 	struct transport_llp *llp = transport_llp_udp_posix_new(local_port,
-		       	app_connection_new);
+			recv_conn_recv_conn);
 
 	// Set up a connection over local loopback.
 	struct sockaddr_in *si_other = calloc(1, sizeof(struct sockaddr_in));
@@ -74,14 +77,73 @@ void test_recv_connection()
 	}
 
 	// Send data.
-	unsigned char send_buf[16] = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16};
-	res = sendto(remote_socket, send_buf, 16, 0,
+	res = sendto(remote_socket, send_buf, SEND_BUF_SIZE, 0,
 		       	(struct sockaddr *) si_other, sizeof(*si_other));
 	if (res == -1) {
 		CU_FAIL("Could not send to local socket.\n");
 	}
 	transport_llp_udp_posix_read(llp);
 	CU_ASSERT_TRUE(good_conn_received);
+	transport_llp_udp_posix_free(&llp);
+	close(remote_socket);
+	free(remote_addr);
+	free(si_other);
+}
+
+bool recv_data_recv_conn(struct connection *conn)
+{
+	CU_FAIL("Received connection but shouldn't have.\n");
+	return true;
+}
+
+static bool data_received = false;
+
+void protocol_data_received(struct connection *conn, unsigned char *data,
+		size_t size)
+{
+	CU_ASSERT_EQUAL(SEND_BUF_SIZE, size);
+	CU_ASSERT_NSTRING_EQUAL(data, send_buf, size);
+	data_received = true;
+}
+
+void test_recv_data() {
+	struct transport_llp *llp = transport_llp_udp_posix_new(local_port,
+			recv_data_recv_conn);
+	struct sockaddr_in *remote_addr = calloc(1, sizeof(struct sockaddr_in));
+	remote_addr->sin_family = AF_INET;
+	remote_addr->sin_port = htons(remote_port);
+	if (inet_pton(AF_INET, "127.0.0.1", &remote_addr->sin_addr) == 0) {
+		CU_FAIL("Failed to convert string to network IP.\n");
+	}
+	struct protocol_connection_udp_posix *conn_udp =
+		malloc(sizeof(struct protocol_connection_udp_posix));
+	conn_udp->remote_addr = remote_addr;
+	struct connection *conn = malloc(sizeof(struct connection));
+	conn->transport_conn_platspec = conn_udp;
+
+	llp->conn_list = malloc(sizeof(struct llp_connection_list_node));
+	llp->conn_list->conn = conn;
+	llp->conn_list->next = NULL;
+	int remote_socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	if (remote_socket == -1) {
+		CU_FAIL("Failed to open socket.\n");
+	}
+	int res = bind(remote_socket, (struct sockaddr *) remote_addr,
+			sizeof(struct sockaddr_in));
+	if (res == -1) {
+		CU_FAIL("Failed to bind remote socket.\n");
+	}
+
+	struct transport_llp_udp_posix *llp_udp = (struct transport_llp_udp_posix *) llp->llp_platspec;
+	res = sendto(remote_socket, send_buf, SEND_BUF_SIZE, 0,
+			(struct sockaddr *) llp_udp->local_addr,
+			sizeof(*llp_udp->local_addr));
+	if (res == -1) {
+		CU_FAIL("Could not send to local socket.\n");
+	}
+	transport_llp_udp_posix_read(llp);
+	CU_ASSERT_TRUE(data_received);
+	transport_llp_udp_posix_free(&llp);
 }
 
 int main()
@@ -102,7 +164,8 @@ int main()
 	
 	if (
 		(CU_add_test(pSuite, "test_recv_connection", test_recv_connection) == NULL)
-		       /*||*/
+		       ||
+		(CU_add_test(pSuite, "test_recv_data", test_recv_data) == NULL)
 		/*(CU_add_test(pSuite, "test_2", test_2) == NULL)*/
 	   ) {
 		CU_cleanup_registry();

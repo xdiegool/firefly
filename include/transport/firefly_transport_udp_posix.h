@@ -19,7 +19,10 @@ struct protocol_connection_udp_posix {
 struct transport_llp *transport_llp_udp_posix_new(unsigned short local_port,
 	       	application_on_conn_recv_cb);
 
+void transport_llp_udp_posix_free(struct transport_llp **llp);
+
 void transport_llp_udp_posix_read(struct transport_llp *llp);
 
+void transport_connection_udp_posix_free(struct connection **conn);
 
 #endif

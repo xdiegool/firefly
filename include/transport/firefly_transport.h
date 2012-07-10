@@ -8,8 +8,14 @@
 
 typedef bool (*application_on_conn_recv_cb)(struct connection *conn);
 
+struct llp_connection_list_node {
+	struct llp_connection_list_node *next;
+	struct connection *conn;
+};
+
 struct transport_llp {
 	application_on_conn_recv_cb on_conn_recv;
+	struct llp_connection_list_node *conn_list;
 	void *llp_platspec; // Platform specific data.
 };	
 

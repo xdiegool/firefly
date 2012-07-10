@@ -2,7 +2,7 @@
 
 # Use LLVM clang if it's found.
 CC = $(shell hash clang 2>/dev/null && echo clang || echo gcc)
-CFLAGS= -g -O2 -std=c99 -Wall -Werror -I ./include -I $(LABCOMMLIBPATH) -I $(GEN_DIR)/ -I.
+CFLAGS= -g -O2 -std=c99 -Wall -Werror -I$(INCLUDE_DIR) -I $(LABCOMMLIBPATH) -I $(GEN_DIR)/ -I$(SRC_DIR)
 
 LIBPATH=../lib
 LABCOMMPATH=$(LIBPATH)/labcomm
