@@ -14,6 +14,7 @@ INCLUDE_DIR=include
 LIB_DIR=lib
 GEN_DIR=gen
 SRC_DIR=src
+DOC_DIR=doc/gen
 VPATH=$(SRC_DIR) $(INCLUDE_DIR)
 
 FIREFLY_SRC= transport/firefly_transport_udp_posix.c
@@ -34,15 +35,16 @@ TEST_PROGS=test/test_llp_udp_posix
 
 ## Targets
 
-.PHONY: all clean install test
+.PHONY: all doc doc-html doc-md doc-man doc-pdf clean install test
 
+# target: all - Build most of the interesting targets.
 all: $(BUILD_DIR) $(LIBS)
 
-$(BUILD_DIR) $(LIB_DIR):
+$(BUILD_DIR) $(LIB_DIR) $(DOC_DIR):
 	mkdir -p $@
 
 #$(BUILD_DIR)/libfirefly.a: $(FIREFLY_OBJS) $(GEN_DIR)/firefly_sample.o
-$(BUILD_DIR)/libfirefly.a: $(FIREFLY_OBJS) 
+$(BUILD_DIR)/libfirefly.a: $(FIREFLY_OBJS)
 	ar -rc $@ $^
 
 #$(BUILD_DIR)/%.o: %.c %.h
@@ -50,6 +52,7 @@ $(BUILD_DIR)/%.o: %.c
 	mkdir -p $(dir $@)
 	$(CC) -c $(CFLAGS) -o $@ $<
 
+# target: install - Install libraries and headers to your system.
 install: $(LIB_DIR) $(LIBS)
 	install -C $(filter-out $(LIB_DIR), $^) $(LIB_DIR)
 
@@ -57,8 +60,8 @@ $(BUILD_DIR)/test/%: test/%.c $(BUILD_DIR)/libfirefly.a
 	mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -L$(BUILD_DIR) -L$(LABCOMMLIBPATH) $< -lcunit -lfirefly -llabcomm -o $@
 
-# Run all tests.
-test: $(BUILD_DIR) $(LIBS) $(LABCOMMLIBPATH)/liblabcomm.a $(patsubst %,$(BUILD_DIR)/%,$(TEST_PROGS)) 
+# target: test - Build and run all tests.
+test: $(BUILD_DIR) $(LIBS) $(LABCOMMLIBPATH)/liblabcomm.a $(patsubst %,$(BUILD_DIR)/%,$(TEST_PROGS))
 	@for prog in $(filter-out $(BUILD_DIR) $(LIBS) $(LABCOMMLIBPATH)/liblabcomm.a,$^); do \
 		./$$prog; \
 	done
@@ -73,7 +76,7 @@ $(LABCOMMC):
 	cd $(LABCOMMPATH)/compiler; ant jar
 
 $(LABCOMMLIBPATH)/liblabcomm.a:
-	$(MAKE) -C $(LABCOMMLIBPATH) all
+	$(MAKE) -C $(LABCOMMLIBPATH) all #// TODO add no EXPERIMENTAl
 
 #$(GEN_DIR)/firefly_sample.h $(GEN_DIR)/firefly_sample.c: firefly_sample.lc $(LABCOMMC)
 	#mkdir -p $(GEN_DIR)
@@ -83,13 +86,26 @@ $(LABCOMMLIBPATH)/liblabcomm.a:
 
 #$(INCLUDE_DIR)/ariel_protocol.h: $(GEN_DIR)/firefly_sample.h
 
+
+# target: doc - Generate documentation.
+doc: 
+	doxygen doxygen.cfg
+
+
+# target: help - Display all targets.
+help :
+	@egrep "#\starget:" [Mm]akefile  | sed 's/\s-\s/\t\t\t/' | cut -d " " -f3- | sort -d
+
+# target: clean  - Clean most generated files..
 clean:
 	$(RM) $(FIREFLY_OBJS)
 	$(RM) -r $(GEN_DIR)/
 	$(MAKE) -C $(LABCOMMLIBPATH) distclean
 
+# target: cleaner - Clean all generated files.
 cleaner: clean
 	$(RM) $(LIBS)
+	$(RM) -r $(DOC_DIR)
 	$(RM) -r $(BUILD_DIR)
 	$(RM) -r $(LIB_DIR)
 	cd $(LABCOMMPATH)/compiler; ant clean
