@@ -16,14 +16,21 @@ GEN_DIR=gen
 SRC_DIR=src
 VPATH=$(SRC_DIR) $(INCLUDE_DIR)
 
-FIREFLY_SRC=firefly_protocol.c
-FIREFLY_OBJS=$(patsubst %.c,$(BUILD_DIR)/%.o,$(FIREFLY_SRC))
+FIREFLY_SRC= transport/firefly_transport_udp_posix.c
+
+# Disable default error handler that prints with fprintf. If set to true, you must provide an own implementation at link time.
+ifneq ($(FIREFLY_ERROR_USER_DEFINED),true)
+	FIREFLY_SRC += firefly_errors.c
+endif
+
+
+FIREFLY_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(FIREFLY_SRC))
 
 SAMPLE_TEST_BINS= $(patsubst %,$(BUILD_DIR)/test/%,labcomm_test_decoder labcomm_test_encoder)
 
-LIBS=$(patsubst %,$(BUILD_DIR)/lib%protocol.a,firefly)
+LIBS=$(patsubst %,$(BUILD_DIR)/lib%.a,firefly)
 
-#TEST_PROGS=test/test_ariel
+TEST_PROGS=test/test_llp_udp_posix
 
 ## Targets
 
@@ -34,11 +41,13 @@ all: $(BUILD_DIR) $(LIBS)
 $(BUILD_DIR) $(LIB_DIR):
 	mkdir -p $@
 
-
-$(BUILD_DIR)/libfirefly.a: $(FIREFLY_OBJS) $(GEN_DIR)/firefly_sample.o
+#$(BUILD_DIR)/libfirefly.a: $(FIREFLY_OBJS) $(GEN_DIR)/firefly_sample.o
+$(BUILD_DIR)/libfirefly.a: $(FIREFLY_OBJS) 
 	ar -rc $@ $^
 
-$(BUILD_DIR)/%.o: %.c %.h
+#$(BUILD_DIR)/%.o: %.c %.h
+$(BUILD_DIR)/%.o: %.c
+	mkdir -p $(dir $@)
 	$(CC) -c $(CFLAGS) -o $@ $<
 
 install: $(LIB_DIR) $(LIBS)
@@ -66,11 +75,11 @@ $(LABCOMMC):
 $(LABCOMMLIBPATH)/liblabcomm.a:
 	$(MAKE) -C $(LABCOMMLIBPATH) all
 
-$(GEN_DIR)/firefly_sample.h $(GEN_DIR)/firefly_sample.c: firefly_sample.lc $(LABCOMMC)
-	mkdir -p $(GEN_DIR)
-	java -jar $(LABCOMMC) --c=$(GEN_DIR)/firefly_sample.c --h=$(GEN_DIR)/firefly_sample.h $<
+#$(GEN_DIR)/firefly_sample.h $(GEN_DIR)/firefly_sample.c: firefly_sample.lc $(LABCOMMC)
+	#mkdir -p $(GEN_DIR)
+	#java -jar $(LABCOMMC) --c=$(GEN_DIR)/firefly_sample.c --h=$(GEN_DIR)/firefly_sample.h $<
 
-$(GEN_DIR)/firefly_sample.o: $(GEN_DIR)/firefly_sample.c
+#$(GEN_DIR)/firefly_sample.o: $(GEN_DIR)/firefly_sample.c
 
 #$(INCLUDE_DIR)/ariel_protocol.h: $(GEN_DIR)/firefly_sample.h
 
