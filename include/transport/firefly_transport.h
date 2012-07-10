@@ -1,3 +1,8 @@
+/**
+ * @file
+ * @brief General transport realted data structures and functions.
+ */
+
 #ifndef FIREFLY_TRANSPORT_H
 #define FIREFLY_TRANSPORT_H
 

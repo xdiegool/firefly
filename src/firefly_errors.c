@@ -5,7 +5,7 @@
   #include <stdio.h>
 #endif
 
-const char *firefly_error_strings[] = { 
+const char *firefly_error_strings[] = {
 	"First guard. Don't use this \"error\".",
 	"Memory allocation failed.",
 	"Socket failed.",
@@ -28,7 +28,7 @@ void firefly_error(enum firefly_error error_id, size_t nbr_va_args, ...)
 #ifndef FIREFLY_NO_STDIO
 	const char *err_msg = firefly_error_get_str(error_id); // The final string to print.
 	if (err_msg == NULL) {
-		err_msg = "Error with an unknown error ID occured.";
+		err_msg = "Error with an unknown error ID occurred.";
 	}
 	fprintf(stderr, "%s\n", err_msg);
 
@@ -42,7 +42,7 @@ void firefly_error(enum firefly_error error_id, size_t nbr_va_args, ...)
 		fprintf(stderr, "}\n");
 
 		va_end(arg_pointer);
-	} 
+	}
 #else
 	; // If Firefly can't be compiled with stdio the user will have to make an own error function if he/she needs error reporting.
 #endif
