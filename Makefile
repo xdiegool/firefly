@@ -35,7 +35,7 @@ TEST_PROGS=test/test_llp_udp_posix
 
 ## Targets
 
-.PHONY: all doc doc-html doc-md doc-man doc-pdf clean install test
+.PHONY: all doc clean cleaner install test
 
 # target: all - Build most of the interesting targets.
 all: $(BUILD_DIR) $(LIBS)
@@ -88,7 +88,7 @@ $(LABCOMMLIBPATH)/liblabcomm.a:
 
 
 # target: doc - Generate documentation.
-doc: 
+doc:
 	doxygen doxygen.cfg
 
 

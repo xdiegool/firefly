@@ -15,15 +15,16 @@ typedef void (*error_handler)(char *err_msg);
  * @breif  Error IDs
  */
 enum firefly_error {
-	FIREFLY_ERROR_FIRST, 		/**< _must_ be the first enum element. firefly_error_get_str() depends on this.*/
+	FIREFLY_ERROR_FIRST, 		/**< \b Must be the first enum element. firefly_error_get_str() depends on this.*/
 	FIREFLY_ERROR_ALLOC,
 	FIREFLY_ERROR_SOCKET,
 	FIREFLY_ERROR_USER_DEF,
-	FIREFLY_ERROR_LAST		/**< _must_ be the last enum element. firefly_error_get_str() depends on this.*/
+	FIREFLY_ERROR_LAST		/**< \b Must be the last enum element. firefly_error_get_str() depends on this.*/
 };
 
-/* Error strings. _must_ be the same order as in enum firefly_error */
-
+/**
+ * @var Error strings. _must_ be the same order as in enum firefly_error
+ */
 extern const char *firefly_error_strings[];
 
 /**
