@@ -159,7 +159,6 @@ struct connection *find_connection_by_addr(struct sockaddr_in *addr,
 	while (head != NULL) {
 		conn_udp = (struct protocol_connection_udp_posix *)
 			head->conn->transport_conn_platspec;
-
 		if (sockaddr_in_eq(conn_udp->remote_addr, addr)) {
 			return head->conn;
 		} else {
@@ -172,11 +171,10 @@ struct connection *find_connection_by_addr(struct sockaddr_in *addr,
 
 void add_connection_to_llp(struct connection *conn, struct transport_llp *llp)
 {
-	struct llp_connection_list_node **head = &llp->conn_list;
-	while (*head != NULL) {
-		head = &(*head)->next;
-	}
-	*head = malloc(sizeof(struct llp_connection_list_node));
-	(*head)->conn = conn;
-	(*head)->next = NULL;
+	struct llp_connection_list_node *tmp = llp->conn_list;
+	struct llp_connection_list_node *new_node = malloc(sizeof(struct llp_connection_list_node));
+	new_node->conn = conn;
+	new_node->next = tmp;
+	llp->conn_list = new_node;
+
 }

@@ -32,24 +32,25 @@ static unsigned short local_port = 55555;
 static unsigned short remote_port = 55556;
 static unsigned char send_buf[] = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16};
 
-void send_data(struct sockaddr_in *remote_addr, unsigned short port) {
-	struct sockaddr_in *si_other = calloc(1, sizeof(struct sockaddr_in));
-	si_other->sin_family = AF_INET;
-	si_other->sin_port = htons(local_port);
-	if (inet_pton(AF_INET, "127.0.0.1", &si_other->sin_addr) == 0) {
+void setup_sockaddr(struct sockaddr_in *addr, unsigned short port)
+{
+	addr->sin_family = AF_INET;
+	addr->sin_port = htons(port);
+	if (inet_pton(AF_INET, "127.0.0.1", &addr->sin_addr) == 0) {
 		CU_FAIL("Failed to convert string to network IP.\n");
 	}
+}
+
+void send_data(struct sockaddr_in *remote_addr, unsigned short port) {
+	struct sockaddr_in *si_other = calloc(1, sizeof(struct sockaddr_in));
+	setup_sockaddr(si_other, local_port);
 
 	// Init and bind remote socket
 	int remote_socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	if (remote_socket == -1) {
 		CU_FAIL("Failed to open socket.\n");
 	}
-	remote_addr->sin_family = AF_INET;
-	remote_addr->sin_port = htons(port);
-	if (inet_pton(AF_INET, "127.0.0.1", &remote_addr->sin_addr) == 0) {
-		CU_FAIL("Failed to convert string to network IP.\n");
-	}
+	setup_sockaddr(remote_addr, port);
 	int res = bind(remote_socket, (struct sockaddr *) remote_addr,
 		       	sizeof(struct sockaddr_in));
 	if (res == -1) {
@@ -150,7 +151,35 @@ void test_recv_conn_and_data()
 
 	// Set up a connection over local loopback.
 	transport_llp_udp_posix_read(llp);
+
 	CU_ASSERT_TRUE(good_conn_received);
+	CU_ASSERT_TRUE(data_received);
+	good_conn_received = false;
+	data_received = false;
+	transport_llp_udp_posix_free(&llp);
+}
+
+void test_recv_conn_and_two_data()
+{
+	struct transport_llp *llp = transport_llp_udp_posix_new(local_port,
+			recv_conn_recv_conn);
+	struct sockaddr_in remote_addr;
+
+	// send data
+	send_data(&remote_addr, remote_port);
+
+	// Set up a connection over local loopback.
+	transport_llp_udp_posix_read(llp);
+
+	CU_ASSERT_TRUE(good_conn_received);
+	CU_ASSERT_TRUE(data_received);
+	good_conn_received = false;
+	data_received = false;
+
+	send_data(&remote_addr, remote_port);
+	transport_llp_udp_posix_read(llp);
+
+	CU_ASSERT_FALSE(good_conn_received);
 	CU_ASSERT_TRUE(data_received);
 	good_conn_received = false;
 	data_received = false;
@@ -170,7 +199,6 @@ void test_recv_conn_keep()
 
 	CU_ASSERT_TRUE(good_conn_received);
 	CU_ASSERT_TRUE(data_received);
-
 	struct connection *conn = find_connection_by_addr(&remote_addr, llp);
 	CU_ASSERT_NOT_EQUAL(conn, NULL);
 
@@ -199,7 +227,6 @@ void test_recv_conn_keep_two()
 	// test first connection
 	CU_ASSERT_TRUE(good_conn_received);
 	CU_ASSERT_TRUE(data_received);
-
 	struct connection *conn = find_connection_by_addr(&remote_addr, llp);
 	CU_ASSERT_NOT_EQUAL(conn, NULL);
 
@@ -214,7 +241,6 @@ void test_recv_conn_keep_two()
 	// test first connection
 	CU_ASSERT_TRUE(good_conn_received);
 	CU_ASSERT_TRUE(data_received);
-
 	conn = find_connection_by_addr(&remote_addr, llp);
 	CU_ASSERT_NOT_EQUAL(conn, NULL);
 
@@ -225,15 +251,6 @@ void test_recv_conn_keep_two()
 
 bool recv_conn_reject_recv_conn(struct connection *conn)
 {
-	struct protocol_connection_udp_posix *pcup =
-		(struct protocol_connection_udp_posix *)
-		conn->transport_conn_platspec;
-
-	char ipaddr[INET_ADDRSTRLEN];
-	inet_ntop(AF_INET, &pcup->remote_addr->sin_addr, ipaddr, INET_ADDRSTRLEN);
-	CU_ASSERT_STRING_EQUAL(ipaddr, "127.0.0.1");
-	CU_ASSERT_EQUAL(ntohs(pcup->remote_addr->sin_port), remote_port);
-
 	good_conn_received = true;
 	return false;
 }
@@ -272,6 +289,90 @@ void test_null_pointer_as_callback()
 	transport_llp_udp_posix_free(&llp);
 }
 
+void test_find_conn_by_addr()
+{
+	struct transport_llp *llp = transport_llp_udp_posix_new(local_port,
+			NULL);
+	struct sockaddr_in addr_1;
+	setup_sockaddr(&addr_1, 55550);
+	struct connection *conn = find_connection_by_addr(&addr_1, llp);
+	CU_ASSERT_PTR_NULL(conn);
+	struct llp_connection_list_node *node_1 = malloc(sizeof(struct llp_connection_list_node));
+	struct protocol_connection_udp_posix *conn_udp_1 =
+		malloc(sizeof(struct protocol_connection_udp_posix));
+	conn_udp_1->remote_addr = malloc(sizeof(struct sockaddr_in));
+	memcpy(conn_udp_1->remote_addr, &addr_1, sizeof(addr_1));
+	node_1->conn = malloc(sizeof(struct connection));
+	node_1->conn->transport_conn_platspec = conn_udp_1;
+	node_1->next = NULL;
+	llp->conn_list = node_1;
+	conn = find_connection_by_addr(&addr_1, llp);
+	CU_ASSERT_PTR_NOT_NULL(conn);
+	CU_ASSERT_TRUE(sockaddr_in_eq(&addr_1,
+		((struct protocol_connection_udp_posix *)
+		conn->transport_conn_platspec)->remote_addr));
+
+	struct sockaddr_in addr_2;
+	setup_sockaddr(&addr_2, 55551);
+	struct llp_connection_list_node *node_2 = malloc(sizeof(struct llp_connection_list_node));
+	struct protocol_connection_udp_posix *conn_udp_2 =
+		malloc(sizeof(struct protocol_connection_udp_posix));
+	conn_udp_2->remote_addr = malloc(sizeof(struct sockaddr_in));
+	memcpy(conn_udp_2->remote_addr, &addr_2, sizeof(addr_2));
+	node_2->conn = malloc(sizeof(struct connection));
+	node_2->conn->transport_conn_platspec = conn_udp_2;
+	node_2->next = NULL;
+	node_1->next = node_2;
+	conn = find_connection_by_addr(&addr_2, llp);
+	CU_ASSERT_PTR_NOT_NULL(conn);
+	CU_ASSERT_TRUE(sockaddr_in_eq(&addr_2,
+		((struct protocol_connection_udp_posix *)
+		conn->transport_conn_platspec)->remote_addr));
+	transport_llp_udp_posix_free(&llp);
+}
+
+void test_add_conn_to_llp()
+{
+	struct transport_llp *llp = transport_llp_udp_posix_new(local_port,
+			NULL);
+	struct sockaddr_in addr_1;
+	setup_sockaddr(&addr_1, 55550);
+
+	struct protocol_connection_udp_posix *conn_udp_1 =
+		malloc(sizeof(struct protocol_connection_udp_posix));
+
+	conn_udp_1->remote_addr = malloc(sizeof(struct sockaddr_in));
+	memcpy(conn_udp_1->remote_addr, &addr_1, sizeof(addr_1));
+	struct connection *conn_1 = malloc(sizeof(struct connection));
+	conn_1->transport_conn_platspec = conn_udp_1;
+	add_connection_to_llp(conn_1, llp);
+
+	CU_ASSERT_PTR_NOT_NULL(llp->conn_list);
+	CU_ASSERT_PTR_NOT_NULL(llp->conn_list->conn);
+	CU_ASSERT_PTR_EQUAL(llp->conn_list->conn, conn_1);
+	CU_ASSERT_PTR_NULL(llp->conn_list->next);
+
+	struct sockaddr_in addr_2;
+	setup_sockaddr(&addr_2, 55550);
+
+	struct protocol_connection_udp_posix *conn_udp_2 =
+		malloc(sizeof(struct protocol_connection_udp_posix));
+
+	conn_udp_2->remote_addr = malloc(sizeof(struct sockaddr_in));
+	memcpy(conn_udp_2->remote_addr, &addr_2, sizeof(addr_2));
+	struct connection *conn_2 = malloc(sizeof(struct connection));
+	conn_2->transport_conn_platspec = conn_udp_2;
+	add_connection_to_llp(conn_2, llp);
+
+	CU_ASSERT_PTR_NOT_NULL(llp->conn_list);
+	CU_ASSERT_PTR_NOT_NULL(llp->conn_list->conn);
+	CU_ASSERT_PTR_EQUAL(llp->conn_list->conn, conn_2);
+	CU_ASSERT_PTR_NOT_NULL(llp->conn_list->next);
+	CU_ASSERT_PTR_EQUAL(llp->conn_list->next->conn, conn_1);
+
+	transport_llp_udp_posix_free(&llp);
+}
+
 int main()
 {
 	CU_pSuite pSuite = NULL;
@@ -289,6 +390,10 @@ int main()
 	}
 	
 	if (
+		(CU_add_test(pSuite, "test_find_conn_by_addr", test_find_conn_by_addr) == NULL)
+		       ||
+		(CU_add_test(pSuite, "test_add_conn_to_llp", test_add_conn_to_llp) == NULL)
+		       ||
 		(CU_add_test(pSuite, "test_recv_connection", test_recv_connection) == NULL)
 		       ||
 		(CU_add_test(pSuite, "test_recv_data", test_recv_data) == NULL)
@@ -300,6 +405,8 @@ int main()
 		(CU_add_test(pSuite, "test_recv_conn_reject", test_recv_conn_reject) == NULL)
 		       ||
 		(CU_add_test(pSuite, "test_recv_conn_keep_two", test_recv_conn_keep_two) == NULL)
+		       ||
+		(CU_add_test(pSuite, "test_recv_conn_and_two_data", test_recv_conn_and_two_data) == NULL)
 		       ||
 		(CU_add_test(pSuite, "test_null_pointer_as_callback", test_null_pointer_as_callback) == NULL)
 		/*(CU_add_test(pSuite, "test_2", test_2) == NULL)*/
