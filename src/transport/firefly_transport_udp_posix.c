@@ -9,7 +9,6 @@
 #include "transport/firefly_transport_udp_posix_private.h"
 
 #include <stdlib.h>
-#include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
 
@@ -22,9 +21,6 @@
 // TODO better buffer size
 #define READ_BUFFER_SIZE	(16)
 
-#define SOCKADDR_IN_EQ(this, other) (memcmp(&this->sin_port, &other->sin_port, \
-		sizeof(this->sin_port)) == 0 && memcmp(&this->sin_addr, \
-		&other->sin_addr, sizeof(this->sin_addr)) == 0)
 
 struct transport_llp *transport_llp_udp_posix_new(unsigned short local_udp_port,
 	       	application_on_conn_recv_cb on_conn_recv)
@@ -69,6 +65,7 @@ struct transport_llp *transport_llp_udp_posix_new(unsigned short local_udp_port,
 	}
 
 	llp->llp_platspec = llp_udp;
+	llp->conn_list = NULL;
 	llp->on_conn_recv = on_conn_recv;
 	return llp;
 }
@@ -130,13 +127,26 @@ void transport_llp_udp_posix_read(struct transport_llp *llp)
 				sizeof(struct protocol_connection_udp_posix));
 		conn_udp->remote_addr = remote_addr;
 		conn->transport_conn_platspec = conn_udp;
-		llp->on_conn_recv(conn);
-		free(conn_udp);
-		free(conn);
+		if(llp->on_conn_recv != NULL && llp->on_conn_recv(conn)) {
+			add_connection_to_llp(conn, llp);
+			protocol_data_received(conn, buf, READ_BUFFER_SIZE);
+		} else {
+			free(conn_udp);
+			free(conn);
+			free(remote_addr);
+		}
 	} else {
 		protocol_data_received(conn, buf, READ_BUFFER_SIZE);
+		free(remote_addr);
 	}
-	free(remote_addr);
+}
+
+bool sockaddr_in_eq(struct sockaddr_in *one, struct sockaddr_in *other)
+{
+	return memcmp(&one->sin_port, &other->sin_port,
+			sizeof(one->sin_port)) == 0 &&
+		memcmp(&one->sin_addr, &other->sin_addr,
+			sizeof(one->sin_addr)) == 0;
 
 }
 
@@ -144,12 +154,13 @@ struct connection *find_connection_by_addr(struct sockaddr_in *addr,
 		struct transport_llp *llp)
 {
 	struct llp_connection_list_node *head = llp->conn_list;
-	struct protocol_connection_udp_posix *udp_conn;
+	struct protocol_connection_udp_posix *conn_udp;
 
 	while (head != NULL) {
-		udp_conn = (struct protocol_connection_udp_posix *)
+		conn_udp = (struct protocol_connection_udp_posix *)
 			head->conn->transport_conn_platspec;
-		if (SOCKADDR_IN_EQ(udp_conn->remote_addr, addr)) {
+
+		if (sockaddr_in_eq(conn_udp->remote_addr, addr)) {
 			return head->conn;
 		} else {
 			head = head->next;
@@ -157,4 +168,15 @@ struct connection *find_connection_by_addr(struct sockaddr_in *addr,
 	}
 
 	return NULL;
+}
+
+void add_connection_to_llp(struct connection *conn, struct transport_llp *llp)
+{
+	struct llp_connection_list_node **head = &llp->conn_list;
+	while (*head != NULL) {
+		head = &(*head)->next;
+	}
+	*head = malloc(sizeof(struct llp_connection_list_node));
+	(*head)->conn = conn;
+	(*head)->next = NULL;
 }
