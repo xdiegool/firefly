@@ -2,7 +2,6 @@
  * @file
  * @brief Test the transport layer with POSIX UDP.
  */
-// TODO rename this file to test_transport_udp_posix.c
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -420,7 +419,7 @@ void test_conn_open_and_send()
 	setup_sockaddr(&recv_addr, 55550);
 	int recv_soc = open_socket(&recv_addr);
 
-	transport_connection_write(send_buf, SEND_BUF_SIZE, conn);
+	transport_write_udp_posix(send_buf, SEND_BUF_SIZE, conn);
 
 	recv_data(recv_soc);
 
@@ -468,7 +467,7 @@ void test_open_and_recv_with_two_llp()
 			"127.0.0.1", local_port, llp_send);
 	CU_ASSERT_PTR_NOT_NULL(conn_send);
 
-	transport_connection_write(send_buf, SEND_BUF_SIZE, conn_send);
+	transport_write_udp_posix(send_buf, SEND_BUF_SIZE, conn_send);
 
 	transport_llp_udp_posix_read(llp_recv);
 
@@ -478,7 +477,7 @@ void test_open_and_recv_with_two_llp()
 	good_conn_received = false;
 	data_received = false;
 
-	transport_connection_write(send_buf, SEND_BUF_SIZE, conn_recv);
+	transport_write_udp_posix(send_buf, SEND_BUF_SIZE, conn_recv);
 
 	transport_llp_udp_posix_read(llp_send);
 	CU_ASSERT_TRUE(data_received);

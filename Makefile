@@ -40,14 +40,14 @@ SAMPLE_TEST_BINS= $(patsubst %,$(BUILD_DIR)/test/%,labcomm_test_decoder labcomm_
 
 LIBS=$(patsubst %,$(BUILD_DIR)/lib%.a,firefly)
 
-TEST_PROGS= test/test_llp_udp_posix test/test_protocol
+TEST_PROGS= test/test_transport_udp_posix test/test_protocol
 
 ## Targets
 
 .PHONY: all doc doc-open clean cleaner install test
 
 # target: all - Build most of the interesting targets.
-all: $(BUILD_DIR) $(LIBS)
+all: $(BUILD_DIR) $(LIBS) tags
 
 $(BUILD_DIR) $(LIB_DIR) $(DOC_DIR) $(GEN_DIR):
 	mkdir -p $@
@@ -100,11 +100,14 @@ $(LABCOMMLIBPATH)/liblabcomm.a:
 
 build/test/test_protocol: $(BUILD_DIR)/gen/firefly_protocol.o
 
+# This will enable expression involving automatic variables in the prerequisities list. it must be defined before any usage of these feauteres.
+.SECONDEXPANSION:
+
 # Let the labcomm .o_file depend on the generated .c and .h files.
-.SECONDEXPANSION $(GEN_OBJ_FILES): $$(patsubst $$(BUILD_DIR)/%.o,%.c,$$@) $$(patsubst $$(BUILD_DIR)/%.o,%.h,$$@)
+$(GEN_OBJ_FILES): $$(patsubst $$(BUILD_DIR)/%.o,%.c,$$@) $$(patsubst $$(BUILD_DIR)/%.o,%.h,$$@)
 
 #$(GEN_FILES): $(GEN_DIR) $$(patsubst $$(GEN_DIR)/%,c,$$(LC_DIR)/%.lc,$$@)
-.SECONDEXPANSION $(GEN_FILES): $(GEN_DIR) $$(patsubst $$(GEN_DIR)/%.c,$(LC_DIR)/%.lc,$$@)
+$(GEN_FILES): $(GEN_DIR) $$(patsubst $$(GEN_DIR)/%.c,$(LC_DIR)/%.lc,$$@)
 	java -jar $(LABCOMMC) --c=$@ --h=$(patsubst %.c,%.h,$@) $(filter-out $(GEN_DIR),$^)
 
 
@@ -117,9 +120,13 @@ build/test/test_protocol: $(BUILD_DIR)/gen/firefly_protocol.o
 doc:
 	doxygen doxygen.cfg
 
-# target: doc-open - Opens the HTML index of the documentation.
+# target: doc-open - Opens the HTML index of the doc.
 doc-open: doc
 	xdg-open $(DOC_DIR)/html/index.html
+
+# target: tags - Generate tags with ctags for all files.
+tags:
+	ctags -R --tag-relative=yes -f $@
 
 # target: help - Display all targets.
 help :
@@ -134,6 +141,7 @@ clean:
 	@echo "======Cleaning LabComm======"
 	$(MAKE) -C $(LABCOMMLIBPATH) distclean
 	@echo "======End cleaning LabComm======"
+	$(RM) tags
 
 # target: cleaner - Clean all generated files.
 cleaner: clean

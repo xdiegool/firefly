@@ -95,4 +95,14 @@ void transport_connection_udp_posix_free(struct connection **conn);
  */
 void transport_llp_udp_posix_read(struct transport_llp *llp);
 
+/**
+ * @brief Write data on the specified connection
+ *
+ * @param data The data to be written.
+ * @param data_size The size of the data to be written.
+ * @param conn The connection to written the data on.
+ */
+void transport_write_udp_posix(unsigned char *data, size_t data_size,
+		struct connection *conn);
+
 #endif

@@ -130,7 +130,7 @@ struct connection *transport_connection_udp_posix_open(char *ip_addr,
 	return conn;
 }
 
-void transport_connection_write(unsigned char *data, size_t data_size,
+void transport_write_udp_posix(unsigned char *data, size_t data_size,
 		struct connection *conn)
 {
 	struct protocol_connection_udp_posix *conn_udp = (struct
