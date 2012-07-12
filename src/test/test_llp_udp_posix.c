@@ -1,3 +1,8 @@
+/**
+ * @file
+ * @brief Test the transport layer with POSIX UDP.
+ */
+// TODO rename this file to test_transport_udp_posix.c
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
