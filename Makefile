@@ -79,7 +79,7 @@ $(LABCOMMC):
 	cd $(LABCOMMPATH)/compiler; ant jar
 
 $(LABCOMMLIBPATH)/liblabcomm.a:
-	$(MAKE) -C $(LABCOMMLIBPATH) all #// TODO add no EXPERIMENTAl
+	$(MAKE) -C $(LABCOMMLIBPATH) -e LABCOMM_NO_EXPERIMENTAL=true all
 
 #$(GEN_DIR)/firefly_sample.h $(GEN_DIR)/firefly_sample.c: firefly_sample.lc $(LABCOMMC)
 	#mkdir -p $(GEN_DIR)
