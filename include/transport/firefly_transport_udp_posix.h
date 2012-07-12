@@ -27,6 +27,8 @@ struct transport_llp_udp_posix {
 struct protocol_connection_udp_posix {
 	struct sockaddr_in *remote_addr; /**< The address to the remote node of
 						this connection */
+	int socket; /**< The socket file descriptor associated with this
+				connection. */
 };
 
 /**
@@ -52,6 +54,21 @@ struct transport_llp *transport_llp_udp_posix_new(unsigned short local_port,
 void transport_llp_udp_posix_free(struct transport_llp **llp);
 
 /**
+ * @brief Opens a connection on the provided link layer port.
+ *
+ * To recieve data on this connection, a read operation should be performed on
+ * the provided transport_llp.
+ *
+ * @param ip_addr The IP address to connect to.
+ * @param port The port to connect to.
+ * @param llp The transport_llp to open a connection on.
+ * @return The newly opened connection.
+ * @retval NULL Returns NULL upon failure.
+ */
+struct connection *transport_connection_udp_posix_open(char *ip_addr,
+		unsigned short port, struct transport_llp *llp);
+
+/**
  * @brief Free the connection and any resources associated with it.
  *
  * The freed resources includes all channels.
@@ -60,6 +77,15 @@ void transport_llp_udp_posix_free(struct transport_llp **llp);
  */
 void transport_connection_udp_posix_free(struct connection **conn);
 
+/**
+ * @brief Send data on the specified connection
+ *
+ * @param data The data to be sent.
+ * @param data_size The size of the data to be sent.
+ * @param conn The connection to send the data on.
+ */
+void transport_connection_send(unsigned char *data, size_t data_size,
+		struct connection *conn);
 /**
  * @brief Read data from the connection and fire events.
  *

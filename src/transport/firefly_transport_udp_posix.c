@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <unistd.h>
+#include <arpa/inet.h>
 
 
 #include <firefly_errors.h>
@@ -98,6 +99,51 @@ void transport_connection_udp_posix_free(struct connection **conn)
 	free(conn_udp);
 	free((*conn));
 	*conn = NULL;
+}
+
+struct connection *transport_connection_udp_posix_open(char *ip_addr,
+		unsigned short port, struct transport_llp *llp)
+{
+	struct connection *conn = malloc(sizeof(struct connection));
+	struct protocol_connection_udp_posix *conn_udp =
+		malloc(sizeof(struct protocol_connection_udp_posix));
+	conn_udp->remote_addr = calloc(1, sizeof(struct sockaddr_in));
+	if (conn_udp->remote_addr == NULL) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 2,
+				"Failed in %s.\n", __FUNCTION__);
+	}
+
+	conn_udp->remote_addr->sin_family = AF_INET;
+	conn_udp->remote_addr->sin_port = htons(port);
+	int res = inet_pton(AF_INET, ip_addr, &conn_udp->remote_addr->sin_addr);
+	if (res == 0) {
+		firefly_error(FIREFLY_ERROR_SOCKET, 2,
+				"Failed in %s.\n", __FUNCTION__);
+	}
+
+	conn_udp->socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	if (conn_udp->socket == -1) {
+		firefly_error(FIREFLY_ERROR_SOCKET, 2,
+				"Failed in %s.\n", __FUNCTION__);
+	}
+
+	conn->transport_conn_platspec = conn_udp;
+	return conn;
+}
+
+void transport_connection_send(unsigned char *data, size_t data_size,
+		struct connection *conn)
+{
+	struct protocol_connection_udp_posix *conn_udp = (struct
+			protocol_connection_udp_posix *)
+				conn->transport_conn_platspec;
+	int res = sendto(conn_udp->socket, data, data_size, 0, (struct sockaddr
+				*) conn_udp->remote_addr,
+			sizeof(*conn_udp->remote_addr));
+	if (res == -1) {
+		firefly_error(FIREFLY_ERROR_SOCKET, 2,
+				"Failed in %s.\n", __FUNCTION__);
+	}
 }
 
 void transport_llp_udp_posix_read(struct transport_llp *llp)
