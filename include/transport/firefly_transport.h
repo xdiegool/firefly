@@ -6,6 +6,9 @@
 #ifndef FIREFLY_TRANSPORT_H
 #define FIREFLY_TRANSPORT_H
 
+#include <protocol/firefly_protocol.h>
+#include <stdbool.h>
+
 /**
  * @brief This callback will be called when a new connection is received.
  *
@@ -41,4 +44,13 @@ struct transport_llp {
 				*/
 };	
 
+/**
+ * @brief Write data on the specified connection
+ *
+ * @param data The data to be written.
+ * @param data_size The size of the data to be written.
+ * @param conn The connection to written the data on.
+ */
+void transport_connection_write(unsigned char *data, size_t data_size,
+		struct connection *conn);
 #endif

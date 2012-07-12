@@ -3,3 +3,5 @@ doc/gen
 lib/
 *.enc
 gen/
+makelog.tmp
+*.mp3

@@ -78,15 +78,6 @@ struct connection *transport_connection_udp_posix_open(char *ip_addr,
 void transport_connection_udp_posix_free(struct connection **conn);
 
 /**
- * @brief Send data on the specified connection
- *
- * @param data The data to be sent.
- * @param data_size The size of the data to be sent.
- * @param conn The connection to send the data on.
- */
-void transport_connection_send(unsigned char *data, size_t data_size,
-		struct connection *conn);
-/**
  * @brief Read data from the connection and fire events.
  *
  * This function is the backbone of the entire API. It can be viewed as an event

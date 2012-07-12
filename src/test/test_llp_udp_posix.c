@@ -125,7 +125,6 @@ void test_recv_connection()
 	struct sockaddr_in remote_addr;
 
 	// send data
-	send_buf[0] = 1;
 	send_data(&remote_addr, remote_port);
 
 	// Set up a connection over local loopback.
@@ -146,7 +145,6 @@ void test_recv_data() {
 	struct transport_llp *llp = transport_llp_udp_posix_new(local_port,
 			recv_data_recv_conn);
 	struct sockaddr_in remote_addr;
-	send_buf[0] = 2;
 	send_data(&remote_addr, remote_port);
 
 	struct protocol_connection_udp_posix *conn_udp =
@@ -173,7 +171,6 @@ void test_recv_conn_and_data()
 	struct sockaddr_in remote_addr;
 
 	// send data
-	send_buf[0] = 3;
 	send_data(&remote_addr, remote_port);
 
 	// Set up a connection over local loopback.
@@ -193,7 +190,6 @@ void test_recv_conn_and_two_data()
 	struct sockaddr_in remote_addr;
 
 	// send data
-	send_buf[0] = 4;
 	send_data(&remote_addr, remote_port);
 
 	// Set up a connection over local loopback.
@@ -204,7 +200,6 @@ void test_recv_conn_and_two_data()
 	good_conn_received = false;
 	data_received = false;
 
-	send_buf[0] = 5;
 	send_data(&remote_addr, remote_port);
 	transport_llp_udp_posix_read(llp);
 
@@ -221,7 +216,6 @@ void test_recv_conn_keep()
 			recv_conn_recv_conn);
 	// send data
 	struct sockaddr_in remote_addr;
-	send_buf[0] = 6;
 	send_data(&remote_addr, remote_port);
 
 	// Set up a connection over local loopback.
@@ -249,7 +243,6 @@ void test_recv_conn_keep_two()
 			recv_conn_keep_two);
 	// send data
 	struct sockaddr_in remote_addr;
-	send_buf[0] = 7;
 	send_data(&remote_addr, remote_port);
 
 	// Set up a connection over local loopback.
@@ -264,7 +257,6 @@ void test_recv_conn_keep_two()
 	good_conn_received = false;
 	data_received = false;
 
-	send_buf[0] = 8;
 	send_data(&remote_addr, 55558);
 
 	// Set up a connection over local loopback.
@@ -293,7 +285,6 @@ void test_recv_conn_reject()
 			recv_conn_reject_recv_conn);
 	// send data
 	struct sockaddr_in remote_addr;
-	send_buf[0] = 9;
 	send_data(&remote_addr, remote_port);
 
 	// Set up a connection over local loopback.
@@ -313,7 +304,6 @@ void test_null_pointer_as_callback()
 	struct transport_llp *llp = transport_llp_udp_posix_new(local_port,
 			NULL);
 	struct sockaddr_in remote_addr;
-	send_buf[0] = 10;
 	send_data(&remote_addr, remote_port);
 
 	transport_llp_udp_posix_read(llp);
@@ -413,7 +403,7 @@ void test_add_conn_to_llp()
 	transport_llp_udp_posix_free(&llp);
 }
 
-void test_conn_open()
+void test_conn_open_and_send()
 {
 	struct transport_llp *llp = transport_llp_udp_posix_new(local_port,
 			NULL);
@@ -425,11 +415,72 @@ void test_conn_open()
 	setup_sockaddr(&recv_addr, 55550);
 	int recv_soc = open_socket(&recv_addr);
 
-	transport_connection_send(send_buf, SEND_BUF_SIZE, conn);
+	transport_connection_write(send_buf, SEND_BUF_SIZE, conn);
 
 	recv_data(recv_soc);
 
+	close(recv_soc);
 	transport_llp_udp_posix_free(&llp);
+}
+
+void test_conn_open_and_recv()
+{
+	struct transport_llp *llp = transport_llp_udp_posix_new(local_port,
+			recv_data_recv_conn);
+
+	struct connection *conn = transport_connection_udp_posix_open(
+			"127.0.0.1", 55550, llp);
+	CU_ASSERT_PTR_NOT_NULL_FATAL(conn);
+
+	struct sockaddr_in send_addr;
+	send_data(&send_addr, 55550);
+
+	transport_llp_udp_posix_read(llp);
+
+	CU_ASSERT_TRUE(data_received);
+
+	data_received = false;
+	transport_llp_udp_posix_free(&llp);
+}
+
+static struct connection *conn_recv = NULL;
+/* Callback when a new connection arrives at transport layer. */
+bool open_and_recv_conn_recv_conn(struct connection *conn)
+{
+	conn_recv = conn;
+	return good_conn_received = true;
+}
+
+void test_open_and_recv_with_two_llp()
+{
+	struct transport_llp *llp_recv = transport_llp_udp_posix_new(local_port,
+			open_and_recv_conn_recv_conn);
+
+	struct transport_llp *llp_send =
+		transport_llp_udp_posix_new(remote_port, recv_data_recv_conn);
+
+	struct connection *conn_send = transport_connection_udp_posix_open(
+			"127.0.0.1", local_port, llp_send);
+	CU_ASSERT_PTR_NOT_NULL(conn_send);
+
+	transport_connection_write(send_buf, SEND_BUF_SIZE, conn_send);
+
+	transport_llp_udp_posix_read(llp_recv);
+
+	CU_ASSERT_PTR_NOT_NULL(conn_recv);
+	CU_ASSERT_TRUE(good_conn_received);
+	CU_ASSERT_TRUE(data_received);
+	good_conn_received = false;
+	data_received = false;
+
+	transport_connection_write(send_buf, SEND_BUF_SIZE, conn_recv);
+
+	transport_llp_udp_posix_read(llp_send);
+	CU_ASSERT_TRUE(data_received);
+
+	data_received = false;
+	transport_llp_udp_posix_free(&llp_recv);
+	transport_llp_udp_posix_free(&llp_send);
 }
 
 int main()
@@ -479,8 +530,14 @@ int main()
 		(CU_add_test(pSuite, "test_null_pointer_as_callback",
 				test_null_pointer_as_callback) == NULL)
 		       ||
-		(CU_add_test(pSuite, "test_conn_open", test_conn_open) == NULL)
-		/*(CU_add_test(pSuite, "test_2", test_2) == NULL)*/
+		(CU_add_test(pSuite, "test_conn_open_and_send",
+				test_conn_open_and_send) == NULL)
+		       ||
+		(CU_add_test(pSuite, "test_conn_open_and_recv",
+				test_conn_open_and_recv) == NULL)
+		       ||
+		(CU_add_test(pSuite, "test_open_and_recv_with_two_llp",
+				test_open_and_recv_with_two_llp) == NULL)
 	   ) {
 		CU_cleanup_registry();
 		return CU_get_error();

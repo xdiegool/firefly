@@ -5,6 +5,7 @@
 #define _POSIX_C_SOURCE (200112L)
 #include <string.h>
 
+#include <transport/firefly_transport.h>
 #include <transport/firefly_transport_udp_posix.h>
 #include "transport/firefly_transport_udp_posix_private.h"
 
@@ -121,17 +122,15 @@ struct connection *transport_connection_udp_posix_open(char *ip_addr,
 				"Failed in %s.\n", __FUNCTION__);
 	}
 
-	conn_udp->socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-	if (conn_udp->socket == -1) {
-		firefly_error(FIREFLY_ERROR_SOCKET, 2,
-				"Failed in %s.\n", __FUNCTION__);
-	}
-
+	conn_udp->socket = ((struct transport_llp_udp_posix *)
+			llp->llp_platspec)->local_udp_socket;
 	conn->transport_conn_platspec = conn_udp;
+
+	add_connection_to_llp(conn, llp);
 	return conn;
 }
 
-void transport_connection_send(unsigned char *data, size_t data_size,
+void transport_connection_write(unsigned char *data, size_t data_size,
 		struct connection *conn)
 {
 	struct protocol_connection_udp_posix *conn_udp = (struct
@@ -174,6 +173,7 @@ void transport_llp_udp_posix_read(struct transport_llp *llp)
 		conn_udp->remote_addr = remote_addr;
 		conn->transport_conn_platspec = conn_udp;
 		if(llp->on_conn_recv != NULL && llp->on_conn_recv(conn)) {
+			conn_udp->socket = llp_udp->local_udp_socket;
 			add_connection_to_llp(conn, llp);
 			protocol_data_received(conn, buf, READ_BUFFER_SIZE);
 		} else {
