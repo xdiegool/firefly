@@ -7,6 +7,7 @@ const char *firefly_error_strings[] = {
 	"First guard. Don't use this \"error\".",
 	"Memory allocation failed.",
 	"Socket operation failed.",
+	"LabComm error has occured.",
 	"User defined error.",
 	"End guard. Don't use this \"error\".",
 };

@@ -1,3 +1,5 @@
-sample int chan_id;
-sample boolean important;
-sample byte app_enc_data[_];
+sample struct {
+	int chan_id;
+	boolean important;
+	byte app_enc_data[_];
+} proto;

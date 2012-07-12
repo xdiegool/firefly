@@ -25,7 +25,7 @@ LC_FILES=$(LC_DIR)/firefly_protocol.lc
 GEN_FILES= $(patsubst $(LC_DIR)/%.lc,$(GEN_DIR)/%.c,$(LC_FILES))
 GEN_OBJ_FILES= $(patsubst %.c,$(BUILD_DIR)/%.o,$(GEN_FILES))
 
-FIREFLY_SRC= transport/firefly_transport_udp_posix.c
+FIREFLY_SRC= transport/firefly_transport_udp_posix.c protocol/firefly_protocol.c
 
 # Disable default error handler that prints with fprintf. If set to true, you
 # must provide an own implementation at link time.
@@ -34,7 +34,7 @@ ifneq ($(FIREFLY_ERROR_USER_DEFINED),true)
 endif
 
 
-FIREFLY_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(FIREFLY_SRC))
+FIREFLY_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(FIREFLY_SRC)) $(GEN_OBJ_FILES)
 
 SAMPLE_TEST_BINS= $(patsubst %,$(BUILD_DIR)/test/%,labcomm_test_decoder labcomm_test_encoder)
 
@@ -44,7 +44,7 @@ TEST_PROGS= test/test_llp_udp_posix test/test_protocol
 
 ## Targets
 
-.PHONY: all doc clean cleaner install test
+.PHONY: all doc doc-open clean cleaner install test
 
 # target: all - Build most of the interesting targets.
 all: $(BUILD_DIR) $(LIBS)
@@ -79,7 +79,6 @@ test: $(BUILD_DIR) $(LIBS) $(LABCOMMLIBPATH)/liblabcomm.a $(patsubst %,$(BUILD_D
 
 testa:
 	./celebrate.sh
-
 
 sample-test:  $(BUILD_DIR) $(LIBS) $(LABCOMMLIBPATH)/liblabcomm.a $(SAMPLE_TEST_BINS)
 	@for prog in $(filter-out $(BUILD_DIR) $(LIBS) $(LABCOMMLIBPATH)/liblabcomm.a,$^); do \
@@ -118,6 +117,9 @@ build/test/test_protocol: $(BUILD_DIR)/gen/firefly_protocol.o
 doc:
 	doxygen doxygen.cfg
 
+# target: doc-open - Opens the HTML index of the documentation.
+doc-open: doc
+	xdg-open $(DOC_DIR)/html/index.html
 
 # target: help - Display all targets.
 help :
