@@ -1,7 +1,6 @@
 build/
 doc/gen
 lib/
-*.enc
 gen/
 *.mp3
-*_enc
+*.enc

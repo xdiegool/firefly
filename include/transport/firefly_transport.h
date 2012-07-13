@@ -9,6 +9,7 @@
 #include <protocol/firefly_protocol.h>
 #include <stdbool.h>
 
+
 /**
  * @brief This callback will be called when a new connection is received.
  *
@@ -20,28 +21,13 @@
  * @param conn The received connection.
  * @return Return true to accept the connection and false to refuse it.
  */
-typedef bool (*application_on_conn_recv_cb)(struct connection *conn);
+typedef bool (*application_on_conn_recv_cb)(struct firefly_connection *conn);
 
 /**
- * @brief A data structure representing a linked list of connections.
- */
-struct llp_connection_list_node {
-	struct llp_connection_list_node *next;
-	struct connection *conn;
-};
-
-/**
- * @brief A general data structure representing a link layer port on the
+ * @struct transport_llp
+ * @brief A opaque general data structure representing a link layer port on the
  * transport layer.
  */
-struct transport_llp {
-	application_on_conn_recv_cb on_conn_recv; /**< The callback to be called
-							when a new connection is
-							detected. */
-	struct llp_connection_list_node *conn_list; /**< A linked list of
-							connections. */
-	void *llp_platspec; /**< Platform, and transport method, specific data.
-				*/
-};	
+extern struct transport_llp;
 
 #endif

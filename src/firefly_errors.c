@@ -3,6 +3,12 @@
 // Some projects can not use stdio.h.
 #include <stdio.h>
 
+/**
+ * @var firefly_error_strings
+ * @brief Error strings.
+ *
+ * \b _Must_ be the same order as in enum firefly_error.
+ */
 const char *firefly_error_strings[] = {
 	"First guard. Don't use this \"error\".",
 	"Memory allocation failed.",

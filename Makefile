@@ -40,14 +40,16 @@ SAMPLE_TEST_BINS= $(patsubst %,$(BUILD_DIR)/test/%,labcomm_test_decoder labcomm_
 
 LIBS=$(patsubst %,$(BUILD_DIR)/lib%.a,firefly)
 
-TEST_PROGS= test/test_transport_udp_posix test/test_protocol
+TEST_PROGS= $(addprefix $(BUILD_DIR)/,test/test_transport_udp_posix test/test_protocol)
 
 ## Targets
 
 .PHONY: all doc doc-open clean cleaner install test
+# This will enable expression involving automatic variables in the prerequisities list. it must be defined before any usage of these feauteres.
+.SECONDEXPANSION:
 
-# target: all - Build most of the interesting targets.
-all: $(BUILD_DIR) $(LIBS) tags
+# target: all - Build all libs and tests.
+all: $(BUILD_DIR) $(LIBS) $(TEST_PROGS) tags
 
 $(BUILD_DIR) $(LIB_DIR) $(DOC_DIR) $(GEN_DIR):
 	mkdir -p $@
@@ -69,15 +71,19 @@ $(BUILD_DIR)/test/%: test/%.c $(BUILD_DIR)/libfirefly.a
 	mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -L$(BUILD_DIR) -L$(LABCOMMLIBPATH) $< -lcunit -lfirefly -llabcomm -o $@
 
-# target: test - Build and run all tests.
-test: $(BUILD_DIR) $(LIBS) $(LABCOMMLIBPATH)/liblabcomm.a $(patsubst %,$(BUILD_DIR)/%,$(TEST_PROGS))
+# Test programs depends on liblabcomm.
+$(TEST_PROGS): $(BUILD_DIR) $(LIBS) $(LABCOMMLIBPATH)/liblabcomm.a
+
+# target: test - Run all tests.
+test: $(TEST_PROGS)
 	@for prog in $(filter-out $(BUILD_DIR) $(LIBS) $(LABCOMMLIBPATH)/liblabcomm.a,$^); do \
 		echo "=========================>BEGIN TEST: $${prog}"; \
 		./$$prog; \
 		echo "=========================>END TEST: $${prog}"; \
 	done
 
-testa:
+# target: testc - Run all tests with sound effects!
+testc:
 	./celebrate.sh
 
 sample-test:  $(BUILD_DIR) $(LIBS) $(LABCOMMLIBPATH)/liblabcomm.a $(SAMPLE_TEST_BINS)
@@ -96,12 +102,8 @@ $(LABCOMMLIBPATH)/liblabcomm.a:
 	@echo "======End building LabComm======"
 
 
-
-
 build/test/test_protocol: $(BUILD_DIR)/gen/firefly_protocol.o
 
-# This will enable expression involving automatic variables in the prerequisities list. it must be defined before any usage of these feauteres.
-.SECONDEXPANSION:
 
 # Let the labcomm .o_file depend on the generated .c and .h files.
 $(GEN_OBJ_FILES): $$(patsubst $$(BUILD_DIR)/%.o,%.c,$$@) $$(patsubst $$(BUILD_DIR)/%.o,%.h,$$@)
@@ -120,7 +122,7 @@ $(GEN_FILES): $(GEN_DIR) $$(patsubst $$(GEN_DIR)/%.c,$(LC_DIR)/%.lc,$$@)
 doc:
 	doxygen doxygen.cfg
 
-# target: doc-open - Opens the HTML index of the doc.
+# target: doc-open - Opens the HTML index of the documentation.
 doc-open: doc
 	xdg-open $(DOC_DIR)/html/index.html
 
@@ -129,16 +131,16 @@ tags:
 	ctags -R --tag-relative=yes -f $@
 
 # target: help - Display all targets.
-help :
+help:
 	@egrep "#\starget:" [Mm]akefile  | sed 's/\s-\s/\t\t\t/' | cut -d " " -f3- | sort -d
 
 # target: clean  - Clean most generated files..
 clean:
 	$(RM) $(LIBS)
 	$(RM) $(FIREFLY_OBJS)
-	$(RM) $(addprefix $(BUILD_DIR)/,$(TEST_PROGS))
+	$(RM) $(TEST_PROGS)
 	$(RM) $(GEN_DIR)/*
-	$(RM) data_enc sig_enc
+	$(RM) $(addsuffix .enc,data sig)
 	@echo "======Cleaning LabComm======"
 	$(MAKE) -C $(LABCOMMLIBPATH) distclean
 	@echo "======End cleaning LabComm======"

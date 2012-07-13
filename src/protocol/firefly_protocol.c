@@ -40,7 +40,7 @@ static int copy_to_writer_data(struct ff_transport_data *writer_data,
 
 int ff_transport_writer(labcomm_writer_t *w, labcomm_writer_action_t action)
 {
-	struct connection  *conn = (struct connection *) w->context;
+	struct firefly_connection  *conn = (struct firefly_connection *) w->context;
 	struct ff_transport_data *writer_data = conn->writer_data;
 	int result = -EINVAL;
 	switch (action) {
@@ -102,7 +102,7 @@ int ff_transport_writer(labcomm_writer_t *w, labcomm_writer_action_t action)
 
 int ff_transport_reader(labcomm_reader_t *r, labcomm_reader_action_t action)
 {
-	struct connection *conn = (struct connection *) r->context;
+	struct firefly_connection *conn = (struct firefly_connection *) r->context;
 	struct ff_transport_data *reader_data = conn->reader_data;
 	int result = -EINVAL;
 	switch (action) {
@@ -123,7 +123,7 @@ int ff_transport_reader(labcomm_reader_t *r, labcomm_reader_action_t action)
 		r->pos = 0;
 		r->count = 0;
 	} break;
-	case labcomm_reader_start: 
+	case labcomm_reader_start:
 	case labcomm_reader_continue: {
 		r->pos = 0;
 		size_t data_left = reader_data->data_size - reader_data->pos;
@@ -131,7 +131,7 @@ int ff_transport_reader(labcomm_reader_t *r, labcomm_reader_action_t action)
 			result = -1; // Stop.
 		} else {
 			size_t reader_avail = r->data_size;
-			size_t mem_to_cpy = (data_left < reader_avail) ? 
+			size_t mem_to_cpy = (data_left < reader_avail) ?
 							data_left : reader_avail;
 			memcpy(r->data, &reader_data->data[reader_data->pos], mem_to_cpy);
 			reader_data->pos += mem_to_cpy;

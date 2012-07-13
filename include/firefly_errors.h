@@ -8,8 +8,6 @@
 
 #include <stdlib.h>
 
-//typedef void (*error_handler)(char *err_msg);
-
 /**
  * @brief Error IDs
  */
@@ -22,12 +20,6 @@ enum firefly_error {
 	FIREFLY_ERROR_LAST		/**< \b Must be the last enum element. firefly_error_get_str() depends on this.*/
 };
 
-/**
- * @brief Error strings.
- *
- * \b _Must_ be the same order as in enum firefly_error.
- */
-extern const char *firefly_error_strings[];
 
 /**
  * @brief Get a string describing the specified firefly \a error_id.

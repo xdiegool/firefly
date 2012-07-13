@@ -1,3 +1,4 @@
+// Must be the first include to get the right function X (TODO which one?).
 #ifdef _GNU_SOURCE
 #error "Something turned it on!"
 #undef _GNU_SOURCE
@@ -5,24 +6,22 @@
 #define _POSIX_C_SOURCE (200112L)
 #include <string.h>
 
-#include <transport/firefly_transport.h>
-#include <transport/firefly_transport_udp_posix.h>
-#include "transport/firefly_transport_udp_posix_private.h"
+#include "firefly_transport_udp_posix_private.h"
 
 #include <stdlib.h>
 #include <errno.h>
 #include <unistd.h>
 #include <arpa/inet.h>
 
-
+#include <transport/firefly_transport.h>
+#include <transport/firefly_transport_udp_posix.h>
 #include <firefly_errors.h>
-#include "protocol/firefly_protocol_private.h"
 
+#include "protocol/firefly_protocol_private.h"
+#include "transport/firefly_transport_private.h"
 
 #define ERROR_STR_MAX_LEN	 (256)
-// TODO better buffer size
-#define READ_BUFFER_SIZE	(16)
-
+#define READ_BUFFER_SIZE	(16) // TODO better buffer size
 
 struct transport_llp *transport_llp_udp_posix_new(unsigned short local_udp_port,
 	       	application_on_conn_recv_cb on_conn_recv)
@@ -91,7 +90,7 @@ void transport_llp_udp_posix_free(struct transport_llp **llp)
 	*llp = NULL;
 }
 
-void transport_connection_udp_posix_free(struct connection **conn)
+void transport_connection_udp_posix_free(struct firefly_connection **conn)
 {
 	struct protocol_connection_udp_posix *conn_udp =
 		(struct protocol_connection_udp_posix *)
@@ -102,10 +101,10 @@ void transport_connection_udp_posix_free(struct connection **conn)
 	*conn = NULL;
 }
 
-struct connection *transport_connection_udp_posix_open(char *ip_addr,
+struct firefly_connection *transport_connection_udp_posix_open(char *ip_addr,
 		unsigned short port, struct transport_llp *llp)
 {
-	struct connection *conn = malloc(sizeof(struct connection));
+	struct firefly_connection *conn = malloc(sizeof(struct firefly_connection));
 	struct protocol_connection_udp_posix *conn_udp =
 		malloc(sizeof(struct protocol_connection_udp_posix));
 	conn_udp->remote_addr = calloc(1, sizeof(struct sockaddr_in));
@@ -131,7 +130,7 @@ struct connection *transport_connection_udp_posix_open(char *ip_addr,
 }
 
 void transport_write_udp_posix(unsigned char *data, size_t data_size,
-		struct connection *conn)
+		struct firefly_connection *conn)
 {
 	struct protocol_connection_udp_posix *conn_udp = (struct
 			protocol_connection_udp_posix *)
@@ -164,10 +163,10 @@ void transport_llp_udp_posix_read(struct transport_llp *llp)
 	}
 
 	// Find existing connection or create new
-	struct connection *conn = find_connection_by_addr(remote_addr, llp);
+	struct firefly_connection *conn = find_connection_by_addr(remote_addr, llp);
 
 	if (conn == NULL) {
-		struct connection *conn = malloc(sizeof(struct connection));
+		struct firefly_connection *conn = malloc(sizeof(struct firefly_connection));
 		struct protocol_connection_udp_posix *conn_udp = malloc(
 				sizeof(struct protocol_connection_udp_posix));
 		conn_udp->remote_addr = remote_addr;
@@ -196,7 +195,7 @@ bool sockaddr_in_eq(struct sockaddr_in *one, struct sockaddr_in *other)
 
 }
 
-struct connection *find_connection_by_addr(struct sockaddr_in *addr,
+struct firefly_connection *find_connection_by_addr(struct sockaddr_in *addr,
 		struct transport_llp *llp)
 {
 	struct llp_connection_list_node *head = llp->conn_list;
@@ -215,7 +214,7 @@ struct connection *find_connection_by_addr(struct sockaddr_in *addr,
 	return NULL;
 }
 
-void add_connection_to_llp(struct connection *conn, struct transport_llp *llp)
+void add_connection_to_llp(struct firefly_connection *conn, struct transport_llp *llp)
 {
 	struct llp_connection_list_node *tmp = llp->conn_list;
 	struct llp_connection_list_node *new_node = malloc(sizeof(struct llp_connection_list_node));

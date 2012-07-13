@@ -24,10 +24,9 @@
 #include "protocol/firefly_protocol_private.h"
 #include <protocol/firefly_protocol.h>
 
-#define WRITE_BUF_SIZE (128)	// Size of the labcomm buffer to write to.
-#define FILENAME ("data_enc")	// File where the encoded data can be written.
-#define DATA_FILE ("data_enc")	// File where the encoded data can be written.
-#define SIG_FILE ("sig_enc")	// File where the encoded data can be written.
+#define WRITE_BUF_SIZE (128)	// Size of the LabComm buffer to write to.
+#define DATA_FILE ("data.enc")	// File where the encoded data can be written.
+#define SIG_FILE ("sig.enc")	// File where the encoded data can be written.
 
 int init_suit()
 {
@@ -104,7 +103,7 @@ void handle_firefly_protocol_proto(firefly_protocol_proto *proto, void *context)
 // on the other end. Now we decoce it and hope it's the same stuff we
 // previously encoded.
 void transport_write_udp_posix_mock(unsigned char *data, size_t data_size,
-		struct connection *conn)
+		struct firefly_connection *conn)
 {
 	unsigned char *zero_buf = calloc(1, WRITE_BUF_SIZE);
 	// The buffer shoule not be empty anymore.
@@ -128,7 +127,7 @@ void test_encode_decode_protocol()
 	}
 	writer_data.data_size = WRITE_BUF_SIZE;
 	writer_data.pos = 0;
-	struct connection sender_conn;
+	struct firefly_connection sender_conn;
 	sender_conn.transport_conn_platspec = NULL;
 	sender_conn.writer_data = &writer_data;
 	sender_conn.transport_write = transport_write_udp_posix_mock;
@@ -137,7 +136,7 @@ void test_encode_decode_protocol()
 	reader_data.data = NULL;
 	reader_data.data_size = 0;
 	reader_data.pos = 0;
-	struct connection receiver_conn;
+	struct firefly_connection receiver_conn;
 	receiver_conn.transport_conn_platspec = NULL;
 	receiver_conn.reader_data = &reader_data;
 	receiver_conn.transport_write = NULL;
@@ -188,7 +187,7 @@ void test_encode_decode_protocol()
 
 static size_t nbr_entries = 0;
 void transport_write_udp_posix_mock_cmp(unsigned char *data, size_t data_size,
-					struct connection *conn)
+					struct firefly_connection *conn)
 {
 
 	size_t file_size;
@@ -224,7 +223,7 @@ void test_encode_protocol()
 	writer_data.data_size = WRITE_BUF_SIZE;
 	writer_data.pos = 0;
 
-	struct connection sender_conn;
+	struct firefly_connection sender_conn;
 	sender_conn.transport_conn_platspec = NULL;
 	sender_conn.writer_data = &writer_data;
 	sender_conn.transport_write = transport_write_udp_posix_mock_cmp;
@@ -260,7 +259,7 @@ void test_decode_protocol()
 	reader_data.pos = 0;
 	reader_data.data_size = read_file_to_mem(&reader_data.data, SIG_FILE);
 
-	struct connection conn;
+	struct firefly_connection conn;
 	conn.transport_conn_platspec = NULL;
 	conn.reader_data = &reader_data;
 	conn.transport_write = NULL;
