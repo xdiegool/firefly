@@ -134,9 +134,8 @@ void test_encode_decode_protocol()
 	sender_conn.transport_write = transport_write_udp_posix_mock;
 
 	struct ff_transport_data reader_data;
-	reader_data.data = writer_data.data;
-	writer_data.data_size = WRITE_BUF_SIZE;
-	reader_data.data_size = WRITE_BUF_SIZE;
+	reader_data.data = NULL;
+	reader_data.data_size = 0;
 	reader_data.pos = 0;
 	struct connection receiver_conn;
 	receiver_conn.transport_conn_platspec = NULL;
@@ -159,17 +158,29 @@ void test_encode_decode_protocol()
 	// The decoder must have been created before this!
 	labcomm_encoder_register_firefly_protocol_proto(encoder);
 	// Simulate that we're on the other end and wants to decode.
+	reader_data.data = malloc(writer_data.pos);
+	if (writer_data.data == NULL) {
+		CU_FAIL("Could not alloc readbuf.\n");
+	}
+	memcpy(reader_data.data, writer_data.data, writer_data.pos);
 	reader_data.data_size = writer_data.pos;
 	labcomm_decoder_decode_one(decoder);
 
 	writer_data.pos = reader_data.pos = 0;
 
 	labcomm_encode_firefly_protocol_proto(encoder, &proto);
+	free(reader_data.data);
+	reader_data.data = malloc(writer_data.pos);
+	if (writer_data.data == NULL) {
+		CU_FAIL("Could not alloc readbuf.\n");
+	}
+	memcpy(reader_data.data, writer_data.data, writer_data.pos);
 	reader_data.data_size = writer_data.pos;
 	labcomm_decoder_decode_one(decoder);
 
 	CU_ASSERT_TRUE(successfully_decoded);
 	free(writer_data.data);
+	free(reader_data.data);
 	labcomm_encoder_free(encoder);
 	labcomm_decoder_free(decoder);
 	successfully_decoded = false;
