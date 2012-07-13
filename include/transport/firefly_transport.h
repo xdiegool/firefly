@@ -21,13 +21,13 @@
  * @param conn The received connection.
  * @return Return true to accept the connection and false to refuse it.
  */
-typedef bool (*application_on_conn_recv_cb)(struct firefly_connection *conn);
+typedef bool (*firefly_on_conn_recv)(struct firefly_connection *conn);
 
 /**
- * @struct transport_llp
+ * @struct firefly_transport_llp
  * @brief A opaque general data structure representing a link layer port on the
  * transport layer.
  */
-extern struct transport_llp;
+extern struct firefly_transport_llp;
 
 #endif

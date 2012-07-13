@@ -45,7 +45,7 @@ struct protocol_connection_udp_posix {
  * found.
  */
 struct firefly_connection *find_connection_by_addr(struct sockaddr_in *addr,
-		struct transport_llp *llp);
+		struct firefly_transport_llp *llp);
 
 /**
  * @brief Compares two \c struct sockaddr_in.
@@ -62,5 +62,5 @@ bool sockaddr_in_eq(struct sockaddr_in *one, struct sockaddr_in *other);
  * @param conn The connection to add.
  * @param llp The link layer port structure to add the connection to.
  */
-void add_connection_to_llp(struct firefly_connection *conn, struct transport_llp *llp);
+void add_connection_to_llp(struct firefly_connection *conn, struct firefly_transport_llp *llp);
 #endif

@@ -8,12 +8,12 @@
 #define FIREFLY_TRANSPORT_PRIVATE_H
 
 /**
- * @struct transport_llp
+ * @struct firefly_transport_llp
  * @brief A general data structure representing a link layer port on the
  * transport layer.
  */
-struct transport_llp {
-	application_on_conn_recv_cb on_conn_recv; /**< The callback to be called
+struct firefly_transport_llp {
+	firefly_on_conn_recv on_conn_recv; /**< The callback to be called
 							when a new connection is
 							detected. */
 	struct llp_connection_list_node *conn_list; /**< A linked list of
