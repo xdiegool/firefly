@@ -138,6 +138,7 @@ clean:
 	$(RM) $(FIREFLY_OBJS)
 	$(RM) $(addprefix $(BUILD_DIR)/,$(TEST_PROGS))
 	$(RM) $(GEN_DIR)/*
+	$(RM) data_enc sig_enc
 	@echo "======Cleaning LabComm======"
 	$(MAKE) -C $(LABCOMMLIBPATH) distclean
 	@echo "======End cleaning LabComm======"
