@@ -135,11 +135,11 @@ void test_recv_connection()
 	send_data(&remote_addr, remote_port);
 
 	// Set up a connection over local loopback.
-	firefly_transport_llp_udp_posix_read(llp);
+	firefly_transport_udp_posix_read(llp);
 	CU_ASSERT_TRUE(good_conn_received);
 	data_received = false;
 	good_conn_received = false;
-	firefly_transport_llp_udp_posix_free(&llp);
+	firefly_transport_udp_posix_free(&llp);
 }
 
 bool recv_data_recv_conn(struct firefly_connection *conn)
@@ -164,11 +164,11 @@ void test_recv_data() {
 
 	add_connection_to_llp(conn, llp);
 
-	firefly_transport_llp_udp_posix_read(llp);
+	firefly_transport_udp_posix_read(llp);
 	CU_ASSERT_TRUE(data_received);
 	data_received = false;
 	good_conn_received = false;
-	firefly_transport_llp_udp_posix_free(&llp);
+	firefly_transport_udp_posix_free(&llp);
 }
 
 void test_recv_conn_and_data()
@@ -181,13 +181,13 @@ void test_recv_conn_and_data()
 	send_data(&remote_addr, remote_port);
 
 	// Set up a connection over local loopback.
-	firefly_transport_llp_udp_posix_read(llp);
+	firefly_transport_udp_posix_read(llp);
 
 	CU_ASSERT_TRUE(good_conn_received);
 	CU_ASSERT_TRUE(data_received);
 	good_conn_received = false;
 	data_received = false;
-	firefly_transport_llp_udp_posix_free(&llp);
+	firefly_transport_udp_posix_free(&llp);
 }
 
 void test_recv_conn_and_two_data()
@@ -200,7 +200,7 @@ void test_recv_conn_and_two_data()
 	send_data(&remote_addr, remote_port);
 
 	// Set up a connection over local loopback.
-	firefly_transport_llp_udp_posix_read(llp);
+	firefly_transport_udp_posix_read(llp);
 
 	CU_ASSERT_TRUE(good_conn_received);
 	CU_ASSERT_TRUE(data_received);
@@ -208,13 +208,13 @@ void test_recv_conn_and_two_data()
 	data_received = false;
 
 	send_data(&remote_addr, remote_port);
-	firefly_transport_llp_udp_posix_read(llp);
+	firefly_transport_udp_posix_read(llp);
 
 	CU_ASSERT_FALSE(good_conn_received);
 	CU_ASSERT_TRUE(data_received);
 	good_conn_received = false;
 	data_received = false;
-	firefly_transport_llp_udp_posix_free(&llp);
+	firefly_transport_udp_posix_free(&llp);
 }
 
 void test_recv_conn_keep()
@@ -226,7 +226,7 @@ void test_recv_conn_keep()
 	send_data(&remote_addr, remote_port);
 
 	// Set up a connection over local loopback.
-	firefly_transport_llp_udp_posix_read(llp);
+	firefly_transport_udp_posix_read(llp);
 
 	CU_ASSERT_TRUE(good_conn_received);
 	CU_ASSERT_TRUE(data_received);
@@ -235,7 +235,7 @@ void test_recv_conn_keep()
 
 	good_conn_received = false;
 	data_received = false;
-	firefly_transport_llp_udp_posix_free(&llp);
+	firefly_transport_udp_posix_free(&llp);
 }
 
 bool recv_conn_keep_two(struct firefly_connection *conn)
@@ -253,7 +253,7 @@ void test_recv_conn_keep_two()
 	send_data(&remote_addr, remote_port);
 
 	// Set up a connection over local loopback.
-	firefly_transport_llp_udp_posix_read(llp);
+	firefly_transport_udp_posix_read(llp);
 
 	// test first connection
 	CU_ASSERT_TRUE(good_conn_received);
@@ -267,7 +267,7 @@ void test_recv_conn_keep_two()
 	send_data(&remote_addr, 55558);
 
 	// Set up a connection over local loopback.
-	firefly_transport_llp_udp_posix_read(llp);
+	firefly_transport_udp_posix_read(llp);
 
 	// test first connection
 	CU_ASSERT_TRUE(good_conn_received);
@@ -277,7 +277,7 @@ void test_recv_conn_keep_two()
 
 	good_conn_received = false;
 	data_received = false;
-	firefly_transport_llp_udp_posix_free(&llp);
+	firefly_transport_udp_posix_free(&llp);
 }
 
 bool recv_conn_reject_recv_conn(struct firefly_connection *conn)
@@ -295,13 +295,13 @@ void test_recv_conn_reject()
 	send_data(&remote_addr, remote_port);
 
 	// Set up a connection over local loopback.
-	firefly_transport_llp_udp_posix_read(llp);
+	firefly_transport_udp_posix_read(llp);
 
 	CU_ASSERT_TRUE(good_conn_received);
 	CU_ASSERT_FALSE(data_received);
 
 	CU_ASSERT_EQUAL(llp->conn_list, NULL);
-	firefly_transport_llp_udp_posix_free(&llp);
+	firefly_transport_udp_posix_free(&llp);
 }
 
 // NOTE: This test is supposed to segfault if it fails as that is the only way
@@ -313,11 +313,11 @@ void test_null_pointer_as_callback()
 	struct sockaddr_in remote_addr;
 	send_data(&remote_addr, remote_port);
 
-	firefly_transport_llp_udp_posix_read(llp);
+	firefly_transport_udp_posix_read(llp);
 
 	CU_PASS("Passed null pointer as callback\n");
 
-	firefly_transport_llp_udp_posix_free(&llp);
+	firefly_transport_udp_posix_free(&llp);
 }
 
 void test_find_conn_by_addr()
@@ -365,7 +365,7 @@ void test_find_conn_by_addr()
 		((struct protocol_connection_udp_posix *)
 		conn->transport_conn_platspec)->remote_addr));
 
-	firefly_transport_llp_udp_posix_free(&llp);
+	firefly_transport_udp_posix_free(&llp);
 }
 
 void test_add_conn_to_llp()
@@ -407,7 +407,7 @@ void test_add_conn_to_llp()
 	CU_ASSERT_PTR_NOT_NULL(llp->conn_list->next);
 	CU_ASSERT_PTR_EQUAL(llp->conn_list->next->conn, conn_1);
 
-	firefly_transport_llp_udp_posix_free(&llp);
+	firefly_transport_udp_posix_free(&llp);
 }
 
 void test_conn_open_and_send()
@@ -427,7 +427,7 @@ void test_conn_open_and_send()
 	recv_data(recv_soc);
 
 	close(recv_soc);
-	firefly_transport_llp_udp_posix_free(&llp);
+	firefly_transport_udp_posix_free(&llp);
 }
 
 void test_conn_open_and_recv()
@@ -442,12 +442,12 @@ void test_conn_open_and_recv()
 	struct sockaddr_in send_addr;
 	send_data(&send_addr, 55550);
 
-	firefly_transport_llp_udp_posix_read(llp);
+	firefly_transport_udp_posix_read(llp);
 
 	CU_ASSERT_TRUE(data_received);
 
 	data_received = false;
-	firefly_transport_llp_udp_posix_free(&llp);
+	firefly_transport_udp_posix_free(&llp);
 }
 
 static struct firefly_connection *conn_recv = NULL;
@@ -475,7 +475,7 @@ void test_open_and_recv_with_two_llp()
 
 	firefly_transport_write_udp_posix(send_buf, SEND_BUF_SIZE, conn_send);
 
-	firefly_transport_llp_udp_posix_read(llp_recv);
+	firefly_transport_udp_posix_read(llp_recv);
 
 	CU_ASSERT_PTR_NOT_NULL(conn_recv);
 	CU_ASSERT_TRUE(good_conn_received);
@@ -485,12 +485,12 @@ void test_open_and_recv_with_two_llp()
 
 	firefly_transport_write_udp_posix(send_buf, SEND_BUF_SIZE, conn_recv);
 
-	firefly_transport_llp_udp_posix_read(llp_send);
+	firefly_transport_udp_posix_read(llp_send);
 	CU_ASSERT_TRUE(data_received);
 
 	data_received = false;
-	firefly_transport_llp_udp_posix_free(&llp_recv);
-	firefly_transport_llp_udp_posix_free(&llp_send);
+	firefly_transport_udp_posix_free(&llp_recv);
+	firefly_transport_udp_posix_free(&llp_send);
 }
 
 int main()

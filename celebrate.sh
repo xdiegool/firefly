@@ -14,7 +14,9 @@ for res in "${resul[@]}"; do
 done
 
 if [[ "$all_passed" == "0" ]]; then
+	figlet -f /usr/share/figlet/slant.flf "Celebration!"
 	cvlc celebrate.mp3 &>/dev/null
 else
+	cowsay -f /usr/share/cowsay/daemon.cow "Fail!"
 	cvlc fail.mp3 &>/dev/null
 fi

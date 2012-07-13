@@ -71,7 +71,7 @@ struct firefly_transport_llp *firefly_transport_llp_udp_posix_new(unsigned short
 	return llp;
 }
 
-void firefly_transport_llp_udp_posix_free(struct firefly_transport_llp **llp)
+void firefly_transport_udp_posix_free(struct firefly_transport_llp **llp)
 {
 	struct transport_llp_udp_posix *llp_udp =
 		(struct transport_llp_udp_posix *) (*llp)->llp_platspec;
@@ -144,7 +144,7 @@ void firefly_transport_write_udp_posix(unsigned char *data, size_t data_size,
 	}
 }
 
-void firefly_transport_llp_udp_posix_read(struct firefly_transport_llp *llp)
+void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 {
 	struct sockaddr_in *remote_addr = malloc(sizeof(struct sockaddr_in));
 	struct transport_llp_udp_posix *llp_udp =

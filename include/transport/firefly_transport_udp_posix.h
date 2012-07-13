@@ -39,7 +39,7 @@ struct firefly_transport_llp *firefly_transport_llp_udp_posix_new(
  *
  * @param llp The firefly_transport_llp to free.
  */
-void firefly_transport_llp_udp_posix_free(struct firefly_transport_llp **llp);
+void firefly_transport_udp_posix_free(struct firefly_transport_llp **llp);
 
 /**
  * @brief Opens a connection on the provided link layer port.
@@ -84,8 +84,7 @@ void firefly_transport_connection_udp_posix_free(
  *
  * @param llp The Link Layer Port to read data from.
  */
-// TODO remove "_llp_" from the name - it's not necessary. Do this for all fun.
-void firefly_transport_llp_udp_posix_read(struct firefly_transport_llp *llp);
+void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp);
 
 /**
  * @brief Write data on the specified connection.
