@@ -16,7 +16,7 @@
  * @struct firefly_transport_llp_udp_posix
  * @brief An opaque UDP specific link layer port data.
  */
-extern struct firefly_transport_llp_udp_posix;
+struct firefly_transport_llp_udp_posix;
 
 
 /**

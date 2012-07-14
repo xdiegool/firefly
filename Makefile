@@ -102,6 +102,7 @@ $(LABCOMMLIBPATH)/liblabcomm.a:
 	@echo "======End building LabComm======"
 
 
+# Programs that depends on the protocol sample types.
 build/test/test_protocol: $(BUILD_DIR)/gen/firefly_protocol.o
 
 
@@ -109,7 +110,7 @@ build/test/test_protocol: $(BUILD_DIR)/gen/firefly_protocol.o
 $(GEN_OBJ_FILES): $$(patsubst $$(BUILD_DIR)/%.o,%.c,$$@) $$(patsubst $$(BUILD_DIR)/%.o,%.h,$$@)
 
 #$(GEN_FILES): $(GEN_DIR) $$(patsubst $$(GEN_DIR)/%,c,$$(LC_DIR)/%.lc,$$@)
-$(GEN_FILES): $(GEN_DIR) $$(patsubst $$(GEN_DIR)/%.c,$(LC_DIR)/%.lc,$$@)
+$(GEN_FILES): $(LABCOMMC) $(GEN_DIR) $$(patsubst $$(GEN_DIR)/%.c,$(LC_DIR)/%.lc,$$@)
 	java -jar $(LABCOMMC) --c=$@ --h=$(patsubst %.c,%.h,$@) $(filter-out $(GEN_DIR),$^)
 
 

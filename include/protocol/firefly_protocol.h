@@ -9,6 +9,6 @@
 /**
  * @brief An opaque structure representing a connection.
  */
-extern struct firefly_connection;
+struct firefly_connection;
 
 #endif
