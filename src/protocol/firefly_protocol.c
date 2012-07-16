@@ -1,8 +1,9 @@
 #include "protocol/firefly_protocol_private.h"
 
 #include <string.h>
-#include <labcomm.h>
 #include <errno.h>
+
+#include <labcomm.h>
 
 #include <firefly_errors.h>
 

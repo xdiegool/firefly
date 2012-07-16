@@ -11,4 +11,9 @@
  */
 struct firefly_connection;
 
+/**
+ * @brief An opaque structure representing a channel.
+ */
+struct firefly_channel;
+
 #endif

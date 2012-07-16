@@ -6,6 +6,7 @@
 #define _POSIX_C_SOURCE (200112L)
 #include <string.h>
 
+#include <transport/firefly_transport_udp_posix.h>
 #include "firefly_transport_udp_posix_private.h"
 
 #include <stdlib.h>
@@ -14,7 +15,6 @@
 #include <arpa/inet.h>
 
 #include <transport/firefly_transport.h>
-#include <transport/firefly_transport_udp_posix.h>
 #include <firefly_errors.h>
 
 #include "protocol/firefly_protocol_private.h"

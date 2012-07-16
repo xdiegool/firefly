@@ -1,5 +1,6 @@
 #ifndef FIREFLY_PROTOCOL_PRIVATE_H
 #define FIREFLY_PROTOCOL_PRIVATE_H
+
 #include <labcomm.h>
 
 #include <protocol/firefly_protocol.h>
@@ -37,6 +38,14 @@ struct firefly_connection {
 								saved. */
 	transport_write_f transport_write; /**< Write bytes to the transport
 					     layer. */
+};
+
+
+/**
+ * @brief A structure representing a channel.
+ */
+struct firefly_channel {
+	// TODO implement this
 };
 
 /**
