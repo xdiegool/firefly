@@ -154,3 +154,15 @@ int ff_transport_reader(labcomm_reader_t *r, labcomm_reader_action_t action)
 	}
 	return result;
 }
+
+struct labcomm_encoder *firefly_protocol_get_output_stream(
+				struct firefly_channel *chan)
+{
+	return chan->encoder;
+}
+
+struct labcomm_decoder *firefly_protocol_get_input_stream(
+				struct firefly_channel *chan)
+{
+	return chan->decoder;
+}

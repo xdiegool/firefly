@@ -14,6 +14,7 @@
 #include <fcntl.h>
 #include <labcomm.h>
 #include <labcomm_mem_writer.h>
+#include <labcomm_mem_reader.h>
 #include <labcomm_fd_reader_writer.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -201,9 +202,9 @@ void transport_write_udp_posix_mock_cmp(unsigned char *data, size_t data_size,
 
 	size_t file_size;
 	unsigned char *file_data;
-	if (nbr_entries == 0) { 
+	if (nbr_entries == 0) {
 		file_size = read_file_to_mem(&file_data, SIG_FILE);
-	} else {	
+	} else {
 		file_size = read_file_to_mem(&file_data, DATA_FILE);
 	}
 
@@ -264,7 +265,7 @@ void test_decode_protocol()
 	proto.app_enc_data.a = app_data;
 
 	create_labcomm_files(&proto);
-	
+
 	struct ff_transport_data reader_data;
 	reader_data.pos = 0;
 	reader_data.data_size = read_file_to_mem(&reader_data.data, SIG_FILE);
@@ -278,7 +279,7 @@ void test_decode_protocol()
 	struct labcomm_decoder *dec = labcomm_decoder_new(ff_transport_reader, &conn);
 	labcomm_register_error_handler_decoder(dec, handle_labcomm_error);
 	labcomm_decoder_register_firefly_protocol_proto(dec,
-		       	handle_firefly_protocol_proto, &conn); 
+		       	handle_firefly_protocol_proto, &conn);
 
 	// Read sign.
 	labcomm_decoder_decode_one(dec);
@@ -412,6 +413,35 @@ void test_encode_protocol_multiple_times()
 	nbr_entries = 0;
 }
 
+void get_streams()
+{
+	labcomm_mem_writer_context_t *wmcontext = labcomm_mem_writer_context_t_new(0, 0, NULL);
+	struct labcomm_encoder *e_encoder = labcomm_encoder_new(
+			labcomm_mem_writer, wmcontext);
+
+	struct labcomm_mem_reader_context_t rmcontext;
+	struct labcomm_decoder *e_decoder = labcomm_decoder_new(
+			labcomm_mem_reader, &rmcontext);
+
+	if (e_encoder == NULL || e_decoder == NULL) {
+		CU_FAIL("Could not allocate LabComm encoder or decoder.");
+	}
+	struct firefly_channel chan;
+	chan.encoder = e_encoder;
+	chan.decoder = e_decoder;
+
+	struct labcomm_encoder *a_encoder = firefly_protocol_get_output_stream(
+									&chan);
+	struct labcomm_decoder *a_decoder = firefly_protocol_get_input_stream(
+									&chan);
+	CU_ASSERT_PTR_EQUAL(e_encoder, a_encoder);
+	CU_ASSERT_PTR_EQUAL(e_decoder, a_decoder);
+
+	labcomm_encoder_free(e_encoder);
+	labcomm_decoder_free(e_decoder);
+	labcomm_mem_writer_context_t_free(&wmcontext);
+}
+
 int main()
 {
 	CU_pSuite tran_enc_dec_suite = NULL;
@@ -457,9 +487,8 @@ int main()
 
 	// Channel tests.
 	if (
-		(CU_add_test(chan_suite, "????",
-			     ???) == NULL)
-		||
+		(CU_add_test(chan_suite, "get_streams",
+			     get_streams) == NULL)
 	   ) {
 		CU_cleanup_registry();
 		return CU_get_error();
