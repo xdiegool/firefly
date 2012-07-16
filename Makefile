@@ -111,7 +111,7 @@ $(GEN_OBJ_FILES): $$(patsubst $$(BUILD_DIR)/%.o,%.c,$$@) $$(patsubst $$(BUILD_DI
 
 #$(GEN_FILES): $(GEN_DIR) $$(patsubst $$(GEN_DIR)/%,c,$$(LC_DIR)/%.lc,$$@)
 $(GEN_FILES): $(LABCOMMC) $(GEN_DIR) $$(patsubst $$(GEN_DIR)/%.c,$(LC_DIR)/%.lc,$$@)
-	java -jar $(LABCOMMC) --c=$@ --h=$(patsubst %.c,%.h,$@) $(filter-out $(GEN_DIR),$^)
+	java -jar $(LABCOMMC) --c=$@ --h=$(patsubst %.c,%.h,$@) $(filter-out $(GEN_DIR) $(LABCOMMC),$^)
 
 
 #$(GEN_DIR)/firefly_sample.o: $(GEN_DIR)/firefly_sample.c

@@ -44,7 +44,10 @@ struct firefly_connection {
  * @brief A structure representing a channel.
  */
 struct firefly_channel {
-	// TODO implement this
+	struct labcomm_encoder *encoder; /**< LabComm encoder for this
+					   			channel.*/
+	struct labcomm_decoder *decoder; /**< LabComm decoder for this
+					   			channel. */
 };
 
 /**
