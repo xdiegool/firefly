@@ -14,7 +14,9 @@ INCLUDE_DIR=include
 LIB_DIR=lib
 GEN_DIR=gen
 SRC_DIR=src
-DOC_DIR=doc/gen
+CLI_DIR=cli
+DOC_DIR=doc
+DOC_GEN_DIR=doc/gen
 VPATH=$(SRC_DIR) $(INCLUDE_DIR)
 
 FIREFLY_SRC= transport/firefly_transport_udp_posix.c
@@ -40,7 +42,7 @@ TEST_PROGS=test/test_llp_udp_posix
 # target: all - Build most of the interesting targets.
 all: $(BUILD_DIR) $(LIBS)
 
-$(BUILD_DIR) $(LIB_DIR) $(DOC_DIR):
+$(BUILD_DIR) $(LIB_DIR) $(DOC_GEN_DIR):
 	mkdir -p $@
 
 #$(BUILD_DIR)/libfirefly.a: $(FIREFLY_OBJS) $(GEN_DIR)/firefly_sample.o
@@ -67,7 +69,7 @@ test: $(BUILD_DIR) $(LIBS) $(LABCOMMLIBPATH)/liblabcomm.a $(patsubst %,$(BUILD_D
 	done
 
 testa:
-	./celebrate.sh
+	$(CLI_DIR)/celebrate.sh
 
 
 sample-test:  $(BUILD_DIR) $(LIBS) $(LABCOMMLIBPATH)/liblabcomm.a $(SAMPLE_TEST_BINS)
@@ -90,9 +92,14 @@ $(LABCOMMLIBPATH)/liblabcomm.a:
 #$(INCLUDE_DIR)/ariel_protocol.h: $(GEN_DIR)/firefly_sample.h
 
 
+$(DOC_GEN_DIR)/index.dox: $(DOC_GEN_DIR) $(DOC_DIR)/README $(DOC_DIR)/index_template.dox
+	cp $(DOC_DIR)/index_template.dox $@
+	sed -e 's/^.*$$/ \* \0/g' $(DOC_DIR)/README >> $@
+	echo " */" >> $@
+
 # target: doc - Generate documentation.
-doc:
-	doxygen doxygen.cfg
+doc: $(DOC_GEN_DIR) $(DOC_GEN_DIR)/index.dox
+	doxygen $(DOC_DIR)/doxygen.cfg
 
 
 # target: help - Display all targets.
@@ -108,7 +115,7 @@ clean:
 # target: cleaner - Clean all generated files.
 cleaner: clean
 	$(RM) $(LIBS)
-	$(RM) -r $(DOC_DIR)
+	$(RM) -r $(DOC_GEN_DIR)
 	$(RM) -r $(BUILD_DIR)
 	$(RM) -r $(LIB_DIR)
 	cd $(LABCOMMPATH)/compiler; ant clean
