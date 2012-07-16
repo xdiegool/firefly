@@ -414,7 +414,8 @@ void test_encode_protocol_multiple_times()
 
 int main()
 {
-	CU_pSuite pSuite = NULL;
+	CU_pSuite tran_enc_dec_suite = NULL;
+	CU_pSuite chan_suite = NULL;
 
 	// Initialize CUnit test registry.
 	if (CUE_SUCCESS != CU_initialize_registry()) {
@@ -422,27 +423,43 @@ int main()
 	}
 
 	// Add our test suites.
-	pSuite = CU_add_suite("basic", init_suit, clean_suit);
-	if (pSuite == NULL) {
+	tran_enc_dec_suite = CU_add_suite("transport_enc_dec", init_suit, clean_suit);
+	if (tran_enc_dec_suite == NULL) {
+		CU_cleanup_registry();
+		return CU_get_error();
+	}
+	chan_suite = CU_add_suite("chan_suite", init_suit, clean_suit);
+	if (chan_suite == NULL) {
 		CU_cleanup_registry();
 		return CU_get_error();
 	}
 
+	// Transport encoding and decoding tests.
 	if (
-		(CU_add_test(pSuite, "test_encode_protocol",
+		(CU_add_test(tran_enc_dec_suite, "test_encode_protocol",
 			     test_encode_protocol) == NULL)
 		||
-		(CU_add_test(pSuite, "test_decode_protocol",
+		(CU_add_test(tran_enc_dec_suite, "test_decode_protocol",
 			     test_decode_protocol) == NULL)
 		||
-		(CU_add_test(pSuite, "test_encode_decode_protocol",
+		(CU_add_test(tran_enc_dec_suite, "test_encode_decode_protocol",
 			     test_encode_decode_protocol) == NULL)
 		||
-		(CU_add_test(pSuite, "test_decode_protocol_multiple_times",
+		(CU_add_test(tran_enc_dec_suite, "test_decode_protocol_multiple_times",
 			     test_decode_protocol_multiple_times) == NULL)
 		||
-		(CU_add_test(pSuite, "test_encode_protocol_multiple_times",
+		(CU_add_test(tran_enc_dec_suite, "test_encode_protocol_multiple_times",
 			     test_encode_protocol_multiple_times) == NULL)
+	   ) {
+		CU_cleanup_registry();
+		return CU_get_error();
+	}
+
+	// Channel tests.
+	if (
+		(CU_add_test(chan_suite, "????",
+			     ???) == NULL)
+		||
 	   ) {
 		CU_cleanup_registry();
 		return CU_get_error();
