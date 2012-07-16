@@ -30,7 +30,9 @@ const char *firefly_error_get_str(enum firefly_error error_id)
 
 void firefly_error(enum firefly_error error_id, size_t nbr_va_args, ...)
 {
-	const char *err_msg = firefly_error_get_str(error_id); // The final string to print.
+	const char *err_msg = firefly_error_get_str(error_id); // The final
+								// string to
+								// print.
 	if (err_msg == NULL) {
 		err_msg = "Error with an unknown error ID occurred.";
 	}

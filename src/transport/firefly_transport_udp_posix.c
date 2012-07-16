@@ -163,12 +163,14 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 	}
 
 	// Find existing connection or create new
-	struct firefly_connection *conn = find_connection_by_addr(remote_addr, llp);
+	struct firefly_connection *conn = find_connection_by_addr(remote_addr,
+									llp);
 
 	if (conn == NULL) {
-		struct firefly_connection *conn = malloc(sizeof(struct firefly_connection));
-		struct protocol_connection_udp_posix *conn_udp = malloc(
-				sizeof(struct protocol_connection_udp_posix));
+		struct firefly_connection *conn =
+			malloc(sizeof(struct firefly_connection));
+		struct protocol_connection_udp_posix *conn_udp =
+			malloc(sizeof(struct protocol_connection_udp_posix));
 		conn_udp->remote_addr = remote_addr;
 		conn->transport_conn_platspec = conn_udp;
 		if(llp->on_conn_recv != NULL && llp->on_conn_recv(conn)) {
@@ -214,12 +216,13 @@ struct firefly_connection *find_connection_by_addr(struct sockaddr_in *addr,
 	return NULL;
 }
 
-void add_connection_to_llp(struct firefly_connection *conn, struct firefly_transport_llp *llp)
+void add_connection_to_llp(struct firefly_connection *conn,
+		struct firefly_transport_llp *llp)
 {
 	struct llp_connection_list_node *tmp = llp->conn_list;
-	struct llp_connection_list_node *new_node = malloc(sizeof(struct llp_connection_list_node));
+	struct llp_connection_list_node *new_node =
+		malloc(sizeof(struct llp_connection_list_node));
 	new_node->conn = conn;
 	new_node->next = tmp;
 	llp->conn_list = new_node;
-
 }

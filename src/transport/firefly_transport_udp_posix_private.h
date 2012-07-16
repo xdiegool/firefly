@@ -62,5 +62,6 @@ bool sockaddr_in_eq(struct sockaddr_in *one, struct sockaddr_in *other);
  * @param conn The connection to add.
  * @param llp The link layer port structure to add the connection to.
  */
-void add_connection_to_llp(struct firefly_connection *conn, struct firefly_transport_llp *llp);
+void add_connection_to_llp(struct firefly_connection *conn,
+		struct firefly_transport_llp *llp);
 #endif
