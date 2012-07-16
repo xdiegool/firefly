@@ -10,7 +10,6 @@
 
 
 /**
- * @struct transport_llp_udp_posix
  * @brief UDP specific link layer port data.
  */
 struct transport_llp_udp_posix {
@@ -20,7 +19,6 @@ struct transport_llp_udp_posix {
 };
 
 /**
- * @struct protocol_connection_udp_posix
  * @brief UDP specific connection related data.
  */
 struct protocol_connection_udp_posix {

@@ -13,7 +13,6 @@
 #include <transport/firefly_transport.h>
 
 /**
- * @struct firefly_transport_llp_udp_posix
  * @brief An opaque UDP specific link layer port data.
  */
 struct firefly_transport_llp_udp_posix;

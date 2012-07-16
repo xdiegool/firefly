@@ -8,7 +8,6 @@
 #define FIREFLY_TRANSPORT_PRIVATE_H
 
 /**
- * @struct firefly_transport_llp
  * @brief A general data structure representing a link layer port on the
  * transport layer.
  */
@@ -23,7 +22,6 @@ struct firefly_transport_llp {
 };
 
 /**
- * @struct llp_connection_list_node
  * @brief A data structure representing a linked list of connections.
  */
 struct llp_connection_list_node {

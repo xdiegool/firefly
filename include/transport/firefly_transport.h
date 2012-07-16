@@ -24,8 +24,7 @@
 typedef bool (*firefly_on_conn_recv)(struct firefly_connection *conn);
 
 /**
- * @struct firefly_transport_llp
- * @brief A opaque general data structure representing a link layer port on the
+ * @crief A opaque general data structure representing a link layer port on the
  * transport layer.
  */
 struct firefly_transport_llp;
