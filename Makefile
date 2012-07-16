@@ -16,7 +16,9 @@ GEN_DIR=gen
 SRC_DIR=src
 CLI_DIR=cli
 DOC_DIR=doc
-DOC_GEN_DIR=doc/gen
+DOC_GEN_DIR=$(DOC_DIR)/gen
+DOC_GEN_FULL_DIR=$(DOC_GEN_DIR)/full
+DOC_GEN_API_DIR=$(DOC_GEN_DIR)/api
 VPATH=$(SRC_DIR) $(INCLUDE_DIR)
 
 FIREFLY_SRC= transport/firefly_transport_udp_posix.c
@@ -37,12 +39,12 @@ TEST_PROGS=test/test_llp_udp_posix
 
 ## Targets
 
-.PHONY: all doc clean cleaner install test
+.PHONY: all doc doc-full doc-apiclean cleaner install test
 
 # target: all - Build most of the interesting targets.
 all: $(BUILD_DIR) $(LIBS)
 
-$(BUILD_DIR) $(LIB_DIR) $(DOC_GEN_DIR):
+$(BUILD_DIR) $(LIB_DIR) $(DOC_GEN_DIR) $(DOC_GEN_FULL_DIR) $(DOC_GEN_API_DIR):
 	mkdir -p $@
 
 #$(BUILD_DIR)/libfirefly.a: $(FIREFLY_OBJS) $(GEN_DIR)/firefly_sample.o
@@ -91,22 +93,39 @@ $(LABCOMMLIBPATH)/liblabcomm.a:
 
 #$(INCLUDE_DIR)/ariel_protocol.h: $(GEN_DIR)/firefly_sample.h
 
+$(DOC_GEN_DIR)/doxygen_full.cfg: $(DOC_DIR)/doxygen_template.cfg
+	cp $^ $@
+	echo "INPUT                  = doc/gen/index.dox include src" >> $@
+	echo "OUTPUT_DIRECTORY       = \"$(DOC_GEN_FULL_DIR)\"" >> $@
+
+$(DOC_GEN_DIR)/doxygen_api.cfg: $(DOC_DIR)/doxygen_template.cfg
+	cp $^ $@
+	echo "INPUT                  = doc/gen/index.dox include" >> $@
+	echo "OUTPUT_DIRECTORY       = \"$(DOC_GEN_API_DIR)\"" >> $@
 
 $(DOC_GEN_DIR)/index.dox: $(DOC_GEN_DIR) $(DOC_DIR)/README $(DOC_DIR)/index_template.dox
 	cp $(DOC_DIR)/index_template.dox $@
 	sed -e 's/^.*$$/ \* \0/g' $(DOC_DIR)/README >> $@
 	echo " */" >> $@
 
-# target: doc - Generate documentation.
-doc: $(DOC_GEN_DIR) $(DOC_GEN_DIR)/index.dox
-	doxygen $(DOC_DIR)/doxygen.cfg
+# TODO fix dox-oen and add doc-api-open etc.
 
+# target: doc - Generate both full and API documentation.
+doc: doc-full doc-api
+
+# target: doc - Generate full documentation.
+doc-full: $(DOC_GEN_FULL_DIR) $(DOC_GEN_DIR)/doxygen_full.cfg $(DOC_GEN_DIR)/index.dox
+	doxygen $(DOC_GEN_DIR)/doxygen_full.cfg
+
+# target: doc-api - Generate API documentation.
+doc-api: $(DOC_GEN_API_DIR) $(DOC_GEN_DIR)/doxygen_api.cfg $(DOC_GEN_DIR)/index.dox
+	doxygen $(DOC_GEN_DIR)/doxygen_api.cfg
 
 # target: help - Display all targets.
 help :
 	@egrep "#\starget:" [Mm]akefile  | sed 's/\s-\s/\t\t\t/' | cut -d " " -f3- | sort -d
 
-# target: clean  - Clean most generated files..
+# target: clean  - Clean most generated files.
 clean:
 	$(RM) $(FIREFLY_OBJS)
 	$(RM) -r $(GEN_DIR)/
