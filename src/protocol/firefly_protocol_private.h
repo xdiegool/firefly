@@ -136,6 +136,18 @@ void labcomm_error_to_ff_error(enum labcomm_error error_id, size_t nbr_va_args,
 									...);
 
 /**
+ * @brief A general LabComm reader used to feed a decoder with data from
+ * memory.
+ *
+ * @param r The labcomm reader that requests data.
+ * @param action What action is requested.
+ * @param reader_data The data struct containing the encoded data.
+ * @return Value indicating how the action could be handled.
+ */
+int firefly_labcomm_reader(labcomm_reader_t *r, labcomm_reader_action_t action,
+		struct ff_transport_data *reader_data);
+
+/**
  * @brief Feeds LabComm decoder with bytes from the transport layer.
  * @param r The labcomm reader that requests data.
  * @param action What action is requested.
