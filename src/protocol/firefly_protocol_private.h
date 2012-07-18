@@ -4,6 +4,7 @@
 #include <labcomm.h>
 
 #include <protocol/firefly_protocol.h>
+#include <gen/firefly_protocol.h>
 
 /**
  * @brief Write data on the specified connection
@@ -26,6 +27,28 @@ struct ff_transport_data {
 };
 
 /**
+ * @brief A structure representing a channel.
+ */
+struct firefly_channel {
+	struct labcomm_encoder *proto_encoder; /**< LabComm encoder for this
+					   			channel.*/
+	struct labcomm_decoder *proto_decoder; /**< LabComm decoder for this
+					   			channel. */
+	int local_chan_id; /**< The local ID used to identify this channel */
+	int remote_chan_id; /**< The ID used by the remote node to identify
+				this channel */
+};
+
+/**
+ * @brief A structure for representing a node in a linked list of channels.
+ */
+struct channel_list_node {
+	struct channel_list_node *next;	/**< A pointer to the next list node. */
+	struct firefly_channel *chan;	/**< A pointer the the channel struct
+							for this node. */
+};
+
+/**
  * @brief A structure representing a connection.
  */
 struct firefly_connection {
@@ -37,17 +60,18 @@ struct firefly_connection {
 								saved. */
 	transport_write_f transport_write; /**< Write bytes to the transport
 					     layer. */
-};
-
-
-/**
- * @brief A structure representing a channel.
- */
-struct firefly_channel {
-	struct labcomm_encoder *encoder; /**< LabComm encoder for this
-					   			channel.*/
-	struct labcomm_decoder *decoder; /**< LabComm decoder for this
-					   			channel. */
+	firefly_channel_is_open_f on_channel_opened; /**< Callback, called when
+							a channel has been
+							opened */
+	struct labcomm_encoder *transport_encoder; /**< The transport layer
+							encoder for this
+							connection. */
+	struct labcomm_decoder *transport_decoder; /**< The transport layer
+							decoder for this
+							connection. */
+	struct channel_list_node *chan_list; /**< The list of channels
+							associated with this
+							connection. */
 };
 
 /**
@@ -60,8 +84,44 @@ void protocol_data_received(struct firefly_connection *conn,
 	       	unsigned char *data, size_t size);
 
 /**
- * @brief Error callback used in LabComm that used forwards the error the the
- * \e firefly_error handler that is in use.
+ * @brief The callback registered with LabComm used to receive channel request associated packets.
+ *
+ * @param chan_req The decoded channel request
+ * @param context The connection associated with the channel request.
+ */
+void handle_channel_request(firefly_protocol_channel_request *chan_req, void *context);
+
+/**
+ * @brief Send an ACK of a channel request.
+ *
+ * The ACK will set source_chan_id to local channel ID and dest_chan_id to
+ * remote channel ID. Both must be set on the channel.
+ * @param chan The channel to be set up and ACK'd.
+ * @param conn The connection to send the ACK on.
+ */
+void protocol_channel_request_send_ack(struct firefly_channel *chan,
+		struct firefly_connection *conn);
+
+/**
+ * @brief Find and return the channel associated with the given connection with the given local channel id.
+ *
+ * @param id The local ID of the channel.
+ * @param conn The connection the channel is associated with.
+ */
+struct firefly_channel *find_channel_by_local_id(int id,
+		struct firefly_connection *conn);
+
+/**
+ * @brief Add the channel to the connection.
+ *
+ * @param chan The channel to add.
+ * @param conn The connection to add the channel to.
+ */
+void add_channel_to_connection(struct firefly_channel *chan,
+		struct firefly_connection *conn);
+/**
+ * @brief Error callback used in LabComm that forwards the error to the \e
+ * firefly_error handler that is in use.
  * @param error_id The LabComm error that occured.
  * @param nbr_va_args The number of va_args that are passed.
  * @param ... Some va_args.
@@ -85,6 +145,5 @@ int ff_transport_reader(labcomm_reader_t *r, labcomm_reader_action_t action);
  * @return Value indicating how the action could be handled.
  */
 int ff_transport_writer(labcomm_writer_t *w, labcomm_writer_action_t action);
-
 
 #endif
