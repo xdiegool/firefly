@@ -26,8 +26,8 @@
 #include "protocol/firefly_protocol_private.h"
 #include <protocol/firefly_protocol.h>
 
-#define SRC_CHAN_ID	3	/* Source channe ID. */
-#define DEST_CHAN_ID	1	/* Desination channel ID. */
+#define SRC_CHAN_ID	(3)	/* Source channe ID. */
+#define DEST_CHAN_ID	(1)	/* Desination channel ID. */
 #define WRITE_BUF_SIZE (256)	// Size of the LabComm buffer to write to.
 #define DATA_FILE_FIREFLY ("data_firefly.enc")	// Encoded firefly data.
 #define SIG_FILE_FIREFLY ("sig_firefly.enc")	// Encoded firefly signature.

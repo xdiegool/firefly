@@ -18,7 +18,7 @@ typedef void (* transport_write_f)(unsigned char *data, size_t data_size,
 					struct firefly_connection *conn);
 
 /**
- * @breif Structure describing a buffer where transport data is stored.
+ * @brief Structure describing a buffer where transport data is stored.
  */
 struct ff_transport_data {
 	unsigned char *data;	/**< Buffer where transport data is written. */
