@@ -2,4 +2,10 @@ sample struct {
 	int chan_id;
 	boolean important;
 	byte app_enc_data[_];
-} proto;
+} data_sample;
+
+sample struct {
+	boolean ack;
+	int dest_chan_id;
+	int source_chan_id;
+} channel_request;

@@ -1,3 +1,4 @@
+#include <protocol/firefly_protocol.h>
 #include "protocol/firefly_protocol_private.h"
 
 #include <string.h>
@@ -6,8 +7,91 @@
 #include <labcomm.h>
 
 #include <firefly_errors.h>
+#include <gen/firefly_protocol.h>
 
 #define BUFFER_SIZE (128)
+
+void firefly_channel_open(struct firefly_connection *conn)
+{
+	// TODO implement better
+	firefly_protocol_channel_request chan_req;
+	chan_req.source_chan_id = 1;
+	chan_req.dest_chan_id = 0;
+	chan_req.ack = true;
+
+	conn->writer_data->data = malloc(128);
+	conn->writer_data->data_size = 128;
+	conn->writer_data->pos = 0;
+
+	struct firefly_channel *chan = malloc(sizeof(struct firefly_channel));
+	chan->local_chan_id = 1;
+	chan->remote_chan_id = -1;
+	add_channel_to_connection(chan, conn);
+
+	labcomm_encode_firefly_protocol_channel_request(conn->transport_encoder,
+			&chan_req);
+}
+
+void protocol_data_received(struct firefly_connection *conn,
+		unsigned char *data, size_t size)
+{
+	conn->reader_data->data = data;
+	conn->reader_data->data_size = size;
+	conn->reader_data->pos = 0;
+	labcomm_decoder_decode_one(conn->transport_decoder);
+
+}
+
+void handle_channel_request(firefly_protocol_channel_request *cr, void *context)
+{
+	// TODO check if req, req_ack or ack
+	int local_chan_id = cr->dest_chan_id;
+	struct firefly_channel *chan = find_channel_by_local_id(local_chan_id,
+			(struct firefly_connection *) context);
+	if (chan != NULL) {
+		chan->remote_chan_id = cr->source_chan_id;
+		protocol_channel_request_send_ack(chan,
+			(struct firefly_connection *) context);
+		((struct firefly_connection *)
+					context)->on_channel_opened(chan);
+	}
+}
+
+void protocol_channel_request_send_ack(struct firefly_channel *chan,
+		struct firefly_connection *conn)
+{
+	// TODO kolla sa att det verkar ratt och fortsatt implementera :)
+	firefly_protocol_channel_request chan_req;
+	chan_req.source_chan_id = chan->local_chan_id;
+	chan_req.dest_chan_id = chan->remote_chan_id;
+	chan_req.ack = true;
+	conn->writer_data->pos = 0;
+	labcomm_encode_firefly_protocol_channel_request(conn->transport_encoder,
+			&chan_req);
+}
+
+void add_channel_to_connection(struct firefly_channel *chan,
+		struct firefly_connection *conn)
+{
+	struct channel_list_node *new_node =
+		malloc(sizeof(struct channel_list_node));
+	new_node->chan = chan;
+	new_node->next = conn->chan_list;
+	conn->chan_list = new_node;
+}
+
+struct firefly_channel *find_channel_by_local_id(int id,
+		struct firefly_connection *conn)
+{
+	struct channel_list_node *head = conn->chan_list;
+	while (head != NULL) {
+		if (head->chan->local_chan_id == id) {
+			break;
+		}
+		head = head->next;
+	}
+	return head == NULL ? NULL : head->chan;
+}
 
 void labcomm_error_to_ff_error(enum labcomm_error error_id, size_t nbr_va_args,
 									...)
@@ -135,7 +219,7 @@ int ff_transport_reader(labcomm_reader_t *r, labcomm_reader_action_t action)
 		} else {
 			size_t reader_avail = r->data_size;
 			size_t mem_to_cpy = (data_left < reader_avail) ?
-							data_left : reader_avail;
+						data_left : reader_avail;
 			memcpy(r->data, &reader_data->data[reader_data->pos],
 					mem_to_cpy);
 			reader_data->pos += mem_to_cpy;
