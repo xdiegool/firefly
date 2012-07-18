@@ -40,6 +40,9 @@ FIREFLY_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(FIREFLY_SRC)) $(GEN_OBJ_FILES)
 
 SAMPLE_TEST_BINS= $(patsubst %,$(BUILD_DIR)/test/%,labcomm_test_decoder labcomm_test_encoder)
 
+DEPENDS_GEN=$(SRC_DIR)/protocol/firefly_protocol.c $(SRC_DIR)/protocol/firefly_protocol_private.h \
+	    $(SRC_DIR)/test/test_protocol.c $(SRC_DIR)/transport/firefly_transport_udp_posix.c
+
 LIBS=$(patsubst %,$(BUILD_DIR)/lib%.a,firefly)
 
 TEST_PROGS= $(addprefix $(BUILD_DIR)/,test/test_transport_udp_posix test/test_protocol)
@@ -64,6 +67,8 @@ $(BUILD_DIR)/libfirefly.a: $(FIREFLY_OBJS)
 $(BUILD_DIR)/%.o: %.c
 	mkdir -p $(dir $@)
 	$(CC) -c $(CFLAGS) -o $@ $<
+
+$(DEPENDS_GEN): $(GEN_OBJ_FILES)
 
 # target: install - Install libraries and headers to your system.
 install: $(LIB_DIR) $(LIBS)
