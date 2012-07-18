@@ -1,5 +1,6 @@
 sample struct {
-	int chan_id;
+	int dest_chan_id;
+	int src_chan_id;
 	boolean important;
 	byte app_enc_data[_];
 } data_sample;

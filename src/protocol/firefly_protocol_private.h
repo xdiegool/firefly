@@ -15,7 +15,7 @@
  * @param conn The #firefly_connection to written the data on.
  */
 typedef void (* transport_write_f)(unsigned char *data, size_t data_size,
-		struct firefly_connection *conn);
+					struct firefly_connection *conn);
 
 /**
  * @breif Structure describing a buffer where transport data is stored.
@@ -30,12 +30,14 @@ struct ff_transport_data {
  * @brief A structure representing a channel.
  */
 struct firefly_channel {
+	struct firefly_connection conn;	 /**< The connection the channel exists
+					   	   	   	   on. */
 	struct labcomm_encoder *proto_encoder; /**< LabComm encoder for this
 					   			channel.*/
 	struct labcomm_decoder *proto_decoder; /**< LabComm decoder for this
 					   			channel. */
-	int local_chan_id; /**< The local ID used to identify this channel */
-	int remote_chan_id; /**< The ID used by the remote node to identify
+	int local_id; /**< The local ID used to identify this channel */
+	int remote_id; /**< The ID used by the remote node to identify
 				this channel */
 };
 

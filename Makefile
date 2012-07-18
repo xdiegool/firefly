@@ -19,7 +19,9 @@ LC_DIR=lc
 DOC_DIR=doc/gen
 VPATH=$(SRC_DIR) $(INCLUDE_DIR)
 
-LC_FILES=$(LC_DIR)/firefly_protocol.lc
+LC_FILE_NAMES= firefly_protocol.lc test.lc
+LC_FILES = $(addprefix $(LC_DIR)/, $(LC_FILE_NAMES))
+
 # .c and .h files are always generated togheter. So lets only work with the .c
 # files for simplicity
 GEN_FILES= $(patsubst $(LC_DIR)/%.lc,$(GEN_DIR)/%.c,$(LC_FILES))
@@ -103,10 +105,11 @@ $(LABCOMMLIBPATH)/liblabcomm.a:
 
 
 # Programs that depends on the protocol sample types.
-build/test/test_protocol: $(BUILD_DIR)/gen/firefly_protocol.o
+build/test/test_protocol: $(BUILD_DIR)/gen/firefly_protocol.o \
+					$(BUILD_DIR)/gen/test.o
 
 
-# Let the labcomm .o_file depend on the generated .c and .h files.
+# Let the labcomm .o file depend on the generated .c and .h files.
 $(GEN_OBJ_FILES): $$(patsubst $$(BUILD_DIR)/%.o,%.c,$$@) $$(patsubst $$(BUILD_DIR)/%.o,%.h,$$@)
 
 #$(GEN_FILES): $(GEN_DIR) $$(patsubst $$(GEN_DIR)/%,c,$$(LC_DIR)/%.lc,$$@)
@@ -141,7 +144,8 @@ clean:
 	$(RM) $(FIREFLY_OBJS)
 	$(RM) $(TEST_PROGS)
 	$(RM) $(GEN_DIR)/*
-	$(RM) $(addsuffix .enc,data sig)
+	$(RM) $(addsuffix .enc,$(addprefix data_,firefly test) \
+				$(addprefix sig_, firefly test))
 	@echo "======Cleaning LabComm======"
 	$(MAKE) -C $(LABCOMMLIBPATH) distclean
 	@echo "======End cleaning LabComm======"

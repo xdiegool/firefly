@@ -25,9 +25,13 @@
 #include "protocol/firefly_protocol_private.h"
 #include <protocol/firefly_protocol.h>
 
-#define WRITE_BUF_SIZE (128)	// Size of the LabComm buffer to write to.
-#define DATA_FILE ("data.enc")	// File where the encoded data can be written.
-#define SIG_FILE ("sig.enc")	// File where the encoded data can be written.
+#define SRC_CHAN_ID	3	/* Source channe ID. */
+#define DEST_CHAN_ID	1	/* Desination channel ID. */
+#define WRITE_BUF_SIZE (256)	// Size of the LabComm buffer to write to.
+#define DATA_FILE_FIREFLY ("data_firefly.enc")	// Encoded firefly data.
+#define SIG_FILE_FIREFLY ("sig_firefly.enc")	// Encoded firefly signature.
+#define DATA_FILE_TEST ("data_test.enc")	// Encoded test data.
+#define SIG_FILE_TEST ("sig_test.enc")		// Encoded test signature.
 
 int init_suit()
 {
@@ -39,23 +43,9 @@ int clean_suit()
 	return 0; // Success.
 }
 
-static unsigned int chan_id = 3;
 static bool important = true;
 static unsigned char app_data[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
 static bool successfully_decoded = false;
-
-void create_labcomm_files(firefly_protocol_data_sample *proto)
-{
-	int tmpfd = open(SIG_FILE, O_RDWR|O_CREAT|O_TRUNC, 0644);
-	struct labcomm_encoder *fd_encoder =
-			labcomm_encoder_new(labcomm_fd_writer, &tmpfd);
-	labcomm_encoder_register_firefly_protocol_data_sample(fd_encoder);
-	close(tmpfd);
-	tmpfd = open(DATA_FILE, O_RDWR|O_CREAT|O_TRUNC, 0644);
-	labcomm_encode_firefly_protocol_data_sample(fd_encoder, proto);
-	close(tmpfd);
-	labcomm_encoder_free(fd_encoder);
-}
 
 void create_labcomm_files_chan_req(firefly_protocol_channel_request *cr)
 {
@@ -66,6 +56,19 @@ void create_labcomm_files_chan_req(firefly_protocol_channel_request *cr)
 	close(tmpfd);
 	tmpfd = open(DATA_FILE, O_RDWR|O_CREAT|O_TRUNC, 0644);
 	labcomm_encode_firefly_protocol_channel_request(fd_encoder, cr);
+	close(tmpfd);
+	labcomm_encoder_free(fd_encoder);
+}
+
+void create_labcomm_files_proto(firefly_protocol_data_sample *data_sample)
+{
+	int tmpfd = open(SIG_FILE_FIREFLY, O_RDWR|O_CREAT|O_TRUNC, 0644);
+	struct labcomm_encoder *fd_encoder = labcomm_encoder_new(
+					labcomm_fd_writer, &tmpfd);
+	labcomm_encoder_register_firefly_protocol_data_sample(fd_encoder);
+	close(tmpfd);
+	tmpfd = open(DATA_FILE_FIREFLY, O_RDWR|O_CREAT|O_TRUNC, 0644);
+	labcomm_encode_firefly_protocol_data_sample(fd_encoder, data_sample);
 	close(tmpfd);
 	labcomm_encoder_free(fd_encoder);
 }
@@ -83,7 +86,7 @@ size_t read_file_to_mem(unsigned char **data, char *file_name)
 	}
 	long file_len = ftell(file);
 	if (file_len == -1L) {
-		perror("Ftell fcked.\n");
+		perror("ftell fcked.\n");
 	}
 	res = fseek(file, 0L, SEEK_SET);
 	if (res != 0) {
@@ -115,13 +118,13 @@ void handle_labcomm_error(enum labcomm_error error_id, size_t nbr_va_args, ...)
 	CU_FAIL("Labcomm error occured!\n");
 }
 
-void handle_firefly_protocol_data_sample(firefly_protocol_data_sample *proto,
-		void *context)
+void handle_firefly_protocol_data_sample(
+		firefly_protocol_data_sample *data_sample, void *context)
 {
-	CU_ASSERT_EQUAL(proto->chan_id, chan_id);
-	CU_ASSERT_EQUAL(proto->important, important);
-	CU_ASSERT_EQUAL(proto->app_enc_data.n_0, sizeof(app_data));
-	CU_ASSERT_EQUAL(0, memcmp(proto->app_enc_data.a, app_data,
+	CU_ASSERT_EQUAL(data_sample->src_chan_id, SRC_CHAN_ID);
+	CU_ASSERT_EQUAL(data_sample->important, important);
+	CU_ASSERT_EQUAL(data_sample->app_enc_data.n_0, sizeof(app_data));
+	CU_ASSERT_EQUAL(0, memcmp(data_sample->app_enc_data.a, app_data,
 						sizeof(app_data)));
 	successfully_decoded = true;
 }
@@ -141,11 +144,11 @@ void transport_write_udp_posix_mock(unsigned char *data, size_t data_size,
 
 void test_encode_decode_protocol()
 {
-	firefly_protocol_data_sample proto;
-	proto.chan_id = chan_id;
-	proto.important = important;
-	proto.app_enc_data.n_0 = sizeof(app_data);
-	proto.app_enc_data.a = app_data;
+	firefly_protocol_data_sample data_sample;
+	data_sample.src_chan_id = SRC_CHAN_ID;
+	data_sample.important = important;
+	data_sample.app_enc_data.n_0 = sizeof(app_data);
+	data_sample.app_enc_data.a = app_data;
 
 	struct ff_transport_data writer_data;
 	writer_data.data = (unsigned char *) calloc(1, WRITE_BUF_SIZE);
@@ -192,7 +195,7 @@ void test_encode_decode_protocol()
 
 	writer_data.pos = reader_data.pos = 0;
 
-	labcomm_encode_firefly_protocol_data_sample(encoder, &proto);
+	labcomm_encode_firefly_protocol_data_sample(encoder, &data_sample);
 	free(reader_data.data);
 	reader_data.data = malloc(writer_data.pos);
 	if (writer_data.data == NULL) {
@@ -218,9 +221,9 @@ void transport_write_udp_posix_mock_cmp(unsigned char *data, size_t data_size,
 	size_t file_size;
 	unsigned char *file_data;
 	if (nbr_entries == 0) {
-		file_size = read_file_to_mem(&file_data, SIG_FILE);
+		file_size = read_file_to_mem(&file_data, SIG_FILE_FIREFLY);
 	} else {
-		file_size = read_file_to_mem(&file_data, DATA_FILE);
+		file_size = read_file_to_mem(&file_data, DATA_FILE_FIREFLY);
 	}
 
 	CU_ASSERT_EQUAL(data_size, file_size);
@@ -232,13 +235,13 @@ void transport_write_udp_posix_mock_cmp(unsigned char *data, size_t data_size,
 
 void test_encode_protocol()
 {
-	firefly_protocol_data_sample proto;
-	proto.chan_id = chan_id;
-	proto.important = important;
-	proto.app_enc_data.n_0 = sizeof(app_data);
-	proto.app_enc_data.a = app_data;
+	firefly_protocol_data_sample data_sample;
+	data_sample.src_chan_id = SRC_CHAN_ID;
+	data_sample.important = important;
+	data_sample.app_enc_data.n_0 = sizeof(app_data);
+	data_sample.app_enc_data.a = app_data;
 
-	create_labcomm_files(&proto);
+	create_labcomm_files_proto(&data_sample);
 
 	struct ff_transport_data writer_data;
 	writer_data.data = (unsigned char *) calloc(1, WRITE_BUF_SIZE);
@@ -253,7 +256,7 @@ void test_encode_protocol()
 	sender_conn.writer_data = &writer_data;
 	sender_conn.transport_write = transport_write_udp_posix_mock_cmp;
 
-	// Construct proto encoder.
+	// Construct data_sample encoder.
 	struct labcomm_encoder *proto_encoder = labcomm_encoder_new(
 			ff_transport_writer, &sender_conn);
 	labcomm_register_error_handler_encoder(proto_encoder,
@@ -264,7 +267,7 @@ void test_encode_protocol()
 	writer_data.pos = 0;
 
 	// Now mock_cmp will compare enc data.
-	labcomm_encode_firefly_protocol_data_sample(proto_encoder, &proto);
+	labcomm_encode_firefly_protocol_data_sample(proto_encoder, &data_sample);
 
 	labcomm_encoder_free(proto_encoder);
 	free(writer_data.data);
@@ -273,17 +276,18 @@ void test_encode_protocol()
 
 void test_decode_protocol()
 {
-	firefly_protocol_data_sample proto;
-	proto.chan_id = chan_id;
-	proto.important = important;
-	proto.app_enc_data.n_0 = sizeof(app_data);
-	proto.app_enc_data.a = app_data;
+	firefly_protocol_data_sample data_sample;
+	data_sample.src_chan_id = SRC_CHAN_ID;
+	data_sample.important = important;
+	data_sample.app_enc_data.n_0 = sizeof(app_data);
+	data_sample.app_enc_data.a = app_data;
 
-	create_labcomm_files(&proto);
+	create_labcomm_files_proto(&data_sample);
 
 	struct ff_transport_data reader_data;
 	reader_data.pos = 0;
-	reader_data.data_size = read_file_to_mem(&reader_data.data, SIG_FILE);
+	reader_data.data_size = read_file_to_mem(&reader_data.data,
+						SIG_FILE_FIREFLY);
 
 	struct firefly_connection conn;
 	conn.transport_conn_platspec = NULL;
@@ -303,7 +307,8 @@ void test_decode_protocol()
 	free(reader_data.data);
 	reader_data.data = NULL;
 	reader_data.pos = 0;
-	reader_data.data_size = read_file_to_mem(&reader_data.data, DATA_FILE);
+	reader_data.data_size = read_file_to_mem(&reader_data.data,
+							DATA_FILE_FIREFLY);
 
 	// Read data
 	labcomm_decoder_decode_one(dec);
@@ -320,27 +325,28 @@ static int i = 0;
 void handle_firefly_protocol_data_sample_counter(
 		firefly_protocol_data_sample *proto, void *context)
 {
-	CU_ASSERT_EQUAL(proto->chan_id, i);
-	CU_ASSERT_EQUAL(proto->important, important);
-	CU_ASSERT_EQUAL(proto->app_enc_data.n_0, sizeof(app_data));
-	CU_ASSERT_EQUAL(0, memcmp(proto->app_enc_data.a, app_data,
+	CU_ASSERT_EQUAL(data_sample->src_chan_id, i);
+	CU_ASSERT_EQUAL(data_sample->important, important);
+	CU_ASSERT_EQUAL(data_sample->app_enc_data.n_0, sizeof(app_data));
+	CU_ASSERT_EQUAL(0, memcmp(data_sample->app_enc_data.a, app_data,
 						sizeof(app_data)));
 	successfully_decoded = true;
 }
 
 void test_decode_protocol_multiple_times()
 {
-	firefly_protocol_data_sample proto;
-	proto.chan_id = i;
-	proto.important = important;
-	proto.app_enc_data.n_0 = sizeof(app_data);
-	proto.app_enc_data.a = app_data;
+	firefly_protocol_data_sample data_sample;
+	data_sample.src_chan_id = i;
+	data_sample.important = important;
+	data_sample.app_enc_data.n_0 = sizeof(app_data);
+	data_sample.app_enc_data.a = app_data;
 
-	create_labcomm_files(&proto);
+	create_labcomm_files_proto(&data_sample);
 
 	struct ff_transport_data reader_data;
 	reader_data.pos = 0;
-	reader_data.data_size = read_file_to_mem(&reader_data.data, SIG_FILE);
+	reader_data.data_size = read_file_to_mem(&reader_data.data,
+							SIG_FILE_FIREFLY);
 
 	struct firefly_connection conn;
 	conn.transport_conn_platspec = NULL;
@@ -361,10 +367,10 @@ void test_decode_protocol_multiple_times()
 	reader_data.pos = 0;
 
 	for (i = 0; i < 10; i++) {
-		proto.chan_id = i;
-		create_labcomm_files(&proto);
+		data_sample.src_chan_id = i;
+		create_labcomm_files_proto(&data_sample);
 		reader_data.data_size = read_file_to_mem(&reader_data.data,
-				DATA_FILE);
+				DATA_FILE_FIREFLY);
 
 		// Read data
 		labcomm_decoder_decode_one(dec);
@@ -382,13 +388,13 @@ void test_decode_protocol_multiple_times()
 
 void test_encode_protocol_multiple_times()
 {
-	firefly_protocol_data_sample proto;
-	proto.chan_id = i;
-	proto.important = important;
-	proto.app_enc_data.n_0 = sizeof(app_data);
-	proto.app_enc_data.a = app_data;
+	firefly_protocol_data_sample data_sample;
+	data_sample.src_chan_id = i;
+	data_sample.important = important;
+	data_sample.app_enc_data.n_0 = sizeof(app_data);
+	data_sample.app_enc_data.a = app_data;
 
-	create_labcomm_files(&proto);
+	create_labcomm_files_proto(&data_sample);
 
 	struct ff_transport_data writer_data;
 	writer_data.data = (unsigned char *) calloc(1, WRITE_BUF_SIZE);
@@ -403,7 +409,7 @@ void test_encode_protocol_multiple_times()
 	sender_conn.writer_data = &writer_data;
 	sender_conn.transport_write = transport_write_udp_posix_mock_cmp;
 
-	// Construct proto encoder.
+	// Construct data_sample encoder.
 	struct labcomm_encoder *proto_encoder = labcomm_encoder_new(
 			ff_transport_writer, &sender_conn);
 	labcomm_register_error_handler_encoder(proto_encoder,
@@ -412,9 +418,9 @@ void test_encode_protocol_multiple_times()
 	labcomm_encoder_register_firefly_protocol_data_sample(proto_encoder);
 
 	for (i = 0; i < 10; i++) {
-		proto.chan_id = i;
+		data_sample.src_chan_id = i;
 
-		create_labcomm_files(&proto);
+		create_labcomm_files_proto(&data_sample);
 
 		memset(writer_data.data, 0, WRITE_BUF_SIZE);
 		writer_data.pos = 0;
@@ -430,15 +436,20 @@ void test_encode_protocol_multiple_times()
 	nbr_entries = 0;
 }
 
-void get_streams()
+void test_get_streams()
 {
-	labcomm_mem_writer_context_t *wmcontext = labcomm_mem_writer_context_t_new(0, 0, NULL);
+	// Construct encoder.
+	labcomm_mem_writer_context_t *wmcontext =
+		labcomm_mem_writer_context_t_new(0, 0, NULL);
 	struct labcomm_encoder *e_encoder = labcomm_encoder_new(
 			labcomm_mem_writer, wmcontext);
+	labcomm_register_error_handler_encoder(e_encoder, handle_labcomm_error);
 
+	// Construct decoder.
 	struct labcomm_mem_reader_context_t rmcontext;
 	struct labcomm_decoder *e_decoder = labcomm_decoder_new(
 			labcomm_mem_reader, &rmcontext);
+	labcomm_register_error_handler_encoder(e_decoder, handle_labcomm_error);
 
 	if (e_encoder == NULL || e_decoder == NULL) {
 		CU_FAIL("Could not allocate LabComm encoder or decoder.");
@@ -569,9 +580,157 @@ void test_chan_open()
 	firefly_channel_close(&test_chan_open_chan, &conn);
 }
 
+void create_labcomm_files_test(test_test_var *test)
+{
+	int tmpfd = open(SIG_FILE_TEST, O_RDWR|O_CREAT|O_TRUNC, 0644);
+	struct labcomm_encoder *fd_encoder = labcomm_encoder_new(
+						labcomm_fd_writer, &tmpfd);
+	labcomm_encoder_register_test_test_var(fd_encoder);
+	close(tmpfd);
+	tmpfd = open(DATA_FILE_TEST, O_RDWR|O_CREAT|O_TRUNC, 0644);
+	labcomm_encode_test_test_var(fd_encoder, test);
+	close(tmpfd);
+	labcomm_encoder_free(fd_encoder);
+}
+
+static unsigned char *mcontext_sig_buf;
+static unsigned char *mcontext_data_buf;
+static proto_sig_size;
+static proto_data_size;
+static size_t proto_check_cnt = 0;
+
+void proto_check_writer(unsigned char *data, size_t data_size,
+			struct firefly_connection *conn)
+{
+	if (proto_check_cnt == 0) {
+		// Test sig.
+		CU_ASSERT_EQUAL(proto_sig_size, data_size);
+		CU_ASSERT_EQUAL(0, memcmp(mcontext_sig_buf, data,
+						proto_sig_size));
+	} else if (proto_check_cnt == 1) {
+		// Test data.
+		CU_ASSERT_EQUAL(proto_data_size, data_size);
+		CU_ASSERT_EQUAL(0, memcmp(mcontext_data_buf, data,
+						proto_data_size));
+	}
+	++proto_check_cnt;}
+}
+
+
+void test_proto_writer()
+{
+	// Prepare the expected data.
+	test_test_var var_test_test = 42;
+	create_labcomm_files_test(&var_test_test);
+	unsigned char *test_sig_buf;
+	unsigned char *test_data_buf;
+	proto_sig_size = read_file_to_mem(&test_sig_buf, SIG_FILE_TEST);
+	proto_data_size = read_file_to_mem(&test_data_buf, DATA_FILE_TEST);
+
+	// Protocol packet for the sig.
+	firefly_protocol_data_sample data_sample_sig;
+	data_sample_sig.dest_chan = DEST_CHAN_ID;
+	data_sample_sig.src_chan = SRC_CHAN_ID;
+	data_sample_sig.important = important;
+	data_sample_sig.app_enc_data = test_sig_buf;
+
+	// Protocol packet for the data.
+	firefly_protocol_data_sample data_sample_data;
+	data_sample_data.dest_chan = DEST_CHAN_ID;
+	data_sample_data.src_chan = SRC_CHAN_ID;
+	data_sample_data.important = important;
+	data_sample_data.app_enc_data = test_data_buf;
+
+
+	// Labcomm encoder for the sig.
+	mcontext_sig_buf = malloc(WRITE_BUF_SIZE);
+	if (mcontext_sig_buf == NULL) {
+		CU_FAIL("Could not allocate conn.writer_data.");
+	}
+	labcomm_mem_writer_context_t *mcontext_sig =
+		labcomm_mem_writer_context_t_new(0, WRITE_BUF_SIZE,
+						mcontext_sig_buf);
+	struct labcomm_encoder *encoder_sig = labcomm_encoder_new(
+				labcomm_mem_writer, mcontext_sig);
+
+	// Labcomm encoder for the data.
+	mcontext_data_buf = malloc(WRITE_BUF_SIZE);
+	if (mcontext_data_buf == NULL) {
+		CU_FAIL("Could not allocate conn.writer_data.");
+	}
+	labcomm_mem_writer_context_t *mcontext_data =
+		labcomm_mem_writer_context_t_new(0, WRITE_BUF_SIZE,
+						mcontext_data_buf);
+	struct labcomm_encoder *encoder_data = labcomm_encoder_new(
+				labcomm_mem_writer, mcontext_data);
+
+
+	// Register data types.
+	labcomm_encoder_register_firefly_protocol_data_sample(encoder_sig);
+	labcomm_encoder_register_firefly_protocol_data_sample(encoder_data);
+
+	// We're not interested in the signature of transport writer.
+	memset(mcontext_sig->buf, 0, WRITE_BUF_SIZE);
+	memset(mcontext_data->buf, 0, WRITE_BUF_SIZE);
+
+	// Encode the packges. After this the data to compare exists the
+	// mcontext-bufs
+	labcomm_encode_firefly_protocol_data_sample(encoder_sig,
+						&data_sample_sig);
+	labcomm_encode_firefly_protocol_data_sample(encoder_data,
+						&data_sample_data);
+
+
+
+	// Prepare for the test.
+	struct firefly_connection conn;
+	conn.transport_conn_platspec = NULL;
+	conn.writer_data = malloc(256);
+	if (conn.writer_data == NULL) {
+		CU_FAIL("Could not allocate conn.writer_data.");
+	}
+	conn.reader_data = NULL;
+	conn.transport_write = proto_check_writer;
+
+	struct labcomm_encoder *encoder_proto = labcomm_encoder_new(
+			protocol_writer, chan);
+	if (encoder_proto == NULL) {
+		CU_FAIL("Could not allocate LabComm encoder or decoder.");
+	}
+
+
+	struct firefly_channel chan;
+	chan.connection = &conn;
+	chan.local_id = SRC_CHAN_ID;
+	chan.remote_id = DEST_CHAN_ID;
+	chan.encoder = encoder_proto;
+	chan.decoder = NULL;
+
+	// Test signature packet.
+	labcomm_encoder_register_test_test_var(encoder_proto);
+
+	// Test sample packet.
+	labcomm_encode_test_test_var(encoder_proto, var_test_test);
+
+	CU_ASSERT_EQUAL(proto_check_cnt, 2);
+
+	// Free all resources.
+	labcomm_encoder_free(encoder_proto);
+	free(conn.writer_data);
+	labcomm_encoder_free(encoder_data);
+	labcomm_mem_writer_context_t_free(&mcontext_data_buf);
+	free(mcontext_data_buf);
+	labcomm_encoder_free(encoder_sig);
+	labcomm_mem_writer_context_t_free(&mcontext_sig_buf);
+	free(mcontext_sig_buf);
+	free(test_sig_buf)
+	free(test_data_buf)
+}
+
 int main()
 {
 	CU_pSuite tran_enc_dec_suite = NULL;
+	CU_pSuite proto_enc_dec_suite = NULL;
 	CU_pSuite chan_suite = NULL;
 
 	// Initialize CUnit test registry.
@@ -586,6 +745,13 @@ int main()
 		CU_cleanup_registry();
 		return CU_get_error();
 	}
+	proto_enc_dec_suite = CU_add_suite("protocol_enc_dec", init_suit,
+							clean_suit);
+	if (proto_enc_dec_suite == NULL) {
+		CU_cleanup_registry();
+		return CU_get_error();
+	}
+
 	chan_suite = CU_add_suite("chan_suite", init_suit, clean_suit);
 	if (chan_suite == NULL) {
 		CU_cleanup_registry();
@@ -615,9 +781,18 @@ int main()
 		return CU_get_error();
 	}
 
+	// Protocol writer/reader tests.
+	if (
+		(CU_add_test(proto_enc_dec_suite, "test_proto_writer",
+			     test_proto_writer) == NULL)
+	   ) {
+		CU_cleanup_registry();
+		return CU_get_error();
+	}
+
 	// Channel tests.
 	if (
-		(CU_add_test(chan_suite, "get_streams",
+		(CU_add_test(chan_suite, "test_get_streams",
 			     get_streams) == NULL)
 		||
 		(CU_add_test(chan_suite, "test_chan_open",
