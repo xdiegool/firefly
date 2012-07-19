@@ -6,6 +6,8 @@
 #include <protocol/firefly_protocol.h>
 #include <gen/firefly_protocol.h>
 
+#define CHANNEL_ID_NOT_SET (-1)
+
 /**
  * @brief Write data on the specified connection
  * This is an interface implemented by all transport layers.
@@ -63,6 +65,10 @@ struct firefly_connection {
 	firefly_channel_is_open_f on_channel_opened; /**< Callback, called when
 							a channel has been
 							opened */
+	firefly_channel_accept_f on_channel_recv; /**< Callback, called when a
+						    channel is received to
+						    decide if it is accepted or
+						    rejected. */
 	struct labcomm_encoder *transport_encoder; /**< The transport layer
 							encoder for this
 							connection. */
@@ -145,5 +151,13 @@ int ff_transport_reader(labcomm_reader_t *r, labcomm_reader_action_t action);
  * @return Value indicating how the action could be handled.
  */
 int ff_transport_writer(labcomm_writer_t *w, labcomm_writer_action_t action);
+
+/**
+ * @brief Generates new uniqe channel ID for the supplied firefly_connection.
+ *
+ * @param conn The connection the new channel ID is generated for.
+ * @return The new uniqe channel ID.
+ */
+int next_channel_id(struct firefly_connection *conn);
 
 #endif

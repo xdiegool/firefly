@@ -14,19 +14,19 @@
 void firefly_channel_open(struct firefly_connection *conn)
 {
 	// TODO implement better
+	struct firefly_channel *chan = malloc(sizeof(struct firefly_channel));
+	chan->local_chan_id = 1;
+	chan->remote_chan_id = CHANNEL_ID_NOT_SET;
+	add_channel_to_connection(chan, conn);
+
 	firefly_protocol_channel_request chan_req;
-	chan_req.source_chan_id = 1;
-	chan_req.dest_chan_id = 0;
+	chan_req.source_chan_id = chan->local_chan_id;
+	chan_req.dest_chan_id = chan->remote_chan_id;
 	chan_req.ack = true;
 
 	conn->writer_data->data = malloc(128);
 	conn->writer_data->data_size = 128;
 	conn->writer_data->pos = 0;
-
-	struct firefly_channel *chan = malloc(sizeof(struct firefly_channel));
-	chan->local_chan_id = 1;
-	chan->remote_chan_id = -1;
-	add_channel_to_connection(chan, conn);
 
 	labcomm_encode_firefly_protocol_channel_request(conn->transport_encoder,
 			&chan_req);
@@ -71,14 +71,33 @@ void handle_channel_request(firefly_protocol_channel_request *cr, void *context)
 {
 	// TODO check if req, req_ack or ack
 	int local_chan_id = cr->dest_chan_id;
+	struct firefly_connection *conn = (struct firefly_connection *) context;
 	struct firefly_channel *chan = find_channel_by_local_id(local_chan_id,
-			(struct firefly_connection *) context);
+			conn);
 	if (chan != NULL) {
+		// Received Channel request ack.
 		chan->remote_chan_id = cr->source_chan_id;
-		protocol_channel_request_send_ack(chan,
-			(struct firefly_connection *) context);
-		((struct firefly_connection *)
-					context)->on_channel_opened(chan);
+		protocol_channel_request_send_ack(chan, conn);
+		conn->on_channel_opened(chan);
+	} else if (cr->dest_chan_id == CHANNEL_ID_NOT_SET) {
+		// Received Channel request.
+		chan = malloc(sizeof(struct firefly_channel));
+		if (chan == NULL) {
+			firefly_error(FIREFLY_ERROR_ALLOC, 1, "Could not"
+							"allocate channel.");
+		}
+		chan->remote_chan_id = cr->source_chan_id;
+		chan->local_chan_id = next_channel_id(conn);
+		add_channel_to_connection(chan, conn);
+		if (conn->on_channel_recv(chan)) {
+			cr->dest_chan_id = cr->source_chan_id;
+			cr->source_chan_id = chan->local_chan_id;
+			cr->ack = true;
+			labcomm_encode_firefly_protocol_channel_request(
+					conn->transport_encoder, cr);
+		} else {
+			// TODO send NAK
+		}
 	}
 }
 
@@ -116,6 +135,11 @@ struct firefly_channel *find_channel_by_local_id(int id,
 		head = head->next;
 	}
 	return head == NULL ? NULL : head->chan;
+}
+
+int next_channel_id(struct firefly_connection *conn)
+{
+	return 1;
 }
 
 void labcomm_error_to_ff_error(enum labcomm_error error_id, size_t nbr_va_args,

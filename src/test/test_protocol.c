@@ -44,28 +44,17 @@ static bool important = true;
 static unsigned char app_data[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
 static bool successfully_decoded = false;
 
-void create_labcomm_files(firefly_protocol_data_sample *proto)
+typedef void (* lc_register_f)(struct labcomm_encoder *enc);
+typedef void (* lc_encode_f)(struct labcomm_encoder *enc, void *data);
+void create_labcomm_files_general(lc_register_f reg, lc_encode_f enc, void *data)
 {
 	int tmpfd = open(SIG_FILE, O_RDWR|O_CREAT|O_TRUNC, 0644);
 	struct labcomm_encoder *fd_encoder =
 			labcomm_encoder_new(labcomm_fd_writer, &tmpfd);
-	labcomm_encoder_register_firefly_protocol_data_sample(fd_encoder);
+	reg(fd_encoder);
 	close(tmpfd);
 	tmpfd = open(DATA_FILE, O_RDWR|O_CREAT|O_TRUNC, 0644);
-	labcomm_encode_firefly_protocol_data_sample(fd_encoder, proto);
-	close(tmpfd);
-	labcomm_encoder_free(fd_encoder);
-}
-
-void create_labcomm_files_chan_req(firefly_protocol_channel_request *cr)
-{
-	int tmpfd = open(SIG_FILE, O_RDWR|O_CREAT|O_TRUNC, 0644);
-	struct labcomm_encoder *fd_encoder =
-			labcomm_encoder_new(labcomm_fd_writer, &tmpfd);
-	labcomm_encoder_register_firefly_protocol_channel_request(fd_encoder);
-	close(tmpfd);
-	tmpfd = open(DATA_FILE, O_RDWR|O_CREAT|O_TRUNC, 0644);
-	labcomm_encode_firefly_protocol_channel_request(fd_encoder, cr);
+	enc(fd_encoder, data);
 	close(tmpfd);
 	labcomm_encoder_free(fd_encoder);
 }
@@ -238,7 +227,9 @@ void test_encode_protocol()
 	proto.app_enc_data.n_0 = sizeof(app_data);
 	proto.app_enc_data.a = app_data;
 
-	create_labcomm_files(&proto);
+	create_labcomm_files_general(
+		labcomm_encoder_register_firefly_protocol_data_sample,
+		(lc_encode_f) labcomm_encode_firefly_protocol_data_sample, &proto);
 
 	struct ff_transport_data writer_data;
 	writer_data.data = (unsigned char *) calloc(1, WRITE_BUF_SIZE);
@@ -279,7 +270,9 @@ void test_decode_protocol()
 	proto.app_enc_data.n_0 = sizeof(app_data);
 	proto.app_enc_data.a = app_data;
 
-	create_labcomm_files(&proto);
+	create_labcomm_files_general(
+		labcomm_encoder_register_firefly_protocol_data_sample,
+		(lc_encode_f) labcomm_encode_firefly_protocol_data_sample, &proto);
 
 	struct ff_transport_data reader_data;
 	reader_data.pos = 0;
@@ -336,7 +329,9 @@ void test_decode_protocol_multiple_times()
 	proto.app_enc_data.n_0 = sizeof(app_data);
 	proto.app_enc_data.a = app_data;
 
-	create_labcomm_files(&proto);
+	create_labcomm_files_general(
+		labcomm_encoder_register_firefly_protocol_data_sample,
+		(lc_encode_f) labcomm_encode_firefly_protocol_data_sample, &proto);
 
 	struct ff_transport_data reader_data;
 	reader_data.pos = 0;
@@ -362,7 +357,11 @@ void test_decode_protocol_multiple_times()
 
 	for (i = 0; i < 10; i++) {
 		proto.chan_id = i;
-		create_labcomm_files(&proto);
+		create_labcomm_files_general(
+			labcomm_encoder_register_firefly_protocol_data_sample,
+			(lc_encode_f)
+			labcomm_encode_firefly_protocol_data_sample,
+			&proto);
 		reader_data.data_size = read_file_to_mem(&reader_data.data,
 				DATA_FILE);
 
@@ -388,7 +387,10 @@ void test_encode_protocol_multiple_times()
 	proto.app_enc_data.n_0 = sizeof(app_data);
 	proto.app_enc_data.a = app_data;
 
-	create_labcomm_files(&proto);
+	create_labcomm_files_general(
+		labcomm_encoder_register_firefly_protocol_data_sample,
+		(lc_encode_f) labcomm_encode_firefly_protocol_data_sample,
+		&proto);
 
 	struct ff_transport_data writer_data;
 	writer_data.data = (unsigned char *) calloc(1, WRITE_BUF_SIZE);
@@ -414,7 +416,11 @@ void test_encode_protocol_multiple_times()
 	for (i = 0; i < 10; i++) {
 		proto.chan_id = i;
 
-		create_labcomm_files(&proto);
+		create_labcomm_files_general(
+			labcomm_encoder_register_firefly_protocol_data_sample,
+			(lc_encode_f)
+			labcomm_encode_firefly_protocol_data_sample,
+			&proto);
 
 		memset(writer_data.data, 0, WRITE_BUF_SIZE);
 		writer_data.pos = 0;
@@ -432,7 +438,8 @@ void test_encode_protocol_multiple_times()
 
 void get_streams()
 {
-	labcomm_mem_writer_context_t *wmcontext = labcomm_mem_writer_context_t_new(0, 0, NULL);
+	labcomm_mem_writer_context_t *wmcontext =
+			labcomm_mem_writer_context_t_new(0, 0, NULL);
 	struct labcomm_encoder *e_encoder = labcomm_encoder_new(
 			labcomm_mem_writer, wmcontext);
 
@@ -484,10 +491,14 @@ void test_chan_open()
 {
 	firefly_protocol_channel_request chan_req;
 	chan_req.source_chan_id = 1;
-	chan_req.dest_chan_id = 0;
+	chan_req.dest_chan_id = CHANNEL_ID_NOT_SET;
 	chan_req.ack = true;
 
-	create_labcomm_files_chan_req(&chan_req);
+	create_labcomm_files_general(
+			labcomm_encoder_register_firefly_protocol_channel_request,
+			(lc_encode_f) labcomm_encode_firefly_protocol_channel_request,
+			&chan_req);
+
 
 	struct ff_transport_data writer_data;
 	writer_data.data = malloc(128);
@@ -517,7 +528,8 @@ void test_chan_open()
 	reader_data.data_size = 0;
 	reader_data.pos = 0;
 	conn.reader_data = &reader_data;
-	conn.transport_decoder = labcomm_decoder_new(ff_transport_reader, &conn);
+	conn.transport_decoder = labcomm_decoder_new(ff_transport_reader,
+							&conn);
 	labcomm_decoder_register_firefly_protocol_channel_request(
 			conn.transport_decoder, handle_channel_request, &conn);
 
@@ -532,7 +544,10 @@ void test_chan_open()
 	chan_req.dest_chan_id = 1;
 	chan_req.ack = true;
 
-	create_labcomm_files_chan_req(&chan_req);
+	create_labcomm_files_general(
+			labcomm_encoder_register_firefly_protocol_channel_request,
+			(lc_encode_f) labcomm_encode_firefly_protocol_channel_request,
+			&chan_req);
 
 	unsigned char *sign;
 	unsigned char *data;
@@ -543,7 +558,10 @@ void test_chan_open()
 	chan_req.dest_chan_id = 2;
 	chan_req.ack = true;
 
-	create_labcomm_files_chan_req(&chan_req);
+	create_labcomm_files_general(
+			labcomm_encoder_register_firefly_protocol_channel_request,
+			(lc_encode_f) labcomm_encode_firefly_protocol_channel_request,
+			&chan_req);
 
 	protocol_data_received(&conn, sign, sign_size);
 	protocol_data_received(&conn, data, data_size);
@@ -567,6 +585,147 @@ void test_chan_open()
 	// TODO must clean up chan better here, it's a quick fix to make this
 	// test case leak free.
 	firefly_channel_close(&test_chan_open_chan, &conn);
+}
+
+void chan_recv_chan_opened_mock(struct firefly_channel *chan)
+{
+	chan_opened_called = true;
+}
+
+static bool chan_accept_called = false;
+static struct firefly_channel *accepted_chan;
+bool chan_recv_accept_chan(struct firefly_channel *chan)
+{
+	accepted_chan = chan;
+	CU_ASSERT_EQUAL(chan->remote_chan_id, 1);
+	chan_accept_called = true;
+	return true;
+}
+
+struct data_tmp_storage {
+	unsigned char *data_1;
+	size_t size_1;
+	unsigned char *data_2;
+	size_t size_2;
+} transport_write_data;
+
+void chan_recv_transport_write_mock(unsigned char *data, size_t size,
+		struct firefly_connection *conn)
+{
+	if (transport_write_data.size_1 == 0) {
+		transport_write_data.data_1 = malloc(size);
+		memcpy(transport_write_data.data_1, data, size);
+		transport_write_data.size_1 = size;
+	} else {
+		transport_write_data.data_2 = malloc(size);
+		memcpy(transport_write_data.data_2, data, size);
+		transport_write_data.size_2 = size;
+	}
+
+}
+
+void chan_recv_test_ack(firefly_protocol_channel_request *req, void *context)
+{
+	CU_ASSERT_EQUAL(req->dest_chan_id, 1);
+	CU_ASSERT_EQUAL(req->source_chan_id, accepted_chan->local_chan_id);
+	CU_ASSERT_TRUE(req->ack);
+}
+
+void test_chan_recv_accept()
+{
+	// Create channel request.
+	firefly_protocol_channel_request chan_req;
+	chan_req.source_chan_id = 1;
+	chan_req.dest_chan_id = CHANNEL_ID_NOT_SET;
+	chan_req.ack = true;
+	create_labcomm_files_general(
+		labcomm_encoder_register_firefly_protocol_channel_request,
+		(lc_encode_f) labcomm_encode_firefly_protocol_channel_request,
+		&chan_req);
+
+	unsigned char *sign;
+	unsigned char *data;
+	size_t sign_size = read_file_to_mem(&sign, SIG_FILE);
+	size_t data_size = read_file_to_mem(&data, DATA_FILE);
+
+	// Create connection and transport_decoder.
+	struct firefly_connection conn;
+	conn.on_channel_opened = chan_recv_chan_opened_mock;
+	conn.on_channel_recv = chan_recv_accept_chan;
+	conn.chan_list = NULL;
+	conn.transport_decoder = labcomm_decoder_new(ff_transport_reader,
+							&conn);
+	if (conn.transport_decoder == NULL) {
+		CU_FAIL("Could not allocate a new decoder.\n");
+	}
+	labcomm_register_error_handler_decoder(conn.transport_decoder,
+						handle_labcomm_error);
+	labcomm_decoder_register_firefly_protocol_channel_request(
+			conn.transport_decoder, handle_channel_request, &conn);
+	struct ff_transport_data reader_data;
+	reader_data.data = NULL;
+	reader_data.data_size = 0;
+	reader_data.pos = 0;
+	conn.reader_data = &reader_data;
+
+	// Create transport_encoder.
+	struct ff_transport_data writer_data;
+	writer_data.data = malloc(WRITE_BUF_SIZE);
+	if (writer_data.data == NULL) {
+		CU_FAIL("Could not allocate writer_data.data.\n");
+	}
+	writer_data.data_size = WRITE_BUF_SIZE;
+	writer_data.pos = 0;
+	conn.writer_data = &writer_data;
+	conn.transport_encoder = labcomm_encoder_new(ff_transport_writer,
+							&conn);
+	if (conn.transport_encoder == NULL) {
+		CU_FAIL("Could not allocate a new encoder.\n");
+	}
+	labcomm_register_error_handler_encoder(conn.transport_encoder,
+						handle_labcomm_error);
+	conn.transport_write = chan_recv_transport_write_mock;
+	labcomm_encoder_register_firefly_protocol_channel_request(
+						conn.transport_encoder);
+
+	// Give channel request data to protocol layer.
+	protocol_data_received(&conn, sign, sign_size);
+	protocol_data_received(&conn, data, data_size);
+
+	// test accept called
+	CU_ASSERT_TRUE(chan_accept_called);
+	chan_accept_called = false;
+
+	// test request ack is sent
+	labcomm_mem_reader_context_t mctx;
+	struct labcomm_decoder *dec_req_ack =
+		labcomm_decoder_new(labcomm_mem_reader, &mctx);
+	if (dec_req_ack == NULL) {
+		CU_FAIL("Could not allocate a new decoder.\n");
+	}
+	labcomm_register_error_handler_decoder(dec_req_ack,
+						handle_labcomm_error);
+	labcomm_decoder_register_firefly_protocol_channel_request(dec_req_ack,
+			chan_recv_test_ack, NULL);
+	mctx.enc_data = transport_write_data.data_1;
+	mctx.size = transport_write_data.size_1;
+	labcomm_decoder_decode_one(dec_req_ack);
+	mctx.enc_data = transport_write_data.data_2;
+	mctx.size = transport_write_data.size_2;
+	labcomm_decoder_decode_one(dec_req_ack);
+
+	chan_req.dest_chan_id = accepted_chan->remote_chan_id;
+	chan_req.source_chan_id = accepted_chan->local_chan_id;
+	chan_req.ack = true;
+	create_labcomm_files_general(
+		labcomm_encoder_register_firefly_protocol_channel_request,
+		(lc_encode_f) labcomm_encode_firefly_protocol_channel_request,
+		&chan_req);
+
+	data_size = read_file_to_mem(&data, DATA_FILE);
+	protocol_data_received(&conn, data, data_size);
+
+	CU_ASSERT_TRUE(chan_opened_called);
 }
 
 int main()
@@ -622,9 +781,9 @@ int main()
 		||
 		(CU_add_test(chan_suite, "test_chan_open",
 			     test_chan_open) == NULL)
-		/*||*/
-		/*(CU_add_test(chan_suite, "name",*/
-			     /*name) == NULL)*/
+		||
+		(CU_add_test(chan_suite, "test_chan_recv_accept",
+			     test_chan_recv_accept) == NULL)
 	   ) {
 		CU_cleanup_registry();
 		return CU_get_error();
