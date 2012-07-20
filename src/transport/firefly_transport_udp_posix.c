@@ -13,6 +13,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <sys/ioctl.h>
 
 #include <transport/firefly_transport.h>
 #include <firefly_errors.h>
@@ -21,7 +22,6 @@
 #include "transport/firefly_transport_private.h"
 
 #define ERROR_STR_MAX_LEN	 (256)
-#define READ_BUFFER_SIZE	(16) // TODO better buffer size
 
 struct firefly_transport_llp *firefly_transport_llp_udp_posix_new(unsigned short local_udp_port,
 	       	firefly_on_conn_recv on_conn_recv)
@@ -155,13 +155,30 @@ void firefly_transport_write_udp_posix(unsigned char *data, size_t data_size,
 void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 {
 	struct sockaddr_in *remote_addr = malloc(sizeof(struct sockaddr_in));
+	if (remote_addr == NULL) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 2, "Failed in %s on line %d.\n",
+					  __FUNCTION__, __LINE__);
+	}
 	struct transport_llp_udp_posix *llp_udp =
 		(struct transport_llp_udp_posix *) llp->llp_platspec;
 
 	// Read data from socket
+	size_t pkg_len;
+	if(ioctl(llp_udp->local_udp_socket, FIONREAD, &pkg_len) != -1) {
+		/* printf("%d bytes available", pkg_len); */
+	} else {
+		firefly_error(FIREFLY_ERROR_SOCKET, 2, "Failed in %s on line %d.\n",
+					  __FUNCTION__, __LINE__);
+		pkg_len = 0;
+	}
+	unsigned char *buf;
+	buf = malloc(pkg_len);		/* TODO: keep buffer in w/e state struct there is */
+	if (buf == NULL) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 2, "Failed in %s on line %d.\n",
+					  __FUNCTION__, __LINE__);
+	}
 	socklen_t len = sizeof(struct sockaddr_in);
-	unsigned char buf[READ_BUFFER_SIZE];
-	int res = recvfrom(llp_udp->local_udp_socket, buf, READ_BUFFER_SIZE, 0,
+	int res = recvfrom(llp_udp->local_udp_socket, buf, pkg_len, 0,
 			(struct sockaddr *) remote_addr, &len);
 	if (res == -1) {
 		char err_buf[ERROR_STR_MAX_LEN];
@@ -179,19 +196,25 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 			malloc(sizeof(struct firefly_connection));
 		struct protocol_connection_udp_posix *conn_udp =
 			malloc(sizeof(struct protocol_connection_udp_posix));
+		if (conn == NULL || conn_udp == NULL) {
+			firefly_error(FIREFLY_ERROR_ALLOC, 2, "Failed in %s on line %d.\n",
+						  __FUNCTION__, __LINE__);
+			free(conn);
+			free(conn_udp);
+		}
 		conn_udp->remote_addr = remote_addr;
 		conn->transport_conn_platspec = conn_udp;
 		if(llp->on_conn_recv != NULL && llp->on_conn_recv(conn)) {
 			conn_udp->socket = llp_udp->local_udp_socket;
 			add_connection_to_llp(conn, llp);
-			protocol_data_received(conn, buf, READ_BUFFER_SIZE);
+			protocol_data_received(conn, buf, pkg_len);
 		} else {
 			free(conn_udp);
 			free(conn);
 			free(remote_addr);
 		}
 	} else {
-		protocol_data_received(conn, buf, READ_BUFFER_SIZE);
+		protocol_data_received(conn, buf, pkg_len);
 		free(remote_addr);
 	}
 }

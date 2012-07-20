@@ -2,6 +2,7 @@
 
 // Some projects can not use stdio.h.
 #include <stdio.h>
+#include <stdarg.h>
 
 /**
  * @var firefly_error_strings
