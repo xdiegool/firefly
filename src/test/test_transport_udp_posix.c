@@ -36,12 +36,14 @@ int clean_suit()
 static unsigned short local_port = 55555;
 static unsigned short remote_port = 55556;
 static unsigned char send_buf[] = {0,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16};
-#if 0
-static unsigned char send_buf_big[] = {0,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,
-									   0,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16};
-size_t send_buf_big_size = sizeof(send_buf_big);
-#endif
 
+static unsigned char send_buf_medium[] = {0,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,
+										  0,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16};
+
+static unsigned char send_buf_big[] = {0,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,
+									   0,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,
+									   0,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,
+									   0,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16};
 
 void setup_sockaddr(struct sockaddr_in *addr, unsigned short port)
 {
@@ -103,12 +105,18 @@ void send_data(struct sockaddr_in *remote_addr, unsigned short port,
 }
 
 static bool data_received = false;
+static size_t data_recv_size;
+static unsigned char *data_recv_buf;
 
 void protocol_data_received(struct firefly_connection *conn, unsigned char *data,
-		size_t size)
+							size_t size)
 {
-	CU_ASSERT_EQUAL(sizeof(send_buf), size);
-	CU_ASSERT_NSTRING_EQUAL(data, send_buf, size);
+	if (!data_recv_buf) {
+		data_recv_buf = send_buf;
+		data_recv_size = sizeof(send_buf);
+	}
+	CU_ASSERT_EQUAL(data_recv_size, size);
+	CU_ASSERT_NSTRING_EQUAL(data, data_recv_buf, size);
 	data_received = true;
 }
 
@@ -455,6 +463,84 @@ void test_conn_open_and_recv()
 	firefly_transport_udp_posix_free(&llp);
 }
 
+void test_recv_big_connection()
+{
+	struct firefly_transport_llp *llp =
+		firefly_transport_llp_udp_posix_new(local_port,	recv_conn_recv_conn);
+	struct sockaddr_in remote_addr;
+	send_data(&remote_addr, remote_port, send_buf, sizeof(send_buf));
+
+	data_received = false;		/* test globals */
+	good_conn_received = false;	/* ditto ... */
+	data_recv_size = sizeof(send_buf);
+	data_recv_buf = send_buf;
+
+	firefly_transport_udp_posix_read(llp);
+	CU_ASSERT_TRUE(good_conn_received);
+	CU_ASSERT_TRUE(data_received);
+
+	send_data(&remote_addr, remote_port, send_buf_big, sizeof(send_buf_big));
+
+	data_received = false;		/* same test globals ... */
+	good_conn_received = false;
+	data_recv_size = sizeof(send_buf_big);
+	data_recv_buf = send_buf_big;
+
+	firefly_transport_udp_posix_read(llp);
+	CU_ASSERT_TRUE(data_received);
+
+	data_received = false;
+	/* good_conn_received = false; */
+	firefly_transport_udp_posix_free(&llp);
+}
+
+void test_reader_scale_back()
+{
+	struct sockaddr_in remote_addr;
+	struct firefly_transport_llp *llp;
+	const unsigned int sbn = 8;
+
+	data_recv_size = sizeof(send_buf_big); /* test realted global */
+	data_recv_buf = send_buf_big;			   /* ditto */
+
+	llp = firefly_transport_llp_udp_posix_new(local_port, recv_conn_recv_conn);
+	firefly_transport_udp_posix_set_n_scaleback(llp, sbn);
+
+	send_data(&remote_addr, remote_port,
+			  send_buf_big, sizeof(send_buf_big));
+	firefly_transport_udp_posix_read(llp);
+	CU_ASSERT_TRUE(good_conn_received);
+	CU_ASSERT_TRUE(data_received);
+	good_conn_received = false;
+	data_received = false;
+
+	for (int i = 0; i < sbn; i++) {
+		unsigned char *buf;
+		unsigned int s;
+		if (i != 3) {
+			buf = send_buf;
+			s = sizeof(send_buf);
+		} else {
+			buf = send_buf_medium;
+			s = sizeof(send_buf_medium);
+		}
+		send_data(&remote_addr, remote_port, buf, s);
+		data_recv_size = sizeof(send_buf);
+		data_recv_buf = send_buf;
+		firefly_transport_udp_posix_read(llp);
+		CU_ASSERT_TRUE(data_received);
+		data_received = false;
+	}
+	firefly_transport_udp_posix_free(&llp);
+	data_received = false;
+	good_conn_received = false;
+	struct transport_llp_udp_posix *udp_llp =
+		(struct transport_llp_udp_posix *)llp->llp_platspec;
+
+	CU_ASSERT_EQUAL(udp_llp->scale_back_nbr, sizeof(send_buf_medium));
+}
+
+
 static struct firefly_connection *conn_recv = NULL;
 /* Callback when a new connection arrives at transport layer. */
 bool open_and_recv_conn_recv_conn(struct firefly_connection *conn)
@@ -513,7 +599,7 @@ int main()
 		CU_cleanup_registry();
 		return CU_get_error();
 	}
-	
+
 	if (
 		(CU_add_test(pSuite, "test_find_conn_by_addr",
 				test_find_conn_by_addr) == NULL)
@@ -553,6 +639,13 @@ int main()
 		       ||
 		(CU_add_test(pSuite, "test_open_and_recv_with_two_llp",
 				test_open_and_recv_with_two_llp) == NULL)
+		||
+		(CU_add_test(pSuite, "test_recv_big_connection",
+					 test_recv_big_connection) == NULL)
+		||
+		(CU_add_test(pSuite, "test_reader_scale_back",
+					 test_reader_scale_back) == NULL)
+
 	   ) {
 		CU_cleanup_registry();
 		return CU_get_error();

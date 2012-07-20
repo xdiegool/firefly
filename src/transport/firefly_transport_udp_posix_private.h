@@ -14,8 +14,13 @@
  */
 struct transport_llp_udp_posix {
 	int local_udp_socket; /**< The file descriptor of the UDP socket */
-	struct sockaddr_in *local_addr; /**< The address the socket is
-						bound to */
+	struct sockaddr_in *local_addr; /**< The address the socket is bound to */
+	/* buffer related stuff */
+	size_t scale_back_nbr;	/**< The number of pkgs before scaleback */
+	size_t nbr_smaller; 	/**< The number of smaller pkgs received */
+	size_t scale_back_size;	/**< The next largest pkg seen among the n last pkgs */
+	size_t recv_buf_size;	/**< Current buffer size */
+	unsigned char *recv_buf;	/**< Pointer t the recv buffer  */
 };
 
 /**
@@ -55,11 +60,12 @@ struct firefly_connection *find_connection_by_addr(struct sockaddr_in *addr,
 bool sockaddr_in_eq(struct sockaddr_in *one, struct sockaddr_in *other);
 
 /**
- * @brief Adds a connection to the connection list in \c llp.
+ * @brief Adds a connection to the connection list in \a llp.
  *
  * @param conn The connection to add.
  * @param llp The link layer port structure to add the connection to.
  */
 void add_connection_to_llp(struct firefly_connection *conn,
 		struct firefly_transport_llp *llp);
+
 #endif

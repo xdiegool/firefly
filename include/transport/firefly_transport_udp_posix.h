@@ -94,4 +94,14 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp);
 void firefly_transport_write_udp_posix(unsigned char *data, size_t data_size,
 		struct firefly_connection *conn);
 
+/**
+ * @brief Set the number of strictly smaller packages required before the size
+ *        of the receive buffer is decreased.
+ *
+ * @param llp The llp to apply the change on.
+ * @param nbr The number of package to set as the new threshold.
+ */
+void firefly_transport_udp_posix_set_n_scaleback(struct firefly_transport_llp *llp,
+												 unsigned int nbr);
+
 #endif
