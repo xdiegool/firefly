@@ -17,7 +17,6 @@
  */
 struct firefly_transport_llp_udp_posix;
 
-
 /**
  * @brief Allocates and initializes a new \c transport_llp with UDP specific
  * data and open an UDP socket bound to the specified \a local_port.

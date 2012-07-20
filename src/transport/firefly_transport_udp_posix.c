@@ -105,20 +105,28 @@ struct firefly_connection *firefly_transport_connection_udp_posix_open(char *ip_
 		unsigned short port, struct firefly_transport_llp *llp)
 {
 	struct firefly_connection *conn = malloc(sizeof(struct firefly_connection));
+	if (conn == NULL) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 2, "Failed in %s on line %d.\n",
+					  __FUNCTION__, __LINE__);
+	}
 	struct protocol_connection_udp_posix *conn_udp =
 		malloc(sizeof(struct protocol_connection_udp_posix));
+	if (conn_udp == NULL) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 3, "Failed in %s on line %d.\n",
+					  __FUNCTION__, __LINE__);
+	}
 	conn_udp->remote_addr = calloc(1, sizeof(struct sockaddr_in));
 	if (conn_udp->remote_addr == NULL) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 2,
-				"Failed in %s.\n", __FUNCTION__);
+		firefly_error(FIREFLY_ERROR_ALLOC, 3, "Failed in %s on line %d.\n",
+					  __FUNCTION__, __LINE__);
 	}
 
 	conn_udp->remote_addr->sin_family = AF_INET;
 	conn_udp->remote_addr->sin_port = htons(port);
 	int res = inet_pton(AF_INET, ip_addr, &conn_udp->remote_addr->sin_addr);
 	if (res == 0) {
-		firefly_error(FIREFLY_ERROR_SOCKET, 2,
-				"Failed in %s.\n", __FUNCTION__);
+		firefly_error(FIREFLY_ERROR_SOCKET, 3, "Failed in %s on line %d.\n",
+					  __FUNCTION__, __LINE__);
 	}
 
 	conn_udp->socket = ((struct transport_llp_udp_posix *)
