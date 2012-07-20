@@ -5,7 +5,18 @@ sample struct {
 } data_sample;
 
 sample struct {
-	boolean ack;
 	int dest_chan_id;
 	int source_chan_id;
 } channel_request;
+
+sample struct {
+	int dest_chan_id;
+	int source_chan_id;
+	boolean ack;
+} channel_response;
+
+sample struct {
+	int dest_chan_id;
+	int source_chan_id;
+	boolean ack;
+} channel_ack;

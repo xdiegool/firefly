@@ -12,12 +12,20 @@
  * @brief Error IDs
  */
 enum firefly_error {
-	FIREFLY_ERROR_FIRST, 		/**< \b Must be the first enum element. firefly_error_get_str() depends on this.*/
-	FIREFLY_ERROR_ALLOC,		/**< Represents an error while allocating memory. */
-	FIREFLY_ERROR_SOCKET,		/**< Represents an error while opening, binding or performing similar operations on a socket. */
-	FIREFLY_ERROR_LABCOMM,		/**< An LabComm error has occured. */
-	FIREFLY_ERROR_USER_DEF,		/**< Represents a user defined error. */
-	FIREFLY_ERROR_LAST		/**< \b Must be the last enum element. firefly_error_get_str() depends on this.*/
+	FIREFLY_ERROR_FIRST,
+	/**< \b Must be the first enum element. firefly_error_get_str() depends on this.*/
+	FIREFLY_ERROR_ALLOC,
+	/**< Represents an error while allocating memory. */
+	FIREFLY_ERROR_SOCKET,
+	/**< Represents an error while opening, binding or performing similar operations on a socket. */
+	FIREFLY_ERROR_LABCOMM,
+	/**< An LabComm error has occured. */
+	FIREFLY_ERROR_PROTO_STATE,
+	/**< An LabComm error has occured. */
+	FIREFLY_ERROR_USER_DEF,
+	/**< Represents a user defined error. */
+	FIREFLY_ERROR_LAST
+	/**< \b Must be the last enum element. firefly_error_get_str() depends on this.*/
 };
 
 

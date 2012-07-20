@@ -14,6 +14,7 @@ const char *firefly_error_strings[] = {
 	"Memory allocation failed.",
 	"Socket operation failed.",
 	"LabComm error has occured.",
+	"Invalid protocol state occured.",
 	"User defined error.",
 	"End guard. Don't use this \"error\".",
 };

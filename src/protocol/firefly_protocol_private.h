@@ -81,6 +81,22 @@ struct firefly_connection {
 };
 
 /**
+ * Initializes a connection with protocol specific stuff.
+ *
+ * @param on_channel_opened Callback for when a channel has been opened.
+ * @param on_channel_recv Callback for when a channel has been recveived.
+ */
+struct firefly_connection *firefly_connection_new(
+		firefly_channel_is_open_f on_channel_opened,
+		firefly_channel_accept_f on_channel_recv);
+
+/**
+ * Frees a connection.
+ *
+ */
+void firefly_connection_free(struct firefly_connection **conn);
+
+/**
  * @brief The function called by the transport layer upon received data.
  * @param conn The connection the data is associated with.
  * @param data The received data.
@@ -90,26 +106,52 @@ void protocol_data_received(struct firefly_connection *conn,
 	       	unsigned char *data, size_t size);
 
 /**
- * @brief The callback registered with LabComm used to receive channel request associated packets.
+ * @brief Create a new channel with some defaults.
+ *
+ * @param conn The connection to create the channel on.
+ * @return The new channel.
+ * @retval NULL If the function failed to allocate the new channel.
+ */
+struct firefly_channel *firefly_channel_new(struct firefly_connection *conn);
+
+/**
+ * @brief Free the supplied channel.
+ *
+ * @param chan The channel to free.
+ * @param conn The connection the channel lives on.
+ */
+void firefly_channel_free(struct firefly_channel **chan,
+		struct firefly_connection *conn);
+
+/**
+ * @brief The callback registered with LabComm used to receive channel request.
  *
  * @param chan_req The decoded channel request
  * @param context The connection associated with the channel request.
  */
-void handle_channel_request(firefly_protocol_channel_request *chan_req, void *context);
+void handle_channel_request(firefly_protocol_channel_request *chan_req,
+		void *context);
 
 /**
- * @brief Send an ACK of a channel request.
+ * @brief The callback registered with LabComm used to receive channel response.
  *
- * The ACK will set source_chan_id to local channel ID and dest_chan_id to
- * remote channel ID. Both must be set on the channel.
- * @param chan The channel to be set up and ACK'd.
- * @param conn The connection to send the ACK on.
+ * @param chan_res The decoded channel response.
+ * @param context The connection associated with the channel response.
  */
-void protocol_channel_request_send_ack(struct firefly_channel *chan,
-		struct firefly_connection *conn);
+void handle_channel_response(firefly_protocol_channel_response *chan_res,
+		void *context);
 
 /**
- * @brief Find and return the channel associated with the given connection with the given local channel id.
+ * @brief The callback registered with LabComm used to receive channel ack.
+ *
+ * @param chan_res The decoded channel ack.
+ * @param context The connection associated with the channel ack.
+ */
+void handle_channel_ack(firefly_protocol_channel_ack *chan_ack, void *context);
+
+/**
+ * @brief Find and return the channel associated with the given connection with
+ * the given local channel id.
  *
  * @param id The local ID of the channel.
  * @param conn The connection the channel is associated with.

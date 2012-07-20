@@ -28,6 +28,7 @@
 #define WRITE_BUF_SIZE (128)	// Size of the LabComm buffer to write to.
 #define DATA_FILE ("data.enc")	// File where the encoded data can be written.
 #define SIG_FILE ("sig.enc")	// File where the encoded data can be written.
+#define REMOTE_CHAN_ID (2)	// Chan id used by all simulated remote channels.
 
 int init_suit()
 {
@@ -101,7 +102,7 @@ void handle_labcomm_error(enum labcomm_error error_id, size_t nbr_va_args, ...)
 	}
 	firefly_error(FIREFLY_ERROR_LABCOMM, 1, err_msg);
 
-	CU_FAIL("Labcomm error occured!\n");
+	CU_FAIL_FATAL("Labcomm error occured!\n");
 }
 
 void handle_firefly_protocol_data_sample(firefly_protocol_data_sample *proto,
@@ -203,7 +204,6 @@ static size_t nbr_entries = 0;
 void transport_write_udp_posix_mock_cmp(unsigned char *data, size_t data_size,
 					struct firefly_connection *conn)
 {
-
 	size_t file_size;
 	unsigned char *file_data;
 	if (nbr_entries == 0) {
@@ -466,25 +466,44 @@ void get_streams()
 	labcomm_mem_writer_context_t_free(&wmcontext);
 }
 
-static struct firefly_channel *test_chan_open_chan;
+static struct labcomm_decoder *test_dec;
+static labcomm_mem_reader_context_t *test_dec_ctx;
+static bool sent_chan_req = false;
+static bool sent_chan_ack = false;
+
+static void chan_open_handle_ack(firefly_protocol_channel_ack *ack, void *ctx)
+{
+	struct firefly_channel *chan = ((struct firefly_connection *) ctx)->
+		chan_list->chan;
+	CU_ASSERT_EQUAL(chan->local_chan_id, ack->source_chan_id);
+	CU_ASSERT_EQUAL(chan->remote_chan_id, ack->dest_chan_id);
+	CU_ASSERT_EQUAL(chan->remote_chan_id, REMOTE_CHAN_ID);
+	CU_ASSERT_TRUE(ack->ack);
+	sent_chan_ack = true;
+}
+static void chan_open_handle_req(firefly_protocol_channel_request *req,
+		void *ctx)
+{
+	struct firefly_channel *chan = ((struct firefly_connection *) ctx)->
+		chan_list->chan;
+	CU_ASSERT_EQUAL(chan->local_chan_id, req->source_chan_id);
+	CU_ASSERT_EQUAL(CHANNEL_ID_NOT_SET, req->dest_chan_id);
+	sent_chan_req = true;
+}
 static bool chan_opened_called = false;
 void chan_open_is_open_mock(struct firefly_channel *chan)
 {
-	// test
-	test_chan_open_chan = chan;
-	test_chan_open_chan->proto_encoder = NULL;
-	test_chan_open_chan->proto_decoder = NULL;
 	chan_opened_called = true;
 }
 
-static bool chan_open_req_sent = false;
-void chan_open_transport_write_mock(unsigned char *data, size_t size,
+void chan_open_transport_write_mock(unsigned char *data, size_t data_size,
 		struct firefly_connection *conn)
 {
-	transport_write_udp_posix_mock_cmp(data, size, conn);
-	if(nbr_entries != 0) {
-		chan_open_req_sent = true;
-	}
+	test_dec_ctx->enc_data = data;
+	test_dec_ctx->size = data_size;
+	labcomm_decoder_decode_one(test_dec);
+	test_dec_ctx->enc_data = NULL;
+	test_dec_ctx->size = 0;
 }
 
 void test_chan_open()
@@ -492,240 +511,227 @@ void test_chan_open()
 	firefly_protocol_channel_request chan_req;
 	chan_req.source_chan_id = 1;
 	chan_req.dest_chan_id = CHANNEL_ID_NOT_SET;
-	chan_req.ack = true;
+	firefly_protocol_channel_ack chan_ack;
+	chan_ack.ack = true;
+	chan_ack.dest_chan_id = REMOTE_CHAN_ID;
+	chan_ack.source_chan_id = 1;
 
-	create_labcomm_files_general(
-			labcomm_encoder_register_firefly_protocol_channel_request,
-			(lc_encode_f) labcomm_encode_firefly_protocol_channel_request,
-			&chan_req);
+	// Init connection and register error handler on encoder and decoder
+	struct firefly_connection *conn =
+		firefly_connection_new(chan_open_is_open_mock, NULL);
+	if (conn == NULL) {
+		CU_FAIL("Could not create connection.\n");
+	}
+	// Set some stuff that firefly_init_conn doesn't do
+	conn->transport_conn_platspec = NULL;
+	conn->transport_write = chan_open_transport_write_mock;
+	labcomm_register_error_handler_encoder(conn->transport_encoder,
+			handle_labcomm_error);
+	labcomm_register_error_handler_decoder(conn->transport_decoder,
+			handle_labcomm_error);
 
-
-	struct ff_transport_data writer_data;
-	writer_data.data = malloc(128);
-	writer_data.data_size = 128;
-	writer_data.pos = 0;
-
-	struct firefly_connection conn;
-	conn.transport_conn_platspec = NULL;
-	conn.writer_data = &writer_data;
-	conn.transport_write = chan_open_transport_write_mock;
-	conn.on_channel_opened = chan_open_is_open_mock;
-	conn.chan_list = NULL;
-	conn.transport_encoder =
-		labcomm_encoder_new(ff_transport_writer, &conn);
-	if (conn.transport_encoder == NULL) {
+	// Init decoder to test data that is sent
+	test_dec_ctx = malloc(sizeof(labcomm_mem_reader_context_t));
+	test_dec_ctx->enc_data = NULL;
+	test_dec_ctx->size = 0;
+	test_dec = labcomm_decoder_new(labcomm_mem_reader, test_dec_ctx);
+	if (test_dec == NULL) {
 		CU_FAIL("Encoder was null\n");
 	}
-	labcomm_encoder_register_firefly_protocol_channel_request(
-			conn.transport_encoder);
-	free(writer_data.data);
-	writer_data.data = NULL;
-	writer_data.data_size = 0;
-	writer_data.pos = 0;
+	labcomm_register_error_handler_decoder(test_dec, handle_labcomm_error);
+	labcomm_decoder_register_firefly_protocol_channel_request(test_dec,
+			chan_open_handle_req, conn);
+	labcomm_decoder_register_firefly_protocol_channel_ack(test_dec,
+			chan_open_handle_ack, conn);
 
-	struct ff_transport_data reader_data;
-	reader_data.data = NULL;
-	reader_data.data_size = 0;
-	reader_data.pos = 0;
-	conn.reader_data = &reader_data;
-	conn.transport_decoder = labcomm_decoder_new(ff_transport_reader,
-							&conn);
-	labcomm_decoder_register_firefly_protocol_channel_request(
-			conn.transport_decoder, handle_channel_request, &conn);
+	// Register channel_request on transport encoder
+	labcomm_encoder_register_firefly_protocol_channel_request(
+			conn->transport_encoder);
+	conn->writer_data->pos = 0;
+
+	// Register channel_ack on transport encoder
+	labcomm_encoder_register_firefly_protocol_channel_ack(
+			conn->transport_encoder);
+	conn->writer_data->pos = 0;
+
+	// Register channel response on transport decoder
+	labcomm_decoder_register_firefly_protocol_channel_response(
+			conn->transport_decoder, handle_channel_response, conn);
+
+	// Open a new channel
+	firefly_channel_open(conn);
 
 	// Test that a chan open request is sent.
-	firefly_channel_open(&conn);
-	CU_ASSERT_TRUE(chan_open_req_sent);
-	nbr_entries = 1;
-	chan_open_req_sent = false;
+	CU_ASSERT_TRUE(sent_chan_req);
+	sent_chan_req = false;
 
-	// Simulate receive ack
-	chan_req.source_chan_id = 2;
-	chan_req.dest_chan_id = 1;
-	chan_req.ack = true;
-
+	// Simulate that we received a channel response from the other end
+	firefly_protocol_channel_response chan_resp;
+	chan_resp.source_chan_id = REMOTE_CHAN_ID;
+	chan_resp.dest_chan_id = conn->chan_list->chan->local_chan_id;
+	chan_resp.ack = true;
 	create_labcomm_files_general(
-			labcomm_encoder_register_firefly_protocol_channel_request,
-			(lc_encode_f) labcomm_encode_firefly_protocol_channel_request,
-			&chan_req);
-
+		labcomm_encoder_register_firefly_protocol_channel_response,
+		(lc_encode_f) labcomm_encode_firefly_protocol_channel_response,
+		&chan_resp);
 	unsigned char *sign;
 	unsigned char *data;
 	size_t sign_size = read_file_to_mem(&sign, SIG_FILE);
 	size_t data_size = read_file_to_mem(&data, DATA_FILE);
+	protocol_data_received(conn, sign, sign_size);
+	protocol_data_received(conn, data, data_size);
 
-	chan_req.source_chan_id = 1;
-	chan_req.dest_chan_id = 2;
-	chan_req.ack = true;
-
-	create_labcomm_files_general(
-			labcomm_encoder_register_firefly_protocol_channel_request,
-			(lc_encode_f) labcomm_encode_firefly_protocol_channel_request,
-			&chan_req);
-
-	protocol_data_received(&conn, sign, sign_size);
-	protocol_data_received(&conn, data, data_size);
-	// check if last ACK is sent
-	CU_ASSERT_TRUE(chan_open_req_sent);
-
-	// Check ACK is sent
+	// Test that we sent an ack
+	CU_ASSERT_TRUE(sent_chan_ack);
+	sent_chan_ack = false;
 
 	// test chan_is_open is called
 	CU_ASSERT_TRUE(chan_opened_called);
 
 	// Clean up
-	chan_open_req_sent = false;
 	chan_opened_called = false;
 	free(sign);
 	free(data);
-	nbr_entries = 0;
-	labcomm_decoder_free(conn.transport_decoder);
-	labcomm_encoder_free(conn.transport_encoder);
-	free(conn.writer_data->data);
-	// TODO must clean up chan better here, it's a quick fix to make this
-	// test case leak free.
-	firefly_channel_close(&test_chan_open_chan, &conn);
+	labcomm_decoder_free(test_dec);
+	test_dec = NULL;
+	free(test_dec_ctx);
+	test_dec_ctx = NULL;
+	firefly_connection_free(&conn);
 }
 
-void chan_recv_chan_opened_mock(struct firefly_channel *chan)
+static void chan_recv_chan_opened_mock(struct firefly_channel *chan)
 {
 	chan_opened_called = true;
 }
 
+static bool sent_response = false;
 static bool chan_accept_called = false;
 static struct firefly_channel *accepted_chan;
-bool chan_recv_accept_chan(struct firefly_channel *chan)
+static bool chan_recv_accept_chan(struct firefly_channel *chan)
 {
 	accepted_chan = chan;
-	CU_ASSERT_EQUAL(chan->remote_chan_id, 1);
+	CU_ASSERT_EQUAL(chan->remote_chan_id, REMOTE_CHAN_ID);
 	chan_accept_called = true;
 	return true;
 }
 
-struct data_tmp_storage {
-	unsigned char *data_1;
-	size_t size_1;
-	unsigned char *data_2;
-	size_t size_2;
-} transport_write_data;
+void chan_recv_handle_res(firefly_protocol_channel_response *res, void *ctx)
+{
+	struct firefly_connection *conn = (struct firefly_connection *) ctx;
+	struct firefly_channel *chan = conn->chan_list->chan;
+	CU_ASSERT_EQUAL(res->dest_chan_id, REMOTE_CHAN_ID);
+	CU_ASSERT_EQUAL(chan->remote_chan_id, REMOTE_CHAN_ID);
+	CU_ASSERT_EQUAL(chan->local_chan_id, res->source_chan_id);
+	sent_response = true;
+}
 
 void chan_recv_transport_write_mock(unsigned char *data, size_t size,
 		struct firefly_connection *conn)
 {
-	if (transport_write_data.size_1 == 0) {
-		transport_write_data.data_1 = malloc(size);
-		memcpy(transport_write_data.data_1, data, size);
-		transport_write_data.size_1 = size;
-	} else {
-		transport_write_data.data_2 = malloc(size);
-		memcpy(transport_write_data.data_2, data, size);
-		transport_write_data.size_2 = size;
-	}
-
+	test_dec_ctx->enc_data = data;
+	test_dec_ctx->size = size;
+	labcomm_decoder_decode_one(test_dec);
+	test_dec_ctx->enc_data = NULL;
+	test_dec_ctx->size = 0;
 }
 
-void chan_recv_test_ack(firefly_protocol_channel_request *req, void *context)
+void chan_recv_test_resp(firefly_protocol_channel_response *res, void *context)
 {
-	CU_ASSERT_EQUAL(req->dest_chan_id, 1);
-	CU_ASSERT_EQUAL(req->source_chan_id, accepted_chan->local_chan_id);
-	CU_ASSERT_TRUE(req->ack);
+	CU_ASSERT_EQUAL(res->dest_chan_id, 1); // TODO 1?
+	CU_ASSERT_EQUAL(res->source_chan_id, accepted_chan->local_chan_id);
+	CU_ASSERT_TRUE(res->ack);
 }
 
 void test_chan_recv_accept()
 {
+	// Init connection and register error handler on encoder and decoder
+	struct firefly_connection *conn =
+		firefly_connection_new(chan_recv_chan_opened_mock,
+				chan_recv_accept_chan);
+	if (conn == NULL) {
+		CU_FAIL("Could not create connection.\n");
+	}
+	// Set some stuff that firefly_init_conn doesn't do
+	conn->transport_conn_platspec = NULL;
+	conn->transport_write = chan_recv_transport_write_mock;
+	labcomm_register_error_handler_encoder(conn->transport_encoder,
+			handle_labcomm_error);
+	labcomm_register_error_handler_decoder(conn->transport_decoder,
+			handle_labcomm_error);
+	//
+	// Init decoder to test data that is sent
+	test_dec_ctx = malloc(sizeof(labcomm_mem_reader_context_t));
+	test_dec_ctx->enc_data = NULL;
+	test_dec_ctx->size = 0;
+	test_dec = labcomm_decoder_new(labcomm_mem_reader, test_dec_ctx);
+	if (test_dec == NULL) {
+		CU_FAIL("Encoder was null\n");
+	}
+	labcomm_register_error_handler_decoder(test_dec, handle_labcomm_error);
+	labcomm_decoder_register_firefly_protocol_channel_response(test_dec,
+			chan_recv_handle_res, conn);
+
+	// Register all LabComm types used on this connection.
+	labcomm_decoder_register_firefly_protocol_channel_request(
+			conn->transport_decoder, handle_channel_request, conn);
+	labcomm_decoder_register_firefly_protocol_channel_ack(
+			conn->transport_decoder, handle_channel_ack, conn);
+	labcomm_encoder_register_firefly_protocol_channel_response(
+						conn->transport_encoder);
 	// Create channel request.
 	firefly_protocol_channel_request chan_req;
-	chan_req.source_chan_id = 1;
+	chan_req.source_chan_id = REMOTE_CHAN_ID;
 	chan_req.dest_chan_id = CHANNEL_ID_NOT_SET;
-	chan_req.ack = true;
 	create_labcomm_files_general(
 		labcomm_encoder_register_firefly_protocol_channel_request,
 		(lc_encode_f) labcomm_encode_firefly_protocol_channel_request,
 		&chan_req);
-
 	unsigned char *sign;
 	unsigned char *data;
 	size_t sign_size = read_file_to_mem(&sign, SIG_FILE);
 	size_t data_size = read_file_to_mem(&data, DATA_FILE);
 
-	// Create connection and transport_decoder.
-	struct firefly_connection conn;
-	conn.on_channel_opened = chan_recv_chan_opened_mock;
-	conn.on_channel_recv = chan_recv_accept_chan;
-	conn.chan_list = NULL;
-	conn.transport_decoder = labcomm_decoder_new(ff_transport_reader,
-							&conn);
-	if (conn.transport_decoder == NULL) {
-		CU_FAIL("Could not allocate a new decoder.\n");
-	}
-	labcomm_register_error_handler_decoder(conn.transport_decoder,
-						handle_labcomm_error);
-	labcomm_decoder_register_firefly_protocol_channel_request(
-			conn.transport_decoder, handle_channel_request, &conn);
-	struct ff_transport_data reader_data;
-	reader_data.data = NULL;
-	reader_data.data_size = 0;
-	reader_data.pos = 0;
-	conn.reader_data = &reader_data;
-
-	// Create transport_encoder.
-	struct ff_transport_data writer_data;
-	writer_data.data = malloc(WRITE_BUF_SIZE);
-	if (writer_data.data == NULL) {
-		CU_FAIL("Could not allocate writer_data.data.\n");
-	}
-	writer_data.data_size = WRITE_BUF_SIZE;
-	writer_data.pos = 0;
-	conn.writer_data = &writer_data;
-	conn.transport_encoder = labcomm_encoder_new(ff_transport_writer,
-							&conn);
-	if (conn.transport_encoder == NULL) {
-		CU_FAIL("Could not allocate a new encoder.\n");
-	}
-	labcomm_register_error_handler_encoder(conn.transport_encoder,
-						handle_labcomm_error);
-	conn.transport_write = chan_recv_transport_write_mock;
-	labcomm_encoder_register_firefly_protocol_channel_request(
-						conn.transport_encoder);
-
 	// Give channel request data to protocol layer.
-	protocol_data_received(&conn, sign, sign_size);
-	protocol_data_received(&conn, data, data_size);
+	protocol_data_received(conn, sign, sign_size);
+	protocol_data_received(conn, data, data_size);
 
-	// test accept called
+	// Test accept called.
 	CU_ASSERT_TRUE(chan_accept_called);
-	chan_accept_called = false;
+	chan_accept_called = false; // Reset value.
 
-	// test request ack is sent
-	labcomm_mem_reader_context_t mctx;
-	struct labcomm_decoder *dec_req_ack =
-		labcomm_decoder_new(labcomm_mem_reader, &mctx);
-	if (dec_req_ack == NULL) {
-		CU_FAIL("Could not allocate a new decoder.\n");
-	}
-	labcomm_register_error_handler_decoder(dec_req_ack,
-						handle_labcomm_error);
-	labcomm_decoder_register_firefly_protocol_channel_request(dec_req_ack,
-			chan_recv_test_ack, NULL);
-	mctx.enc_data = transport_write_data.data_1;
-	mctx.size = transport_write_data.size_1;
-	labcomm_decoder_decode_one(dec_req_ack);
-	mctx.enc_data = transport_write_data.data_2;
-	mctx.size = transport_write_data.size_2;
-	labcomm_decoder_decode_one(dec_req_ack);
+	CU_ASSERT_TRUE(sent_response);
+	sent_response = false;
 
-	chan_req.dest_chan_id = accepted_chan->remote_chan_id;
-	chan_req.source_chan_id = accepted_chan->local_chan_id;
-	chan_req.ack = true;
+	// simulate an ACK is sent from remote
+	firefly_protocol_channel_ack ack;
+	ack.dest_chan_id = conn->chan_list->chan->local_chan_id;
+	ack.source_chan_id = conn->chan_list->chan->remote_chan_id;
+	ack.ack = true;
 	create_labcomm_files_general(
-		labcomm_encoder_register_firefly_protocol_channel_request,
-		(lc_encode_f) labcomm_encode_firefly_protocol_channel_request,
-		&chan_req);
+		labcomm_encoder_register_firefly_protocol_channel_ack,
+		(lc_encode_f) labcomm_encode_firefly_protocol_channel_ack,
+		&ack);
 
-	data_size = read_file_to_mem(&data, DATA_FILE);
-	protocol_data_received(&conn, data, data_size);
+	unsigned char *ack_sign;
+	unsigned char *ack_data;
+	size_t ack_sign_size = read_file_to_mem(&ack_sign, SIG_FILE);
+	size_t ack_data_size = read_file_to_mem(&ack_data, DATA_FILE);
+	// Fixe type ID due to multiple types on proto_decoder
+	ack_data[3] = 0x81;
+	ack_sign[7] = 0x81;
+	
+	// Recieving end and got an ack
+	protocol_data_received(conn, ack_sign, ack_sign_size);
+	protocol_data_received(conn, ack_data, ack_data_size);
 
 	CU_ASSERT_TRUE(chan_opened_called);
+	free(sign);
+	free(data);
+	free(ack_sign);
+	free(ack_data);
+	labcomm_decoder_free(test_dec);
+	free(test_dec_ctx);
+	firefly_connection_free(&conn);
 }
 
 int main()
