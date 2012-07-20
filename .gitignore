@@ -4,3 +4,4 @@ lib/
 gen/
 *.mp3
 *.enc
+.clang_complete
