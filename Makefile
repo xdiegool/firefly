@@ -40,13 +40,20 @@ SAMPLE_TEST_BINS= $(patsubst %,$(BUILD_DIR)/test/%,labcomm_test_decoder labcomm_
 
 LIBS=$(patsubst %,$(BUILD_DIR)/lib%.a,firefly)
 
-TEST_PROGS= $(addprefix $(BUILD_DIR)/,test/test_transport_udp_posix test/test_protocol)
+TEST_PROTO_OBJS= $(patsubst %,$(BUILD_DIR)/test/%.o,test_labcomm_utils test_proto_chan test_proto_translc test_protocol_main)
+
+TEST_TRANSP_OBJS= $(patsubst %,$(BUILD_DIR)/test/%.o,test_transport_main test_transport_udp_posix)
+
+TEST_PROGS= $(addprefix $(BUILD_DIR)/,test/test_protocol_main test/test_transport_main)
 
 ## Targets
 
 .PHONY: all doc doc-open clean cleaner install test
 # This will enable expression involving automatic variables in the prerequisities list. it must be defined before any usage of these feauteres.
 .SECONDEXPANSION:
+
+# Include dependency files
+include $(FIREFLY_OBJS:.o=.d)
 
 # target: all - Build all libs and tests.
 all: $(BUILD_DIR) $(LIBS) $(TEST_PROGS) tags
@@ -72,7 +79,11 @@ $(BUILD_DIR)/test/%: test/%.c $(BUILD_DIR)/libfirefly.a
 	$(CC) $(CFLAGS) -L$(BUILD_DIR) -L$(LABCOMMLIBPATH) $< -lcunit -lfirefly -llabcomm -o $@
 
 # Test programs depends on liblabcomm.
-$(TEST_PROGS): $(BUILD_DIR) $(LIBS) $(LABCOMMLIBPATH)/liblabcomm.a
+$(BUILD_DIR)/test/test_protocol_main: $(TEST_PROTO_OBJS) $(BUILD_DIR) $(LIBS) $(LABCOMMLIBPATH)/liblabcomm.a
+	$(CC) $(CFLAGS) -L$(BUILD_DIR) -L$(LABCOMMLIBPATH) $(filter %.o,$^) -lcunit -lfirefly -llabcomm -o $@
+
+$(BUILD_DIR)/test/test_transport_main: $(TEST_TRANSP_OBJS) $(BUILD_DIR)/transport/firefly_transport_udp_posix.o $(BUILD_DIR)/firefly_errors.o $(BUILD_DIR) $(LABCOMMLIBPATH)/liblabcomm.a
+	$(CC) $(CFLAGS) -L$(BUILD_DIR) -L$(LABCOMMLIBPATH) $(filter %.o,$^) -lcunit -llabcomm -o $@
 
 # target: test - Run all tests.
 test: $(TEST_PROGS)
@@ -100,11 +111,6 @@ $(LABCOMMLIBPATH)/liblabcomm.a:
 	@echo "======Building LabComm======"
 	$(MAKE) -C $(LABCOMMLIBPATH) -e LABCOMM_NO_EXPERIMENTAL=true all
 	@echo "======End building LabComm======"
-
-
-# Programs that depends on the protocol sample types.
-build/test/test_protocol: $(BUILD_DIR)/gen/firefly_protocol.o
-
 
 # Let the labcomm .o_file depend on the generated .c and .h files.
 $(GEN_OBJ_FILES): $$(patsubst $$(BUILD_DIR)/%.o,%.c,$$@) $$(patsubst $$(BUILD_DIR)/%.o,%.h,$$@)
@@ -135,10 +141,18 @@ tags:
 help:
 	@egrep "#\starget:" [Mm]akefile  | sed 's/\s-\s/\t\t\t/' | cut -d " " -f3- | sort -d
 
+# target: %.d - Make dependencies files
+$(BUILD_DIR)/%.d: %.c $(BUILD_DIR)
+	mkdir -p $(dir $@)
+	$(SHELL) -ec '$(CC) -M $(CFLAGS) $< \
+	| sed '\''s/\($(subst /,\/,$(BUILD_DIR)/$*)\)\.o[ :]*/\1.o $(subst /,\/,$@) : /g'\'' > $@; \
+	[ -s $@ ] || rm -f $@'
+
 # target: clean  - Clean most generated files..
 clean:
 	$(RM) $(LIBS)
 	$(RM) $(FIREFLY_OBJS)
+	$(RM) $(FIREFLY_OBJS:.o=.d)
 	$(RM) $(TEST_PROGS)
 	$(RM) $(GEN_DIR)/*
 	$(RM) $(addsuffix .enc,data sig)
