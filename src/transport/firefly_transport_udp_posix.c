@@ -280,14 +280,18 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 	// Find existing connection or create new
 	struct firefly_connection *conn = find_connection_by_addr(remote_addr,
 									  llp);
-	bool existing_conn = (conn != NULL);
-	if (!existing_conn) {
+	bool retain_remote_addr = false;
+	if (conn == NULL) {
 		conn = new_connection(llp, remote_addr);
+		if (conn != NULL) {
+			/* We just *successfully* used remote_addr. Do not free it. */
+			retain_remote_addr = true;
+		}
 	}
 	if (conn != NULL) { // Existing, not rejected and created conn. 
 		protocol_data_received(conn, llp_udp->recv_buf, pkg_len);
 	}
-	if (existing_conn) {
+	if (!retain_remote_addr) {
 		free(remote_addr);
 	}
 }
