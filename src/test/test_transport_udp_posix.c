@@ -514,30 +514,31 @@ void test_reader_scale_back()
 	good_conn_received = false;
 	data_received = false;
 
-	for (int i = 0; i < sbn; i++) {
+	for (int i = 0; i <= sbn; i++) {
 		unsigned char *buf;
 		unsigned int s;
 		if (i != 3) {
 			buf = send_buf;
 			s = sizeof(send_buf);
+			data_recv_size = sizeof(send_buf);
 		} else {
 			buf = send_buf_medium;
 			s = sizeof(send_buf_medium);
+			data_recv_size = sizeof(send_buf_medium);
 		}
 		send_data(&remote_addr, remote_port, buf, s);
-		data_recv_size = sizeof(send_buf);
-		data_recv_buf = send_buf;
+		data_recv_buf = buf;
 		firefly_transport_udp_posix_read(llp);
 		CU_ASSERT_TRUE(data_received);
 		data_received = false;
 	}
-	firefly_transport_udp_posix_free(&llp);
-	data_received = false;
-	good_conn_received = false;
 	struct transport_llp_udp_posix *udp_llp =
 		(struct transport_llp_udp_posix *)llp->llp_platspec;
 
-	CU_ASSERT_EQUAL(udp_llp->scale_back_nbr, sizeof(send_buf_medium));
+	CU_ASSERT_EQUAL(udp_llp->recv_buf_size, sizeof(send_buf_medium));
+	firefly_transport_udp_posix_free(&llp);
+	data_received = false;
+	good_conn_received = false;
 }
 
 

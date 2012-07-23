@@ -88,6 +88,7 @@ void firefly_transport_udp_posix_free(struct firefly_transport_llp **llp)
 		head = tmp;
 	}
 	free(llp_udp->local_addr);
+	free(llp_udp->recv_buf);
 	free(llp_udp);
 	free((*llp));
 	*llp = NULL;
@@ -174,7 +175,7 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 					  __FUNCTION__, __LINE__);
 		pkg_len = 0;
 	}
-	if (llp_udp->recv_buf == NULL &&
+	if (llp_udp->recv_buf == NULL ||
 		pkg_len > llp_udp->recv_buf_size) {
 		unsigned char *tmp;
 
@@ -186,6 +187,7 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 		} else {
 			llp_udp->recv_buf = tmp;
 			llp_udp->recv_buf_size = pkg_len;
+			llp_udp->scale_back_size = 0;
 		}
 		llp_udp->nbr_smaller = 0;
 	} else if (llp_udp->nbr_smaller >= llp_udp->scale_back_nbr) {
@@ -198,11 +200,14 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 						  __FUNCTION__, __LINE__);
 		} else {
 			llp_udp->recv_buf = tmp;
-			llp_udp->recv_buf_size = pkg_len;
+			llp_udp->recv_buf_size = llp_udp->scale_back_size;
+			llp_udp->scale_back_size = 0;
 		}
 		llp_udp->nbr_smaller = 0;
 	} else {
 		llp_udp->nbr_smaller++;
+		if (pkg_len > llp_udp->scale_back_size)
+			llp_udp->scale_back_size = pkg_len;
 	}
 	socklen_t len = sizeof(struct sockaddr_in);
 	int res = recvfrom(llp_udp->local_udp_socket, llp_udp->recv_buf, pkg_len, 0,
