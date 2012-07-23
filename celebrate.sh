@@ -1,15 +1,19 @@
 #!/bin/bash
+# TODO check valgrind too!
 MUSIC_DIR="$HOME"/music
+all_passed=0
 
 pkill vlc
 log_file="/tmp/firefly_make.log"
-make test | tee "$log_file"
+make test |& tee "$log_file"
+if (grep "error:\|Segmentation fault" $log_file);  then
+	all_passed=1
+fi
 #make test > "$log_file"
 
 resul=$(grep tests "$log_file" | awk -F ' ' '{print $5}')
 resul=($resul)
 
-all_passed=0
 for res in "${resul[@]}"; do 
 	#echo "$res"
 	all_passed=$(echo "${all_passed}+${res}" | bc)

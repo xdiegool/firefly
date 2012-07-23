@@ -15,28 +15,15 @@
  * @param conn The #firefly_connection to written the data on.
  */
 typedef void (* transport_write_f)(unsigned char *data, size_t data_size,
-		struct firefly_connection *conn);
+					struct firefly_connection *conn);
 
 /**
- * @breif Structure describing a buffer where transport data is stored.
+ * @brief Structure describing a buffer where transport data is stored.
  */
 struct ff_transport_data {
 	unsigned char *data;	/**< Buffer where transport data is written. */
 	size_t data_size;	/**< The size of \a data buffer. */
 	size_t pos;		/**< The next position to write to. */
-};
-
-/**
- * @brief A structure representing a channel.
- */
-struct firefly_channel {
-	struct labcomm_encoder *proto_encoder; /**< LabComm encoder for this
-					   			channel.*/
-	struct labcomm_decoder *proto_decoder; /**< LabComm decoder for this
-					   			channel. */
-	int local_chan_id; /**< The local ID used to identify this channel */
-	int remote_chan_id; /**< The ID used by the remote node to identify
-				this channel */
 };
 
 /**
@@ -72,6 +59,25 @@ struct firefly_connection {
 	struct channel_list_node *chan_list; /**< The list of channels
 							associated with this
 							connection. */
+};
+
+/**
+ * @brief A structure representing a channel.
+ */
+struct firefly_channel {
+	struct firefly_connection *conn; /**< The connection the channel exists
+					   	   	   	   on. */
+	int local_id; /**< The local ID used to identify this channel */
+	int remote_id; /**< The ID used by the remote node to identify
+				this channel */
+	struct labcomm_encoder *proto_encoder; /**< LabComm encoder for this
+					   			channel.*/
+	struct labcomm_decoder *proto_decoder; /**< LabComm decoder for this
+					   			channel. */
+	struct ff_transport_data *writer_data; /**< Where the writer data is
+								saved. */
+	struct ff_transport_data *reader_data; /**< Where the reader data is
+								saved. */
 };
 
 /**
@@ -130,10 +136,23 @@ void labcomm_error_to_ff_error(enum labcomm_error error_id, size_t nbr_va_args,
 									...);
 
 /**
+ * @brief A general LabComm reader used to feed a decoder with data from
+ * memory.
+ *
+ * @param r The labcomm reader that requests data.
+ * @param action What action is requested.
+ * @param reader_data The data struct containing the encoded data.
+ * @return Value indicating how the action could be handled.
+ */
+int firefly_labcomm_reader(labcomm_reader_t *r, labcomm_reader_action_t action,
+		struct ff_transport_data *reader_data);
+
+/**
  * @brief Feeds LabComm decoder with bytes from the transport layer.
  * @param r The labcomm reader that requests data.
  * @param action What action is requested.
  * @return Value indicating how the action could be handled.
+ * TODO rename this. prefix ff_ is nonstandard. No need to prefix with firefly for private functions. probalby prefix "labcomm_" should be neought so we know that it has with labcomm to do.
  */
 int ff_transport_reader(labcomm_reader_t *r, labcomm_reader_action_t action);
 
@@ -143,7 +162,25 @@ int ff_transport_reader(labcomm_reader_t *r, labcomm_reader_action_t action);
  * @param w The labcomm writer that encodes the data.
  * @param action What action is requested.
  * @return Value indicating how the action could be handled.
+ * TODO rename this. prefix ff_ is nonstandard. No need to prefix with firefly for private functions. probalby prefix "labcomm_" should be neought so we know that it has with labcomm to do.
  */
 int ff_transport_writer(labcomm_writer_t *w, labcomm_writer_action_t action);
+
+/**
+ * @brief Feeds LabComm decoder with bytes from the protocol layer.
+ * @param r The labcomm reader that requests data.
+ * @param action What action is requested.
+ * @return Value indicating how the action could be handled.
+ */
+int protocol_reader(labcomm_reader_t *r, labcomm_reader_action_t action);
+
+/**
+ * @brief Encode application specific LabComm samples.
+ * @param w The labcomm writer that encodes the data.
+ * @param action What action is requested.
+ * @return Value indicating how the action could be handled.
+ */
+int protocol_writer(labcomm_writer_t *w, labcomm_writer_action_t action);
+
 
 #endif
