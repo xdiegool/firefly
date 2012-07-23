@@ -256,8 +256,9 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 	struct transport_llp_udp_posix *llp_udp =
 		(struct transport_llp_udp_posix *) llp->llp_platspec;
 
-	// Read data from socket
-	size_t pkg_len;
+	// Read data from socket, = 0 is crucial due to ioctl only sets the first 32
+	// bits of pkg_len
+	size_t pkg_len = 0;
 	ioctl(llp_udp->local_udp_socket, FIONREAD, &pkg_len);
 	if (pkg_len == -1) {
 		firefly_error(FIREFLY_ERROR_SOCKET, 3,
