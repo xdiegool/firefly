@@ -16,6 +16,7 @@ const char *firefly_error_strings[] = {
 	"Socket operation failed.",
 	"LabComm error has occured.",
 	"User defined error.",
+	"User has not set callback.",
 	"End guard. Don't use this \"error\".",
 };
 
@@ -31,9 +32,9 @@ const char *firefly_error_get_str(enum firefly_error error_id)
 
 void firefly_error(enum firefly_error error_id, size_t nbr_va_args, ...)
 {
-	const char *err_msg = firefly_error_get_str(error_id); // The final
-								// string to
-								// print.
+	/* The final string to print. */
+	const char *err_msg = firefly_error_get_str(error_id);
+
 	if (err_msg == NULL) {
 		err_msg = "Error with an unknown error ID occurred.";
 	}
