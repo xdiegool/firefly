@@ -15,6 +15,7 @@
 #include "test/test_labcomm_utils.h"
 
 #define REMOTE_CHAN_ID (2)	// Chan id used by all simulated remote channels.
+
 static struct labcomm_decoder *test_dec;
 static labcomm_mem_reader_context_t *test_dec_ctx;
 static bool sent_chan_req = false;
@@ -314,10 +315,98 @@ void test_chan_recv_accept()
 	protocol_data_received(conn, ack_data, ack_data_size);
 
 	CU_ASSERT_TRUE(chan_opened_called);
+	chan_opened_called = false;
 	free(sign);
 	free(data);
 	free(ack_sign);
 	free(ack_data);
+	labcomm_decoder_free(test_dec);
+	free(test_dec_ctx);
+	firefly_connection_free(&conn);
+}
+
+static void chan_recv_reject_handle_chan_res(
+		firefly_protocol_channel_response *res, void *context)
+{
+	CU_ASSERT_FALSE(res->ack);
+	CU_ASSERT_EQUAL(res->dest_chan_id, REMOTE_CHAN_ID);
+	// TODO should remote chan be any specific value? seams not nessesary.
+	CU_ASSERT_EQUAL(res->source_chan_id, CHANNEL_ID_NOT_SET);
+	sent_response = true;
+}
+
+static bool chan_recv_reject_chan(struct firefly_channel *chan)
+{
+	chan_accept_called = true;
+	return false;
+}
+
+void test_chan_recv_reject()
+{
+	// Setup connection
+	struct firefly_connection *conn =
+		firefly_connection_new(chan_recv_chan_opened_mock,
+				chan_recv_reject_chan);
+	if (conn == NULL) {
+		CU_FAIL("Could not create connection.\n");
+	}
+	// Set some stuff that firefly_init_conn doesn't do
+	conn->transport_conn_platspec = NULL;
+	conn->transport_write = chan_recv_transport_write_mock;
+	labcomm_register_error_handler_encoder(conn->transport_encoder,
+			handle_labcomm_error);
+	labcomm_register_error_handler_decoder(conn->transport_decoder,
+			handle_labcomm_error);
+
+	// Init decoder to test data that is sent
+	test_dec_ctx = malloc(sizeof(labcomm_mem_reader_context_t));
+	test_dec_ctx->enc_data = NULL;
+	test_dec_ctx->size = 0;
+	test_dec = labcomm_decoder_new(labcomm_mem_reader, test_dec_ctx);
+	if (test_dec == NULL) {
+		CU_FAIL("Encoder was null\n");
+	}
+	labcomm_register_error_handler_decoder(test_dec, handle_labcomm_error);
+	labcomm_decoder_register_firefly_protocol_channel_response(test_dec,
+			chan_recv_reject_handle_chan_res, NULL);
+
+	// register chan_req on conn decoder and chan_res on conn encoder
+	labcomm_decoder_register_firefly_protocol_channel_request(conn->transport_decoder, handle_channel_request, conn);
+	labcomm_encoder_register_firefly_protocol_channel_response(conn->transport_encoder);
+
+	// create temporary labcomm encoder to send request.
+	firefly_protocol_channel_request chan_req;
+	chan_req.dest_chan_id = CHANNEL_ID_NOT_SET;
+	chan_req.source_chan_id = REMOTE_CHAN_ID;
+	create_labcomm_files_general(labcomm_encoder_register_firefly_protocol_channel_request,
+			(lc_encode_f) labcomm_encode_firefly_protocol_channel_request,
+			&chan_req);
+	unsigned char *chan_req_sig;
+	unsigned char *chan_req_data;
+	size_t chan_req_ssize = read_file_to_mem(&chan_req_sig, SIG_FILE);
+	size_t chan_req_dsize = read_file_to_mem(&chan_req_data, DATA_FILE);
+
+	// send channel request
+	protocol_data_received(conn, chan_req_sig, chan_req_ssize);
+	protocol_data_received(conn, chan_req_data, chan_req_dsize);
+
+	// check accept called
+	CU_ASSERT_TRUE(chan_accept_called);
+	// check chan_res sent and correctly set
+	CU_ASSERT_TRUE(sent_response);
+
+	// check chan_opened is not called.
+	CU_ASSERT_FALSE(chan_opened_called);
+
+	// check channel is destroyed and all related resources dealloced
+	CU_ASSERT_PTR_NULL(conn->chan_list);
+
+	// Clean up
+	chan_opened_called = false;
+	chan_accept_called = false;
+	sent_response = false;
+	free(chan_req_sig);
+	free(chan_req_data);
 	labcomm_decoder_free(test_dec);
 	free(test_dec_ctx);
 	firefly_connection_free(&conn);

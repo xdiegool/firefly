@@ -184,6 +184,10 @@ void handle_channel_request(firefly_protocol_channel_request *chan_req,
 		res.dest_chan_id = chan->remote_id;
 		res.source_chan_id = chan->local_id;
 		res.ack = conn->on_channel_recv(chan);
+		if (!res.ack) {
+			res.source_chan_id = CHANNEL_ID_NOT_SET;
+			firefly_channel_free(&chan, conn);
+		}
 
 		labcomm_encode_firefly_protocol_channel_response(
 				conn->transport_encoder, &res);

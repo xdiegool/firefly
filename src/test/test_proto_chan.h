@@ -10,7 +10,11 @@ void test_get_streams();
 
 void test_chan_open();
 
+// TODO void test_chan_open_rejected();
+
 void test_chan_recv_accept();
+
+void test_chan_recv_reject();
 
 void test_chan_open_recv();
 
