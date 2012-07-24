@@ -2,6 +2,8 @@
  * @file
  * @brief Test the transport layer with POSIX UDP.
  */
+#include "test/test_transport_udp_posix.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -21,15 +23,13 @@
 #include "transport/firefly_transport_udp_posix_private.h"
 #include "protocol/firefly_protocol_private.h"
 
-int init_suit()
+int init_suit_udp_posix()
 {
-	//printf("Initializing suit.\n");
 	return 0; // Success.
 }
 
-int clean_suit()
+int clean_suit_udp_posix()
 {
-	//printf("Cleaning suit.\n");
 	return 0; // Success.
 }
 
@@ -161,7 +161,8 @@ bool recv_data_recv_conn(struct firefly_connection *conn)
 	return true;
 }
 
-void test_recv_data() {
+void test_recv_data()
+{
 	struct firefly_transport_llp *llp = firefly_transport_llp_udp_posix_new(
 					local_port, recv_data_recv_conn);
 	struct sockaddr_in remote_addr;
@@ -470,6 +471,51 @@ void test_conn_open_and_recv()
 	firefly_transport_udp_posix_free(&llp);
 }
 
+static struct firefly_connection *conn_recv = NULL;
+/* Callback when a new connection arrives at transport layer. */
+bool open_and_recv_conn_recv_conn(struct firefly_connection *conn)
+{
+	conn_recv = conn;
+	return good_conn_received = true;
+}
+
+void test_open_and_recv_with_two_llp()
+{
+	struct firefly_transport_llp *llp_recv = 
+		firefly_transport_llp_udp_posix_new(local_port,
+			       	open_and_recv_conn_recv_conn);
+
+	struct firefly_transport_llp *llp_send =
+		firefly_transport_llp_udp_posix_new(remote_port,
+					recv_data_recv_conn);
+
+	struct firefly_connection *conn_send = 
+		firefly_transport_connection_udp_posix_open("127.0.0.1",
+							local_port, llp_send);
+	CU_ASSERT_PTR_NOT_NULL(conn_send);
+
+	firefly_transport_write_udp_posix(send_buf, sizeof(send_buf),
+						conn_send);
+
+	firefly_transport_udp_posix_read(llp_recv);
+
+	CU_ASSERT_PTR_NOT_NULL(conn_recv);
+	CU_ASSERT_TRUE(good_conn_received);
+	CU_ASSERT_TRUE(data_received);
+	good_conn_received = false;
+	data_received = false;
+
+	firefly_transport_write_udp_posix(send_buf, sizeof(send_buf),
+						conn_recv);
+
+	firefly_transport_udp_posix_read(llp_send);
+	CU_ASSERT_TRUE(data_received);
+
+	data_received = false;
+	firefly_transport_udp_posix_free(&llp_recv);
+	firefly_transport_udp_posix_free(&llp_send);
+}
+
 void test_recv_big_connection()
 {
 	struct firefly_transport_llp *llp =
@@ -549,130 +595,4 @@ void test_reader_scale_back()
 	firefly_transport_udp_posix_free(&llp);
 	data_received = false;
 	good_conn_received = false;
-}
-
-
-static struct firefly_connection *conn_recv = NULL;
-/* Callback when a new connection arrives at transport layer. */
-bool open_and_recv_conn_recv_conn(struct firefly_connection *conn)
-{
-	conn_recv = conn;
-	return good_conn_received = true;
-}
-
-void test_open_and_recv_with_two_llp()
-{
-	struct firefly_transport_llp *llp_recv = 
-		firefly_transport_llp_udp_posix_new(local_port,
-			       	open_and_recv_conn_recv_conn);
-
-	struct firefly_transport_llp *llp_send =
-		firefly_transport_llp_udp_posix_new(remote_port,
-					recv_data_recv_conn);
-
-	struct firefly_connection *conn_send = 
-		firefly_transport_connection_udp_posix_open("127.0.0.1",
-							local_port, llp_send);
-	CU_ASSERT_PTR_NOT_NULL(conn_send);
-
-	firefly_transport_write_udp_posix(send_buf, sizeof(send_buf),
-						conn_send);
-
-	firefly_transport_udp_posix_read(llp_recv);
-
-	CU_ASSERT_PTR_NOT_NULL(conn_recv);
-	CU_ASSERT_TRUE(good_conn_received);
-	CU_ASSERT_TRUE(data_received);
-	good_conn_received = false;
-	data_received = false;
-
-	firefly_transport_write_udp_posix(send_buf, sizeof(send_buf),
-						conn_recv);
-
-	firefly_transport_udp_posix_read(llp_send);
-	CU_ASSERT_TRUE(data_received);
-
-	data_received = false;
-	firefly_transport_udp_posix_free(&llp_recv);
-	firefly_transport_udp_posix_free(&llp_send);
-}
-
-int main()
-{
-	CU_pSuite pSuite = NULL;
-
-	// Initialize CUnit test registry.
-	if (CUE_SUCCESS != CU_initialize_registry()) {
-		return CU_get_error();
-	}
-
-	// Add our test suites.
-	pSuite = CU_add_suite("udp_core", init_suit, clean_suit);
-	if (pSuite == NULL) {
-		CU_cleanup_registry();
-		return CU_get_error();
-	}
-
-	if (
-		(CU_add_test(pSuite, "test_find_conn_by_addr",
-				test_find_conn_by_addr) == NULL)
-		       ||
-		(CU_add_test(pSuite, "test_add_conn_to_llp",
-				test_add_conn_to_llp) == NULL)
-		       ||
-		(CU_add_test(pSuite, "test_recv_connection",
-				test_recv_connection) == NULL)
-		       ||
-		(CU_add_test(pSuite, "test_recv_data",
-				test_recv_data) == NULL)
-		       ||
-		(CU_add_test(pSuite, "test_recv_conn_and_data",
-				test_recv_conn_and_data) == NULL)
-		       ||
-		(CU_add_test(pSuite, "test_recv_conn_keep",
-				test_recv_conn_keep) == NULL)
-		       ||
-		(CU_add_test(pSuite, "test_recv_conn_reject",
-				test_recv_conn_reject) == NULL)
-		       ||
-		(CU_add_test(pSuite, "test_recv_conn_keep_two",
-				test_recv_conn_keep_two) == NULL)
-		       ||
-		(CU_add_test(pSuite, "test_recv_conn_and_two_data",
-				test_recv_conn_and_two_data) == NULL)
-		       ||
-		(CU_add_test(pSuite, "test_null_pointer_as_callback",
-				test_null_pointer_as_callback) == NULL)
-		       ||
-		(CU_add_test(pSuite, "test_conn_open_and_send",
-				test_conn_open_and_send) == NULL)
-		       ||
-		(CU_add_test(pSuite, "test_conn_open_and_recv",
-				test_conn_open_and_recv) == NULL)
-		       ||
-		(CU_add_test(pSuite, "test_open_and_recv_with_two_llp",
-				test_open_and_recv_with_two_llp) == NULL)
-		||
-		(CU_add_test(pSuite, "test_recv_big_connection",
-					 test_recv_big_connection) == NULL)
-		||
-		(CU_add_test(pSuite, "test_reader_scale_back",
-					 test_reader_scale_back) == NULL)
-
-	   ) {
-		CU_cleanup_registry();
-		return CU_get_error();
-	}
-
-	// Set verbosity.
-	CU_basic_set_mode(CU_BRM_VERBOSE);
-	/*CU_console_run_tests();*/
-
-	// Run all test suites.
-	CU_basic_run_tests();
-
-	// Clean up.
-	CU_cleanup_registry();
-
-	return CU_get_error();
 }

@@ -12,35 +12,100 @@
 
 #define BUFFER_SIZE (128)
 
-void firefly_channel_open(struct firefly_connection *conn)
+struct firefly_connection *firefly_connection_new(
+		firefly_channel_is_open_f on_channel_opened,
+		firefly_channel_accept_f on_channel_recv)
 {
-	// TODO implement better
-	firefly_protocol_channel_request chan_req;
-	chan_req.source_chan_id = 1;
-	chan_req.dest_chan_id = 0;
-	chan_req.ack = true;
+	struct firefly_connection *conn =
+		malloc(sizeof(struct firefly_connection));
+	if (conn == NULL) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 1, "malloc failed\n");
+	}
+	// Init writer data
+	struct ff_transport_data *writer_data =
+				malloc(sizeof(struct ff_transport_data));
+	if (writer_data == NULL) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 1, "malloc failed\n");
+	}
+	writer_data->data = malloc(BUFFER_SIZE);
+	if (writer_data->data == NULL) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 1, "malloc failed\n");
+	}
+	writer_data->data_size = BUFFER_SIZE;
+	writer_data->pos = 0;
+	conn->writer_data = writer_data;
 
-	conn->writer_data->data = malloc(128);
-	conn->writer_data->data_size = 128;
-	conn->writer_data->pos = 0;
+	// Init reader data
+	struct ff_transport_data *reader_data =
+				malloc(sizeof(struct ff_transport_data));
+	if (reader_data == NULL) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 1, "malloc failed\n");
+	}
+	reader_data->data = NULL;
+	reader_data->data_size = 0;
+	reader_data->pos = 0;
+	conn->reader_data = reader_data;
 
-	struct firefly_channel *chan = malloc(sizeof(struct firefly_channel));
-	chan->local_id = 1;
-	chan->remote_id = -1;
-	add_channel_to_connection(chan, conn);
+	conn->on_channel_opened = on_channel_opened;
+	conn->on_channel_recv = on_channel_recv;
+	conn->chan_list = NULL;
+	conn->transport_encoder =
+		labcomm_encoder_new(ff_transport_writer, conn);
+	if (conn->transport_encoder == NULL) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 1, "malloc failed\n");
+	}
 
-	labcomm_encode_firefly_protocol_channel_request(conn->transport_encoder,
-			&chan_req);
+	conn->transport_decoder =
+		labcomm_decoder_new(ff_transport_reader, conn);
+	if (conn->transport_decoder == NULL) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 1, "malloc failed\n");
+	}
+
+	return conn;
+}
+void firefly_connection_free(struct firefly_connection **conn)
+{
+	if ((*conn)->transport_encoder != NULL) {
+		labcomm_encoder_free((*conn)->transport_encoder);
+	}
+	if ((*conn)->transport_decoder != NULL) {
+		labcomm_decoder_free((*conn)->transport_decoder);
+	}
+	free((*conn)->reader_data);
+	free((*conn)->writer_data->data);
+	free((*conn)->writer_data);
+	while ((*conn)->chan_list != NULL) {
+		firefly_channel_close(&(*conn)->chan_list->chan, *conn);
+	}
+	free((*conn)->chan_list);
+	free((*conn));
+	*conn = NULL;
 }
 
-void firefly_channel_close(struct firefly_channel **chan,
+struct firefly_channel *firefly_channel_new(struct firefly_connection *conn)
+{
+	struct firefly_channel *chan = malloc(sizeof(struct firefly_channel));
+
+	if (chan != NULL) {
+		chan->local_id = next_channel_id(conn);
+		chan->remote_id = CHANNEL_ID_NOT_SET;
+		chan->proto_decoder = NULL;
+		chan->proto_encoder = NULL;
+		add_channel_to_connection(chan, conn);
+	}
+
+	return chan;
+}
+
+void firefly_channel_free(struct firefly_channel **chan,
 		struct firefly_connection *conn)
 {
-	// TODO implement better, quick and dirty implementation to make the
-	// tests mem leak free
+	if ((*chan) == NULL) {
+		return;
+	}
 
 	struct channel_list_node **head = &conn->chan_list;
-	while (*head != NULL) {
+	while (head !=NULL && (*head) != NULL) {
 		if ((*head)->chan->local_id == (*chan)->local_id) {
 			struct channel_list_node *tmp = (*head)->next;
 			if ((*head)->chan->proto_encoder != NULL) {
@@ -52,10 +117,36 @@ void firefly_channel_close(struct firefly_channel **chan,
 			free((*head)->chan);
 			free(*head);
 			*head = tmp;
+			head = NULL;
 		} else {
 			*head = (*head)->next;
 		}
 	}
+}
+
+void firefly_channel_open(struct firefly_connection *conn)
+{
+	// TODO implement better
+	struct firefly_channel *chan = firefly_channel_new(conn);
+	if (chan == NULL) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Could not"
+						"allocate channel.\n");
+	}
+
+	firefly_protocol_channel_request chan_req;
+	chan_req.source_chan_id = chan->local_id;
+	chan_req.dest_chan_id = chan->remote_id;
+
+	labcomm_encode_firefly_protocol_channel_request(conn->transport_encoder,
+			&chan_req);
+	conn->writer_data->pos = 0;
+}
+
+void firefly_channel_close(struct firefly_channel **chan,
+		struct firefly_connection *conn)
+{
+	// TODO send channel close packet
+	firefly_channel_free(chan, conn);
 }
 
 void protocol_data_received(struct firefly_connection *conn,
@@ -65,44 +156,85 @@ void protocol_data_received(struct firefly_connection *conn,
 	conn->reader_data->data_size = size;
 	conn->reader_data->pos = 0;
 	labcomm_decoder_decode_one(conn->transport_decoder);
-
+	conn->reader_data->data = NULL;
+	conn->reader_data->data_size = 0;
+	conn->reader_data->pos = 0;
 }
 
-void handle_channel_request(firefly_protocol_channel_request *cr, void *context)
+void handle_channel_request(firefly_protocol_channel_request *chan_req,
+		void *context)
 {
-	// TODO check if req, req_ack or ack
-	int local_chan_id = cr->dest_chan_id;
+	int local_chan_id = chan_req->dest_chan_id;
+	struct firefly_connection *conn = (struct firefly_connection *) context;
 	struct firefly_channel *chan = find_channel_by_local_id(local_chan_id,
-			(struct firefly_connection *) context);
+			conn);
 	if (chan != NULL) {
-		chan->remote_id = cr->source_chan_id;
-		protocol_channel_request_send_ack(chan,
-			(struct firefly_connection *) context);
-		((struct firefly_connection *)
-					context)->on_channel_opened(chan);
+		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1, "Received open"
+						"channel on existing channel.\n");
+	} else {
+		// Received Channel request.
+		chan = firefly_channel_new(conn);
+		if (chan == NULL) {
+			firefly_error(FIREFLY_ERROR_ALLOC, 1, "Could not"
+							"allocate channel.\n");
+		}
+		chan->remote_id = chan_req->source_chan_id;
+
+		firefly_protocol_channel_response res;
+		res.dest_chan_id = chan->remote_id;
+		res.source_chan_id = chan->local_id;
+		res.ack = conn->on_channel_recv(chan);
+
+		labcomm_encode_firefly_protocol_channel_response(
+				conn->transport_encoder, &res);
+		conn->writer_data->pos = 0;
 	}
 }
 
-void protocol_channel_request_send_ack(struct firefly_channel *chan,
-		struct firefly_connection *conn)
+void handle_channel_ack(firefly_protocol_channel_ack *chan_ack, void *context)
 {
-	firefly_protocol_channel_request chan_req;
-	chan_req.source_chan_id = chan->local_id;
-	chan_req.dest_chan_id = chan->remote_id;
-	chan_req.ack = true;
-	conn->writer_data->pos = 0;
-	labcomm_encode_firefly_protocol_channel_request(conn->transport_encoder,
-			&chan_req);
+	int local_chan_id = chan_ack->dest_chan_id;
+	struct firefly_connection *conn = (struct firefly_connection *) context;
+	struct firefly_channel *chan = find_channel_by_local_id(local_chan_id,
+			conn);
+
+	if (chan != NULL) {
+		conn->on_channel_opened(chan);
+	} else {
+		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1, "Received ack"
+						"on non-existing channel.\n");
+	}
 }
 
-void add_channel_to_connection(struct firefly_channel *chan,
-		struct firefly_connection *conn)
+void handle_channel_response(firefly_protocol_channel_response *chan_res,
+		void *context)
 {
-	struct channel_list_node *new_node =
-		malloc(sizeof(struct channel_list_node));
-	new_node->chan = chan;
-	new_node->next = conn->chan_list;
-	conn->chan_list = new_node;
+	int local_chan_id = chan_res->dest_chan_id;
+	struct firefly_connection *conn = (struct firefly_connection *) context;
+	struct firefly_channel *chan = find_channel_by_local_id(local_chan_id,
+			conn);
+
+	firefly_protocol_channel_ack ack;
+	ack.dest_chan_id = chan_res->source_chan_id;
+	if (chan != NULL) {
+		// Received Channel request ack.
+		chan->remote_id = chan_res->source_chan_id;
+		ack.source_chan_id = chan->local_id;
+		ack.ack = true;
+	} else {
+		ack.source_chan_id = CHANNEL_ID_NOT_SET;
+		ack.ack = false;
+		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1, "Received open"
+						"channel on non-existing"
+						"channel");
+	}
+	labcomm_encode_firefly_protocol_channel_ack(conn->transport_encoder,
+						&ack);
+	conn->writer_data->pos = 0;
+	if (chan != NULL) {
+		// Should be done after encode above.
+		conn->on_channel_opened(chan);
+	}
 }
 
 struct firefly_channel *find_channel_by_local_id(int id,
@@ -116,6 +248,21 @@ struct firefly_channel *find_channel_by_local_id(int id,
 		head = head->next;
 	}
 	return head == NULL ? NULL : head->chan;
+}
+
+void add_channel_to_connection(struct firefly_channel *chan,
+		struct firefly_connection *conn)
+{
+	struct channel_list_node *new_node =
+		malloc(sizeof(struct channel_list_node));
+	new_node->chan = chan;
+	new_node->next = conn->chan_list;
+	conn->chan_list = new_node;
+}
+
+int next_channel_id(struct firefly_connection *conn)
+{
+	return 1;
 }
 
 struct labcomm_encoder *firefly_protocol_get_output_stream(
