@@ -86,6 +86,9 @@ int main()
 		(CU_add_test(chan_suite, "test_chan_recv_reject",
 			     test_chan_recv_reject) == NULL)
 		||
+		(CU_add_test(chan_suite, "test_chan_open_rejected",
+			     test_chan_open_rejected) == NULL)
+		||
 		(CU_add_test(chan_suite, "test_chan_open_recv",
 			     test_chan_open_recv) == NULL)
 	   ) {

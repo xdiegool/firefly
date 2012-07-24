@@ -232,12 +232,14 @@ void handle_channel_response(firefly_protocol_channel_response *chan_res,
 						"channel on non-existing"
 						"channel");
 	}
-	labcomm_encode_firefly_protocol_channel_ack(conn->transport_encoder,
-						&ack);
-	conn->writer_data->pos = 0;
-	if (chan != NULL) {
+	if (chan != NULL && chan_res->ack) {
+		labcomm_encode_firefly_protocol_channel_ack(conn->transport_encoder,
+							&ack);
+		conn->writer_data->pos = 0;
 		// Should be done after encode above.
 		conn->on_channel_opened(chan);
+	} else {
+		firefly_channel_free(&chan, conn);
 	}
 }
 
