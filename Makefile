@@ -49,7 +49,10 @@ TEST_PROTO_OBJS= $(patsubst %,$(BUILD_DIR)/test/%.o,test_labcomm_utils test_prot
 
 TEST_TRANSP_OBJS= $(patsubst %,$(BUILD_DIR)/test/%.o,test_transport_main test_transport_udp_posix)
 
-TEST_PROGS= $(addprefix $(BUILD_DIR)/,test/test_protocol_main test/test_transport_main)
+TEST_EVENT_OBJS= $(patsubst %,$(BUILD_DIR)/test/%.o,test_event_main)
+TEST_EVENT_OBJS+= $(patsubst %,$(BUILD_DIR)/%.o,eventqueue/event_queue)
+
+TEST_PROGS= $(addprefix $(BUILD_DIR)/,test/test_protocol_main test/test_transport_main test/test_event_main)
 
 ## Targets
 
@@ -91,6 +94,9 @@ $(BUILD_DIR)/test/test_protocol_main: $(TEST_PROTO_OBJS) $(BUILD_DIR) $(LIBS) $(
 
 $(BUILD_DIR)/test/test_transport_main: $(TEST_TRANSP_OBJS) $(BUILD_DIR)/transport/firefly_transport_udp_posix.o $(BUILD_DIR)/firefly_errors.o $(BUILD_DIR) $(LABCOMMLIBPATH)/liblabcomm.a
 	$(CC) $(CFLAGS) -L$(BUILD_DIR) -L$(LABCOMMLIBPATH) $(filter %.o,$^) -lcunit -llabcomm -o $@
+
+$(BUILD_DIR)/test/test_event_main: $(TEST_EVENT_OBJS) $(BUILD_DIR)
+	$(CC) $(CFLAGS) $(filter %.o,$^) -lcunit -o $@
 
 # target: test - Run all tests.
 test: $(TEST_PROGS)
