@@ -360,7 +360,7 @@ void test_chan_recv_reject()
 	// Setup connection
 	struct firefly_connection *conn =
 		firefly_connection_new(chan_recv_chan_opened_mock,
-				chan_recv_reject_chan);
+				       chan_recv_reject_chan, NULL);
 	if (conn == NULL) {
 		CU_FAIL("Could not create connection.\n");
 	}
@@ -440,10 +440,19 @@ void chan_open_reject_handle_chan_ack(firefly_protocol_channel_ack *ack,
 
 void test_chan_open_rejected()
 {
+
+  	struct firefly_event_queue *eq;
+
+	eq = firefly_event_queue_new();
+	if (eq == NULL) {
+		CU_FAIL("Could not create queue.\n");
+	}
+	eq->offer_event_cb = firefly_event_add;
+
 	// Setup connection
 	struct firefly_connection *conn =
 		firefly_connection_new(chan_recv_chan_opened_mock,
-				NULL);
+				       NULL, eq);
 	if (conn == NULL) {
 		CU_FAIL("Could not create connection.\n");
 	}
@@ -476,6 +485,10 @@ void test_chan_open_rejected()
 	labcomm_encoder_register_firefly_protocol_channel_ack(conn->transport_encoder);
 
 	firefly_channel_open(conn);
+	struct firefly_event *ev = firefly_event_pop(eq);
+	CU_ASSERT_PTR_NOT_NULL(ev);
+	firefly_event_execute(ev);
+
 	CU_ASSERT_TRUE(sent_chan_req);
 
 	firefly_protocol_channel_response chan_res;
