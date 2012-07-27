@@ -24,8 +24,8 @@ void test_add_pop_event_simple()
 	struct firefly_event *test = firefly_event_pop(q);
 
 	CU_ASSERT_PTR_EQUAL(ev, test);
-	CU_ASSERT_EQUAL(ev->type, test->type);
-	CU_ASSERT_EQUAL(ev->prio, test->prio);
+	CU_ASSERT_EQUAL(ev->base.type, test->base.type);
+	CU_ASSERT_EQUAL(ev->base.prio, test->base.prio);
 
 	CU_ASSERT_PTR_NULL(q->head);
 	CU_ASSERT_PTR_NULL(q->tail);

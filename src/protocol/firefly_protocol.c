@@ -91,7 +91,6 @@ struct firefly_channel *firefly_channel_new(struct firefly_connection *conn)
 		chan->remote_id = CHANNEL_ID_NOT_SET;
 		chan->proto_decoder = NULL;
 		chan->proto_encoder = NULL;
-		add_channel_to_connection(chan, conn);
 	}
 
 	return chan;
@@ -132,6 +131,7 @@ void firefly_channel_open(struct firefly_connection *conn)
 		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Could not"
 						"allocate channel.\n");
 	}
+	add_channel_to_connection(chan, conn);
 
 	firefly_protocol_channel_request chan_req;
 	chan_req.source_chan_id = chan->local_id;
@@ -178,6 +178,8 @@ void handle_channel_request(firefly_protocol_channel_request *chan_req,
 			firefly_error(FIREFLY_ERROR_ALLOC, 1, "Could not"
 							"allocate channel.\n");
 		}
+		add_channel_to_connection(chan, conn);
+
 		chan->remote_id = chan_req->source_chan_id;
 
 		firefly_protocol_channel_response res;

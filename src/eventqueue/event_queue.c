@@ -7,6 +7,7 @@ struct firefly_event_queue *firefly_event_queue_new()
 	struct firefly_event_queue *q = malloc(sizeof(struct firefly_event_queue));
 	q->head = NULL;
 	q->tail = NULL;
+
 	return q;
 }
 
@@ -23,8 +24,8 @@ struct firefly_event *firefly_event_new(enum firefly_event_type t,
 	if (ev == NULL) {
 		return NULL;
 	}
-	ev->type = t;
-	ev->prio = prio;
+	ev->base.type = t;
+	ev->base.prio = prio;
 	return ev;
 }
 

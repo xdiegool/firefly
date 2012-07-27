@@ -3,11 +3,17 @@
 
 #include <stdlib.h>
 
-enum firefly_event_type {FIREFLY_EVENT_TEST};
+enum firefly_event_type {
+	FIREFLY_EVENT_TEST
+};
 
-struct firefly_event {
+struct firefly_event_base {
 	enum firefly_event_type type;
 	unsigned char prio;
+};
+
+struct firefly_event {
+	struct firefly_event_base base;
 };
 
 struct firefly_event_queue {
