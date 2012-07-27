@@ -40,7 +40,7 @@ struct labcomm_decoder *firefly_protocol_get_input_stream(
 				struct firefly_channel *chan);
 
 /**
- * @brief Opens a channel on the provided connection.
+ * @brief Creates and offers an event to open a channel on the provided connection.
  *
  * @param conn The connection to open a channel on.
  * @return The newly created channel.

@@ -4,6 +4,7 @@
 #include <labcomm.h>
 
 #include <protocol/firefly_protocol.h>
+#include "eventqueue/event_queue.h"
 #include <gen/firefly_protocol.h>
 
 #define CHANNEL_ID_NOT_SET (-1)
@@ -65,6 +66,8 @@ struct firefly_connection {
 	struct channel_list_node *chan_list; /**< The list of channels
 							associated with this
 							connection. */
+	struct firefly_event_queue *event_queue; /**< The queue to which spawned events are added. */
+
 };
 
 /**
@@ -94,7 +97,9 @@ struct firefly_channel {
  */
 struct firefly_connection *firefly_connection_new(
 		firefly_channel_is_open_f on_channel_opened,
-		firefly_channel_accept_f on_channel_recv);
+		firefly_channel_accept_f on_channel_recv,
+		struct firefly_event_queue *event_queue);
+
 
 /**
  * Frees a connection.
@@ -238,5 +243,11 @@ int protocol_reader(labcomm_reader_t *r, labcomm_reader_action_t action);
  * @return Value indicating how the action could be handled.
  */
 int protocol_writer(labcomm_writer_t *w, labcomm_writer_action_t action);
+
+/**
+ * @brief The actual work beeing done when executing an event.
+ * @param conn The connection to open.
+  */
+void firefly_channel_open_event(struct firefly_connection *conn);
 
 #endif

@@ -56,7 +56,7 @@ void test_queue_events_in_order()
 
 	CU_ASSERT_PTR_NULL(q->head);
 	CU_ASSERT_PTR_NULL(q->tail);
-	
+
 	firefly_event_free(&ev_1);
 	firefly_event_free(&ev_2);
 	firefly_event_free(&ev_3);

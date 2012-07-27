@@ -27,14 +27,13 @@ LC_FILES = $(addprefix $(LC_DIR)/, $(LC_FILE_NAMES))
 GEN_FILES= $(patsubst $(LC_DIR)/%.lc,$(GEN_DIR)/%.c,$(LC_FILES))
 GEN_OBJ_FILES= $(patsubst %.c,$(BUILD_DIR)/%.o,$(GEN_FILES))
 
-FIREFLY_SRC= transport/firefly_transport_udp_posix.c protocol/firefly_protocol.c
+FIREFLY_SRC= transport/firefly_transport_udp_posix.c protocol/firefly_protocol.c eventqueue/event_queue.c
 
 # Disable default error handler that prints with fprintf. If set to true, you
 # must provide an own implementation at link time.
 ifneq ($(FIREFLY_ERROR_USER_DEFINED),true)
 	FIREFLY_SRC += firefly_errors.c
 endif
-
 
 FIREFLY_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(FIREFLY_SRC)) $(GEN_OBJ_FILES)
 
@@ -60,11 +59,11 @@ TEST_PROGS= $(addprefix $(BUILD_DIR)/,test/test_protocol_main test/test_transpor
 # This will enable expression involving automatic variables in the prerequisities list. it must be defined before any usage of these feauteres.
 .SECONDEXPANSION:
 
-# Include dependency files
-include $(FIREFLY_OBJS:.o=.d)
-
 # target: all - Build all libs and tests.
 all: $(BUILD_DIR) $(LIBS) $(TEST_PROGS) tags
+
+# Include dependency files
+include $(FIREFLY_OBJS:.o=.d)
 
 $(BUILD_DIR) $(LIB_DIR) $(DOC_DIR) $(GEN_DIR):
 	mkdir -p $@
@@ -95,8 +94,8 @@ $(BUILD_DIR)/test/test_protocol_main: $(TEST_PROTO_OBJS) $(BUILD_DIR) $(LIBS) $(
 $(BUILD_DIR)/test/test_transport_main: $(TEST_TRANSP_OBJS) $(BUILD_DIR)/transport/firefly_transport_udp_posix.o $(BUILD_DIR)/firefly_errors.o $(BUILD_DIR) $(LABCOMMLIBPATH)/liblabcomm.a
 	$(CC) $(CFLAGS) -L$(BUILD_DIR) -L$(LABCOMMLIBPATH) $(filter %.o,$^) -lcunit -llabcomm -o $@
 
-$(BUILD_DIR)/test/test_event_main: $(TEST_EVENT_OBJS) $(BUILD_DIR)
-	$(CC) $(CFLAGS) $(filter %.o,$^) -lcunit -o $@
+$(BUILD_DIR)/test/test_event_main: $(TEST_EVENT_OBJS) $(BUILD_DIR) $(BUILD_DIR)/protocol/firefly_protocol.o $(BUILD_DIR)/firefly_errors.o $(LABCOMMLIBPATH)/liblabcomm.a $(BUILD_DIR)/gen/test.o $(BUILD_DIR)/gen/firefly_protocol.o
+	$(CC) $(CFLAGS) -L$(LABCOMMLIBPATH) $(filter %.o,$^) -lcunit -llabcomm -o $@
 
 # target: test - Run all tests.
 test: $(TEST_PROGS)

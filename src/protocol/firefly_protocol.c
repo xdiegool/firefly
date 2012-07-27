@@ -9,12 +9,14 @@
 
 #include <firefly_errors.h>
 #include <gen/firefly_protocol.h>
+#include "eventqueue/event_queue.h"
 
 #define BUFFER_SIZE (128)
 
 struct firefly_connection *firefly_connection_new(
 		firefly_channel_is_open_f on_channel_opened,
-		firefly_channel_accept_f on_channel_recv)
+		firefly_channel_accept_f on_channel_recv,
+		struct firefly_event_queue *event_queue)
 {
 	struct firefly_connection *conn =
 		malloc(sizeof(struct firefly_connection));
@@ -22,6 +24,7 @@ struct firefly_connection *firefly_connection_new(
 		firefly_error(FIREFLY_ERROR_ALLOC, 1, "malloc failed\n");
 	}
 	// Init writer data
+	conn->event_queue = event_queue;
 	struct ff_transport_data *writer_data =
 				malloc(sizeof(struct ff_transport_data));
 	if (writer_data == NULL) {
@@ -124,6 +127,29 @@ void firefly_channel_free(struct firefly_channel **chan,
 }
 
 void firefly_channel_open(struct firefly_connection *conn)
+{
+	struct firefly_event_chan_open *ev;
+	int ret;
+	/* create event. add to q. */
+
+	ev = malloc(sizeof(struct firefly_event_chan_open));
+	if (ev == NULL) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 1,
+					  "Could not allocate event.\n");
+	}
+	ev->base.type = EVENT_CHAN_OPEN;
+	ev->base.prio = 1;			/* not relevant yet */
+	ev->conn = conn;
+
+	ret = conn->event_queue->offer_event_cb(conn->event_queue,
+											(struct firefly_event *) ev);
+	if (ret) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 1,
+					  "could not add event to queue");
+	}
+}
+
+void firefly_channel_open_event(struct firefly_connection *conn)
 {
 	// TODO implement better
 	struct firefly_channel *chan = firefly_channel_new(conn);

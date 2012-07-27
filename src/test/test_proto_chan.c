@@ -11,6 +11,7 @@
 #include <firefly_errors.h>
 #include "protocol/firefly_protocol_private.h"
 #include <protocol/firefly_protocol.h>
+#include "eventqueue/event_queue.h"
 
 #include "test/test_labcomm_utils.h"
 
@@ -105,10 +106,16 @@ void chan_open_transport_write_mock(unsigned char *data, size_t data_size,
 
 void test_chan_open()
 {
+	struct firefly_event_queue *eq;
 
+	eq = firefly_event_queue_new();
+	if (eq == NULL) {
+		CU_FAIL("Could not create queue.\n");
+	}
+	eq->offer_event_cb = firefly_event_add;
 	// Init connection and register error handler on encoder and decoder
 	struct firefly_connection *conn =
-		firefly_connection_new(chan_open_is_open_mock, NULL);
+		firefly_connection_new(chan_open_is_open_mock, NULL, eq);
 	if (conn == NULL) {
 		CU_FAIL("Could not create connection.\n");
 	}
@@ -122,11 +129,14 @@ void test_chan_open()
 
 	// Init decoder to test data that is sent
 	test_dec_ctx = malloc(sizeof(labcomm_mem_reader_context_t));
+	if (test_dec_ctx == NULL) {
+		CU_FAIL("Test decoder context was null\n");
+	}
 	test_dec_ctx->enc_data = NULL;
 	test_dec_ctx->size = 0;
 	test_dec = labcomm_decoder_new(labcomm_mem_reader, test_dec_ctx);
 	if (test_dec == NULL) {
-		CU_FAIL("Encoder was null\n");
+		CU_FAIL("Test decoder was null\n");
 	}
 	labcomm_register_error_handler_decoder(test_dec, handle_labcomm_error);
 	labcomm_decoder_register_firefly_protocol_channel_request(test_dec,
@@ -150,6 +160,10 @@ void test_chan_open()
 
 	// Open a new channel
 	firefly_channel_open(conn);
+
+	struct firefly_event *ev = firefly_event_pop(eq);
+	CU_ASSERT_PTR_NOT_NULL(ev);
+	firefly_event_execute(ev);
 
 	// Test that a chan open request is sent.
 	CU_ASSERT_TRUE(sent_chan_req);
@@ -237,7 +251,7 @@ void test_chan_recv_accept()
 	// Init connection and register error handler on encoder and decoder
 	struct firefly_connection *conn =
 		firefly_connection_new(chan_recv_chan_opened_mock,
-				chan_recv_accept_chan);
+				chan_recv_accept_chan, NULL);
 	if (conn == NULL) {
 		CU_FAIL("Could not create connection.\n");
 	}
@@ -309,7 +323,7 @@ void test_chan_recv_accept()
 	// Fixe type ID due to multiple types on proto_decoder
 	ack_data[3] = 0x81;
 	ack_sign[7] = 0x81;
-	
+
 	// Recieving end and got an ack
 	protocol_data_received(conn, ack_sign, ack_sign_size);
 	protocol_data_received(conn, ack_data, ack_data_size);
@@ -554,10 +568,17 @@ void chan_open_recv_write_recv(unsigned char *data, size_t size,
 
 void test_chan_open_recv()
 {
+	struct firefly_event_queue *eq;
+
+	eq = firefly_event_queue_new();
+	if (eq == NULL) {
+		CU_FAIL("Could not create queue.\n");
+	}
+	eq->offer_event_cb = firefly_event_add;
 	// Init connection to open channel and register error handler on encoder
 	// and decoder
 	conn_open = firefly_connection_new(chan_open_recv_chan_open_open,
-					chan_open_recv_accept_open);
+									   chan_open_recv_accept_open, eq);
 	if (conn_open == NULL) {
 		CU_FAIL("Could not create connection.\n");
 	}
@@ -569,11 +590,10 @@ void test_chan_open_recv()
 	labcomm_register_error_handler_decoder(conn_open->transport_decoder,
 			handle_labcomm_error);
 
-
 	// Init connection to receive channel and register error handler on encoder
 	// and decoder
 	conn_recv = firefly_connection_new(chan_open_recv_chan_open_recv,
-					chan_open_recv_accept_recv);
+					chan_open_recv_accept_recv, NULL);
 	if (conn_recv == NULL) {
 		CU_FAIL("Could not create connection.\n");
 	}
@@ -617,6 +637,10 @@ void test_chan_open_recv()
 
 	// Init open channel from conn_open
 	firefly_channel_open(conn_open);
+	struct firefly_event *ev = firefly_event_pop(eq);
+	CU_ASSERT_PTR_NOT_NULL(ev);
+	firefly_event_execute(ev);
+
 	protocol_data_received(conn_recv, conn_open_write.data,
 			conn_open_write.size);
 	free_tmp_data(&conn_open_write);

@@ -4,7 +4,8 @@
 #include <stdlib.h>
 
 enum firefly_event_type {
-	FIREFLY_EVENT_TEST
+	FIREFLY_EVENT_TEST,
+	EVENT_CHAN_OPEN
 };
 
 struct firefly_event_base {
@@ -16,9 +17,21 @@ struct firefly_event {
 	struct firefly_event_base base;
 };
 
+struct firefly_event_chan_open {
+	struct firefly_event_base base;
+	struct firefly_connection *conn;
+};
+
+struct firefly_event_queue;
+
+typedef int (*firefly_offer_event)(struct firefly_event_queue *queue,
+								   struct firefly_event *event);
+
 struct firefly_event_queue {
 	struct firefly_eq_node *head;
 	struct firefly_eq_node *tail;
+	firefly_offer_event offer_event_cb; /* The callback used for adding events. */
+	void *context;						/* Possibly a mutex...  */
 };
 
 struct firefly_eq_node {
@@ -38,5 +51,7 @@ void firefly_event_free(struct firefly_event **ev);
 int firefly_event_add(struct firefly_event_queue *eq, struct firefly_event *ev);
 
 struct firefly_event *firefly_event_pop(struct firefly_event_queue *eq);
+
+int firefly_event_execute(struct firefly_event *ev);
 
 #endif

@@ -2,6 +2,9 @@
 
 #include <stdlib.h>
 
+#include "protocol/firefly_protocol_private.h"
+#include "firefly_errors.h"
+
 struct firefly_event_queue *firefly_event_queue_new()
 {
 	struct firefly_event_queue *q = malloc(sizeof(struct firefly_event_queue));
@@ -66,4 +69,19 @@ struct firefly_event *firefly_event_pop(struct firefly_event_queue *eq)
 	}
 	free(tmp);
 	return ev;
+}
+
+int firefly_event_execute(struct firefly_event *ev)
+{
+	switch (ev->base.type) {
+	case EVENT_CHAN_OPEN:
+		firefly_channel_open_event(((struct firefly_event_chan_open *)ev)->conn);
+		break;
+		/* ... */
+	default:
+		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Bad event type");
+		break;
+	}
+
+	return 0;
 }
