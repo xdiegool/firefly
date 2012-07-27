@@ -7,15 +7,22 @@
 
 struct firefly_event_queue *firefly_event_queue_new()
 {
-	struct firefly_event_queue *q = malloc(sizeof(struct firefly_event_queue));
-	q->head = NULL;
-	q->tail = NULL;
+	struct firefly_event_queue *q;
+
+	if ((q = malloc(sizeof(struct firefly_event_queue))) != NULL) {
+		q->head = NULL;
+		q->tail = NULL;
+	}
 
 	return q;
 }
 
 void firefly_event_queue_free(struct firefly_event_queue **q)
 {
+	struct firefly_event *ev;
+
+	while ((ev = firefly_event_pop(*q)) != NULL)
+		firefly_event_free(&ev);
 	free(*q);
 	*q = NULL;
 }
@@ -23,12 +30,13 @@ void firefly_event_queue_free(struct firefly_event_queue **q)
 struct firefly_event *firefly_event_new(enum firefly_event_type t,
 										unsigned char prio)
 {
-	struct firefly_event *ev = malloc(sizeof(struct firefly_event));
-	if (ev == NULL) {
-		return NULL;
+	struct firefly_event *ev;
+
+	if ((ev = malloc(sizeof(struct firefly_event))) != NULL) {
+		ev->base.type = t;
+		ev->base.prio = prio;
 	}
-	ev->base.type = t;
-	ev->base.prio = prio;
+
 	return ev;
 }
 
@@ -58,16 +66,18 @@ int firefly_event_add(struct firefly_event_queue *eq, struct firefly_event *ev)
 
 struct firefly_event *firefly_event_pop(struct firefly_event_queue *eq)
 {
-	if(eq->head == NULL) {
+	struct firefly_eq_node *event_node; /* The node *containing* the event */
+	struct firefly_event *ev;			/* The actual event */
+
+	if((event_node = eq->head) == NULL)
 		return NULL;
-	}
-	struct firefly_event *ev = eq->head->event;
-	struct firefly_eq_node *tmp = eq->head;
 	eq->head = eq->head->next;
-	if (eq->tail == tmp) {
+	ev       = event_node->event;
+	free(event_node);
+	if (eq->tail == event_node) {
 		eq->tail = NULL;
 	}
-	free(tmp);
+
 	return ev;
 }
 
@@ -79,9 +89,10 @@ int firefly_event_execute(struct firefly_event *ev)
 		break;
 		/* ... */
 	default:
-		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Bad event type");
+		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Bad event type"); /* New error? */
 		break;
 	}
+	firefly_event_free(&ev); 	/* It  makes no sense to keep it around... */
 
 	return 0;
 }

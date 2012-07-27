@@ -201,6 +201,7 @@ void test_chan_open()
 	free(test_dec_ctx);
 	test_dec_ctx = NULL;
 	firefly_connection_free(&conn);
+	firefly_event_queue_free(&eq);
 }
 
 static void chan_recv_chan_opened_mock(struct firefly_channel *chan)
@@ -519,6 +520,9 @@ void test_chan_open_rejected()
 	labcomm_decoder_free(test_dec);
 	free(test_dec_ctx);
 	firefly_connection_free(&conn);
+	firefly_event_queue_free(&eq);
+	free(chan_res_sig);
+	free(chan_res_data);
 }
 
 static struct firefly_connection *conn_open;
@@ -671,4 +675,5 @@ void test_chan_open_recv()
 	// Clean up
 	firefly_connection_free(&conn_open);
 	firefly_connection_free(&conn_recv);
+	firefly_event_queue_free(&eq);
 }
