@@ -249,10 +249,17 @@ void chan_recv_test_resp(firefly_protocol_channel_response *res, void *context)
 
 void test_chan_recv_accept()
 {
+	struct firefly_event_queue *eq;
+
+	eq = firefly_event_queue_new();
+	if (eq == NULL) {
+		CU_FAIL("Could not create queue.\n");
+	}
+	eq->offer_event_cb = firefly_event_add;
 	// Init connection and register error handler on encoder and decoder
 	struct firefly_connection *conn =
 		firefly_connection_new(chan_recv_chan_opened_mock,
-				chan_recv_accept_chan, NULL);
+				chan_recv_accept_chan, eq);
 	if (conn == NULL) {
 		CU_FAIL("Could not create connection.\n");
 	}
@@ -299,6 +306,9 @@ void test_chan_recv_accept()
 	// Give channel request data to protocol layer.
 	protocol_data_received(conn, sign, sign_size);
 	protocol_data_received(conn, data, data_size);
+
+	struct firefly_event *ev = firefly_event_pop(eq);
+	firefly_event_execute(ev);
 
 	// Test accept called.
 	CU_ASSERT_TRUE(chan_accept_called);
@@ -358,10 +368,17 @@ static bool chan_recv_reject_chan(struct firefly_channel *chan)
 
 void test_chan_recv_reject()
 {
+	struct firefly_event_queue *eq;
+
+	eq = firefly_event_queue_new();
+	if (eq == NULL) {
+		CU_FAIL("Could not create queue.\n");
+	}
+	eq->offer_event_cb = firefly_event_add;
 	// Setup connection
 	struct firefly_connection *conn =
 		firefly_connection_new(chan_recv_chan_opened_mock,
-				       chan_recv_reject_chan, NULL);
+				       chan_recv_reject_chan, eq);
 	if (conn == NULL) {
 		CU_FAIL("Could not create connection.\n");
 	}
@@ -404,6 +421,9 @@ void test_chan_recv_reject()
 	// send channel request
 	protocol_data_received(conn, chan_req_sig, chan_req_ssize);
 	protocol_data_received(conn, chan_req_data, chan_req_dsize);
+
+	struct firefly_event *ev = firefly_event_pop(eq);
+	firefly_event_execute(ev);
 
 	// check accept called
 	CU_ASSERT_TRUE(chan_accept_called);
@@ -610,7 +630,7 @@ void test_chan_open_recv()
 	// Init connection to receive channel and register error handler on encoder
 	// and decoder
 	conn_recv = firefly_connection_new(chan_open_recv_chan_open_recv,
-					chan_open_recv_accept_recv, NULL);
+					chan_open_recv_accept_recv, eq);
 	if (conn_recv == NULL) {
 		CU_FAIL("Could not create connection.\n");
 	}
@@ -660,6 +680,10 @@ void test_chan_open_recv()
 
 	protocol_data_received(conn_recv, conn_open_write.data,
 			conn_open_write.size);
+	ev = firefly_event_pop(eq);
+	CU_ASSERT_PTR_NOT_NULL(ev);
+	firefly_event_execute(ev);
+
 	free_tmp_data(&conn_open_write);
 	CU_ASSERT_TRUE(conn_recv_accept_called);
 	protocol_data_received(conn_open, conn_recv_write.data,

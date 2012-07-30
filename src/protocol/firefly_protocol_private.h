@@ -143,6 +143,9 @@ void firefly_channel_free(struct firefly_channel **chan,
 void handle_channel_request(firefly_protocol_channel_request *chan_req,
 		void *context);
 
+void handle_channel_request_event(firefly_protocol_channel_request *chan_req,
+		struct firefly_connection *conn);
+
 /**
  * @brief The callback registered with LabComm used to receive channel response.
  *

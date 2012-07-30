@@ -5,12 +5,20 @@
 
 /* TODO: refac. */
 
+#include "gen/firefly_protocol.h"
+
 enum firefly_event_type {
-	FIREFLY_EVENT_TEST,
 	EVENT_CHAN_OPEN,
-	EVENT_CHAN_CLOSE
+	EVENT_CHAN_CLOSE,
+	EVENT_CHAN_REQ_RECV
 };
 
+/**
+ * @brief A generic event.
+ *
+ * The largest context of an event is a single firefly_connection. A larger
+ * context may imply concurrency problems.
+ */
 struct firefly_event_base {
 	enum firefly_event_type type;
 	unsigned char prio;
@@ -33,6 +41,12 @@ struct firefly_event_chan_close {
 };
 
 /* Event queue */
+struct firefly_event_chan_req_recv {
+	struct firefly_event_base base;
+	struct firefly_connection *conn;
+	firefly_protocol_channel_request *chan_req;
+};
+
 struct firefly_event_queue;
 
 typedef int (*firefly_offer_event)(struct firefly_event_queue *queue,
