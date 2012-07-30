@@ -66,6 +66,7 @@ struct firefly_connection *firefly_connection_new(
 
 	return conn;
 }
+
 void firefly_connection_free(struct firefly_connection **conn)
 {
 	if ((*conn)->transport_encoder != NULL) {
@@ -78,7 +79,7 @@ void firefly_connection_free(struct firefly_connection **conn)
 	free((*conn)->writer_data->data);
 	free((*conn)->writer_data);
 	while ((*conn)->chan_list != NULL) {
-		firefly_channel_close(&(*conn)->chan_list->chan, *conn);
+		firefly_channel_free(&(*conn)->chan_list->chan, *conn);
 	}
 	free((*conn)->chan_list);
 	free((*conn));
@@ -154,8 +155,8 @@ void firefly_channel_open_event(struct firefly_connection *conn)
 	// TODO implement better
 	struct firefly_channel *chan = firefly_channel_new(conn);
 	if (chan == NULL) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Could not"
-						"allocate channel.\n");
+		firefly_error(FIREFLY_ERROR_ALLOC, 1,
+					  "Could not allocate channel.\n");
 	}
 	add_channel_to_connection(chan, conn);
 
@@ -169,7 +170,28 @@ void firefly_channel_open_event(struct firefly_connection *conn)
 }
 
 void firefly_channel_close(struct firefly_channel **chan,
-		struct firefly_connection *conn)
+						   struct firefly_connection *conn)
+{
+	struct firefly_event_chan_close *ev;
+	int ret;
+
+	ev = malloc(sizeof(struct firefly_event_chan_close));
+	if (ev == NULL) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 1,
+					  "Could not allocate event.\n");
+	}
+	ev->base.type = EVENT_CHAN_CLOSE;
+	ev->base.prio = 1;
+	ev->conn = conn;
+	ev->chan = chan;
+	ret = conn->event_queue->offer_event_cb(conn->event_queue,
+											(struct firefly_event *) ev);
+	if (ret)
+		firefly_error(FIREFLY_ERROR_ALLOC, 1, "could not add event to queue");
+}
+
+void firefly_channel_close_event(struct firefly_channel **chan,
+								 struct firefly_connection *conn)
 {
 	// TODO send channel close packet
 	firefly_channel_free(chan, conn);

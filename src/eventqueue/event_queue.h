@@ -3,9 +3,12 @@
 
 #include <stdlib.h>
 
+/* TODO: refac. */
+
 enum firefly_event_type {
 	FIREFLY_EVENT_TEST,
-	EVENT_CHAN_OPEN
+	EVENT_CHAN_OPEN,
+	EVENT_CHAN_CLOSE
 };
 
 struct firefly_event_base {
@@ -17,11 +20,19 @@ struct firefly_event {
 	struct firefly_event_base base;
 };
 
+/* Concrete events */
 struct firefly_event_chan_open {
 	struct firefly_event_base base;
 	struct firefly_connection *conn;
 };
 
+struct firefly_event_chan_close {
+	struct firefly_event_base base;
+	struct firefly_channel **chan;
+	struct firefly_connection *conn; /* prev has back ref. weird though... */
+};
+
+/* Event queue */
 struct firefly_event_queue;
 
 typedef int (*firefly_offer_event)(struct firefly_event_queue *queue,

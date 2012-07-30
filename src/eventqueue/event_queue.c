@@ -87,6 +87,10 @@ int firefly_event_execute(struct firefly_event *ev)
 	case EVENT_CHAN_OPEN:
 		firefly_channel_open_event(((struct firefly_event_chan_open *)ev)->conn);
 		break;
+	case EVENT_CHAN_CLOSE:
+		firefly_channel_close_event(((struct firefly_event_chan_close *)ev)->chan,
+									((struct firefly_event_chan_close *)ev)->conn);
+		break;
 		/* ... */
 	default:
 		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Bad event type"); /* New error? */

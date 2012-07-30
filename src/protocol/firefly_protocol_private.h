@@ -250,4 +250,7 @@ int protocol_writer(labcomm_writer_t *w, labcomm_writer_action_t action);
   */
 void firefly_channel_open_event(struct firefly_connection *conn);
 
+void firefly_channel_close_event(struct firefly_channel **chan,
+								 struct firefly_connection *conn);
+
 #endif
