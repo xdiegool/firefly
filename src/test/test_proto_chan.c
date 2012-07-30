@@ -342,6 +342,8 @@ void test_chan_recv_accept()
 	// Recieving end and got an ack
 	protocol_data_received(conn, ack_sign, ack_sign_size);
 	protocol_data_received(conn, ack_data, ack_data_size);
+	ev = firefly_event_pop(eq);
+	firefly_event_execute(ev);
 
 	CU_ASSERT_TRUE(chan_opened_called);
 	chan_opened_called = false;
@@ -703,6 +705,8 @@ void test_chan_open_recv()
 	protocol_data_received(conn_recv, conn_open_write.data,
 			conn_open_write.size);
 	free_tmp_data(&conn_open_write);
+	ev = firefly_event_pop(eq);
+	firefly_event_execute(ev);
 
 	CU_ASSERT_TRUE(conn_open_chan_opened);
 	CU_ASSERT_TRUE(conn_recv_chan_opened);

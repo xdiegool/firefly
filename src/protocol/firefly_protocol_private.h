@@ -166,6 +166,9 @@ void handle_channel_response_event(firefly_protocol_channel_response *chan_res,
  */
 void handle_channel_ack(firefly_protocol_channel_ack *chan_ack, void *context);
 
+void handle_channel_ack_event(firefly_protocol_channel_ack *chan_ack,
+		struct firefly_connection *conn);
+
 /**
  * @brief Find and return the channel associated with the given connection with
  * the given local channel id.

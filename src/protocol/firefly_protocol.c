@@ -269,21 +269,6 @@ void handle_channel_request_event(firefly_protocol_channel_request *chan_req,
 	}
 }
 
-void handle_channel_ack(firefly_protocol_channel_ack *chan_ack, void *context)
-{
-	int local_chan_id = chan_ack->dest_chan_id;
-	struct firefly_connection *conn = (struct firefly_connection *) context;
-	struct firefly_channel *chan = find_channel_by_local_id(local_chan_id,
-			conn);
-
-	if (chan != NULL) {
-		conn->on_channel_opened(chan);
-	} else {
-		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1, "Received ack"
-						"on non-existing channel.\n");
-	}
-}
-
 void handle_channel_response(firefly_protocol_channel_response *chan_res,
 		void *context)
 {
@@ -338,6 +323,44 @@ void handle_channel_response_event(firefly_protocol_channel_response *chan_res,
 		conn->on_channel_opened(chan);
 	} else {
 		firefly_channel_free(&chan, conn);
+	}
+}
+
+void handle_channel_ack(firefly_protocol_channel_ack *chan_ack, void *context)
+{
+	int ret;
+	struct firefly_connection *conn = (struct firefly_connection *) context;
+	struct firefly_event_chan_ack_recv *ev = malloc(sizeof(struct firefly_event_chan_ack_recv));
+	if (ev == NULL) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 1,
+					  "Could not allocate event.\n");
+	}
+	ev->base.type = EVENT_CHAN_ACK_RECV;
+	ev->base.prio = 1;			/* not relevant yet */
+	ev->conn = conn;
+	ev->chan_ack = malloc(sizeof(firefly_protocol_channel_ack));
+	memcpy(ev->chan_ack, chan_ack, sizeof(firefly_protocol_channel_ack));
+
+	ret = conn->event_queue->offer_event_cb(conn->event_queue,
+											(struct firefly_event *) ev);
+	if (ret) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 1,
+					  "could not add event to queue");
+	}
+}
+
+void handle_channel_ack_event(firefly_protocol_channel_ack *chan_ack,
+		struct firefly_connection *conn)
+{
+	int local_chan_id = chan_ack->dest_chan_id;
+	struct firefly_channel *chan = find_channel_by_local_id(local_chan_id,
+			conn);
+
+	if (chan != NULL) {
+		conn->on_channel_opened(chan);
+	} else {
+		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1, "Received ack"
+						"on non-existing channel.\n");
 	}
 }
 

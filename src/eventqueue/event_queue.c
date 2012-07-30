@@ -102,6 +102,11 @@ int firefly_event_execute(struct firefly_event *ev)
 			(struct firefly_event_chan_res_recv *) ev;
 		handle_channel_response_event(ev_crr->chan_res, ev_crr->conn);
 	} break;
+	case EVENT_CHAN_ACK_RECV: {
+		struct firefly_event_chan_ack_recv *ev_car =
+			(struct firefly_event_chan_ack_recv *) ev;
+		handle_channel_ack_event(ev_car->chan_ack, ev_car->conn);
+	} break;
 	default:
 		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Bad event type"); /* New error? */
 		break;
