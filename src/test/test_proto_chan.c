@@ -185,6 +185,10 @@ void test_chan_open()
 	protocol_data_received(conn, sign, sign_size);
 	protocol_data_received(conn, data, data_size);
 
+	ev = firefly_event_pop(eq);
+	CU_ASSERT_PTR_NOT_NULL(ev);
+	firefly_event_execute(ev);
+
 	// Test that we sent an ack
 	CU_ASSERT_TRUE(sent_chan_ack);
 	sent_chan_ack = false;
@@ -527,6 +531,9 @@ void test_chan_open_rejected()
 	// send response
 	protocol_data_received(conn, chan_res_sig, chan_res_ssize);
 	protocol_data_received(conn, chan_res_data, chan_res_dsize);
+	ev = firefly_event_pop(eq);
+	CU_ASSERT_PTR_NOT_NULL(ev);
+	firefly_event_execute(ev);
 
 	CU_ASSERT_FALSE(sent_chan_ack);
 	CU_ASSERT_PTR_NULL(conn->chan_list);
@@ -688,6 +695,10 @@ void test_chan_open_recv()
 	CU_ASSERT_TRUE(conn_recv_accept_called);
 	protocol_data_received(conn_open, conn_recv_write.data,
 			conn_recv_write.size);
+	ev = firefly_event_pop(eq);
+	CU_ASSERT_PTR_NOT_NULL(ev);
+	firefly_event_execute(ev);
+
 	free_tmp_data(&conn_recv_write);
 	protocol_data_received(conn_recv, conn_open_write.data,
 			conn_open_write.size);

@@ -155,6 +155,9 @@ void handle_channel_request_event(firefly_protocol_channel_request *chan_req,
 void handle_channel_response(firefly_protocol_channel_response *chan_res,
 		void *context);
 
+void handle_channel_response_event(firefly_protocol_channel_response *chan_res,
+		struct firefly_connection *conn);
+
 /**
  * @brief The callback registered with LabComm used to receive channel ack.
  *

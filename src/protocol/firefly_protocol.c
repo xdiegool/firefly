@@ -287,8 +287,32 @@ void handle_channel_ack(firefly_protocol_channel_ack *chan_ack, void *context)
 void handle_channel_response(firefly_protocol_channel_response *chan_res,
 		void *context)
 {
-	int local_chan_id = chan_res->dest_chan_id;
+	int ret;
 	struct firefly_connection *conn = (struct firefly_connection *) context;
+	struct firefly_event_chan_res_recv *ev = malloc(sizeof(struct firefly_event_chan_res_recv));
+	if (ev == NULL) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 1,
+					  "Could not allocate event.\n");
+	}
+	ev->base.type = EVENT_CHAN_RES_RECV;
+	ev->base.prio = 1;			/* not relevant yet */
+	ev->conn = conn;
+	ev->chan_res = malloc(sizeof(firefly_protocol_channel_response));
+	memcpy(ev->chan_res, chan_res, sizeof(firefly_protocol_channel_response));
+
+	ret = conn->event_queue->offer_event_cb(conn->event_queue,
+											(struct firefly_event *) ev);
+	if (ret) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 1,
+					  "could not add event to queue");
+	}
+
+}
+
+void handle_channel_response_event(firefly_protocol_channel_response *chan_res,
+		struct firefly_connection *conn)
+{
+	int local_chan_id = chan_res->dest_chan_id;
 	struct firefly_channel *chan = find_channel_by_local_id(local_chan_id,
 			conn);
 

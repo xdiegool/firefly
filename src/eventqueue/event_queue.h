@@ -10,7 +10,8 @@
 enum firefly_event_type {
 	EVENT_CHAN_OPEN,
 	EVENT_CHAN_CLOSE,
-	EVENT_CHAN_REQ_RECV
+	EVENT_CHAN_REQ_RECV,
+	EVENT_CHAN_RES_RECV
 };
 
 /**
@@ -45,6 +46,12 @@ struct firefly_event_chan_req_recv {
 	struct firefly_event_base base;
 	struct firefly_connection *conn;
 	firefly_protocol_channel_request *chan_req;
+};
+
+struct firefly_event_chan_res_recv {
+	struct firefly_event_base base;
+	struct firefly_connection *conn;
+	firefly_protocol_channel_response *chan_res;
 };
 
 struct firefly_event_queue;
