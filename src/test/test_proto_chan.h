@@ -18,4 +18,14 @@ void test_chan_recv_reject();
 
 void test_chan_open_recv();
 
+void test_chan_close();
+
+void test_chan_recv_close();
+
+// TODO
+// close channel
+// send app data
+// recv app data
+// importance?
+
 #endif

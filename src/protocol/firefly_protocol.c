@@ -23,8 +23,8 @@ struct firefly_connection *firefly_connection_new(
 	if (conn == NULL) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1, "malloc failed\n");
 	}
-	// Init writer data
 	conn->event_queue = event_queue;
+	// Init writer data
 	struct ff_transport_data *writer_data =
 				malloc(sizeof(struct ff_transport_data));
 	if (writer_data == NULL) {
@@ -100,6 +100,7 @@ struct firefly_channel *firefly_channel_new(struct firefly_connection *conn)
 	return chan;
 }
 
+// TODO consider remove pointer to pointer
 void firefly_channel_free(struct firefly_channel **chan,
 		struct firefly_connection *conn)
 {
@@ -169,7 +170,7 @@ void firefly_channel_open_event(struct firefly_connection *conn)
 	conn->writer_data->pos = 0;
 }
 
-void firefly_channel_close(struct firefly_channel **chan,
+void firefly_channel_close(struct firefly_channel *chan,
 						   struct firefly_connection *conn)
 {
 	struct firefly_event_chan_close *ev;
@@ -190,11 +191,18 @@ void firefly_channel_close(struct firefly_channel **chan,
 		firefly_error(FIREFLY_ERROR_ALLOC, 1, "could not add event to queue");
 }
 
-void firefly_channel_close_event(struct firefly_channel **chan,
+void firefly_channel_close_event(struct firefly_channel *chan,
 								 struct firefly_connection *conn)
 {
-	// TODO send channel close packet
-	firefly_channel_free(chan, conn);
+	firefly_protocol_channel_close chan_close;
+	chan_close.dest_chan_id = chan->remote_id;
+	chan_close.source_chan_id = chan->local_id;
+
+	labcomm_encode_firefly_protocol_channel_close(conn->transport_encoder,
+			&chan_close);
+	conn->writer_data->pos = 0;
+
+	firefly_channel_free(&chan, conn);
 }
 
 void protocol_data_received(struct firefly_connection *conn,

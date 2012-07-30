@@ -38,7 +38,7 @@ struct firefly_event_chan_open {
 
 struct firefly_event_chan_close {
 	struct firefly_event_base base;
-	struct firefly_channel **chan;
+	struct firefly_channel *chan;
 	struct firefly_connection *conn; /* prev has back ref. weird though... */
 };
 

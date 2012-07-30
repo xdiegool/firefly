@@ -234,7 +234,7 @@ void chan_recv_handle_res(firefly_protocol_channel_response *res, void *ctx)
 	sent_response = true;
 }
 
-void chan_recv_transport_write_mock(unsigned char *data, size_t size,
+void transport_write_test_decoder(unsigned char *data, size_t size,
 		struct firefly_connection *conn)
 {
 	test_dec_ctx->enc_data = data;
@@ -269,7 +269,7 @@ void test_chan_recv_accept()
 	}
 	// Set some stuff that firefly_init_conn doesn't do
 	conn->transport_conn_platspec = NULL;
-	conn->transport_write = chan_recv_transport_write_mock;
+	conn->transport_write = transport_write_test_decoder;
 	labcomm_register_error_handler_encoder(conn->transport_encoder,
 			handle_labcomm_error);
 	labcomm_register_error_handler_decoder(conn->transport_decoder,
@@ -390,7 +390,7 @@ void test_chan_recv_reject()
 	}
 	// Set some stuff that firefly_init_conn doesn't do
 	conn->transport_conn_platspec = NULL;
-	conn->transport_write = chan_recv_transport_write_mock;
+	conn->transport_write = transport_write_test_decoder;
 	labcomm_register_error_handler_encoder(conn->transport_encoder,
 			handle_labcomm_error);
 	labcomm_register_error_handler_decoder(conn->transport_decoder,
@@ -485,7 +485,7 @@ void test_chan_open_rejected()
 	}
 	// Set some stuff that firefly_init_conn doesn't do
 	conn->transport_conn_platspec = NULL;
-	conn->transport_write = chan_recv_transport_write_mock;
+	conn->transport_write = transport_write_test_decoder;
 	labcomm_register_error_handler_encoder(conn->transport_encoder,
 			handle_labcomm_error);
 	labcomm_register_error_handler_decoder(conn->transport_decoder,
@@ -715,4 +715,87 @@ void test_chan_open_recv()
 	firefly_connection_free(&conn_open);
 	firefly_connection_free(&conn_recv);
 	firefly_event_queue_free(&eq);
+}
+
+static bool chan_close_chan_closed = false;
+void chan_close_chan_close(firefly_protocol_channel_close *chan_close, void *ctx)
+{
+	struct firefly_channel *chan = (struct firefly_channel *) ctx;
+	CU_ASSERT_EQUAL(chan_close->dest_chan_id, chan->remote_id);
+	CU_ASSERT_EQUAL(chan_close->source_chan_id, chan->local_id);
+	chan_close_chan_closed = true;
+
+	// assert close packet data
+}
+
+void test_chan_close()
+{
+	struct firefly_event_queue *eq;
+
+	eq = firefly_event_queue_new();
+	if (eq == NULL) {
+		CU_FAIL("Could not create queue.\n");
+	}
+	eq->offer_event_cb = firefly_event_add;
+
+	// Setup connection
+	struct firefly_connection *conn =
+		firefly_connection_new(NULL, NULL, eq);
+	if (conn == NULL) {
+		CU_FAIL("Could not create connection.\n");
+	}
+	// Set some stuff that firefly_init_conn doesn't do
+	conn->transport_conn_platspec = NULL;
+	conn->transport_write = transport_write_test_decoder;
+	labcomm_register_error_handler_encoder(conn->transport_encoder,
+			handle_labcomm_error);
+	labcomm_register_error_handler_decoder(conn->transport_decoder,
+			handle_labcomm_error);
+
+	// create channel
+	struct firefly_channel *chan = firefly_channel_new(conn);
+	chan->remote_id = REMOTE_CHAN_ID;
+	add_channel_to_connection(chan, conn);
+
+	// Init decoder to test data that is sent
+	test_dec_ctx = malloc(sizeof(labcomm_mem_reader_context_t));
+	test_dec_ctx->enc_data = NULL;
+	test_dec_ctx->size = 0;
+	test_dec = labcomm_decoder_new(labcomm_mem_reader, test_dec_ctx);
+	if (test_dec == NULL) {
+		CU_FAIL("Encoder was null\n");
+	}
+	labcomm_register_error_handler_decoder(test_dec, handle_labcomm_error);
+	// register close packet on test_dec
+	labcomm_decoder_register_firefly_protocol_channel_close(test_dec,
+			chan_close_chan_close, chan);
+
+	// register close packet on conn encoder
+	labcomm_encoder_register_firefly_protocol_channel_close(
+			conn->transport_encoder);
+
+
+	// close channel
+	firefly_channel_close(chan, conn);
+	// pop event queue and execute
+		struct firefly_event *ev = firefly_event_pop(eq);
+	CU_ASSERT_PTR_NOT_NULL(ev);
+	CU_ASSERT_EQUAL(ev->base.type, EVENT_CHAN_CLOSE);
+	firefly_event_execute(ev);
+
+	// test close packet sent
+	CU_ASSERT_TRUE(chan_close_chan_closed);
+	// test channel state, free'd
+	CU_ASSERT_PTR_NULL(conn->chan_list);
+
+	// clean up
+	labcomm_decoder_free(test_dec);
+	free(test_dec_ctx);
+	firefly_connection_free(&conn);
+	firefly_event_queue_free(&eq);
+}
+
+void test_chan_recv_close()
+{
+	CU_FAIL("NOT IMPLEMENTED YET.");
 }

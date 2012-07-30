@@ -21,3 +21,8 @@ sample struct {
 	int source_chan_id;
 	boolean ack;
 } channel_ack;
+
+sample struct {
+	int dest_chan_id;
+	int source_chan_id;
+} channel_close;
