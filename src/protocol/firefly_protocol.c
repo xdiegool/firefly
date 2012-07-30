@@ -190,8 +190,32 @@ void protocol_data_received(struct firefly_connection *conn,
 void handle_channel_request(firefly_protocol_channel_request *chan_req,
 		void *context)
 {
-	int local_chan_id = chan_req->dest_chan_id;
+	int ret;
 	struct firefly_connection *conn = (struct firefly_connection *) context;
+	struct firefly_event_chan_req_recv *ev = malloc(sizeof(struct firefly_event_chan_req_recv));
+	if (ev == NULL) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 1,
+					  "Could not allocate event.\n");
+	}
+	ev->base.type = EVENT_CHAN_REQ_RECV;
+	ev->base.prio = 1;			/* not relevant yet */
+	ev->conn = conn;
+	ev->chan_req = malloc(sizeof(firefly_protocol_channel_request));
+	memcpy(ev->chan_req, chan_req, sizeof(firefly_protocol_channel_request));
+
+	ret = conn->event_queue->offer_event_cb(conn->event_queue,
+											(struct firefly_event *) ev);
+	if (ret) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 1,
+					  "could not add event to queue");
+	}
+
+}
+
+void handle_channel_request_event(firefly_protocol_channel_request *chan_req,
+		struct firefly_connection *conn)
+{
+	int local_chan_id = chan_req->dest_chan_id;
 	struct firefly_channel *chan = find_channel_by_local_id(local_chan_id,
 			conn);
 	if (chan != NULL) {
