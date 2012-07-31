@@ -53,6 +53,9 @@ struct firefly_connection {
 	firefly_channel_is_open_f on_channel_opened; /**< Callback, called when
 							a channel has been
 							opened */
+	firefly_channel_closed_f on_channel_closed; /**< Callback, called when
+							a channel has been
+							closed */
 	firefly_channel_accept_f on_channel_recv; /**< Callback, called when a
 							channel is received to
 							decide if it is accepted or
@@ -97,6 +100,7 @@ struct firefly_channel {
  */
 struct firefly_connection *firefly_connection_new(
 		firefly_channel_is_open_f on_channel_opened,
+		firefly_channel_closed_f on_channel_closed,
 		firefly_channel_accept_f on_channel_recv,
 		struct firefly_event_queue *event_queue);
 
@@ -168,6 +172,15 @@ void handle_channel_ack(firefly_protocol_channel_ack *chan_ack, void *context);
 
 void handle_channel_ack_event(firefly_protocol_channel_ack *chan_ack,
 		struct firefly_connection *conn);
+
+/**
+ * @brief The callback registered with LabComm used to receive channel close.
+ *
+ * @param chan_close The decoded channel close.
+ * @param context The connection associated with the channel close.
+ */
+void handle_channel_close(firefly_protocol_channel_close *chan_close,
+		void *context);
 
 /**
  * @brief Find and return the channel associated with the given connection with

@@ -15,6 +15,7 @@
 
 struct firefly_connection *firefly_connection_new(
 		firefly_channel_is_open_f on_channel_opened,
+		firefly_channel_closed_f on_channel_closed,
 		firefly_channel_accept_f on_channel_recv,
 		struct firefly_event_queue *event_queue)
 {
@@ -50,6 +51,7 @@ struct firefly_connection *firefly_connection_new(
 	conn->reader_data = reader_data;
 
 	conn->on_channel_opened = on_channel_opened;
+	conn->on_channel_closed = on_channel_closed;
 	conn->on_channel_recv = on_channel_recv;
 	conn->chan_list = NULL;
 	conn->transport_encoder =
@@ -170,8 +172,8 @@ void firefly_channel_open_event(struct firefly_connection *conn)
 	conn->writer_data->pos = 0;
 }
 
-void firefly_channel_close(struct firefly_channel *chan,
-						   struct firefly_connection *conn)
+static void create_channel_closed_event(struct firefly_channel *chan,
+								struct firefly_connection *conn)
 {
 	struct firefly_event_chan_close *ev;
 	int ret;
@@ -191,17 +193,25 @@ void firefly_channel_close(struct firefly_channel *chan,
 		firefly_error(FIREFLY_ERROR_ALLOC, 1, "could not add event to queue");
 }
 
-void firefly_channel_close_event(struct firefly_channel *chan,
-								 struct firefly_connection *conn)
+void firefly_channel_close(struct firefly_channel *chan,
+						   struct firefly_connection *conn)
 {
+	create_channel_closed_event(chan, conn);
+
 	firefly_protocol_channel_close chan_close;
 	chan_close.dest_chan_id = chan->remote_id;
 	chan_close.source_chan_id = chan->local_id;
-
 	labcomm_encode_firefly_protocol_channel_close(conn->transport_encoder,
 			&chan_close);
 	conn->writer_data->pos = 0;
+}
 
+void firefly_channel_close_event(struct firefly_channel *chan,
+								 struct firefly_connection *conn)
+{
+	if (conn->on_channel_closed != NULL) {
+		conn->on_channel_closed(chan);
+	}
 	firefly_channel_free(&chan, conn);
 }
 
@@ -369,6 +379,20 @@ void handle_channel_ack_event(firefly_protocol_channel_ack *chan_ack,
 	} else {
 		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1, "Received ack"
 						"on non-existing channel.\n");
+	}
+}
+
+void handle_channel_close(firefly_protocol_channel_close *chan_close,
+		void *context)
+{
+	struct firefly_connection *conn = (struct firefly_connection *) context;
+	struct firefly_channel *chan = find_channel_by_local_id(
+			chan_close->dest_chan_id, conn);
+	if (chan != NULL){
+		create_channel_closed_event(chan, conn);
+	} else {
+		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
+				"Received closed on non-existing channel.\n");
 	}
 }
 

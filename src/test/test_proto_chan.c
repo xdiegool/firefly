@@ -115,7 +115,7 @@ void test_chan_open()
 	eq->offer_event_cb = firefly_event_add;
 	// Init connection and register error handler on encoder and decoder
 	struct firefly_connection *conn =
-		firefly_connection_new(chan_open_is_open_mock, NULL, eq);
+		firefly_connection_new(chan_open_is_open_mock, NULL, NULL, eq);
 	if (conn == NULL) {
 		CU_FAIL("Could not create connection.\n");
 	}
@@ -262,7 +262,7 @@ void test_chan_recv_accept()
 	eq->offer_event_cb = firefly_event_add;
 	// Init connection and register error handler on encoder and decoder
 	struct firefly_connection *conn =
-		firefly_connection_new(chan_recv_chan_opened_mock,
+		firefly_connection_new(chan_recv_chan_opened_mock, NULL,
 				chan_recv_accept_chan, eq);
 	if (conn == NULL) {
 		CU_FAIL("Could not create connection.\n");
@@ -383,7 +383,7 @@ void test_chan_recv_reject()
 	eq->offer_event_cb = firefly_event_add;
 	// Setup connection
 	struct firefly_connection *conn =
-		firefly_connection_new(chan_recv_chan_opened_mock,
+		firefly_connection_new(chan_recv_chan_opened_mock, NULL,
 				       chan_recv_reject_chan, eq);
 	if (conn == NULL) {
 		CU_FAIL("Could not create connection.\n");
@@ -478,7 +478,7 @@ void test_chan_open_rejected()
 
 	// Setup connection
 	struct firefly_connection *conn =
-		firefly_connection_new(chan_recv_chan_opened_mock,
+		firefly_connection_new(chan_recv_chan_opened_mock, NULL,
 				       NULL, eq);
 	if (conn == NULL) {
 		CU_FAIL("Could not create connection.\n");
@@ -623,7 +623,7 @@ void test_chan_open_recv()
 	eq->offer_event_cb = firefly_event_add;
 	// Init connection to open channel and register error handler on encoder
 	// and decoder
-	conn_open = firefly_connection_new(chan_open_recv_chan_open_open,
+	conn_open = firefly_connection_new(chan_open_recv_chan_open_open, NULL,
 									   chan_open_recv_accept_open, eq);
 	if (conn_open == NULL) {
 		CU_FAIL("Could not create connection.\n");
@@ -638,7 +638,7 @@ void test_chan_open_recv()
 
 	// Init connection to receive channel and register error handler on encoder
 	// and decoder
-	conn_recv = firefly_connection_new(chan_open_recv_chan_open_recv,
+	conn_recv = firefly_connection_new(chan_open_recv_chan_open_recv, NULL,
 					chan_open_recv_accept_recv, eq);
 	if (conn_recv == NULL) {
 		CU_FAIL("Could not create connection.\n");
@@ -728,6 +728,12 @@ void chan_close_chan_close(firefly_protocol_channel_close *chan_close, void *ctx
 	// assert close packet data
 }
 
+static bool chan_closed_called = false;
+void chan_closed_cb(struct firefly_channel *chan)
+{
+	chan_closed_called = true;
+}
+
 void test_chan_close()
 {
 	struct firefly_event_queue *eq;
@@ -740,7 +746,7 @@ void test_chan_close()
 
 	// Setup connection
 	struct firefly_connection *conn =
-		firefly_connection_new(NULL, NULL, eq);
+		firefly_connection_new(NULL, chan_closed_cb, NULL, eq);
 	if (conn == NULL) {
 		CU_FAIL("Could not create connection.\n");
 	}
@@ -778,7 +784,7 @@ void test_chan_close()
 	// close channel
 	firefly_channel_close(chan, conn);
 	// pop event queue and execute
-		struct firefly_event *ev = firefly_event_pop(eq);
+	struct firefly_event *ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	CU_ASSERT_EQUAL(ev->base.type, EVENT_CHAN_CLOSE);
 	firefly_event_execute(ev);
@@ -787,8 +793,10 @@ void test_chan_close()
 	CU_ASSERT_TRUE(chan_close_chan_closed);
 	// test channel state, free'd
 	CU_ASSERT_PTR_NULL(conn->chan_list);
+	CU_ASSERT_TRUE(chan_closed_called);
 
 	// clean up
+	chan_closed_called = false;
 	labcomm_decoder_free(test_dec);
 	free(test_dec_ctx);
 	firefly_connection_free(&conn);
@@ -797,5 +805,65 @@ void test_chan_close()
 
 void test_chan_recv_close()
 {
-	CU_FAIL("NOT IMPLEMENTED YET.");
+	struct firefly_event_queue *eq;
+
+	eq = firefly_event_queue_new();
+	if (eq == NULL) {
+		CU_FAIL("Could not create queue.\n");
+	}
+	eq->offer_event_cb = firefly_event_add;
+
+	// Setup connection
+	// TODO add closed cb
+	struct firefly_connection *conn =
+		firefly_connection_new(NULL, chan_closed_cb, NULL, eq);
+	if (conn == NULL) {
+		CU_FAIL("Could not create connection.\n");
+	}
+	// Set some stuff that firefly_init_conn doesn't do
+	conn->transport_conn_platspec = NULL;
+	conn->transport_write = transport_write_test_decoder;
+	labcomm_register_error_handler_encoder(conn->transport_encoder,
+			handle_labcomm_error);
+	labcomm_register_error_handler_decoder(conn->transport_decoder,
+			handle_labcomm_error);
+	labcomm_decoder_register_firefly_protocol_channel_close(
+			conn->transport_decoder, handle_channel_close, conn);
+
+	// create channel
+	struct firefly_channel *chan = firefly_channel_new(conn);
+	chan->remote_id = REMOTE_CHAN_ID;
+	add_channel_to_connection(chan, conn);
+
+	// create close channel packet
+	firefly_protocol_channel_close chan_close;
+	chan_close.dest_chan_id = conn->chan_list->chan->local_id;
+	chan_close.source_chan_id = REMOTE_CHAN_ID;
+
+	create_labcomm_files_general(
+			labcomm_encoder_register_firefly_protocol_channel_close,
+			(lc_encode_f) labcomm_encode_firefly_protocol_channel_close,
+			&chan_close);
+	unsigned char *chan_close_sig;
+	unsigned char *chan_close_data;
+	size_t chan_close_ssize = read_file_to_mem(&chan_close_sig, SIG_FILE);
+	size_t chan_close_dsize = read_file_to_mem(&chan_close_data, DATA_FILE);
+
+	// give packet to protocol
+	protocol_data_received(conn, chan_close_sig, chan_close_ssize);
+	protocol_data_received(conn, chan_close_data, chan_close_dsize);
+	// pop and execute event
+	struct firefly_event *ev = firefly_event_pop(eq);
+	CU_ASSERT_PTR_NOT_NULL_FATAL(ev);
+	CU_ASSERT_EQUAL(ev->base.type, EVENT_CHAN_CLOSE);
+	firefly_event_execute(ev);
+	// check callback called.
+	CU_ASSERT_TRUE(chan_closed_called);
+	// check channel state
+	CU_ASSERT_PTR_NULL(conn->chan_list);
+
+	// clean up
+	chan_closed_called = false;
+	firefly_connection_free(&conn);
+	firefly_event_queue_free(&eq);
 }

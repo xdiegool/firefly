@@ -94,6 +94,9 @@ int main()
 		||
 	   (CU_add_test(chan_suite, "test_chan_close",
 					test_chan_close) == NULL)
+		||
+	   (CU_add_test(chan_suite, "test_chan_recv_close",
+					test_chan_recv_close) == NULL)
 	   ) {
 		CU_cleanup_registry();
 		return CU_get_error();
