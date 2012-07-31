@@ -40,13 +40,28 @@ struct labcomm_decoder *firefly_protocol_get_input_stream(
 				struct firefly_channel *chan);
 
 /**
+ * @brief A prototype for a callback from the protocol layer called when a
+ * channel request is rejected on the remote node.
+ *
+ * @param conn The connection on which the channel request was rejected.
+ */
+typedef void (* firefly_channel_rejected_f)(struct firefly_connection *conn);
+
+/**
  * @brief Creates and offers an event to open a channel on the provided connection.
  *
+ * When and if the channel is successfully opened the on_channel_opened callback
+ * associated with the supplied firefly_connection is called with the opened
+ * channel as argument. If the channel request was rejected by the remote node
+ * the on_chan_rejected callback is called with the supplied connection as
+ * argument.
+ *
  * @param conn The connection to open a channel on.
- * @return The newly created channel.
- * @retval NULL on failure.
+ * @param on_chan_rejected A callback called if this channel request was
+ * rejected by the remote node.
  */
-void firefly_channel_open(struct firefly_connection *conn);
+void firefly_channel_open(struct firefly_connection *conn,
+		firefly_channel_rejected_f on_chan_rejected);
 
 /**
  * @brief Closes the channel, frees it's memory and removes it from the

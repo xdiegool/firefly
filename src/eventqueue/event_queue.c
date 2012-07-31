@@ -84,9 +84,11 @@ struct firefly_event *firefly_event_pop(struct firefly_event_queue *eq)
 int firefly_event_execute(struct firefly_event *ev)
 {
 	switch (ev->base.type) {
-	case EVENT_CHAN_OPEN:
-		firefly_channel_open_event(((struct firefly_event_chan_open *)ev)->conn);
-		break;
+	case EVENT_CHAN_OPEN: {
+		struct firefly_event_chan_open *ev_co =
+			(struct firefly_event_chan_open *) ev;
+		firefly_channel_open_event(ev_co->conn, ev_co->rejected_cb);
+	} break;
 	case EVENT_CHAN_CLOSE:
 		firefly_channel_close_event(((struct firefly_event_chan_close *)ev)->chan,
 									((struct firefly_event_chan_close *)ev)->conn);
@@ -96,16 +98,19 @@ int firefly_event_execute(struct firefly_event *ev)
 		struct firefly_event_chan_req_recv *ev_crr =
 			(struct firefly_event_chan_req_recv *) ev;
 		handle_channel_request_event(ev_crr->chan_req, ev_crr->conn);
+		free(ev_crr->chan_req);
 	} break;
 	case EVENT_CHAN_RES_RECV: {
 		struct firefly_event_chan_res_recv *ev_crr =
 			(struct firefly_event_chan_res_recv *) ev;
 		handle_channel_response_event(ev_crr->chan_res, ev_crr->conn);
+		free(ev_crr->chan_res);
 	} break;
 	case EVENT_CHAN_ACK_RECV: {
 		struct firefly_event_chan_ack_recv *ev_car =
 			(struct firefly_event_chan_ack_recv *) ev;
 		handle_channel_ack_event(ev_car->chan_ack, ev_car->conn);
+		free(ev_car->chan_ack);
 	} break;
 	default:
 		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Bad event type"); /* New error? */

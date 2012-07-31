@@ -90,6 +90,10 @@ struct firefly_channel {
 								saved. */
 	struct ff_transport_data *reader_data; /**< Where the reader data is
 								saved. */
+	firefly_channel_rejected_f on_chan_rejected; /**< Callback called if this
+												   channel could not be opened
+												   due to remote node rejected
+												   it. */
 };
 
 /**
@@ -270,7 +274,8 @@ int protocol_writer(labcomm_writer_t *w, labcomm_writer_action_t action);
  * @brief The actual work beeing done when executing an event.
  * @param conn The connection to open.
   */
-void firefly_channel_open_event(struct firefly_connection *conn);
+void firefly_channel_open_event(struct firefly_connection *conn,
+		firefly_channel_rejected_f on_chan_rejected);
 
 void firefly_channel_close_event(struct firefly_channel *chan,
 								 struct firefly_connection *conn);

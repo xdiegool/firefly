@@ -159,7 +159,7 @@ void test_chan_open()
 			conn->transport_decoder, handle_channel_response, conn);
 
 	// Open a new channel
-	firefly_channel_open(conn);
+	firefly_channel_open(conn, NULL);
 
 	struct firefly_event *ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
@@ -354,6 +354,7 @@ void test_chan_recv_accept()
 	labcomm_decoder_free(test_dec);
 	free(test_dec_ctx);
 	firefly_connection_free(&conn);
+	firefly_event_queue_free(&eq);
 }
 
 static void chan_recv_reject_handle_chan_res(
@@ -451,6 +452,7 @@ void test_chan_recv_reject()
 	labcomm_decoder_free(test_dec);
 	free(test_dec_ctx);
 	firefly_connection_free(&conn);
+	firefly_event_queue_free(&eq);
 }
 
 void chan_open_reject_handle_chan_req(firefly_protocol_channel_request *req,
@@ -463,6 +465,12 @@ void chan_open_reject_handle_chan_ack(firefly_protocol_channel_ack *ack,
 		void *context)
 {
 	sent_chan_ack = true;
+}
+
+static bool chan_rejected_called = false;
+void chan_open_chan_rejected(struct firefly_connection *conn)
+{
+	chan_rejected_called = true;
 }
 
 void test_chan_open_rejected()
@@ -511,7 +519,7 @@ void test_chan_open_rejected()
 	labcomm_encoder_register_firefly_protocol_channel_request(conn->transport_encoder);
 	labcomm_encoder_register_firefly_protocol_channel_ack(conn->transport_encoder);
 
-	firefly_channel_open(conn);
+	firefly_channel_open(conn, chan_open_chan_rejected);
 	struct firefly_event *ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	firefly_event_execute(ev);
@@ -541,8 +549,10 @@ void test_chan_open_rejected()
 	CU_ASSERT_PTR_NULL(conn->chan_list);
 	// test resources are destroyed again
 	CU_ASSERT_FALSE(chan_opened_called);
+	CU_ASSERT_TRUE(chan_rejected_called);
 
 	// Clean up
+	chan_rejected_called = false;
 	sent_chan_ack = false;
 	sent_chan_req = false;
 	chan_opened_called = false;
@@ -682,7 +692,7 @@ void test_chan_open_recv()
 	free_tmp_data(&conn_recv_write);
 
 	// Init open channel from conn_open
-	firefly_channel_open(conn_open);
+	firefly_channel_open(conn_open, NULL);
 	struct firefly_event *ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	firefly_event_execute(ev);
@@ -863,6 +873,8 @@ void test_chan_recv_close()
 	CU_ASSERT_PTR_NULL(conn->chan_list);
 
 	// clean up
+	free(chan_close_sig);
+	free(chan_close_data);
 	chan_closed_called = false;
 	firefly_connection_free(&conn);
 	firefly_event_queue_free(&eq);

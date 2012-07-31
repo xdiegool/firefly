@@ -6,6 +6,7 @@
 /* TODO: refac. */
 
 #include "gen/firefly_protocol.h"
+#include "protocol/firefly_protocol_private.h"
 
 enum firefly_event_type {
 	EVENT_CHAN_OPEN,
@@ -34,6 +35,7 @@ struct firefly_event {
 struct firefly_event_chan_open {
 	struct firefly_event_base base;
 	struct firefly_connection *conn;
+	firefly_channel_rejected_f rejected_cb;
 };
 
 struct firefly_event_chan_close {

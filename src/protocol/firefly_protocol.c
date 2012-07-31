@@ -130,7 +130,8 @@ void firefly_channel_free(struct firefly_channel **chan,
 	}
 }
 
-void firefly_channel_open(struct firefly_connection *conn)
+void firefly_channel_open(struct firefly_connection *conn,
+		firefly_channel_rejected_f on_chan_rejected)
 {
 	struct firefly_event_chan_open *ev;
 	int ret;
@@ -144,6 +145,7 @@ void firefly_channel_open(struct firefly_connection *conn)
 	ev->base.type = EVENT_CHAN_OPEN;
 	ev->base.prio = 1;			/* not relevant yet */
 	ev->conn = conn;
+	ev->rejected_cb = on_chan_rejected;
 
 	ret = conn->event_queue->offer_event_cb(conn->event_queue,
 											(struct firefly_event *) ev);
@@ -153,7 +155,8 @@ void firefly_channel_open(struct firefly_connection *conn)
 	}
 }
 
-void firefly_channel_open_event(struct firefly_connection *conn)
+void firefly_channel_open_event(struct firefly_connection *conn,
+		firefly_channel_rejected_f on_chan_rejected)
 {
 	// TODO implement better
 	struct firefly_channel *chan = firefly_channel_new(conn);
@@ -161,6 +164,7 @@ void firefly_channel_open_event(struct firefly_connection *conn)
 		firefly_error(FIREFLY_ERROR_ALLOC, 1,
 					  "Could not allocate channel.\n");
 	}
+	chan->on_chan_rejected = on_chan_rejected;
 	add_channel_to_connection(chan, conn);
 
 	firefly_protocol_channel_request chan_req;
@@ -333,13 +337,14 @@ void handle_channel_response_event(firefly_protocol_channel_response *chan_res,
 						"channel on non-existing"
 						"channel");
 	}
-	if (chan != NULL && chan_res->ack) {
+	if (chan_res->ack) {
 		labcomm_encode_firefly_protocol_channel_ack(conn->transport_encoder,
 							&ack);
 		conn->writer_data->pos = 0;
 		// Should be done after encode above.
 		conn->on_channel_opened(chan);
 	} else {
+		chan->on_chan_rejected(conn);
 		firefly_channel_free(&chan, conn);
 	}
 }
