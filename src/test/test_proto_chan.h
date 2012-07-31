@@ -23,7 +23,6 @@ void test_chan_close();
 void test_chan_recv_close();
 
 // TODO
-// error management on channel open rejected
 // send app data
 // recv app data
 // importance?
