@@ -26,7 +26,6 @@ LC_FILES = $(addprefix $(LC_DIR)/, $(LC_FILE_NAMES))
 # .c and .h files are always generated togheter. So lets only work with the .h
 # files for simplicity
 GEN_FILES= $(patsubst $(LC_DIR)/%.lc,$(GEN_DIR)/%.h,$(LC_FILES))
-#GEN_FILES+= $(patsubst $(LC_DIR)/%.lc,$(GEN_DIR)/%.h,$(LC_FILES))
 GEN_OBJ_FILES= $(patsubst %.h,$(BUILD_DIR)/%.o,$(GEN_FILES))
 
 FIREFLY_SRC= transport/firefly_transport_udp_posix.c protocol/firefly_protocol.c eventqueue/event_queue.c
@@ -56,6 +55,7 @@ TEST_PROGS= $(addprefix $(BUILD_DIR)/,test/test_protocol_main test/test_transpor
 
 ## Targets
 
+# Non file targets.
 .PHONY: all doc doc-open clean cleaner install test
 
 # This will enable expression involving automatic variables in the prerequisities list. it must be defined before any usage of these feauteres.
@@ -121,7 +121,7 @@ $(LABCOMMLIBPATH)/liblabcomm.a:
 	$(MAKE) -C $(LABCOMMLIBPATH) -e LABCOMM_NO_EXPERIMENTAL=true all
 	@echo "======End building LabComm======"
 
-# Let the labcomm .o_file depend on the generated .c and .h files.
+# Let the labcomm .o-file depend on the generated .c and .h files.
 $(GEN_OBJ_FILES): $$(patsubst $$(BUILD_DIR)/%.o,%.c,$$@) $$(patsubst $$(BUILD_DIR)/%.o,%.h,$$@)
 
 #$(GEN_FILES): $(GEN_DIR) $$(patsubst $$(GEN_DIR)/%,c,$$(LC_DIR)/%.lc,$$@)
@@ -151,8 +151,9 @@ $(BUILD_DIR)/%.d: %.c $(BUILD_DIR) $(GEN_FILES)
 	| sed '\''s/\(.*\)\.o[ :]*/$(patsubst %.d,%.o,$(subst /,\/,$@)) : /g'\'' > $@; \
 	[ -s $@ ] || rm -f $@'
 
-# Include dependency files
--include $(FIREFLY_OBJS:.o=.d) /dev/null
+# Include dependency files and ignore ".d file missing" the first time.
+#-include $(FIREFLY_OBJS:.o=.d) /dev/null
+include $(FIREFLY_OBJS:.o=.d)
 
 # target: clean  - Clean most generated files..
 clean:
