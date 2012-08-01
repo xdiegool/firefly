@@ -6,6 +6,8 @@ int init_suit_proto_chan();
 
 int clean_suit_proto_chan();
 
+void test_next_channel_id();
+
 void test_get_streams();
 
 void test_chan_open();
@@ -23,6 +25,7 @@ void test_chan_close();
 void test_chan_recv_close();
 
 // TODO
+// multiple channels
 // send app data
 // recv app data
 // importance?

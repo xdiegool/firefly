@@ -55,6 +55,10 @@ int main()
 		(CU_add_test(translc_suite,
 			     "test_encode_protocol_multiple_times",
 			     test_encode_protocol_multiple_times) == NULL)
+		||
+		(CU_add_test(translc_suite,
+			     "test_next_channel_id",
+			     test_next_channel_id) == NULL)
 	   ) {
 		CU_cleanup_registry();
 		return CU_get_error();

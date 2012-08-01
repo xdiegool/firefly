@@ -54,6 +54,7 @@ struct firefly_connection *firefly_connection_new(
 	conn->on_channel_closed = on_channel_closed;
 	conn->on_channel_recv = on_channel_recv;
 	conn->chan_list = NULL;
+	conn->channel_id_counter = 0;
 	conn->transport_encoder =
 		labcomm_encoder_new(ff_transport_writer, conn);
 	if (conn->transport_encoder == NULL) {
@@ -81,7 +82,8 @@ void firefly_connection_free(struct firefly_connection **conn)
 	free((*conn)->writer_data->data);
 	free((*conn)->writer_data);
 	while ((*conn)->chan_list != NULL) {
-		firefly_channel_free(&(*conn)->chan_list->chan, *conn);
+		firefly_channel_free(remove_channel_from_connection(
+					(*conn)->chan_list->chan, *conn));
 	}
 	free((*conn)->chan_list);
 	free((*conn));
@@ -97,37 +99,36 @@ struct firefly_channel *firefly_channel_new(struct firefly_connection *conn)
 		chan->remote_id = CHANNEL_ID_NOT_SET;
 		chan->proto_decoder = NULL;
 		chan->proto_encoder = NULL;
+		chan->reader_data = NULL;
+		chan->writer_data = NULL;
+		chan->conn = conn;
 	}
 
 	return chan;
 }
 
 // TODO consider remove pointer to pointer
-void firefly_channel_free(struct firefly_channel **chan,
-		struct firefly_connection *conn)
+void firefly_channel_free(struct firefly_channel *chan)
 {
-	if ((*chan) == NULL) {
+	if (chan == NULL) {
+		printf("Freeing NULL channel\n");
 		return;
 	}
-
-	struct channel_list_node **head = &conn->chan_list;
-	while (head !=NULL && (*head) != NULL) {
-		if ((*head)->chan->local_id == (*chan)->local_id) {
-			struct channel_list_node *tmp = (*head)->next;
-			if ((*head)->chan->proto_encoder != NULL) {
-				labcomm_encoder_free((*head)->chan->proto_encoder);
-			}
-			if ((*head)->chan->proto_decoder != NULL) {
-				labcomm_decoder_free((*head)->chan->proto_decoder);
-			}
-			free((*head)->chan);
-			free(*head);
-			*head = tmp;
-			head = NULL;
-		} else {
-			*head = (*head)->next;
-		}
+	if (chan->proto_decoder != NULL) {
+		labcomm_decoder_free(chan->proto_decoder);
 	}
+	if (chan->proto_encoder != NULL) {
+		labcomm_encoder_free(chan->proto_encoder);
+	}
+	if (chan->reader_data != NULL) {
+		free(chan->reader_data->data);
+		free(chan->reader_data);
+	}
+	if (chan->writer_data != NULL) {
+		free(chan->writer_data->data);
+		free(chan->writer_data);
+	}
+	free(chan);
 }
 
 void firefly_channel_open(struct firefly_connection *conn,
@@ -216,7 +217,7 @@ void firefly_channel_close_event(struct firefly_channel *chan,
 	if (conn->on_channel_closed != NULL) {
 		conn->on_channel_closed(chan);
 	}
-	firefly_channel_free(&chan, conn);
+	firefly_channel_free(remove_channel_from_connection(chan, conn));
 }
 
 void protocol_data_received(struct firefly_connection *conn,
@@ -282,7 +283,7 @@ void handle_channel_request_event(firefly_protocol_channel_request *chan_req,
 		res.ack = conn->on_channel_recv(chan);
 		if (!res.ack) {
 			res.source_chan_id = CHANNEL_ID_NOT_SET;
-			firefly_channel_free(&chan, conn);
+			firefly_channel_free(remove_channel_from_connection(chan, conn));
 		}
 
 		labcomm_encode_firefly_protocol_channel_response(
@@ -345,7 +346,7 @@ void handle_channel_response_event(firefly_protocol_channel_response *chan_res,
 		conn->on_channel_opened(chan);
 	} else {
 		chan->on_chan_rejected(conn);
-		firefly_channel_free(&chan, conn);
+		firefly_channel_free(remove_channel_from_connection(chan, conn));
 	}
 }
 
@@ -424,9 +425,28 @@ void add_channel_to_connection(struct firefly_channel *chan,
 	conn->chan_list = new_node;
 }
 
+struct firefly_channel *remove_channel_from_connection(
+		struct firefly_channel *chan, struct firefly_connection *conn)
+{
+	struct firefly_channel *ret = NULL;
+	struct channel_list_node **head = &conn->chan_list;
+	while (head !=NULL && (*head) != NULL) {
+		if ((*head)->chan->local_id == chan->local_id) {
+			ret = chan;
+			struct channel_list_node *tmp = (*head)->next;
+			free(*head);
+			*head = tmp;
+			head = NULL;
+		} else {
+			*head = (*head)->next;
+		}
+	}
+	return ret;
+}
+
 int next_channel_id(struct firefly_connection *conn)
 {
-	return 1;
+	return conn->channel_id_counter++;
 }
 
 struct labcomm_encoder *firefly_protocol_get_output_stream(

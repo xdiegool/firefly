@@ -70,7 +70,7 @@ struct firefly_connection {
 							associated with this
 							connection. */
 	struct firefly_event_queue *event_queue; /**< The queue to which spawned events are added. */
-
+	int channel_id_counter;
 };
 
 /**
@@ -108,7 +108,6 @@ struct firefly_connection *firefly_connection_new(
 		firefly_channel_accept_f on_channel_recv,
 		struct firefly_event_queue *event_queue);
 
-
 /**
  * Frees a connection.
  *
@@ -139,8 +138,7 @@ struct firefly_channel *firefly_channel_new(struct firefly_connection *conn);
  * @param chan The channel to free.
  * @param conn The connection the channel lives on.
  */
-void firefly_channel_free(struct firefly_channel **chan,
-		struct firefly_connection *conn);
+void firefly_channel_free(struct firefly_channel *chan);
 
 /**
  * @brief The callback registered with LabComm used to receive channel request.
@@ -203,6 +201,15 @@ struct firefly_channel *find_channel_by_local_id(int id,
  * @param conn The connection to add the channel to.
  */
 void add_channel_to_connection(struct firefly_channel *chan,
+		struct firefly_connection *conn);
+
+/**
+ * @brief Remove the channel from the connection.
+ *
+ * @param chan The channel to remove.
+ * @param conn The connection to remove the channel from.
+ */
+struct firefly_channel *remove_channel_from_connection(struct firefly_channel *chan,
 		struct firefly_connection *conn);
 
 /**

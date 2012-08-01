@@ -115,6 +115,27 @@ void chan_opened_mock(struct firefly_channel *chan)
 	chan_opened_called = true;
 }
 
+#define MAX_TESTED_ID (10)
+
+void test_next_channel_id()
+{
+	struct firefly_event_queue *eq;
+	eq = firefly_event_queue_new();
+	if (eq == NULL) {
+		CU_FAIL("Could not create queue.\n");
+	}
+	eq->offer_event_cb = firefly_event_add;
+	struct firefly_connection *conn = setup_test_conn_new(NULL,
+			NULL, NULL, eq);
+	for (int i = 0; i < MAX_TESTED_ID; ++i) {
+		struct firefly_channel *ch = firefly_channel_new(conn);
+		CU_ASSERT_EQUAL(i, ch->local_id);
+		firefly_channel_free(ch);
+	}
+	firefly_connection_free(&conn);
+	firefly_event_queue_free(&eq);
+}
+
 void test_get_streams()
 {
 	// Construct encoder.
@@ -383,8 +404,10 @@ void test_chan_recv_reject()
 			chan_recv_reject_handle_chan_res, NULL);
 
 	// register chan_req on conn decoder and chan_res on conn encoder
-	labcomm_decoder_register_firefly_protocol_channel_request(conn->transport_decoder, handle_channel_request, conn);
-	labcomm_encoder_register_firefly_protocol_channel_response(conn->transport_encoder);
+	labcomm_decoder_register_firefly_protocol_channel_request(
+			conn->transport_decoder, handle_channel_request, conn);
+	labcomm_encoder_register_firefly_protocol_channel_response(
+			conn->transport_encoder);
 
 	// create temporary labcomm encoder to send request.
 	firefly_protocol_channel_request chan_req;
@@ -744,6 +767,7 @@ void test_chan_recv_close()
 	// give packet to protocol
 	protocol_data_received(conn, ep->sign, ep->ssize);
 	protocol_data_received(conn, ep->data, ep->dsize);
+	encoded_packet_free(ep);
 	// pop and execute event
 	struct firefly_event *ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL_FATAL(ev);
