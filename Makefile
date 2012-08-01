@@ -23,10 +23,11 @@ VPATH=$(SRC_DIR) $(INCLUDE_DIR)
 LC_FILE_NAMES= firefly_protocol.lc test.lc
 LC_FILES = $(addprefix $(LC_DIR)/, $(LC_FILE_NAMES))
 
-# .c and .h files are always generated togheter. So lets only work with the .c
+# .c and .h files are always generated togheter. So lets only work with the .h
 # files for simplicity
-GEN_FILES= $(patsubst $(LC_DIR)/%.lc,$(GEN_DIR)/%.c,$(LC_FILES))
-GEN_OBJ_FILES= $(patsubst %.c,$(BUILD_DIR)/%.o,$(GEN_FILES))
+GEN_FILES= $(patsubst $(LC_DIR)/%.lc,$(GEN_DIR)/%.h,$(LC_FILES))
+#GEN_FILES+= $(patsubst $(LC_DIR)/%.lc,$(GEN_DIR)/%.h,$(LC_FILES))
+GEN_OBJ_FILES= $(patsubst %.h,$(BUILD_DIR)/%.o,$(GEN_FILES))
 
 FIREFLY_SRC= transport/firefly_transport_udp_posix.c protocol/firefly_protocol.c eventqueue/event_queue.c
 
@@ -40,7 +41,7 @@ FIREFLY_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(FIREFLY_SRC)) $(GEN_OBJ_FILES)
 
 DEPENDS_GEN=$(SRC_DIR)/protocol/firefly_protocol.c $(SRC_DIR)/protocol/firefly_protocol_private.h \
 	    $(SRC_DIR)/test/test_protocol.c $(SRC_DIR)/transport/firefly_transport_udp_posix.c \
-	    $(SRC_DIR)/eventqueue/event_queue.h $(SRC_DIR)/eventqueue/event_queue.c
+	    $(SRC_DIR)/eventqueue/event_queue.h
 
 LIBS=$(patsubst %,$(BUILD_DIR)/lib%.a,firefly)
 
@@ -56,14 +57,13 @@ TEST_PROGS= $(addprefix $(BUILD_DIR)/,test/test_protocol_main test/test_transpor
 ## Targets
 
 .PHONY: all doc doc-open clean cleaner install test
+
 # This will enable expression involving automatic variables in the prerequisities list. it must be defined before any usage of these feauteres.
 .SECONDEXPANSION:
 
 # target: all - Build all libs and tests.
 all: $(BUILD_DIR) $(LIBS) $(TEST_PROGS) tags
 
-# Include dependency files
--include $(FIREFLY_OBJS:.o=.d) /dev/null/
 
 $(BUILD_DIR) $(LIB_DIR) $(DOC_GEN_DIR) $(GEN_DIR) $(TESTFILES_DIR):
 	mkdir -p $@
@@ -125,8 +125,8 @@ $(LABCOMMLIBPATH)/liblabcomm.a:
 $(GEN_OBJ_FILES): $$(patsubst $$(BUILD_DIR)/%.o,%.c,$$@) $$(patsubst $$(BUILD_DIR)/%.o,%.h,$$@)
 
 #$(GEN_FILES): $(GEN_DIR) $$(patsubst $$(GEN_DIR)/%,c,$$(LC_DIR)/%.lc,$$@)
-$(GEN_FILES): $(LABCOMMC) $(GEN_DIR) $$(patsubst $$(GEN_DIR)/%.c,$(LC_DIR)/%.lc,$$@)
-	java -jar $(LABCOMMC) --c=$@ --h=$(patsubst %.c,%.h,$@) $(filter-out $(GEN_DIR) $(LABCOMMC),$^)
+$(GEN_FILES): $(LABCOMMC) $(GEN_DIR) $$(patsubst $$(GEN_DIR)/%.h,$(LC_DIR)/%.lc,$$@)
+	java -jar $(LABCOMMC) --c=$(patsubst %.h,%.c,$@) --h=$(patsubst %.c,%.h,$@) $(filter-out $(GEN_DIR) $(LABCOMMC),$^)
 
 # target: doc - Generate documentation.
 doc:
@@ -145,11 +145,14 @@ help:
 	@egrep "#\starget:" [Mm]akefile  | sed 's/\s-\s/\t\t\t/' | cut -d " " -f3- | sort -d
 
 # target: %.d - Make dependencies files
-$(BUILD_DIR)/%.d: %.c $(BUILD_DIR)
+$(BUILD_DIR)/%.d: %.c $(BUILD_DIR) $(GEN_FILES)
 	mkdir -p $(dir $@)
 	$(SHELL) -ec '$(CC) -M $(CFLAGS) $< \
-	| sed '\''s/\($(subst /,\/,$(BUILD_DIR)/$*)\)\.o[ :]*/\1.o $(subst /,\/,$@) : /g'\'' > $@; \
+	| sed '\''s/\(.*\)\.o[ :]*/$(patsubst %.d,%.o,$(subst /,\/,$@)) : /g'\'' > $@; \
 	[ -s $@ ] || rm -f $@'
+
+# Include dependency files
+-include $(FIREFLY_OBJS:.o=.d) /dev/null
 
 # target: clean  - Clean most generated files..
 clean:
