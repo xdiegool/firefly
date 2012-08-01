@@ -1,5 +1,4 @@
 ## Macros
-# TODO fix 80 col width.
 
 # Use LLVM clang if it's found.
 CC = $(shell hash clang 2>/dev/null && echo clang || echo gcc)
@@ -63,7 +62,7 @@ TEST_PROGS= $(addprefix $(BUILD_DIR)/,test/test_protocol_main test/test_transpor
 all: $(BUILD_DIR) $(LIBS) $(TEST_PROGS) tags
 
 # Include dependency files
-include $(FIREFLY_OBJS:.o=.d)
+-include $(FIREFLY_OBJS:.o=.d) /dev/null/
 
 $(BUILD_DIR) $(LIB_DIR) $(DOC_DIR) $(GEN_DIR):
 	mkdir -p $@

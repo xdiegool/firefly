@@ -28,7 +28,7 @@ void firefly_event_queue_free(struct firefly_event_queue **q)
 }
 
 struct firefly_event *firefly_event_new(enum firefly_event_type t,
-										unsigned char prio)
+							unsigned char prio)
 {
 	struct firefly_event *ev;
 
@@ -66,7 +66,8 @@ int firefly_event_add(struct firefly_event_queue *eq, struct firefly_event *ev)
 
 struct firefly_event *firefly_event_pop(struct firefly_event_queue *eq)
 {
-	struct firefly_eq_node *event_node; /* The node *containing* the event */
+	struct firefly_eq_node *event_node; /* The node *containing* the
+					       	       	       event. */
 	struct firefly_event *ev;			/* The actual event */
 
 	if((event_node = eq->head) == NULL)
@@ -86,14 +87,15 @@ int firefly_event_execute(struct firefly_event *ev)
 	switch (ev->base.type) {
 	case EVENT_CHAN_OPEN: {
 		struct firefly_event_chan_open *ev_co =
-			(struct firefly_event_chan_open *) ev;
+				(struct firefly_event_chan_open *) ev;
 		firefly_channel_open_event(ev_co->conn, ev_co->rejected_cb);
 	} break;
-	case EVENT_CHAN_CLOSE:
-		firefly_channel_close_event(((struct firefly_event_chan_close *)ev)->chan,
-									((struct firefly_event_chan_close *)ev)->conn);
-		break;
-		/* ... */
+	case EVENT_CHAN_CLOSE: {
+	     struct firefly_event_chan_close *ev_cc =
+	     	     	     (struct firefly_event_chan_close *) ev;
+	     firefly_channel_close_event(ev_cc->chan, ev_cc->conn);
+       } break;
+	/* ... */
 	case EVENT_CHAN_REQ_RECV: {
 		struct firefly_event_chan_req_recv *ev_crr =
 			(struct firefly_event_chan_req_recv *) ev;
@@ -112,11 +114,12 @@ int firefly_event_execute(struct firefly_event *ev)
 		handle_channel_ack_event(ev_car->chan_ack, ev_car->conn);
 		free(ev_car->chan_ack);
 	} break;
-	default:
-		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Bad event type"); /* New error? */
-		break;
+	default: {
+	   	 /* New error? */
+	  	 firefly_error(FIREFLY_ERROR_ALLOC, 1, "Bad event type");
+	} break;
 	}
-	firefly_event_free(&ev); 	/* It  makes no sense to keep it around... */
+	firefly_event_free(&ev)	/* It  makes no sense to keep it around... */
 
-	return 0;
+	return 0; // TODO no resturn status used, then delete it.
 }
