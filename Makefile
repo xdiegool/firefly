@@ -15,7 +15,9 @@ LIB_DIR=lib
 GEN_DIR=gen
 SRC_DIR=src
 LC_DIR=lc
-DOC_DIR=doc/gen
+DOC_DIR=doc
+DOC_GEN_DIR=$(DOC_DIR)/gen
+TESTFILES_DIR=testfiles
 VPATH=$(SRC_DIR) $(INCLUDE_DIR)
 
 LC_FILE_NAMES= firefly_protocol.lc test.lc
@@ -36,10 +38,9 @@ endif
 
 FIREFLY_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(FIREFLY_SRC)) $(GEN_OBJ_FILES)
 
-SAMPLE_TEST_BINS= $(patsubst %,$(BUILD_DIR)/test/%,labcomm_test_decoder labcomm_test_encoder)
-
 DEPENDS_GEN=$(SRC_DIR)/protocol/firefly_protocol.c $(SRC_DIR)/protocol/firefly_protocol_private.h \
-	    $(SRC_DIR)/test/test_protocol.c $(SRC_DIR)/transport/firefly_transport_udp_posix.c
+	    $(SRC_DIR)/test/test_protocol.c $(SRC_DIR)/transport/firefly_transport_udp_posix.c \
+	    $(SRC_DIR)/eventqueue/event_queue.h $(SRC_DIR)/eventqueue/event_queue.c
 
 LIBS=$(patsubst %,$(BUILD_DIR)/lib%.a,firefly)
 
@@ -64,7 +65,7 @@ all: $(BUILD_DIR) $(LIBS) $(TEST_PROGS) tags
 # Include dependency files
 -include $(FIREFLY_OBJS:.o=.d) /dev/null/
 
-$(BUILD_DIR) $(LIB_DIR) $(DOC_DIR) $(GEN_DIR):
+$(BUILD_DIR) $(LIB_DIR) $(DOC_GEN_DIR) $(GEN_DIR) $(TESTFILES_DIR):
 	mkdir -p $@
 
 #$(BUILD_DIR)/libfirefly.a: $(FIREFLY_OBJS) $(GEN_DIR)/firefly_sample.o
@@ -96,6 +97,8 @@ $(BUILD_DIR)/test/test_transport_main: $(TEST_TRANSP_OBJS) $(BUILD_DIR)/transpor
 $(BUILD_DIR)/test/test_event_main: $(TEST_EVENT_OBJS) $(BUILD_DIR) $(BUILD_DIR)/protocol/firefly_protocol.o $(BUILD_DIR)/firefly_errors.o $(LABCOMMLIBPATH)/liblabcomm.a $(BUILD_DIR)/gen/test.o $(BUILD_DIR)/gen/firefly_protocol.o
 	$(CC) $(CFLAGS) -L$(LABCOMMLIBPATH) $(filter %.o,$^) -lcunit -llabcomm -o $@
 
+$(TEST_PROGS): $(TESTFILES_DIR)
+
 # target: test - Run all tests.
 test: $(TEST_PROGS)
 	@for prog in $(filter-out $(BUILD_DIR) $(LIBS) $(LABCOMMLIBPATH)/liblabcomm.a,$^); do \
@@ -107,11 +110,6 @@ test: $(TEST_PROGS)
 # target: testc - Run all tests with sound effects!
 testc:
 	./celebrate.sh
-
-sample-test:  $(BUILD_DIR) $(LIBS) $(LABCOMMLIBPATH)/liblabcomm.a $(SAMPLE_TEST_BINS)
-	@for prog in $(filter-out $(BUILD_DIR) $(LIBS) $(LABCOMMLIBPATH)/liblabcomm.a,$^); do \
-		./$$prog; \
-	done
 
 $(LABCOMMC):
 	@echo "======Building LabComm compiler======"
@@ -132,11 +130,11 @@ $(GEN_FILES): $(LABCOMMC) $(GEN_DIR) $$(patsubst $$(GEN_DIR)/%.c,$(LC_DIR)/%.lc,
 
 # target: doc - Generate documentation.
 doc:
-	doxygen doxygen.cfg
+	doxygen $(DOC_DIR)/doxygen.cfg
 
 # target: doc-open - Opens the HTML index of the documentation.
 doc-open: doc
-	xdg-open $(DOC_DIR)/html/index.html
+	xdg-open $(DOC_GEN_DIR)/html/index.html
 
 # target: tags - Generate tags with ctags for all files.
 tags:
@@ -160,8 +158,7 @@ clean:
 	$(RM) $(FIREFLY_OBJS:.o=.d)
 	$(RM) $(TEST_PROGS)
 	$(RM) $(GEN_DIR)/*
-	$(RM) $(addsuffix .enc,$(addprefix data_,firefly test) \
-				$(addprefix sig_, firefly test))
+	$(RM) $(addprefix $(TESTFILES_DIR)/,$(addsuffix .enc, data sig))
 	@echo "======Cleaning LabComm======"
 	$(MAKE) -C $(LABCOMMLIBPATH) distclean
 	@echo "======End cleaning LabComm======"
@@ -169,10 +166,11 @@ clean:
 
 # target: cleaner - Clean all generated files.
 cleaner: clean
-	$(RM) -r $(DOC_DIR)
+	$(RM) -r $(DOC_GEN_DIR)
 	$(RM) -r $(BUILD_DIR)
 	$(RM) -r $(LIB_DIR)
 	$(RM) -r $(GEN_DIR)
+	$(RM) -r $(TESTFILES_DIR)
 	@echo "======Cleaning LabComm compiler======"
 	cd $(LABCOMMPATH)/compiler; ant clean
 	@echo "======End cleaning LabComm compiler======"

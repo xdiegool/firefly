@@ -119,7 +119,7 @@ int firefly_event_execute(struct firefly_event *ev)
 	  	 firefly_error(FIREFLY_ERROR_ALLOC, 1, "Bad event type");
 	} break;
 	}
-	firefly_event_free(&ev)	/* It  makes no sense to keep it around... */
+	firefly_event_free(&ev); /* It  makes no sense to keep it around... */
 
 	return 0; // TODO no resturn status used, then delete it.
 }

@@ -30,11 +30,11 @@
 
 #include "test/test_proto_chan.h"
 
-#define DATA_FILE		("data.enc")	// Encoded test data.
-#define SIG_FILE		("sig.enc")		// Encoded test signature.
-#define SRC_CHAN_ID		(3)		/* Source channe ID. */
-#define DEST_CHAN_ID	(1)		/* Desination channel ID. */
-#define WRITE_BUF_SIZE (128)	// Size of the LabComm buffer to write to.
+#define DATA_FILE	("testfiles/data.enc")	/* Encoded test data. */
+#define SIG_FILE	("testfiles/sig.enc")	/* uncoded test signature. */
+#define SRC_CHAN_ID	(3)			/* Source channe ID. */
+#define DEST_CHAN_ID	(1)			/* Desination channel ID. */
+#define WRITE_BUF_SIZE (128)	/* Size of the LabComm buffer to write to. */
 
 int init_suit_translc()
 {

@@ -1,7 +1,8 @@
 #include "labcomm.h"
 
-#define DATA_FILE ("data.enc")	// File where the encoded data can be written.
-#define SIG_FILE ("sig.enc")	// File where the encoded data can be written.
+#define DATA_FILE ("testfiles/data.enc") // Where the encoded data can be
+					// written.
+#define SIG_FILE ("testfiles/sig.enc")	// Where the encoded data can be written.
 
 size_t read_file_to_mem(unsigned char **data, char *file_name);
 

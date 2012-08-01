@@ -3,5 +3,5 @@ doc/gen
 lib/
 gen/
 *.mp3
-*.enc
+testfiles/
 .clang_complete
