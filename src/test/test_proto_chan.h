@@ -24,9 +24,12 @@ void test_chan_close();
 
 void test_chan_recv_close();
 
+void test_send_app_data();
+
+void test_recv_app_data();
+
 // TODO
 // multiple channels
-// send app data
 // recv app data
 // importance?
 

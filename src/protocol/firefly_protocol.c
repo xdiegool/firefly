@@ -97,10 +97,25 @@ struct firefly_channel *firefly_channel_new(struct firefly_connection *conn)
 	if (chan != NULL) {
 		chan->local_id = next_channel_id(conn);
 		chan->remote_id = CHANNEL_ID_NOT_SET;
-		chan->proto_decoder = NULL;
-		chan->proto_encoder = NULL;
-		chan->reader_data = NULL;
-		chan->writer_data = NULL;
+		chan->proto_decoder = labcomm_decoder_new(protocol_reader, chan);
+		chan->proto_encoder = labcomm_encoder_new(protocol_writer, chan);
+		if (chan->proto_encoder == NULL || chan->proto_decoder == NULL) {
+			firefly_error(FIREFLY_ERROR_ALLOC, 1, "Labcomm new failed\n");
+		}
+		chan->reader_data = malloc(sizeof(*chan->reader_data));
+		chan->reader_data->data = NULL;
+		chan->reader_data->data_size = 0;
+		chan->reader_data->pos = 0;
+		if (chan->reader_data == NULL) {
+			firefly_error(FIREFLY_ERROR_ALLOC, 1, "malloc failed\n");
+		}
+		chan->writer_data = malloc(sizeof(*chan->writer_data));
+		if (chan->writer_data == NULL) {
+			firefly_error(FIREFLY_ERROR_ALLOC, 1, "malloc failed\n");
+		}
+		chan->writer_data->data = malloc(BUFFER_SIZE);
+		chan->writer_data->data_size = BUFFER_SIZE;
+		chan->writer_data->pos = 0;
 		chan->conn = conn;
 	}
 
@@ -111,7 +126,6 @@ struct firefly_channel *firefly_channel_new(struct firefly_connection *conn)
 void firefly_channel_free(struct firefly_channel *chan)
 {
 	if (chan == NULL) {
-		printf("Freeing NULL channel\n");
 		return;
 	}
 	if (chan->proto_decoder != NULL) {
@@ -577,7 +591,7 @@ int ff_transport_writer(labcomm_writer_t *w, labcomm_writer_action_t action)
 		int res = copy_to_writer_data(writer_data, w->data, w->pos);
 		if (res == -1) {
 			w->on_error(LABCOMM_ERROR_MEMORY, 1,
-				"Writer could not save encoded data from "
+				"Transport writer could not save encoded data from "
 								"labcomm\n");
 			result = -ENOMEM;
 		} else {
@@ -589,7 +603,7 @@ int ff_transport_writer(labcomm_writer_t *w, labcomm_writer_action_t action)
 		int res = copy_to_writer_data(writer_data, w->data, w->pos);
 		if (res == -1) {
 			w->on_error(LABCOMM_ERROR_MEMORY, 1,
-				"Writer could not save encoded data from "
+				"Transport writer could not save encoded data from "
 								"labcomm\n");
 			result = -ENOMEM;
 		} else {
@@ -649,7 +663,7 @@ int protocol_writer(labcomm_writer_t *w, labcomm_writer_action_t action)
 		int res = copy_to_writer_data(writer_data, w->data, w->pos);
 		if (res == -1) {
 			w->on_error(LABCOMM_ERROR_MEMORY, 1,
-				"Writer could not save encoded data from "
+				"Protocol writer could not save encoded data from "
 								"labcomm\n");
 			result = -ENOMEM;
 		} else {
@@ -661,7 +675,7 @@ int protocol_writer(labcomm_writer_t *w, labcomm_writer_action_t action)
 		int res = copy_to_writer_data(writer_data, w->data, w->pos);
 		if (res == -1) {
 			w->on_error(LABCOMM_ERROR_MEMORY, 1,
-				"Writer could not save encoded data from "
+				"Protocol writer could not save encoded data from "
 								"labcomm\n");
 			result = -ENOMEM;
 		} else {

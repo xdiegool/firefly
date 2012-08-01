@@ -8,6 +8,7 @@
 #include <stdbool.h>
 
 #include <gen/firefly_protocol.h>
+#include <gen/test.h>
 #include <firefly_errors.h>
 #include "protocol/firefly_protocol_private.h"
 #include <protocol/firefly_protocol.h>
@@ -743,7 +744,6 @@ void test_chan_recv_close()
 	eq->offer_event_cb = firefly_event_add;
 
 	// Setup connection
-	// TODO add closed cb
 	struct firefly_connection *conn =
 		setup_test_conn_new(NULL, chan_closed_cb, NULL, eq);
 	labcomm_decoder_register_firefly_protocol_channel_close(
@@ -781,5 +781,100 @@ void test_chan_recv_close()
 	// clean up
 	chan_closed_called = false;
 	firefly_connection_free(&conn);
+	firefly_event_queue_free(&eq);
+}
+
+static bool sent_app_sample = false;
+static bool sent_app_data = false;
+
+struct encoded_packet app_data;
+void handle_data_sample(firefly_protocol_data_sample *data, void *ctx)
+{
+	struct firefly_channel *ch = (struct firefly_channel *) ctx;
+	CU_ASSERT_EQUAL(ch->local_id, data->src_chan_id);
+	CU_ASSERT_EQUAL(ch->remote_id, data->dest_chan_id);
+	sent_app_sample = true;
+	app_data.sign = malloc(data->app_enc_data.n_0);
+	app_data.ssize = data->app_enc_data.n_0;
+	memcpy(app_data.sign, data->app_enc_data.a, data->app_enc_data.n_0);
+}
+
+void handle_test_test_var(test_test_var *data, void *ctx)
+{
+	CU_ASSERT_EQUAL(*data, 1);
+	sent_app_data = true;
+}
+
+void test_send_app_data()
+{
+	test_test_var app_test_data = 1;
+
+	struct firefly_event_queue *eq = firefly_event_queue_new();
+	if (eq == NULL) {
+		CU_FAIL("Could not create queue.\n");
+	}
+	eq->offer_event_cb = firefly_event_add;
+
+	setup_test_decoder_new();
+	// Setup connection
+	struct firefly_connection *conn =
+		setup_test_conn_new(NULL, chan_closed_cb, NULL, eq);
+
+	struct firefly_channel *ch = firefly_channel_new(conn);
+	ch->remote_id = REMOTE_CHAN_ID;
+	add_channel_to_connection(ch, conn);
+
+	labcomm_decoder_register_firefly_protocol_data_sample(test_dec,
+			handle_data_sample, ch);
+
+	struct labcomm_mem_reader_context_t *test_dec_ctx_2;
+	test_dec_ctx_2 = malloc(sizeof(labcomm_mem_reader_context_t));
+	if (test_dec_ctx_2 == NULL) {
+		CU_FAIL("Test decoder context was null\n");
+	}
+	test_dec_ctx_2->enc_data = NULL;
+	test_dec_ctx_2->size = 0;
+	struct labcomm_decoder *test_dec_2 = labcomm_decoder_new(labcomm_mem_reader,
+			test_dec_ctx_2);
+	labcomm_register_error_handler_decoder(test_dec_2, handle_labcomm_error);
+	labcomm_decoder_register_test_test_var(test_dec_2, handle_test_test_var, NULL);
+
+	labcomm_encoder_register_firefly_protocol_data_sample(
+			conn->transport_encoder);
+	struct labcomm_encoder *ch_enc = firefly_protocol_get_output_stream(ch);
+	labcomm_encoder_register_test_test_var(ch_enc);
+	CU_ASSERT_TRUE(sent_app_sample);
+	sent_app_sample = false;
+
+	conn->writer_data->pos = 0;
+
+	test_dec_ctx_2->enc_data = app_data.sign;
+	test_dec_ctx_2->size = app_data.ssize;
+	labcomm_decoder_decode_one(test_dec_2);
+	test_dec_ctx_2->enc_data = NULL;
+	test_dec_ctx_2->size = 0;
+	free(app_data.sign);
+	app_data.sign = NULL;
+	// decode _2
+
+	labcomm_encode_test_test_var(ch_enc, &app_test_data);
+	CU_ASSERT_TRUE(sent_app_sample);
+
+	test_dec_ctx_2->enc_data = app_data.sign;
+	test_dec_ctx_2->size = app_data.ssize;
+	labcomm_decoder_decode_one(test_dec_2);
+	test_dec_ctx_2->enc_data = NULL;
+	test_dec_ctx_2->size = 0;
+	// decode _2
+	free(app_data.sign);
+	app_data.sign = NULL;
+
+	CU_ASSERT_TRUE(sent_app_data);
+	sent_app_sample = false;
+	sent_app_data = false;
+	firefly_connection_free(&conn);
+	teardown_test_decoder_free();
+	labcomm_decoder_free(test_dec_2);
+	free(test_dec_ctx_2);
 	firefly_event_queue_free(&eq);
 }
