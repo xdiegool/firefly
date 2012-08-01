@@ -25,8 +25,8 @@ LC_FILES = $(addprefix $(LC_DIR)/, $(LC_FILE_NAMES))
 
 # .c and .h files are always generated togheter. So lets only work with the .h
 # files for simplicity
-GEN_FILES= $(patsubst $(LC_DIR)/%.lc,$(GEN_DIR)/%.h,$(LC_FILES))
-GEN_OBJ_FILES= $(patsubst %.h,$(BUILD_DIR)/%.o,$(GEN_FILES))
+GEN_FILES= $(patsubst $(LC_DIR)/%.lc,$(GEN_DIR)/%.h,$(LC_FILES)) $(patsubst $(LC_DIR)/%.lc,$(GEN_DIR)/%.c,$(LC_FILES))
+GEN_OBJ_FILES= $(patsubst %.h,$(BUILD_DIR)/%.o,$(filter-out %.c,$(GEN_FILES)))
 
 FIREFLY_SRC= transport/firefly_transport_udp_posix.c protocol/firefly_protocol.c eventqueue/event_queue.c
 
@@ -35,6 +35,7 @@ FIREFLY_SRC= transport/firefly_transport_udp_posix.c protocol/firefly_protocol.c
 ifneq ($(FIREFLY_ERROR_USER_DEFINED),true)
 	FIREFLY_SRC += firefly_errors.c
 endif
+
 
 FIREFLY_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(FIREFLY_SRC)) $(GEN_OBJ_FILES)
 
@@ -51,7 +52,7 @@ TEST_TRANSP_OBJS= $(patsubst %,$(BUILD_DIR)/test/%.o,test_transport_main test_tr
 TEST_EVENT_OBJS= $(patsubst %,$(BUILD_DIR)/test/%.o,test_event_main)
 TEST_EVENT_OBJS+= $(patsubst %,$(BUILD_DIR)/%.o,eventqueue/event_queue)
 
-TEST_PROGS= $(addprefix $(BUILD_DIR)/,test/test_protocol_main test/test_transport_main test/test_event_main)
+TEST_PROGS= $(addprefix $(BUILD_DIR)/test/test_,protocol_main transport_main event_main)
 
 ## Targets
 
@@ -125,15 +126,16 @@ $(LABCOMMLIBPATH)/liblabcomm.a:
 $(GEN_OBJ_FILES): $$(patsubst $$(BUILD_DIR)/%.o,%.c,$$@) $$(patsubst $$(BUILD_DIR)/%.o,%.h,$$@)
 
 #$(GEN_FILES): $(GEN_DIR) $$(patsubst $$(GEN_DIR)/%,c,$$(LC_DIR)/%.lc,$$@)
-$(GEN_FILES): $(LABCOMMC) $(GEN_DIR) $$(patsubst $$(GEN_DIR)/%.h,$(LC_DIR)/%.lc,$$@)
-	java -jar $(LABCOMMC) --c=$(patsubst %.h,%.c,$@) --h=$(patsubst %.c,%.h,$@) $(filter-out $(GEN_DIR) $(LABCOMMC),$^)
+# TODO try to not have .c in $@
+$(GEN_FILES): $(LABCOMMC) $(GEN_DIR) $$(patsubst $$(GEN_DIR)/%.h,$$(LC_DIR)/%.lc,$$@)
+	java -jar $(LABCOMMC) --c=$(patsubst %.h,%.c,$@) --h=$(patsubst %.c,%.h,$@) $(filter-out $(LABCOMMC) $(GEN_DIR),$^)
 
 # target: doc - Generate documentation.
 doc:
 	doxygen $(DOC_DIR)/doxygen.cfg
 
 # target: doc-open - Opens the HTML index of the documentation.
-doc-open: doc
+doc-open: $(DOC_GEN_DIR)/html/index.html
 	xdg-open $(DOC_GEN_DIR)/html/index.html
 
 # target: tags - Generate tags with ctags for all files.
@@ -144,7 +146,7 @@ tags:
 help:
 	@egrep "#\starget:" [Mm]akefile  | sed 's/\s-\s/\t\t\t/' | cut -d " " -f3- | sort -d
 
-# target: %.d - Make dependencies files
+# target: %.d - Make dependency files
 $(BUILD_DIR)/%.d: %.c $(BUILD_DIR) $(GEN_FILES)
 	mkdir -p $(dir $@)
 	$(SHELL) -ec '$(CC) -M $(CFLAGS) $< \
@@ -153,13 +155,15 @@ $(BUILD_DIR)/%.d: %.c $(BUILD_DIR) $(GEN_FILES)
 
 # Include dependency files and ignore ".d file missing" the first time.
 #-include $(FIREFLY_OBJS:.o=.d) /dev/null
-include $(FIREFLY_OBJS:.o=.d)
 
 # target: clean  - Clean most generated files..
 clean:
 	$(RM) $(LIBS)
 	$(RM) $(FIREFLY_OBJS)
 	$(RM) $(FIREFLY_OBJS:.o=.d)
+	$(RM) $(TEST_EVENT_OBJS)
+	$(RM) $(TEST_PROTO_OBJS)
+	$(RM) $(TEST_TRANSP_OBJS)
 	$(RM) $(TEST_PROGS)
 	$(RM) $(GEN_DIR)/*
 	$(RM) $(addprefix $(TESTFILES_DIR)/,$(addsuffix .enc, data sig))
