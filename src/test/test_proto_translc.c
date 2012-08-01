@@ -2,6 +2,7 @@
  * @file
  * @brief Test the functionality of the protocol layer.
  */
+
 #ifdef _GNU_SOURCE
 #error "Something turned it on!"
 #undef _GNU_SOURCE

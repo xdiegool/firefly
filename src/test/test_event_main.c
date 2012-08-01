@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief Test the event queue functionallity.
+ */
 
 #include "CUnit/Basic.h"
 #include "CUnit/Console.h"
@@ -106,7 +110,7 @@ int main()
 		return CU_get_error();
 	}
 
-	// Transport UDP Posix tests.
+	// Transport UDP POSIX tests.
 	if (
 		(CU_add_test(event_suite, "test_add_pop_event_simple",
 				test_add_pop_event_simple) == NULL)

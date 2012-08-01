@@ -66,14 +66,17 @@ int firefly_event_add(struct firefly_event_queue *eq, struct firefly_event *ev)
 
 struct firefly_event *firefly_event_pop(struct firefly_event_queue *eq)
 {
-	struct firefly_eq_node *event_node; /* The node *containing* the
-					       	       	       event. */
-	struct firefly_event *ev;			/* The actual event */
+	// The node containing the event.
+	struct firefly_eq_node *event_node; 
 
-	if((event_node = eq->head) == NULL)
+	// The actual event
+	struct firefly_event *ev;			
+
+	if ((event_node = eq->head) == NULL) {
 		return NULL;
+	}
 	eq->head = eq->head->next;
-	ev       = event_node->event;
+	ev = event_node->event;
 	free(event_node);
 	if (eq->tail == event_node) {
 		eq->tail = NULL;
@@ -121,5 +124,5 @@ int firefly_event_execute(struct firefly_event *ev)
 	}
 	firefly_event_free(&ev); /* It  makes no sense to keep it around... */
 
-	return 0; // TODO no resturn status used, then delete it.
+	return 0; // TODO no result status used, then delete it.
 }
