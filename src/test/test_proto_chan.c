@@ -32,7 +32,7 @@ struct encoded_packet *create_encoded_packet(lc_register_f reg, lc_encode_f enc,
 		void *data)
 {
 	struct encoded_packet *enc_pkt = malloc(sizeof(struct encoded_packet));
-	create_labcomm_files_general( reg, enc, data);
+	create_labcomm_files_general(reg, enc, data);
 	enc_pkt->ssize = read_file_to_mem(&enc_pkt->sign, SIG_FILE);
 	enc_pkt->dsize = read_file_to_mem(&enc_pkt->data, DATA_FILE);
 	return enc_pkt;
@@ -767,7 +767,7 @@ static bool sent_app_sample = false;
 static bool sent_app_data = false;
 
 struct encoded_packet app_data;
-void handle_data_sample(firefly_protocol_data_sample *data, void *ctx)
+void send_app_data_handle_data_sample(firefly_protocol_data_sample *data, void *ctx)
 {
 	struct firefly_channel *ch = (struct firefly_channel *) ctx;
 	CU_ASSERT_EQUAL(ch->local_id, data->src_chan_id);
@@ -804,7 +804,7 @@ void test_send_app_data()
 	add_channel_to_connection(ch, conn);
 
 	labcomm_decoder_register_firefly_protocol_data_sample(test_dec,
-			handle_data_sample, ch);
+			send_app_data_handle_data_sample, ch);
 
 	struct labcomm_mem_reader_context_t *test_dec_ctx_2;
 	test_dec_ctx_2 = malloc(sizeof(labcomm_mem_reader_context_t));
@@ -861,5 +861,84 @@ void test_send_app_data()
 	teardown_test_decoder_free();
 	labcomm_decoder_free(test_dec_2);
 	free(test_dec_ctx_2);
+	firefly_event_queue_free(&eq);
+}
+
+void test_recv_app_data()
+{
+	struct firefly_event *ev;
+	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add);
+	if (eq == NULL) {
+		CU_FAIL("Could not create queue.\n");
+	}
+
+	// Setup connection
+	struct firefly_connection *conn =
+		setup_test_conn_new(NULL, NULL, NULL, eq);
+	struct firefly_channel *ch = firefly_channel_new(conn);
+	if (ch == NULL)
+		CU_FAIL("Could not create channel");
+	ch->remote_id = REMOTE_CHAN_ID;
+	add_channel_to_connection(ch, conn);
+
+	// Create app data packet
+	test_test_var app_pkt;
+	app_pkt = 1;
+	struct encoded_packet *ep_app = create_encoded_packet(
+			labcomm_encoder_register_test_test_var,
+			(lc_encode_f) labcomm_encode_test_test_var, &app_pkt);
+
+	// create protocol sample with app signature
+	firefly_protocol_data_sample proto_sign_pkt;
+	proto_sign_pkt.src_chan_id = REMOTE_CHAN_ID;
+	proto_sign_pkt.dest_chan_id = ch->local_id;
+	proto_sign_pkt.important = true;
+	proto_sign_pkt.app_enc_data.a = ep_app->sign;
+	proto_sign_pkt.app_enc_data.n_0 = ep_app->ssize;
+	struct encoded_packet *ep_proto_sign = create_encoded_packet(
+			labcomm_encoder_register_firefly_protocol_data_sample,
+			(lc_encode_f) labcomm_encode_firefly_protocol_data_sample,
+			&proto_sign_pkt);
+
+	// create protocol sample with app data
+	firefly_protocol_data_sample proto_data_pkt;
+	proto_data_pkt.src_chan_id = REMOTE_CHAN_ID;
+	proto_data_pkt.dest_chan_id = ch->local_id;
+	proto_data_pkt.important = true;
+	proto_data_pkt.app_enc_data.a = ep_app->data;
+	proto_data_pkt.app_enc_data.n_0 = ep_app->dsize;
+
+	struct encoded_packet *ep_proto_data = create_encoded_packet(
+			labcomm_encoder_register_firefly_protocol_data_sample,
+			(lc_encode_f) labcomm_encode_firefly_protocol_data_sample,
+			&proto_data_pkt);
+
+	struct labcomm_decoder *ch_dec = firefly_protocol_get_input_stream(ch);
+	labcomm_decoder_register_test_test_var(ch_dec, handle_test_test_var, NULL);
+
+	labcomm_decoder_register_firefly_protocol_data_sample(conn->transport_decoder,
+			handle_data_sample, conn);
+
+	// give data to protocol
+	protocol_data_received(conn, ep_proto_sign->sign, ep_proto_sign->ssize);
+	protocol_data_received(conn, ep_proto_sign->data, ep_proto_sign->dsize);
+	protocol_data_received(conn, ep_proto_data->data, ep_proto_data->dsize);
+	// execute the generated events
+	ev = firefly_event_pop(eq);
+	CU_ASSERT_PTR_NOT_NULL(ev);
+	firefly_event_execute(ev);
+	ev = firefly_event_pop(eq);
+	CU_ASSERT_PTR_NOT_NULL(ev);
+	firefly_event_execute(ev);
+
+	// check if app data was received
+	CU_ASSERT_TRUE(sent_app_data);
+	sent_app_data = false;
+
+	// clean up
+	encoded_packet_free(ep_app);
+	encoded_packet_free(ep_proto_sign);
+	encoded_packet_free(ep_proto_data);
+	firefly_connection_free(&conn);
 	firefly_event_queue_free(&eq);
 }

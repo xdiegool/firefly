@@ -30,7 +30,6 @@ void test_recv_app_data();
 
 // TODO
 // multiple channels
-// recv app data
 // importance?
 
 #endif

@@ -123,9 +123,15 @@ int firefly_event_execute(struct firefly_event *ev)
 		free(ev_ss->pkt->app_enc_data.a);
 		free(ev_ss->pkt);
 	} break;
+	case EVENT_RECV_SAMPLE: {
+		struct firefly_event_recv_sample *ev_rs =
+			(struct firefly_event_recv_sample *) ev;
+		handle_data_sample_event(ev_rs->pkt, ev_rs->conn);
+		free(ev_rs->pkt->app_enc_data.a);
+		free(ev_rs->pkt);
+	} break;
 	default: {
-	   	 /* New error? */
-	  	 firefly_error(FIREFLY_ERROR_ALLOC, 1, "Bad event type");
+		firefly_error(FIREFLY_ERROR_EVENT, 1, "Bad event type");
 	} break;
 	}
 	firefly_event_free(&ev); /* It  makes no sense to keep it around... */

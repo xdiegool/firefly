@@ -18,6 +18,7 @@ const char *firefly_error_strings[] = {
 	"Invalid protocol state occured.",
 	"User defined error.",
 	"User has not set callback.",
+	"Event type does not exist.",
 	"End guard. Don't use this \"error\".",
 };
 

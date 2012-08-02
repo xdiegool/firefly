@@ -275,8 +275,8 @@ void handle_channel_request_event(firefly_protocol_channel_request *chan_req,
 		struct firefly_connection *conn)
 {
 	int local_chan_id = chan_req->dest_chan_id;
-	struct firefly_channel *chan = find_channel_by_local_id(local_chan_id,
-			conn);
+	struct firefly_channel *chan = find_channel_by_local_id(conn,
+			local_chan_id);
 	if (chan != NULL) {
 		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1, "Received open"
 						"channel on existing channel.\n");
@@ -335,8 +335,8 @@ void handle_channel_response_event(firefly_protocol_channel_response *chan_res,
 		struct firefly_connection *conn)
 {
 	int local_chan_id = chan_res->dest_chan_id;
-	struct firefly_channel *chan = find_channel_by_local_id(local_chan_id,
-			conn);
+	struct firefly_channel *chan = find_channel_by_local_id(conn,
+			local_chan_id);
 
 	firefly_protocol_channel_ack ack;
 	ack.dest_chan_id = chan_res->source_chan_id;
@@ -391,8 +391,8 @@ void handle_channel_ack_event(firefly_protocol_channel_ack *chan_ack,
 		struct firefly_connection *conn)
 {
 	int local_chan_id = chan_ack->dest_chan_id;
-	struct firefly_channel *chan = find_channel_by_local_id(local_chan_id,
-			conn);
+	struct firefly_channel *chan = find_channel_by_local_id(conn,
+			local_chan_id);
 
 	if (chan != NULL) {
 		conn->on_channel_opened(chan);
@@ -407,7 +407,7 @@ void handle_channel_close(firefly_protocol_channel_close *chan_close,
 {
 	struct firefly_connection *conn = (struct firefly_connection *) context;
 	struct firefly_channel *chan = find_channel_by_local_id(
-			chan_close->dest_chan_id, conn);
+			conn, chan_close->dest_chan_id);
 	if (chan != NULL){
 		create_channel_closed_event(chan, conn);
 	} else {
@@ -416,8 +416,41 @@ void handle_channel_close(firefly_protocol_channel_close *chan_close,
 	}
 }
 
-struct firefly_channel *find_channel_by_local_id(int id,
+void handle_data_sample(firefly_protocol_data_sample *data,
+		void *context)
+{
+	struct firefly_connection *conn = (struct firefly_connection *) context;
+	firefly_protocol_data_sample *pkt =
+		malloc(sizeof(firefly_protocol_data_sample));
+	memcpy(pkt, data, sizeof(firefly_protocol_data_sample));
+	pkt->app_enc_data.a = malloc(data->app_enc_data.n_0);
+	memcpy(pkt->app_enc_data.a, data->app_enc_data.a, data->app_enc_data.n_0);
+	struct firefly_event_recv_sample *ev =
+		malloc(sizeof(struct firefly_event_recv_sample));
+	ev->base.type = EVENT_RECV_SAMPLE;
+	ev->base.prio = 1;
+	ev->conn = conn;
+	ev->pkt = pkt;
+	conn->event_queue->offer_event_cb(conn->event_queue,
+			(struct firefly_event *) ev);
+}
+
+void handle_data_sample_event(firefly_protocol_data_sample *data,
 		struct firefly_connection *conn)
+{
+	struct firefly_channel *chan = find_channel_by_local_id(conn,
+			data->dest_chan_id);
+	chan->reader_data->data = data->app_enc_data.a;
+	chan->reader_data->data_size = data->app_enc_data.n_0;
+	chan->reader_data->pos = 0;
+	labcomm_decoder_decode_one(chan->proto_decoder);
+	chan->reader_data->data = NULL;
+	chan->reader_data->data_size = 0;
+	chan->reader_data->pos = 0;
+}
+
+struct firefly_channel *find_channel_by_local_id(struct firefly_connection *conn,
+		int id)
 {
 	struct channel_list_node *head = conn->chan_list;
 	while (head != NULL) {
