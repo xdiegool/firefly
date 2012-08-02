@@ -16,10 +16,10 @@ int clean_suite_event()
 
 void test_add_pop_event_simple()
 {
-	struct firefly_event_queue *q = firefly_event_queue_new();
+	struct firefly_event_queue *q = firefly_event_queue_new(firefly_event_add);
 
 	struct firefly_event *ev = firefly_event_new(3, 1);
-	int st = firefly_event_add(q, ev);
+	int st = q->offer_event_cb(q, ev);
 	CU_ASSERT_EQUAL(st, 0);
 	struct firefly_event *test = firefly_event_pop(q);
 
@@ -38,16 +38,16 @@ void test_add_pop_event_simple()
 
 void test_queue_events_in_order()
 {
-	struct firefly_event_queue *q = firefly_event_queue_new();
+	struct firefly_event_queue *q = firefly_event_queue_new(firefly_event_add);
 
 	struct firefly_event *ev_1 = firefly_event_new(1, 1);
-	int st = firefly_event_add(q, ev_1);
+	int st = q->offer_event_cb(q, ev_1);
 	CU_ASSERT_EQUAL(st, 0);
 	struct firefly_event *ev_2 = firefly_event_new(2, 2);
-	st = firefly_event_add(q, ev_2);
+	st = q->offer_event_cb(q, ev_2);
 	CU_ASSERT_EQUAL(st, 0);
 	struct firefly_event *ev_3 = firefly_event_new(3, 3);
-	st = firefly_event_add(q, ev_3);
+	st = q->offer_event_cb(q, ev_3);
 	CU_ASSERT_EQUAL(st, 0);
 
 	CU_ASSERT_PTR_EQUAL(ev_1, firefly_event_pop(q));
@@ -65,18 +65,18 @@ void test_queue_events_in_order()
 
 void test_pop_empty()
 {
-	struct firefly_event_queue *q = firefly_event_queue_new();
+	struct firefly_event_queue *q = firefly_event_queue_new(firefly_event_add);
 
 	CU_ASSERT_PTR_NULL(firefly_event_pop(q));
 
 	struct firefly_event *ev_1 = firefly_event_new(1, 1);
-	int st = firefly_event_add(q, ev_1);
+	int st = q->offer_event_cb(q, ev_1);
 	CU_ASSERT_EQUAL(st, 0);
 	struct firefly_event *ev_2 = firefly_event_new(2, 2);
-	st = firefly_event_add(q, ev_2);
+	st = q->offer_event_cb(q, ev_2);
 	CU_ASSERT_EQUAL(st, 0);
 	struct firefly_event *ev_3 = firefly_event_new(3, 3);
-	st = firefly_event_add(q, ev_3);
+	st = q->offer_event_cb(q, ev_3);
 	CU_ASSERT_EQUAL(st, 0);
 
 	firefly_event_pop(q);

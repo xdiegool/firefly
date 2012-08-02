@@ -5,13 +5,14 @@
 #include "protocol/firefly_protocol_private.h"
 #include "firefly_errors.h"
 
-struct firefly_event_queue *firefly_event_queue_new()
+struct firefly_event_queue *firefly_event_queue_new(firefly_offer_event offer_cb)
 {
 	struct firefly_event_queue *q;
 
 	if ((q = malloc(sizeof(struct firefly_event_queue))) != NULL) {
 		q->head = NULL;
 		q->tail = NULL;
+		q->offer_event_cb = offer_cb;
 	}
 
 	return q;
@@ -113,6 +114,14 @@ int firefly_event_execute(struct firefly_event *ev)
 			(struct firefly_event_chan_ack_recv *) ev;
 		handle_channel_ack_event(ev_car->chan_ack, ev_car->conn);
 		free(ev_car->chan_ack);
+	} break;
+	case EVENT_SEND_SAMPLE: {
+		struct firefly_event_send_sample *ev_ss =
+			(struct firefly_event_send_sample *) ev;
+		labcomm_encode_firefly_protocol_data_sample(
+				ev_ss->conn->transport_encoder, ev_ss->pkt);
+		free(ev_ss->pkt->app_enc_data.a);
+		free(ev_ss->pkt);
 	} break;
 	default: {
 	   	 /* New error? */

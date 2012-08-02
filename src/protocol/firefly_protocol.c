@@ -682,14 +682,28 @@ int protocol_writer(labcomm_writer_t *w, labcomm_writer_action_t action)
 			w->pos = 0;
 			result = 0;
 			// create protocol packet and encode it
-			firefly_protocol_data_sample pkt;
-			pkt.dest_chan_id = chan->remote_id;
-			pkt.src_chan_id = chan->local_id;
-			pkt.important = true;
-			pkt.app_enc_data.a = writer_data->data;
-			pkt.app_enc_data.n_0 = writer_data->pos;
-			labcomm_encode_firefly_protocol_data_sample(
-					chan->conn->transport_encoder, &pkt);
+			struct firefly_event_send_sample *ev =
+				malloc(sizeof(struct firefly_event_send_sample));
+			firefly_protocol_data_sample *pkt =
+				malloc(sizeof(firefly_protocol_data_sample));
+			unsigned char *a = malloc(writer_data->pos);
+			if (ev == NULL || pkt == NULL || a == NULL) {
+				firefly_error(FIREFLY_ERROR_ALLOC, 1,
+						"Protocol writer could not allocate send event\n");
+			}
+			ev->base.type = EVENT_SEND_SAMPLE;
+			ev->base.prio = 1;
+			ev->conn = chan->conn;
+			ev->pkt = pkt;
+			ev->pkt->dest_chan_id = chan->remote_id;
+			ev->pkt->src_chan_id = chan->local_id;
+			ev->pkt->important = true;
+			ev->pkt->app_enc_data.n_0 = writer_data->pos;
+			ev->pkt->app_enc_data.a = a;
+			memcpy(ev->pkt->app_enc_data.a, writer_data->data,
+					writer_data->pos);
+			chan->conn->event_queue->offer_event_cb(chan->conn->event_queue,
+					(struct firefly_event *) ev);
 			writer_data->pos = 0;
 		}
 	} break;
