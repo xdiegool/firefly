@@ -11,7 +11,7 @@
 #include <gen/firefly_protocol.h>
 #include "eventqueue/event_queue.h"
 
-#define BUFFER_SIZE (128)
+#define BUFFER_SIZE 512
 
 struct firefly_connection *firefly_connection_new(
 		firefly_channel_is_open_f on_channel_opened,
