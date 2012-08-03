@@ -138,3 +138,17 @@ int firefly_event_execute(struct firefly_event *ev)
 
 	return 0; // TODO no resturn status used, then delete it.
 }
+
+size_t firefly_event_queue_length(struct firefly_event_queue *eq)
+{
+	struct firefly_eq_node *ev;
+	size_t n = 0;
+
+	ev = eq->head;
+	while (ev) {
+		ev = ev->next;
+		n++;
+	}
+
+	return n;
+}

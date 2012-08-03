@@ -967,6 +967,18 @@ struct data_space *data_space_new()
 	return tmp;
 }
 
+static int n_packets_in_data_space(struct data_space *space)
+{
+	int n = 0;
+
+	while (space) {
+		space = space->next;
+		n++;
+	}
+
+	return n;
+}
+
 static struct data_space *space_from_conn[2];
 
 /* TODO: Use 'transport_conn_platspec'? */
@@ -1042,6 +1054,8 @@ struct firefly_connection *setup_conn(int conn_n, struct firefly_event_queue *eq
 														  handle_channel_ack,
 														  tcon);
 	labcomm_encoder_register_firefly_protocol_channel_response(tcon->transport_encoder);
+	/* The registration should show up as a "packet" in the data space */
+	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[conn_n]), 1);
 
 	return tcon;
 }
@@ -1065,13 +1079,16 @@ void test_transmit_app_data_over_mock_trans_layer()
 	}
 
 	/* TODO: Actually do stuff. */
+	for (int i = 0; i < n_conn; i++) {
+		CU_ASSERT_EQUAL(firefly_event_queue_length(connections[i]->event_queue), 0);
+	}
+
 
 	/* cleanup */
 	for (int i = 0; i < n_conn; i++) {
 		firefly_connection_free(&connections[i]);
 		firefly_event_queue_free(&event_queues[i]);
 	}
-
 	for (int i = 0; i < sizeof(space_from_conn) / sizeof(*space_from_conn); i++) {
 		struct data_space *tmp = space_from_conn[i];
 		while (tmp) {

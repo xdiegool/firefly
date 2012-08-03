@@ -118,4 +118,6 @@ struct firefly_event *firefly_event_pop(struct firefly_event_queue *eq);
 
 int firefly_event_execute(struct firefly_event *ev);
 
+size_t firefly_event_queue_length(struct firefly_event_queue *eq);
+
 #endif
