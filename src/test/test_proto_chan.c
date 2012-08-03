@@ -942,3 +942,144 @@ void test_recv_app_data()
 	firefly_connection_free(&conn);
 	firefly_event_queue_free(&eq);
 }
+
+/* TODO: break out? */
+/* big test */
+/* faux trans layer */
+/* TODO: try a pipe or smthng... */
+
+struct data_space {
+	unsigned char *data;
+	struct data_space *next;
+	size_t data_size;
+};
+
+struct data_space *data_space_new()
+{
+	struct data_space *tmp;
+
+	if ((tmp = malloc(sizeof(*tmp)))) {
+		tmp->data = NULL;
+		tmp->next = NULL;
+		tmp->data_size = 0;
+	}
+
+	return tmp;
+}
+
+static struct data_space *space_from_conn[2];
+
+/* TODO: Use 'transport_conn_platspec'? */
+/* transport_write_f callback*/
+void trans_w(struct data_space **space,
+			 unsigned char *data,
+			 size_t data_size,
+			 struct firefly_connection *conn)
+{
+	struct data_space *tmp;
+
+	if (!*space) {
+		tmp = *space = data_space_new();
+	} else {
+		tmp = *space;
+		while (tmp->next)
+			tmp = tmp->next;
+		tmp->next = data_space_new();
+		tmp = tmp->next;		/* check? */
+	}
+	/* now on a new space, pos last. */
+	tmp->data = malloc(data_size);
+	memcpy(tmp->data, data, data_size);
+	tmp->data_size = data_size;
+	labcomm_decoder_decode_one(conn->transport_decoder);
+}
+
+void trans_w_from_conn_0(unsigned char *data, size_t data_size,
+						 struct firefly_connection *conn)
+{
+	trans_w(&space_from_conn[0], data, data_size, conn);
+}
+
+void trans_w_from_conn_1(unsigned char *data, size_t data_size,
+						 struct firefly_connection *conn)
+{
+	trans_w(&space_from_conn[1], data, data_size, conn);
+}
+
+/* we need two connections for this test */
+struct firefly_connection *setup_conn(int conn_n, struct firefly_event_queue *eqs[])
+{
+	struct firefly_connection *tcon;
+
+	if (conn_n < 0 || conn_n > 1)
+		CU_FAIL("This test have functions to handle *2* connections!");
+
+
+	tcon = firefly_connection_new(NULL, chan_closed_cb, NULL, eqs[conn_n]);
+	if (!tcon)
+		CU_FAIL("Could not create channel");
+	tcon->transport_conn_platspec = NULL; /* TODO: Fix. */
+	switch (conn_n) {					  /* TODO: Expandable later(?) */
+	case 0:
+		tcon->transport_write = trans_w_from_conn_0;
+		break;
+	case 1:
+		tcon->transport_write = trans_w_from_conn_1;
+		break;
+	}
+	tcon->transport_conn_platspec = NULL;
+	labcomm_register_error_handler_encoder(tcon->transport_encoder,
+										   handle_labcomm_error);
+	labcomm_register_error_handler_decoder(tcon->transport_decoder,
+										   handle_labcomm_error);
+
+	/* Register all protocoll types. */
+	/* TODO: Move to 'firefly_connection_new' */
+	labcomm_decoder_register_firefly_protocol_channel_request(tcon->transport_decoder,
+															  handle_channel_request,
+															  tcon);
+	labcomm_decoder_register_firefly_protocol_channel_ack(tcon->transport_decoder,
+														  handle_channel_ack,
+														  tcon);
+	labcomm_encoder_register_firefly_protocol_channel_response(tcon->transport_encoder);
+
+	return tcon;
+}
+#if 1
+void test_transmit_app_data_over_mock_trans_layer()
+{
+	const int n_conn = 2;
+	struct firefly_event_queue *event_queues[n_conn];
+	struct firefly_connection *connections[n_conn];
+
+	/* construct and configure queues with callback */
+	for (int i = 0; i < n_conn; i++) {
+		event_queues[i] = firefly_event_queue_new(firefly_event_add);
+		if (!event_queues[i])
+			CU_FAIL("Could not allocate queue");
+	}
+
+	/* setup channels */
+	for (int i = 0; i < n_conn; i++) {
+		connections[i] = setup_conn(i, event_queues);
+	}
+
+	/* TODO: Actually do stuff. */
+
+	/* cleanup */
+	for (int i = 0; i < n_conn; i++) {
+		firefly_connection_free(&connections[i]);
+		firefly_event_queue_free(&event_queues[i]);
+	}
+
+	for (int i = 0; i < sizeof(space_from_conn) / sizeof(*space_from_conn); i++) {
+		struct data_space *tmp = space_from_conn[i];
+		while (tmp) {
+			struct data_space *next =  tmp->next;
+			free(tmp->data);
+			free(tmp);
+			tmp = next;
+		}
+	}
+}
+#endif

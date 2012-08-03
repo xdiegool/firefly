@@ -28,6 +28,8 @@ void test_send_app_data();
 
 void test_recv_app_data();
 
+void test_transmit_app_data_over_mock_trans_layer();
+
 // TODO
 // multiple channels
 // importance?
