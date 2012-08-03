@@ -1053,13 +1053,50 @@ struct firefly_connection *setup_conn(int conn_n, struct firefly_event_queue *eq
 	labcomm_decoder_register_firefly_protocol_channel_ack(tcon->transport_decoder,
 														  handle_channel_ack,
 														  tcon);
-	labcomm_encoder_register_firefly_protocol_channel_response(tcon->transport_encoder);
-	/* The registration should show up as a "packet" in the data space */
+
+	/* The encoder should know the protocol */
+	/* The encoder registrations should show up as a "packet" in the data space */
+	labcomm_encoder_register_firefly_protocol_data_sample(tcon->transport_encoder);
 	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[conn_n]), 1);
+
+	labcomm_encoder_register_firefly_protocol_channel_request(tcon->transport_encoder);
+	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[conn_n]), 2);
+
+	labcomm_encoder_register_firefly_protocol_channel_ack(tcon->transport_encoder);
+	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[conn_n]), 3);
+
+	labcomm_encoder_register_firefly_protocol_channel_close(tcon->transport_encoder);
+	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[conn_n]), 4);
+
+	/* The decoder should know the protocol */
+	labcomm_decoder_register_firefly_protocol_data_sample(tcon->transport_decoder,
+														  handle_data_sample,
+														  tcon);
+
+	labcomm_decoder_register_firefly_protocol_channel_request(tcon->transport_decoder,
+															  handle_channel_request,
+															  tcon);
+
+	labcomm_decoder_register_firefly_protocol_channel_ack(tcon->transport_decoder,
+														  handle_channel_ack,
+														  tcon);
+
+	labcomm_decoder_register_firefly_protocol_channel_close(tcon->transport_decoder,
+															handle_channel_close,
+															tcon);
 
 	return tcon;
 }
-#if 1
+
+/*
+ * TODO: (Not just with regards to this test.)
+ *       Decide how to handle encoder registrations.
+ *       Should thew be transmitted or should they
+ *       be handled externally?
+ *       If we choose to discard them, move *all*
+ *       registrations away from the user.
+ *       (And of course, this test.)
+ */
 void test_transmit_app_data_over_mock_trans_layer()
 {
 	const int n_conn = 2;
@@ -1073,15 +1110,21 @@ void test_transmit_app_data_over_mock_trans_layer()
 			CU_FAIL("Could not allocate queue");
 	}
 
-	/* setup channels */
+	/* setup connections */
 	for (int i = 0; i < n_conn; i++) {
 		connections[i] = setup_conn(i, event_queues);
 	}
 
-	/* TODO: Actually do stuff. */
+	/* Actually do stuff. */
 	for (int i = 0; i < n_conn; i++) {
 		CU_ASSERT_EQUAL(firefly_event_queue_length(connections[i]->event_queue), 0);
 	}
+	 /* TODO: Might want to check the callback too... */
+	firefly_channel_open(connections[0], NULL);
+	CU_ASSERT_EQUAL(firefly_event_queue_length(connections[0]->event_queue), 1);
+	struct firefly_event *ev = firefly_event_pop(connections[0]->event_queue);
+	CU_ASSERT_EQUAL(firefly_event_queue_length(connections[0]->event_queue), 0);
+	firefly_event_execute(ev);
 
 
 	/* cleanup */
@@ -1099,4 +1142,3 @@ void test_transmit_app_data_over_mock_trans_layer()
 		}
 	}
 }
-#endif
