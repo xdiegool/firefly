@@ -91,6 +91,21 @@ void test_pop_empty()
 	firefly_event_queue_free(&q);
 }
 
+void test_length()
+{
+	const int k_len = 256;
+	struct firefly_event_queue *q = firefly_event_queue_new(firefly_event_add);
+
+	for (int i = 0; i < k_len; i++) {
+		struct firefly_event *ev = firefly_event_new(1, 1);
+		q->offer_event_cb(q, ev);
+	}
+
+	CU_ASSERT_EQUAL(firefly_event_queue_length(q), k_len);
+
+	firefly_event_queue_free(&q);
+}
+
 int main()
 {
 	CU_pSuite event_suite = NULL;
@@ -116,6 +131,9 @@ int main()
 			   ||
 		(CU_add_test(event_suite, "test_pop_empty",
 				test_pop_empty) == NULL)
+		||
+		(CU_add_test(event_suite, "test_length",
+					 test_length) == NULL)
 	   ) {
 		CU_cleanup_registry();
 		return CU_get_error();
