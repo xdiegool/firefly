@@ -1051,6 +1051,14 @@ size_t read_connection_mock(struct firefly_connection *conns[], int conn_n)
 	return read_pkg->data_size;
 }
 
+static bool should_accept_chan(struct firefly_channel *chan)
+{
+	return true;
+}
+void chan_was_opened(struct firefly_channel *chan) { }
+
+void chan_was_closed(struct firefly_channel *chan) { }
+
 /* we need two connections for this test */
 struct firefly_connection *setup_conn(int conn_n, struct firefly_event_queue *eqs[])
 {
@@ -1060,7 +1068,10 @@ struct firefly_connection *setup_conn(int conn_n, struct firefly_event_queue *eq
 		CU_FAIL("This test have functions to handle *2* connections!");
 
 
-	tcon = firefly_connection_new(NULL, chan_closed_cb, NULL, eqs[conn_n]);
+	tcon = firefly_connection_new(chan_was_opened,
+								  chan_was_closed,
+								  should_accept_chan,
+								  eqs[conn_n]);
 	if (!tcon)
 		CU_FAIL("Could not create channel");
 	tcon->transport_conn_platspec = NULL; /* TODO: Fix. */
@@ -1080,15 +1091,6 @@ struct firefly_connection *setup_conn(int conn_n, struct firefly_event_queue *eq
 										   err_cb);
 	labcomm_register_error_handler_decoder(tcon->transport_decoder,
 										   err_cb);
-
-	/* Register all protocoll types. */
-	/* TODO: Move to 'firefly_connection_new' */
-	labcomm_decoder_register_firefly_protocol_channel_request(tcon->transport_decoder,
-															  handle_channel_request,
-															  tcon);
-	labcomm_decoder_register_firefly_protocol_channel_ack(tcon->transport_decoder,
-														  handle_channel_ack,
-														  tcon);
 
 	/* The encoder should know the protocol */
 	/* The encoder registrations should show up as a "packet" in the data space */
@@ -1159,9 +1161,20 @@ void test_transmit_app_data_over_mock_trans_layer()
 	}
 
 	/* Actually do stuff. */
+	/* Initial values of event queues */
 	for (int i = 0; i < n_conn; i++) {
 		CU_ASSERT_EQUAL(firefly_event_queue_length(connections[i]->event_queue), 0);
 	}
+
+	/* Read signatures. No events should be spawned. */
+	for (int i = 0; i < n_conn; i++) {
+		int cnt = 0;
+		while ((read_connection_mock(connections, i)))
+			cnt ++;
+		CU_ASSERT_EQUAL(cnt, 5);
+		CU_ASSERT_EQUAL(firefly_event_queue_length(connections[0]->event_queue), 0);
+	}
+
 
 	/* Chan 0 wants to open a connection... */
 	/* TODO: Might want to check the callback too... */
@@ -1171,14 +1184,24 @@ void test_transmit_app_data_over_mock_trans_layer()
 	CU_ASSERT_EQUAL(firefly_event_queue_length(connections[0]->event_queue), 0);
 	firefly_event_execute(ev);
 	CU_ASSERT_EQUAL(firefly_event_queue_length(connections[0]->event_queue), 0);
+	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[0]), 1);
 
 	/*
 	 * Connection 1 will respond to the request by reading what connection 0
-	 * has written
+	 * has written. Connection 0 will read signatures.
 	 */
-	size_t n_read;
-	while ((n_read = read_connection_mock(connections, 1)));
-	/* TODO: Continue after commit... */
+	int cnt = 0;
+	while (read_connection_mock(connections, 1))
+		cnt++;
+	CU_ASSERT_EQUAL(cnt, 1);
+	CU_ASSERT_EQUAL(firefly_event_queue_length(connections[1]->event_queue), 1);
+	ev = firefly_event_pop(connections[1]->event_queue);
+	//firefly_event_execute(ev);
+
+	/* TODO: Why no event?! */
+
+	/* ... */
+	CU_FAIL("not done");
 
 	/* cleanup */
 	for (int i = 0; i < n_conn; i++) {
