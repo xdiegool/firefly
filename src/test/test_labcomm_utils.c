@@ -65,3 +65,25 @@ void create_labcomm_files_general(lc_register_f reg, lc_encode_f enc, void *data
 	close(tmpfd);
 	labcomm_encoder_free(fd_encoder);
 }
+
+void create_lc_files_name(lc_register_f reg, lc_encode_f enc, void *data,
+		char *name)
+{
+	char *sig_name = malloc(strlen(name) + 19);
+	strcpy(sig_name, "testfiles/");
+	strcat(sig_name, name);
+	strcat(sig_name, "_sig.enc");
+	char *data_name = malloc(strlen(name) + 20);
+	strcpy(data_name, "testfiles/");
+	strcat(data_name, name);
+	strcat(data_name, "_data.enc");
+	int tmpfd = open(sig_name, O_RDWR|O_CREAT|O_TRUNC, 0644);
+	struct labcomm_encoder *fd_encoder =
+			labcomm_encoder_new(labcomm_fd_writer, &tmpfd);
+	reg(fd_encoder);
+	close(tmpfd);
+	tmpfd = open(data_name, O_RDWR|O_CREAT|O_TRUNC, 0644);
+	enc(fd_encoder, data);
+	close(tmpfd);
+	labcomm_encoder_free(fd_encoder);
+}

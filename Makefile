@@ -65,7 +65,6 @@ TEST_PROGS= $(addprefix $(BUILD_DIR)/test/test_,protocol_main transport_main eve
 # target: all - Build all libs and tests.
 all: $(BUILD_DIR) $(LIBS) $(TEST_PROGS) tags
 
-
 $(BUILD_DIR) $(LIB_DIR) $(DOC_GEN_DIR) $(GEN_DIR) $(TESTFILES_DIR):
 	mkdir -p $@
 
@@ -84,6 +83,12 @@ $(DEPENDS_GEN): $(GEN_OBJ_FILES)
 install: $(LIB_DIR) $(LIBS)
 	install -C $(filter-out $(LIB_DIR), $^) $(LIB_DIR)
 
+$(BUILD_DIR)/test/create_lc_files: $(patsubst %,$(BUILD_DIR)/%,test/test_labcomm_utils.o firefly_errors.o gen/firefly_protocol.o test/create_lc_files.o)
+	$(CC) $(CFLAGS) -L$(LABCOMMLIBPATH) $(filter %.o,$^) -lcunit -llabcomm -o $@
+
+gen_lc_files: build/test/create_lc_files
+	build/test/create_lc_files
+
 $(BUILD_DIR)/test/%: test/%.c $(BUILD_DIR)/libfirefly.a
 	mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -L$(BUILD_DIR) -L$(LABCOMMLIBPATH) $< -lcunit -lfirefly -llabcomm -o $@
@@ -101,8 +106,8 @@ $(BUILD_DIR)/test/test_event_main: $(TEST_EVENT_OBJS) $(BUILD_DIR) $(BUILD_DIR)/
 $(TEST_PROGS): $(TESTFILES_DIR)
 
 # target: test - Run all tests.
-test: $(TEST_PROGS)
-	@for prog in $(filter-out $(BUILD_DIR) $(LIBS) $(LABCOMMLIBPATH)/liblabcomm.a,$^); do \
+test: $(TEST_PROGS) gen_lc_files
+	@for prog in $(filter-out $(BUILD_DIR) $(LIBS) $(LABCOMMLIBPATH)/liblabcomm.a gen_lc_files,$^); do \
 		echo "=========================>BEGIN TEST: $${prog}"; \
 		./$$prog; \
 		echo "=========================>END TEST: $${prog}"; \
@@ -166,7 +171,8 @@ clean:
 	$(RM) $(TEST_TRANSP_OBJS)
 	$(RM) $(TEST_PROGS)
 	$(RM) $(GEN_DIR)/*
-	$(RM) $(addprefix $(TESTFILES_DIR)/,$(addsuffix .enc, data sig))
+#	$(RM) $(addprefix $(TESTFILES_DIR)/,$(addsuffix .enc, data sig))
+	$(RM) $(TESTFILES_DIR)/*
 	@echo "======Cleaning LabComm======"
 	$(MAKE) -C $(LABCOMMLIBPATH) distclean
 	@echo "======End cleaning LabComm======"
