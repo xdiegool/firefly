@@ -24,6 +24,8 @@ void test_chan_close();
 
 void test_chan_recv_close();
 
+void test_chan_open_close_multiple();
+
 // TODO
 // multiple channels
 // send app data
