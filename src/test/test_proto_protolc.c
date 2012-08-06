@@ -56,6 +56,10 @@ void proto_check_writer(unsigned char *data, size_t data_size,
 
 void test_proto_writer()
 {
+	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add);
+	if (eq == NULL) {
+		CU_FAIL("Could not create queue.\n");
+	}
 	// Prepare the expected data.
 	test_test_var var_test_test = 42;
 	create_labcomm_files_general(
@@ -98,6 +102,7 @@ void test_proto_writer()
 	conn.writer_data->pos = 0;
 	conn.reader_data = NULL;
 	conn.transport_write = proto_check_writer;
+	conn.event_queue = eq;
 
 	struct labcomm_encoder *transport_encoder = labcomm_encoder_new(
 				ff_transport_writer, &conn);
@@ -138,6 +143,9 @@ void test_proto_writer()
 		&data_sample_sig);
 	labcomm_encoder_register_test_test_var(encoder_proto);
 	conn.writer_data->pos = 0;
+	struct firefly_event *ev = firefly_event_pop(eq);
+	CU_ASSERT_PTR_NOT_NULL(ev);
+	firefly_event_execute(ev);
 
 	// Test sample packet.
 	create_labcomm_files_general(
@@ -146,6 +154,9 @@ void test_proto_writer()
 		&data_sample_data);
 	labcomm_encode_test_test_var(encoder_proto, &var_test_test);
 	conn.writer_data->pos = 0;
+	ev = firefly_event_pop(eq);
+	CU_ASSERT_PTR_NOT_NULL(ev);
+	firefly_event_execute(ev);
 
 	CU_ASSERT_EQUAL(proto_check_cnt, 3);
 
@@ -157,6 +168,7 @@ void test_proto_writer()
 	free(conn.writer_data);
 	free(test_sig_buf);
 	free(test_data_buf);
+	firefly_event_queue_free(&eq);
 }
 
 static bool handled_test_var = false;

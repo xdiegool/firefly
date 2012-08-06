@@ -185,14 +185,25 @@ void handle_channel_close(firefly_protocol_channel_close *chan_close,
 		void *context);
 
 /**
+ * @brief The callback registered with LabComm used to receive data sample.
+ *
+ * @param data The decoded data sample.
+ * @param context The connection associated with the received data.
+ */
+void handle_data_sample(firefly_protocol_data_sample *data,
+		void *context);
+void handle_data_sample_event(firefly_protocol_data_sample *data,
+		struct firefly_connection *conn);
+
+/**
  * @brief Find and return the channel associated with the given connection with
  * the given local channel id.
  *
  * @param id The local ID of the channel.
  * @param conn The connection the channel is associated with.
  */
-struct firefly_channel *find_channel_by_local_id(int id,
-		struct firefly_connection *conn);
+struct firefly_channel *find_channel_by_local_id(
+		struct firefly_connection *conn, int id);
 
 /**
  * @brief Add the channel to the connection.

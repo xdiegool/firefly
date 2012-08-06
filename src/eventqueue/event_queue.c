@@ -5,13 +5,14 @@
 #include "protocol/firefly_protocol_private.h"
 #include "firefly_errors.h"
 
-struct firefly_event_queue *firefly_event_queue_new()
+struct firefly_event_queue *firefly_event_queue_new(firefly_offer_event offer_cb)
 {
 	struct firefly_event_queue *q;
 
 	if ((q = malloc(sizeof(struct firefly_event_queue))) != NULL) {
 		q->head = NULL;
 		q->tail = NULL;
+		q->offer_event_cb = offer_cb;
 	}
 
 	return q;
@@ -117,12 +118,40 @@ int firefly_event_execute(struct firefly_event *ev)
 		handle_channel_ack_event(ev_car->chan_ack, ev_car->conn);
 		free(ev_car->chan_ack);
 	} break;
+	case EVENT_SEND_SAMPLE: {
+		struct firefly_event_send_sample *ev_ss =
+			(struct firefly_event_send_sample *) ev;
+		labcomm_encode_firefly_protocol_data_sample(
+				ev_ss->conn->transport_encoder, ev_ss->pkt);
+		free(ev_ss->pkt->app_enc_data.a);
+		free(ev_ss->pkt);
+	} break;
+	case EVENT_RECV_SAMPLE: {
+		struct firefly_event_recv_sample *ev_rs =
+			(struct firefly_event_recv_sample *) ev;
+		handle_data_sample_event(ev_rs->pkt, ev_rs->conn);
+		free(ev_rs->pkt->app_enc_data.a);
+		free(ev_rs->pkt);
+	} break;
 	default: {
-	   	 /* New error? */
-	  	 firefly_error(FIREFLY_ERROR_ALLOC, 1, "Bad event type");
+		firefly_error(FIREFLY_ERROR_EVENT, 1, "Bad event type");
 	} break;
 	}
 	firefly_event_free(&ev); /* It  makes no sense to keep it around... */
 
 	return 0; // TODO no result status used, then delete it.
+}
+
+size_t firefly_event_queue_length(struct firefly_event_queue *eq)
+{
+	struct firefly_eq_node *ev;
+	size_t n = 0;
+
+	ev = eq->head;
+	while (ev) {
+		ev = ev->next;
+		n++;
+	}
+
+	return n;
 }

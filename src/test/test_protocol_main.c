@@ -59,10 +59,6 @@ int main()
 		(CU_add_test(translc_suite,
 			     "test_encode_protocol_multiple_times",
 			     test_encode_protocol_multiple_times) == NULL)
-		||
-		(CU_add_test(translc_suite,
-			     "test_next_channel_id",
-			     test_next_channel_id) == NULL)
 	   ) {
 		CU_cleanup_registry();
 		return CU_get_error();
@@ -85,6 +81,10 @@ int main()
 		(CU_add_test(chan_suite, "test_get_streams",
 			     test_get_streams) == NULL)
 		||
+		(CU_add_test(chan_suite,
+			     "test_next_channel_id",
+			     test_next_channel_id) == NULL)
+		||
 		(CU_add_test(chan_suite, "test_chan_open",
 			     test_chan_open) == NULL)
 		||
@@ -105,6 +105,16 @@ int main()
 		||
 	   (CU_add_test(chan_suite, "test_chan_recv_close",
 					test_chan_recv_close) == NULL)
+		||
+	   (CU_add_test(chan_suite, "test_send_app_data",
+					test_send_app_data) == NULL)
+		||
+	   (CU_add_test(chan_suite, "test_recv_app_data",
+					test_recv_app_data) == NULL)
+		||
+		(CU_add_test(chan_suite,
+					"test_transmit_app_data_over_mock_trans_layer",
+					test_transmit_app_data_over_mock_trans_layer) == NULL)
 	   ) {
 		CU_cleanup_registry();
 		return CU_get_error();

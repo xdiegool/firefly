@@ -26,6 +26,8 @@ enum firefly_error {
 	/**< Represents a user defined error. */
 	FIREFLY_ERROR_MISSING_CALLBACK,
 	/**< User has not set callback */
+	FIREFLY_ERROR_EVENT,
+	/**< Error relating to events */
 	FIREFLY_ERROR_LAST
 	/**< \b Must be the last enum element. firefly_error_get_str() depends on this.*/
 };

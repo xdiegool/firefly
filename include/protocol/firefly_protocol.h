@@ -99,4 +99,11 @@ typedef void (* firefly_channel_is_open_f)(struct firefly_channel *chan);
  */
 typedef void (* firefly_channel_closed_f)(struct firefly_channel *chan);
 
+/**
+ *brief The number of channels in the connection.
+ *
+ * @param The connection
+*/
+size_t firefly_number_channels_in_connection(struct firefly_connection *conn);
+
 #endif

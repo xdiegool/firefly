@@ -24,10 +24,14 @@ void test_chan_close();
 
 void test_chan_recv_close();
 
+void test_send_app_data();
+
+void test_recv_app_data();
+
+void test_transmit_app_data_over_mock_trans_layer();
+
 // TODO
 // multiple channels
-// send app data
-// recv app data
 // importance?
 
 #endif

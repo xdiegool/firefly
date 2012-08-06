@@ -11,7 +11,7 @@
 #include <gen/firefly_protocol.h>
 #include "eventqueue/event_queue.h"
 
-#define BUFFER_SIZE (128)
+#define BUFFER_SIZE 128
 
 struct firefly_connection *firefly_connection_new(
 		firefly_channel_is_open_f on_channel_opened,
@@ -97,10 +97,25 @@ struct firefly_channel *firefly_channel_new(struct firefly_connection *conn)
 	if (chan != NULL) {
 		chan->local_id = next_channel_id(conn);
 		chan->remote_id = CHANNEL_ID_NOT_SET;
-		chan->proto_decoder = NULL;
-		chan->proto_encoder = NULL;
-		chan->reader_data = NULL;
-		chan->writer_data = NULL;
+		chan->proto_decoder = labcomm_decoder_new(protocol_reader, chan);
+		chan->proto_encoder = labcomm_encoder_new(protocol_writer, chan);
+		if (chan->proto_encoder == NULL || chan->proto_decoder == NULL) {
+			firefly_error(FIREFLY_ERROR_ALLOC, 1, "Labcomm new failed\n");
+		}
+		chan->reader_data = malloc(sizeof(*chan->reader_data));
+		chan->reader_data->data = NULL;
+		chan->reader_data->data_size = 0;
+		chan->reader_data->pos = 0;
+		if (chan->reader_data == NULL) {
+			firefly_error(FIREFLY_ERROR_ALLOC, 1, "malloc failed\n");
+		}
+		chan->writer_data = malloc(sizeof(*chan->writer_data));
+		if (chan->writer_data == NULL) {
+			firefly_error(FIREFLY_ERROR_ALLOC, 1, "malloc failed\n");
+		}
+		chan->writer_data->data = malloc(BUFFER_SIZE);
+		chan->writer_data->data_size = BUFFER_SIZE;
+		chan->writer_data->pos = 0;
 		chan->conn = conn;
 	}
 
@@ -110,7 +125,6 @@ struct firefly_channel *firefly_channel_new(struct firefly_connection *conn)
 void firefly_channel_free(struct firefly_channel *chan)
 {
 	if (chan == NULL) {
-		printf("Freeing NULL channel\n");
 		return;
 	}
 	if (chan->proto_decoder != NULL) {
@@ -264,8 +278,8 @@ void handle_channel_request_event(firefly_protocol_channel_request *chan_req,
 		struct firefly_connection *conn)
 {
 	int local_chan_id = chan_req->dest_chan_id;
-	struct firefly_channel *chan = find_channel_by_local_id(local_chan_id,
-			conn);
+	struct firefly_channel *chan = find_channel_by_local_id(conn,
+			local_chan_id);
 	if (chan != NULL) {
 		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1, "Received open"
 					"channel on existing channel.\n");
@@ -327,8 +341,8 @@ void handle_channel_response_event(firefly_protocol_channel_response *chan_res,
 		struct firefly_connection *conn)
 {
 	int local_chan_id = chan_res->dest_chan_id;
-	struct firefly_channel *chan = find_channel_by_local_id(local_chan_id,
-			conn);
+	struct firefly_channel *chan = find_channel_by_local_id(conn,
+			local_chan_id);
 
 	firefly_protocol_channel_ack ack;
 	ack.dest_chan_id = chan_res->source_chan_id;
@@ -385,8 +399,8 @@ void handle_channel_ack_event(firefly_protocol_channel_ack *chan_ack,
 		struct firefly_connection *conn)
 {
 	int local_chan_id = chan_ack->dest_chan_id;
-	struct firefly_channel *chan = find_channel_by_local_id(local_chan_id,
-			conn);
+	struct firefly_channel *chan = find_channel_by_local_id(conn,
+			local_chan_id);
 
 	if (chan != NULL) {
 		conn->on_channel_opened(chan);
@@ -401,7 +415,7 @@ void handle_channel_close(firefly_protocol_channel_close *chan_close,
 {
 	struct firefly_connection *conn = (struct firefly_connection *) context;
 	struct firefly_channel *chan = find_channel_by_local_id(
-			chan_close->dest_chan_id, conn);
+			conn, chan_close->dest_chan_id);
 	if (chan != NULL){
 		create_channel_closed_event(chan, conn);
 	} else {
@@ -410,8 +424,41 @@ void handle_channel_close(firefly_protocol_channel_close *chan_close,
 	}
 }
 
-struct firefly_channel *find_channel_by_local_id(int id,
+void handle_data_sample(firefly_protocol_data_sample *data,
+		void *context)
+{
+	struct firefly_connection *conn = (struct firefly_connection *) context;
+	firefly_protocol_data_sample *pkt =
+		malloc(sizeof(firefly_protocol_data_sample));
+	memcpy(pkt, data, sizeof(firefly_protocol_data_sample));
+	pkt->app_enc_data.a = malloc(data->app_enc_data.n_0);
+	memcpy(pkt->app_enc_data.a, data->app_enc_data.a, data->app_enc_data.n_0);
+	struct firefly_event_recv_sample *ev =
+		malloc(sizeof(struct firefly_event_recv_sample));
+	ev->base.type = EVENT_RECV_SAMPLE;
+	ev->base.prio = 1;
+	ev->conn = conn;
+	ev->pkt = pkt;
+	conn->event_queue->offer_event_cb(conn->event_queue,
+			(struct firefly_event *) ev);
+}
+
+void handle_data_sample_event(firefly_protocol_data_sample *data,
 		struct firefly_connection *conn)
+{
+	struct firefly_channel *chan = find_channel_by_local_id(conn,
+			data->dest_chan_id);
+	chan->reader_data->data = data->app_enc_data.a;
+	chan->reader_data->data_size = data->app_enc_data.n_0;
+	chan->reader_data->pos = 0;
+	labcomm_decoder_decode_one(chan->proto_decoder);
+	chan->reader_data->data = NULL;
+	chan->reader_data->data_size = 0;
+	chan->reader_data->pos = 0;
+}
+
+struct firefly_channel *find_channel_by_local_id(struct firefly_connection *conn,
+		int id)
 {
 	struct channel_list_node *head = conn->chan_list;
 	while (head != NULL) {
@@ -585,7 +632,7 @@ int ff_transport_writer(labcomm_writer_t *w, labcomm_writer_action_t action)
 		int res = copy_to_writer_data(writer_data, w->data, w->pos);
 		if (res == -1) {
 			w->on_error(LABCOMM_ERROR_MEMORY, 1,
-				"Writer could not save encoded data from "
+				"Transport writer could not save encoded data from "
 								"labcomm\n");
 			result = -ENOMEM;
 		} else {
@@ -597,7 +644,7 @@ int ff_transport_writer(labcomm_writer_t *w, labcomm_writer_action_t action)
 		int res = copy_to_writer_data(writer_data, w->data, w->pos);
 		if (res == -1) {
 			w->on_error(LABCOMM_ERROR_MEMORY, 1,
-				"Writer could not save encoded data from "
+				"Transport writer could not save encoded data from "
 								"labcomm\n");
 			result = -ENOMEM;
 		} else {
@@ -657,7 +704,7 @@ int protocol_writer(labcomm_writer_t *w, labcomm_writer_action_t action)
 		int res = copy_to_writer_data(writer_data, w->data, w->pos);
 		if (res == -1) {
 			w->on_error(LABCOMM_ERROR_MEMORY, 1,
-				"Writer could not save encoded data from "
+				"Protocol writer could not save encoded data from "
 								"labcomm\n");
 			result = -ENOMEM;
 		} else {
@@ -669,21 +716,35 @@ int protocol_writer(labcomm_writer_t *w, labcomm_writer_action_t action)
 		int res = copy_to_writer_data(writer_data, w->data, w->pos);
 		if (res == -1) {
 			w->on_error(LABCOMM_ERROR_MEMORY, 1,
-				"Writer could not save encoded data from "
+				"Protocol writer could not save encoded data from "
 								"labcomm\n");
 			result = -ENOMEM;
 		} else {
 			w->pos = 0;
 			result = 0;
 			// create protocol packet and encode it
-			firefly_protocol_data_sample pkt;
-			pkt.dest_chan_id = chan->remote_id;
-			pkt.src_chan_id = chan->local_id;
-			pkt.important = true;
-			pkt.app_enc_data.a = writer_data->data;
-			pkt.app_enc_data.n_0 = writer_data->pos;
-			labcomm_encode_firefly_protocol_data_sample(
-					chan->conn->transport_encoder, &pkt);
+			struct firefly_event_send_sample *ev =
+				malloc(sizeof(struct firefly_event_send_sample));
+			firefly_protocol_data_sample *pkt =
+				malloc(sizeof(firefly_protocol_data_sample));
+			unsigned char *a = malloc(writer_data->pos);
+			if (ev == NULL || pkt == NULL || a == NULL) {
+				firefly_error(FIREFLY_ERROR_ALLOC, 1,
+						"Protocol writer could not allocate send event\n");
+			}
+			ev->base.type = EVENT_SEND_SAMPLE;
+			ev->base.prio = 1;
+			ev->conn = chan->conn;
+			ev->pkt = pkt;
+			ev->pkt->dest_chan_id = chan->remote_id;
+			ev->pkt->src_chan_id = chan->local_id;
+			ev->pkt->important = true;
+			ev->pkt->app_enc_data.n_0 = writer_data->pos;
+			ev->pkt->app_enc_data.a = a;
+			memcpy(ev->pkt->app_enc_data.a, writer_data->data,
+					writer_data->pos);
+			chan->conn->event_queue->offer_event_cb(chan->conn->event_queue,
+					(struct firefly_event *) ev);
 			writer_data->pos = 0;
 		}
 	} break;
@@ -700,4 +761,20 @@ int protocol_reader(labcomm_reader_t *r, labcomm_reader_action_t action)
 			(struct firefly_channel *) r->context;
 	struct ff_transport_data *reader_data = chan->reader_data;
 	return firefly_labcomm_reader(r, action, reader_data);
+}
+
+size_t firefly_number_channels_in_connection(struct firefly_connection *conn)
+{
+	struct channel_list_node *node;
+	size_t n_chan = 0;
+
+	node = conn->chan_list;
+	if (node) {
+		n_chan++;
+		while ((node = node->next) != NULL)
+			n_chan++;
+	}
+
+	return n_chan;
+
 }
