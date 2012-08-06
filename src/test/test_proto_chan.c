@@ -1025,6 +1025,7 @@ size_t read_connection_mock(struct firefly_connection *conns[], int conn_n)
 {
 	struct data_space **space;
 	struct data_space *read_pkg;
+	size_t read_size;
 
 	/* Connection 0 reads where connection 1 writes and vice versa. */
 	space = (conn_n == 0) ? &space_from_conn[1] : &space_from_conn[0];
@@ -1047,9 +1048,11 @@ size_t read_connection_mock(struct firefly_connection *conns[], int conn_n)
 	printf("\n\nEND READ DATA\n\n");
 #endif
 	protocol_data_received(conns[conn_n], read_pkg->data, read_pkg->data_size);
-	//free(read_pkg);
+	read_size = read_pkg->data_size;
+	free(read_pkg->data);
+	free(read_pkg);
 
-	return read_pkg->data_size;
+	return read_size;
 }
 
 static struct firefly_channel *new_chan;
