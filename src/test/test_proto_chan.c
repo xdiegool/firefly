@@ -1068,7 +1068,6 @@ void chan_was_closed(struct firefly_channel *chan) { }
 
 void handle_ttv(test_test_var *ttv, void *cont)
 {
-	printf("\n\n HANDLING \n\n");
 	*((test_test_var *) cont) = *ttv;
 }
 
@@ -1348,7 +1347,6 @@ void test_transmit_app_data_over_mock_trans_layer()
 	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[0]), 0);
 	CU_ASSERT_EQUAL(firefly_event_queue_length(connections[1]->event_queue), 1);
 	ev = firefly_event_pop(connections[1]->event_queue);
-	printf("\n\ntype: %d\n\n", ev->base.type);
 	firefly_event_execute(ev);
 	CU_ASSERT_EQUAL(firefly_event_queue_length(connections[1]->event_queue), 0);
 	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[0]), 0);
@@ -1357,13 +1355,36 @@ void test_transmit_app_data_over_mock_trans_layer()
 
 
 	test_test_var recv_app_data = contexts[1];
-	printf("\n\nrecv: %d\n\n", recv_app_data);
 	CU_ASSERT_EQUAL(recv_app_data, sent_app_data);
 	/* Sent appdata from 0 -> 1 */
 
+	/* Let conn 0 init closeing of channel */
+	firefly_channel_close(channels[0], connections[0]);
+	/* One event to remove chan locally... */
+	CU_ASSERT_EQUAL(firefly_event_queue_length(connections[0]->event_queue), 1);
+	/* ...and data to tell the other party. */
+	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[0]), 1);
+	ev = firefly_event_pop(connections[0]->event_queue);
+	firefly_event_execute(ev);
+	/* No new event should be spawned. */
+	CU_ASSERT_EQUAL(firefly_event_queue_length(connections[0]->event_queue), 0);
+	/* No more data should be created by executing the event. */
+	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[0]), 1);
+	/* The channel is already gone on this end. */
+	CU_ASSERT_EQUAL(firefly_number_channels_in_connection(connections[0]), 0);
 
-	/* ... */
-	CU_FAIL("not done");
+	/* Let conn read the news of the termination */
+	read_connection_mock(connections, 1);
+	CU_ASSERT_EQUAL(firefly_event_queue_length(connections[1]->event_queue), 1);
+	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[1]), 0);
+	ev = firefly_event_pop(connections[1]->event_queue);
+	firefly_event_execute(ev);
+	/* No new events... */
+	CU_ASSERT_EQUAL(firefly_event_queue_length(connections[1]->event_queue), 0);
+	/* ...or data. */
+	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[1]), 0);
+	/* Both channels are now shut down. */
+	CU_ASSERT_EQUAL(firefly_number_channels_in_connection(connections[1]), 0);
 
 	/* cleanup */
 	for (int i = 0; i < n_conn; i++) {
