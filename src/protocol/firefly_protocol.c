@@ -11,7 +11,7 @@
 #include <gen/firefly_protocol.h>
 #include "eventqueue/event_queue.h"
 
-#define BUFFER_SIZE 512
+#define BUFFER_SIZE 128
 
 struct firefly_connection *firefly_connection_new(
 		firefly_channel_is_open_f on_channel_opened,
@@ -753,4 +753,20 @@ int protocol_reader(labcomm_reader_t *r, labcomm_reader_action_t action)
 			(struct firefly_channel *) r->context;
 	struct ff_transport_data *reader_data = chan->reader_data;
 	return firefly_labcomm_reader(r, action, reader_data);
+}
+
+size_t firefly_number_channels_in_connection(struct firefly_connection *conn)
+{
+	struct channel_list_node *node;
+	size_t n_chan = 0;
+
+	node = conn->chan_list;
+	if (node) {
+		n_chan++;
+		while ((node = node->next) != NULL)
+			n_chan++;
+	}
+
+	return n_chan;
+
 }

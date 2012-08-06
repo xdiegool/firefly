@@ -1004,7 +1004,8 @@ void trans_w(struct data_space **space,
 		CU_FAIL("malloc failed!");
 	memcpy(tmp->data, data, data_size);
 	tmp->data_size = data_size;
-	labcomm_decoder_decode_one(conn->transport_decoder);
+	//labcomm_decoder_decode_one(conn->transport_decoder); // huh?
+	conn->writer_data->pos = 0;
 }
 
 void trans_w_from_conn_0(unsigned char *data, size_t data_size,
@@ -1037,7 +1038,7 @@ size_t read_connection_mock(struct firefly_connection *conns[], int conn_n)
 #if SUPER_DEBUG_LEVEL >= 2
 	printf("\n\nREAD DATA:\n\n");
 	for (int i = 0; i < read_pkg->data_size; i++) {
-		printf("%02x", read_pkg->data[i]);
+		printf("%4d", read_pkg->data[i]);
 		if ((i+1) % 10)
 			printf(" ");
 		else
@@ -1051,13 +1052,25 @@ size_t read_connection_mock(struct firefly_connection *conns[], int conn_n)
 	return read_pkg->data_size;
 }
 
+static struct firefly_channel *new_chan;
+static int n_chan_opens;
+
 static bool should_accept_chan(struct firefly_channel *chan)
 {
 	return true;
 }
-void chan_was_opened(struct firefly_channel *chan) { }
+void chan_was_opened(struct firefly_channel *chan) {
+	new_chan = chan;
+	n_chan_opens++;
+}
 
 void chan_was_closed(struct firefly_channel *chan) { }
+
+void handle_ttv(test_test_var *ttv, void *cont)
+{
+	printf("\n\n HANDLING \n\n");
+	*((test_test_var *) cont) = *ttv;
+}
 
 /* we need two connections for this test */
 struct firefly_connection *setup_conn(int conn_n, struct firefly_event_queue *eqs[])
@@ -1095,18 +1108,23 @@ struct firefly_connection *setup_conn(int conn_n, struct firefly_event_queue *eq
 	/* The encoder should know the protocol */
 	/* The encoder registrations should show up as a "packet" in the data space */
 	labcomm_encoder_register_firefly_protocol_data_sample(tcon->transport_encoder);
+	tcon->writer_data->pos = 0;
 	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[conn_n]), 1);
 
 	labcomm_encoder_register_firefly_protocol_channel_request(tcon->transport_encoder);
+	tcon->writer_data->pos = 0;
 	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[conn_n]), 2);
 
 	labcomm_encoder_register_firefly_protocol_channel_response(tcon->transport_encoder);
+	tcon->writer_data->pos = 0;
 	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[conn_n]), 3);
 
 	labcomm_encoder_register_firefly_protocol_channel_ack(tcon->transport_encoder);
+	tcon->writer_data->pos = 0;
 	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[conn_n]), 4);
 
 	labcomm_encoder_register_firefly_protocol_channel_close(tcon->transport_encoder);
+	tcon->writer_data->pos = 0;
 	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[conn_n]), 5);
 
 	/* The decoder should know the protocol */
@@ -1175,7 +1193,6 @@ void test_transmit_app_data_over_mock_trans_layer()
 		CU_ASSERT_EQUAL(firefly_event_queue_length(connections[0]->event_queue), 0);
 	}
 
-
 	/* Chan 0 wants to open a connection... */
 	/* TODO: Might want to check the callback too... */
 	firefly_channel_open(connections[0], NULL);
@@ -1196,9 +1213,154 @@ void test_transmit_app_data_over_mock_trans_layer()
 	CU_ASSERT_EQUAL(cnt, 1);
 	CU_ASSERT_EQUAL(firefly_event_queue_length(connections[1]->event_queue), 1);
 	ev = firefly_event_pop(connections[1]->event_queue);
-	//firefly_event_execute(ev);
+	firefly_event_execute(ev);
 
-	/* TODO: Why no event?! */
+	/* Chan 1 should have written chan_req_resp. Read it. */
+	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[0]), 0);
+	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[1]), 1);
+	read_connection_mock(connections, 0);
+	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[1]), 0);
+	CU_ASSERT_EQUAL(firefly_event_queue_length(connections[0]->event_queue), 1);
+	ev = firefly_event_pop(connections[0]->event_queue); /* recv_resp */
+	firefly_event_execute(ev);
+
+	/* No new events are spawned, but an ack in data space. */
+	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[0]), 1); /* ack */
+	CU_ASSERT_EQUAL(firefly_event_queue_length(connections[0]->event_queue), 0);
+	CU_ASSERT_EQUAL(firefly_event_queue_length(connections[1]->event_queue), 0);
+
+	/* process ack */
+	read_connection_mock(connections, 1);
+	CU_ASSERT_EQUAL(n_chan_opens, 1);
+	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[1]), 0);
+	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[0]), 0);
+	CU_ASSERT_EQUAL(firefly_event_queue_length(connections[0]->event_queue), 0);
+	CU_ASSERT_EQUAL(firefly_event_queue_length(connections[1]->event_queue), 1);
+	struct firefly_channel *channels[2];
+	channels[0] = new_chan;
+	ev = firefly_event_pop(connections[1]->event_queue); /* recv_resp */
+	firefly_event_execute(ev);
+
+	/* process other one */
+	read_connection_mock(connections, 0);
+	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[1]), 0);
+	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[0]), 0);
+	CU_ASSERT_EQUAL(firefly_event_queue_length(connections[0]->event_queue), 0);
+	CU_ASSERT_EQUAL(firefly_event_queue_length(connections[1]->event_queue), 0);
+	channels[1] = new_chan;
+
+	CU_ASSERT_EQUAL(n_chan_opens, 2);
+	CU_ASSERT_EQUAL(firefly_number_channels_in_connection(connections[0]), 1);
+	CU_ASSERT_EQUAL(firefly_number_channels_in_connection(connections[1]), 1);
+
+	/* get coders */
+	struct labcomm_encoder *encoders[2];
+	struct labcomm_decoder *decoders[2];
+	encoders[0] = firefly_protocol_get_output_stream(channels[0]);
+	encoders[1] = firefly_protocol_get_output_stream(channels[1]);
+	decoders[0] = firefly_protocol_get_input_stream(channels[0]);
+	decoders[1] = firefly_protocol_get_input_stream(channels[1]);
+	CU_ASSERT_PTR_NOT_NULL(encoders[0]);
+	CU_ASSERT_PTR_NOT_NULL(encoders[1]);
+	CU_ASSERT_PTR_NOT_NULL(decoders[0]);
+	CU_ASSERT_PTR_NOT_NULL(decoders[1]);
+
+	test_test_var contexts[2];
+	contexts[0] = -1;
+	contexts[1] = -1;
+
+	labcomm_decoder_register_test_test_var(decoders[0],
+										   &handle_ttv,
+										   &(contexts[0]));
+
+	labcomm_decoder_register_test_test_var(decoders[1],
+										   &handle_ttv,
+										   &(contexts[1]));
+
+	labcomm_encoder_register_test_test_var(encoders[0]);
+	labcomm_encoder_register_test_test_var(encoders[1]);
+
+	/*
+	 * The new addition of atype should spawn an event. There will
+	 * however be no packet yet.
+	 */
+	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[1]), 0);
+	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[0]), 0);
+	CU_ASSERT_EQUAL(firefly_event_queue_length(connections[0]->event_queue), 1);
+	CU_ASSERT_EQUAL(firefly_event_queue_length(connections[1]->event_queue), 1);
+
+	/* Execute event to send the data */
+	for (int i = 0; i < 2; i++) {
+		ev = firefly_event_pop(connections[i]->event_queue);
+		firefly_event_execute(ev);
+		/* The event is consumed and the data is written. */
+		CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[i]), 1);
+		CU_ASSERT_EQUAL(firefly_event_queue_length(connections[i]->event_queue), 0);
+	}
+	/* Because this it the upper layer, an event will be spavned by reading. */
+	for (int i = 0; i < 2; i++) {
+		read_connection_mock(connections, i);
+		CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[1-i]), 0);
+		CU_ASSERT_EQUAL(firefly_event_queue_length(connections[i]->event_queue), 1);
+	}
+	/* Execute the event to get the ttv registerd on the upper decoder. */
+	for (int i = 0; i < 2; i++) {
+		ev = firefly_event_pop(connections[i]->event_queue);
+		firefly_event_execute(ev);
+		/* The event is consumed and the data is written. */
+		CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[i]), 0);
+		CU_ASSERT_EQUAL(firefly_event_queue_length(connections[i]->event_queue), 0);
+	}
+	/*
+	 * The channel is now ready for transmissions of *real* app data.
+	 * Everything is empty.
+	 */
+
+	test_test_var sent_app_data = 84;
+
+	/* Spawns event, no data yet */
+	labcomm_encode_test_test_var(encoders[0], &sent_app_data);
+	CU_ASSERT_EQUAL(firefly_event_queue_length(connections[0]->event_queue), 1);
+	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[0]), 0);
+	CU_ASSERT_EQUAL(firefly_event_queue_length(connections[1]->event_queue), 0);
+	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[1]), 0);
+#if 0
+	printf("\n\nn ev in q0: %d\n",
+		   firefly_event_queue_length(connections[0]->event_queue));
+	printf("n data in space from 0: %d\n\n",
+		   n_packets_in_data_space(space_from_conn[0]));
+	printf("n ev in q1: %d\n",
+		   firefly_event_queue_length(connections[1]->event_queue));
+	printf("n data in space from 1: %d\n\n",
+		   n_packets_in_data_space(space_from_conn[1]));
+#endif
+	/* Execute to send. */
+	ev = firefly_event_pop(connections[0]->event_queue);
+	firefly_event_execute(ev);
+	CU_ASSERT_EQUAL(firefly_event_queue_length(connections[0]->event_queue), 0);
+	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[0]), 1);
+	CU_ASSERT_EQUAL(firefly_event_queue_length(connections[1]->event_queue), 0);
+	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[1]), 0);
+
+	/* Let other chan (1) read */
+	size_t n_read;
+	n_read = read_connection_mock(connections, 1);
+	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[0]), 0);
+	CU_ASSERT_EQUAL(firefly_event_queue_length(connections[1]->event_queue), 1);
+	ev = firefly_event_pop(connections[1]->event_queue);
+	printf("\n\ntype: %d\n\n", ev->base.type);
+	firefly_event_execute(ev);
+	CU_ASSERT_EQUAL(firefly_event_queue_length(connections[1]->event_queue), 0);
+	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[0]), 0);
+	CU_ASSERT_EQUAL(firefly_event_queue_length(connections[0]->event_queue), 0);
+	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[1]), 0);
+
+
+	test_test_var recv_app_data = contexts[1];
+	printf("\n\nrecv: %d\n\n", recv_app_data);
+	CU_ASSERT_EQUAL(recv_app_data, sent_app_data);
+	/* Sent appdata from 0 -> 1 */
+
 
 	/* ... */
 	CU_FAIL("not done");
