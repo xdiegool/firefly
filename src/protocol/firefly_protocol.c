@@ -189,7 +189,6 @@ void firefly_channel_open_event(struct firefly_connection *conn,
 
 	labcomm_encode_firefly_protocol_channel_request(conn->transport_encoder,
 			&chan_req);
-	conn->writer_data->pos = 0;
 }
 
 static void create_channel_closed_event(struct firefly_channel *chan,
@@ -248,7 +247,6 @@ void firefly_channel_close_event(struct firefly_connection *conn,
 {
 	labcomm_encode_firefly_protocol_channel_close(conn->transport_encoder,
 			chan_close);
-	conn->writer_data->pos = 0;
 }
 
 void firefly_channel_closed_event(struct firefly_channel *chan,
@@ -331,7 +329,6 @@ void handle_channel_request_event(firefly_protocol_channel_request *chan_req,
 
 		labcomm_encode_firefly_protocol_channel_response(
 				conn->transport_encoder, &res);
-		conn->writer_data->pos = 0;
 	}
 }
 
@@ -386,7 +383,6 @@ void handle_channel_response_event(firefly_protocol_channel_response *chan_res,
 	if (chan_res->ack) {
 		labcomm_encode_firefly_protocol_channel_ack(
 						conn->transport_encoder, &ack);
-		conn->writer_data->pos = 0;
 		// Should be done after encode above.
 		conn->on_channel_opened(chan);
 	} else {
@@ -677,6 +673,7 @@ int ff_transport_writer(labcomm_writer_t *w, labcomm_writer_action_t action)
 			result = 0;
 			conn->transport_write(writer_data->data,
 						writer_data->pos, conn);
+			writer_data->pos = 0;
 		}
 	} break;
 	case labcomm_writer_available: {

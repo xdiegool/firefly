@@ -113,7 +113,6 @@ void test_proto_writer()
 			handle_labcomm_error);
 	labcomm_encoder_register_firefly_protocol_data_sample(transport_encoder);
 	conn.transport_encoder = transport_encoder;
-	conn.writer_data->pos = 0;
 
 	struct firefly_channel chan;
 	chan.conn = &conn;
@@ -142,7 +141,6 @@ void test_proto_writer()
 		(lc_encode_f) labcomm_encode_firefly_protocol_data_sample,
 		&data_sample_sig);
 	labcomm_encoder_register_test_test_var(encoder_proto);
-	conn.writer_data->pos = 0;
 	struct firefly_event *ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	firefly_event_execute(ev);
@@ -153,7 +151,6 @@ void test_proto_writer()
 		(lc_encode_f) labcomm_encode_firefly_protocol_data_sample,
 		&data_sample_data);
 	labcomm_encode_test_test_var(encoder_proto, &var_test_test);
-	conn.writer_data->pos = 0;
 	ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	firefly_event_execute(ev);

@@ -66,6 +66,7 @@ void handle_firefly_protocol_data_sample(
 // Simulate that the data is sent over the net an arrives the same way
 // on the other end. Now we decoce it and hope it's the same stuff we
 // previously encoded.
+static size_t last_written_size = 0;
 void transport_write_udp_posix_mock(unsigned char *data, size_t data_size,
 		struct firefly_connection *conn)
 {
@@ -73,7 +74,7 @@ void transport_write_udp_posix_mock(unsigned char *data, size_t data_size,
 	// The buffer shoule not be empty anymore.
 	CU_ASSERT_NOT_EQUAL(0, memcmp(data, zero_buf, WRITE_BUF_SIZE));
 	free(zero_buf);
-
+	last_written_size = data_size;
 }
 
 void test_encode_decode_protocol()
@@ -126,24 +127,24 @@ void test_encode_decode_protocol()
 	// The decoder must have been created before this!
 	labcomm_encoder_register_firefly_protocol_data_sample(encoder);
 	// Simulate that we're on the other end and wants to decode.
-	reader_data.data = malloc(writer_data.pos);
+	reader_data.data = malloc(last_written_size);
 	if (writer_data.data == NULL) {
 		CU_FAIL("Could not alloc readbuf.\n");
 	}
-	memcpy(reader_data.data, writer_data.data, writer_data.pos);
-	reader_data.data_size = writer_data.pos;
+	memcpy(reader_data.data, writer_data.data, last_written_size);
+	reader_data.data_size = last_written_size;
 	labcomm_decoder_decode_one(decoder);
 
-	writer_data.pos = reader_data.pos = 0;
+	reader_data.pos = 0;
 
 	labcomm_encode_firefly_protocol_data_sample(encoder, &data_sample);
 	free(reader_data.data);
-	reader_data.data = malloc(writer_data.pos);
+	reader_data.data = malloc(last_written_size);
 	if (writer_data.data == NULL) {
 		CU_FAIL("Could not alloc readbuf.\n");
 	}
-	memcpy(reader_data.data, writer_data.data, writer_data.pos);
-	reader_data.data_size = writer_data.pos;
+	memcpy(reader_data.data, writer_data.data, last_written_size);
+	reader_data.data_size = last_written_size;
 	labcomm_decoder_decode_one(decoder);
 
 	CU_ASSERT_TRUE(successfully_decoded);
@@ -211,7 +212,6 @@ void test_encode_protocol()
 	// Now mock_cmp will compare signatures.
 	labcomm_encoder_register_firefly_protocol_data_sample(proto_encoder);
 	memset(writer_data.data, 0, WRITE_BUF_SIZE);
-	writer_data.pos = 0;
 
 	// Now mock_cmp will compare enc data.
 	labcomm_encode_firefly_protocol_data_sample(proto_encoder, &data_sample);
@@ -401,7 +401,6 @@ void test_encode_protocol_multiple_times()
 			&data_sample);
 
 		memset(writer_data.data, 0, WRITE_BUF_SIZE);
-		writer_data.pos = 0;
 
 		// Now mock_cmp will compare enc data.
 		labcomm_encode_firefly_protocol_data_sample(proto_encoder,

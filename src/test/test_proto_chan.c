@@ -212,12 +212,10 @@ void test_chan_open()
 	// Register channel_request on transport encoder
 	labcomm_encoder_register_firefly_protocol_channel_request(
 			conn->transport_encoder);
-	conn->writer_data->pos = 0;
 
 	// Register channel_ack on transport encoder
 	labcomm_encoder_register_firefly_protocol_channel_ack(
 			conn->transport_encoder);
-	conn->writer_data->pos = 0;
 
 	// Register channel response on transport decoder
 	labcomm_decoder_register_firefly_protocol_channel_response(
@@ -596,21 +594,18 @@ void test_chan_open_recv()
 	// register encoders Signatures will be sent to each connection
 	labcomm_encoder_register_firefly_protocol_channel_ack(
 			conn_open->transport_encoder);
-	conn_open->writer_data->pos = 0;
 	protocol_data_received(conn_recv, conn_open_write.data,
 			conn_open_write.size);
 	free_tmp_data(&conn_open_write);
 
 	labcomm_encoder_register_firefly_protocol_channel_request(
 			conn_open->transport_encoder);
-	conn_open->writer_data->pos = 0;
 	protocol_data_received(conn_recv, conn_open_write.data,
 			conn_open_write.size);
 	free_tmp_data(&conn_open_write);
 
 	labcomm_encoder_register_firefly_protocol_channel_response(
 			conn_recv->transport_encoder);
-	conn_recv->writer_data->pos = 0;
 	protocol_data_received(conn_open, conn_recv_write.data,
 			conn_recv_write.size);
 	free_tmp_data(&conn_recv_write);
@@ -837,8 +832,6 @@ void test_send_app_data()
 	CU_ASSERT_TRUE(sent_app_sample);
 	sent_app_sample = false;
 
-	conn->writer_data->pos = 0;
-
 	test_dec_ctx_2->enc_data = app_data.sign;
 	test_dec_ctx_2->size = app_data.ssize;
 	labcomm_decoder_decode_one(test_dec_2);
@@ -1013,7 +1006,6 @@ void trans_w(struct data_space **space,
 	memcpy(tmp->data, data, data_size);
 	tmp->data_size = data_size;
 	//labcomm_decoder_decode_one(conn->transport_decoder); // huh?
-	conn->writer_data->pos = 0;
 }
 
 void trans_w_from_conn_0(unsigned char *data, size_t data_size,
@@ -1118,23 +1110,18 @@ struct firefly_connection *setup_conn(int conn_n, struct firefly_event_queue *eq
 	/* The encoder should know the protocol */
 	/* The encoder registrations should show up as a "packet" in the data space */
 	labcomm_encoder_register_firefly_protocol_data_sample(tcon->transport_encoder);
-	tcon->writer_data->pos = 0;
 	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[conn_n]), 1);
 
 	labcomm_encoder_register_firefly_protocol_channel_request(tcon->transport_encoder);
-	tcon->writer_data->pos = 0;
 	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[conn_n]), 2);
 
 	labcomm_encoder_register_firefly_protocol_channel_response(tcon->transport_encoder);
-	tcon->writer_data->pos = 0;
 	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[conn_n]), 3);
 
 	labcomm_encoder_register_firefly_protocol_channel_ack(tcon->transport_encoder);
-	tcon->writer_data->pos = 0;
 	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[conn_n]), 4);
 
 	labcomm_encoder_register_firefly_protocol_channel_close(tcon->transport_encoder);
-	tcon->writer_data->pos = 0;
 	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[conn_n]), 5);
 
 	/* The decoder should know the protocol */
@@ -1463,56 +1450,48 @@ void test_chan_open_close_multiple()
 	// register encoders Signatures will be sent to each connection
 	labcomm_encoder_register_firefly_protocol_channel_request(
 			conn_open->transport_encoder);
-	conn_open->writer_data->pos = 0;
 	protocol_data_received(conn_recv, conn_open_write.data,
 			conn_open_write.size);
 	free_tmp_data(&conn_open_write);
 
 	labcomm_encoder_register_firefly_protocol_channel_response(
 			conn_open->transport_encoder);
-	conn_open->writer_data->pos = 0;
 	protocol_data_received(conn_recv, conn_open_write.data,
 			conn_open_write.size);
 	free_tmp_data(&conn_open_write);
 
 	labcomm_encoder_register_firefly_protocol_channel_ack(
 			conn_open->transport_encoder);
-	conn_open->writer_data->pos = 0;
 	protocol_data_received(conn_recv, conn_open_write.data,
 			conn_open_write.size);
 	free_tmp_data(&conn_open_write);
 
 	labcomm_encoder_register_firefly_protocol_channel_close(
 			conn_open->transport_encoder);
-	conn_open->writer_data->pos = 0;
 	protocol_data_received(conn_recv, conn_open_write.data,
 			conn_open_write.size);
 	free_tmp_data(&conn_open_write);
 
 	labcomm_encoder_register_firefly_protocol_channel_request(
 			conn_recv->transport_encoder);
-	conn_recv->writer_data->pos = 0;
 	protocol_data_received(conn_open, conn_recv_write.data,
 			conn_recv_write.size);
 	free_tmp_data(&conn_recv_write);
 
 	labcomm_encoder_register_firefly_protocol_channel_response(
 			conn_recv->transport_encoder);
-	conn_recv->writer_data->pos = 0;
 	protocol_data_received(conn_open, conn_recv_write.data,
 			conn_recv_write.size);
 	free_tmp_data(&conn_recv_write);
 
 	labcomm_encoder_register_firefly_protocol_channel_ack(
 			conn_recv->transport_encoder);
-	conn_recv->writer_data->pos = 0;
 	protocol_data_received(conn_open, conn_recv_write.data,
 			conn_recv_write.size);
 	free_tmp_data(&conn_recv_write);
 
 	labcomm_encoder_register_firefly_protocol_channel_close(
 			conn_recv->transport_encoder);
-	conn_recv->writer_data->pos = 0;
 	protocol_data_received(conn_open, conn_recv_write.data,
 			conn_recv_write.size);
 	free_tmp_data(&conn_recv_write);
