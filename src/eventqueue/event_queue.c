@@ -71,7 +71,7 @@ struct firefly_event *firefly_event_pop(struct firefly_event_queue *eq)
 	struct firefly_eq_node *event_node; 
 
 	// The actual event
-	struct firefly_event *ev;			
+	struct firefly_event *ev;
 
 	if ((event_node = eq->head) == NULL) {
 		return NULL;
@@ -94,12 +94,17 @@ int firefly_event_execute(struct firefly_event *ev)
 				(struct firefly_event_chan_open *) ev;
 		firefly_channel_open_event(ev_co->conn, ev_co->rejected_cb);
 	} break;
+	case EVENT_CHAN_CLOSED: {
+		struct firefly_event_chan_closed *ev_cc =
+						(struct firefly_event_chan_closed *) ev;
+		firefly_channel_closed_event(ev_cc->chan, ev_cc->conn);
+	} break;
 	case EVENT_CHAN_CLOSE: {
-	     struct firefly_event_chan_close *ev_cc =
-	     	     	     (struct firefly_event_chan_close *) ev;
-	     firefly_channel_close_event(ev_cc->chan, ev_cc->conn);
-       } break;
-	/* ... */
+		struct firefly_event_chan_close *ev_cc =
+						(struct firefly_event_chan_close *) ev;
+		firefly_channel_close_event(ev_cc->conn, ev_cc->chan_close);
+		free(ev_cc->chan_close);
+	} break;
 	case EVENT_CHAN_REQ_RECV: {
 		struct firefly_event_chan_req_recv *ev_crr =
 			(struct firefly_event_chan_req_recv *) ev;

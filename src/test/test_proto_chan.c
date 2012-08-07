@@ -706,6 +706,10 @@ void test_chan_close()
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	CU_ASSERT_EQUAL(ev->base.type, EVENT_CHAN_CLOSE);
 	firefly_event_execute(ev);
+	ev = firefly_event_pop(eq);
+	CU_ASSERT_PTR_NOT_NULL(ev);
+	CU_ASSERT_EQUAL(ev->base.type, EVENT_CHAN_CLOSED);
+	firefly_event_execute(ev);
 
 	// test close packet sent
 	CU_ASSERT_TRUE(chan_close_chan_closed);
@@ -755,7 +759,7 @@ void test_chan_recv_close()
 	// pop and execute event
 	struct firefly_event *ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL_FATAL(ev);
-	CU_ASSERT_EQUAL(ev->base.type, EVENT_CHAN_CLOSE);
+	CU_ASSERT_EQUAL(ev->base.type, EVENT_CHAN_CLOSED);
 	firefly_event_execute(ev);
 	// check callback called.
 	CU_ASSERT_TRUE(chan_closed_called);
@@ -1367,8 +1371,10 @@ void test_transmit_app_data_over_mock_trans_layer()
 
 	/* Let conn 0 init closeing of channel */
 	firefly_channel_close(channels[0], connections[0]);
-	/* One event to remove chan locally... */
-	CU_ASSERT_EQUAL(firefly_event_queue_length(connections[0]->event_queue), 1);
+	/* One event to remove chan locally and one to send close packet... */
+	CU_ASSERT_EQUAL(firefly_event_queue_length(connections[0]->event_queue), 2);
+	ev = firefly_event_pop(connections[0]->event_queue);
+	firefly_event_execute(ev);
 	/* ...and data to tell the other party. */
 	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[0]), 1);
 	ev = firefly_event_pop(connections[0]->event_queue);
@@ -1603,6 +1609,9 @@ void test_chan_open_close_multiple()
 	chan_id_conn_open = conn_open->chan_list->chan->local_id;
 	chan_id_conn_recv = conn_open->chan_list->chan->remote_id;
 	firefly_channel_close(conn_open->chan_list->chan, conn_open);
+	ev = firefly_event_pop(eq);
+	CU_ASSERT_PTR_NOT_NULL(ev);
+	firefly_event_execute(ev);
 	protocol_data_received(conn_recv, conn_open_write.data,
 			conn_open_write.size);
 	ev = firefly_event_pop(eq);
@@ -1624,6 +1633,9 @@ void test_chan_open_close_multiple()
 
 	// Close the remaining channel
 	firefly_channel_close(conn_open->chan_list->chan, conn_open);
+	ev = firefly_event_pop(eq);
+	CU_ASSERT_PTR_NOT_NULL(ev);
+	firefly_event_execute(ev);
 	protocol_data_received(conn_recv, conn_open_write.data,
 			conn_open_write.size);
 	ev = firefly_event_pop(eq);

@@ -16,6 +16,7 @@
 
 enum firefly_event_type {
 	EVENT_CHAN_OPEN,
+	EVENT_CHAN_CLOSED,
 	EVENT_CHAN_CLOSE,
 	EVENT_CHAN_REQ_RECV,
 	EVENT_CHAN_RES_RECV,
@@ -47,11 +48,17 @@ struct firefly_event_chan_open {
 	firefly_channel_rejected_f rejected_cb;
 };
 
-struct firefly_event_chan_close {
+struct firefly_event_chan_closed {
 	struct firefly_event_base base;
 	struct firefly_channel *chan;
 	struct firefly_connection *conn; /* prev has back ref. weird
-					    though... */
+					though... HUH???*/
+};
+
+struct firefly_event_chan_close {
+	struct firefly_event_base base;
+	struct firefly_connection *conn;
+	firefly_protocol_channel_close *chan_close;
 };
 
 /* Event queue */

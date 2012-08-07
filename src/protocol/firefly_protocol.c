@@ -117,6 +117,8 @@ struct firefly_channel *firefly_channel_new(struct firefly_connection *conn)
 		chan->writer_data->data_size = BUFFER_SIZE;
 		chan->writer_data->pos = 0;
 		chan->conn = conn;
+	} else {
+		firefly_error(FIREFLY_ERROR_ALLOC, 1, "malloc failed");
 	}
 
 	return chan;
@@ -193,15 +195,15 @@ void firefly_channel_open_event(struct firefly_connection *conn,
 static void create_channel_closed_event(struct firefly_channel *chan,
 						struct firefly_connection *conn)
 {
-	struct firefly_event_chan_close *ev;
+	struct firefly_event_chan_closed *ev;
 	int ret;
 
-	ev = malloc(sizeof(struct firefly_event_chan_close));
+	ev = malloc(sizeof(struct firefly_event_chan_closed));
 	if (ev == NULL) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1,
 					  "Could not allocate event.\n");
 	}
-	ev->base.type = EVENT_CHAN_CLOSE;
+	ev->base.type = EVENT_CHAN_CLOSED;
 	ev->base.prio = 1;
 	ev->conn = conn;
 	ev->chan = chan;
@@ -209,25 +211,47 @@ static void create_channel_closed_event(struct firefly_channel *chan,
 						(struct firefly_event *) ev);
 	if (ret) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1,
-						"could not add event to queue");
+						"Could not add event to queue.");
 	}
 }
 
 void firefly_channel_close(struct firefly_channel *chan,
 						struct firefly_connection *conn)
 {
-	create_channel_closed_event(chan, conn);
 
-	firefly_protocol_channel_close chan_close;
-	chan_close.dest_chan_id = chan->remote_id;
-	chan_close.source_chan_id = chan->local_id;
-	// Concorrency problem here, all encoding must be done in an event
+	struct firefly_event_chan_close *ev;
+	ev = malloc(sizeof(struct firefly_event_chan_close));
+	if (ev == NULL) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Could not create event.");
+	}
+	ev->base.type = EVENT_CHAN_CLOSE;
+	ev->base.prio = 1;
+	ev->conn = conn;
+	ev->chan_close = malloc(sizeof(firefly_protocol_channel_close));
+	if (ev->chan_close == NULL) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Could not create event.");
+	}
+	ev->chan_close->dest_chan_id = chan->remote_id;
+	ev->chan_close->source_chan_id = chan->local_id;
+	int ret = conn->event_queue->offer_event_cb(conn->event_queue,
+			(struct firefly_event *) ev);
+
+	if (ret) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Could not add event to queue.");
+	}
+
+	create_channel_closed_event(chan, conn);
+}
+
+void firefly_channel_close_event(struct firefly_connection *conn,
+		firefly_protocol_channel_close *chan_close)
+{
 	labcomm_encode_firefly_protocol_channel_close(conn->transport_encoder,
-			&chan_close);
+			chan_close);
 	conn->writer_data->pos = 0;
 }
 
-void firefly_channel_close_event(struct firefly_channel *chan,
+void firefly_channel_closed_event(struct firefly_channel *chan,
 						struct firefly_connection *conn)
 {
 	if (conn->on_channel_closed != NULL) {
