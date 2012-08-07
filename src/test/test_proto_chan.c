@@ -1408,16 +1408,40 @@ bool chan_accept_mock(struct firefly_channel *chan)
 	return true;
 }
 
+static bool open_chan1_var_received = false;
+static bool open_chan2_var_received = false;
+static bool recv_chan1_var_received = false;
+static bool recv_chan2_var_received = false;
+void handle_test_var_open1(test_test_var *var, void *ctx)
+{
+	CU_ASSERT_EQUAL(*var, 3);
+	open_chan1_var_received = true;
+}
+void handle_test_var_open2(test_test_var *var, void *ctx)
+{
+	CU_ASSERT_EQUAL(*var, 4);
+	open_chan2_var_received = true;
+}
+void handle_test_var_recv1(test_test_var *var, void *ctx)
+{
+	CU_ASSERT_EQUAL(*var, 1);
+	recv_chan1_var_received = true;
+}
+void handle_test_var_recv2(test_test_var *var, void *ctx)
+{
+	CU_ASSERT_EQUAL(*var, 2);
+	recv_chan2_var_received = true;
+}
+
 void test_chan_open_close_multiple()
 {
 	struct firefly_connection *conn_open;
 	struct firefly_connection *conn_recv;
 
-	struct firefly_event_queue *eq = firefly_event_queue_new();
+	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add);
 	if (eq == NULL) {
 		CU_FAIL("Could not create queue.\n");
 	}
-	eq->offer_event_cb = firefly_event_add;
 	// Init connection to open channel
 	conn_open = setup_test_conn_new(chan_opened_mock, NULL,
 									chan_accept_mock, eq);
@@ -1437,6 +1461,8 @@ void test_chan_open_close_multiple()
 			conn_open->transport_decoder, handle_channel_ack, conn_open);
 	labcomm_decoder_register_firefly_protocol_channel_close(
 			conn_open->transport_decoder, handle_channel_close, conn_open);
+	labcomm_decoder_register_firefly_protocol_data_sample(
+			conn_open->transport_decoder, handle_data_sample, conn_open);
 
 	labcomm_decoder_register_firefly_protocol_channel_request(
 			conn_recv->transport_decoder, handle_channel_request, conn_recv);
@@ -1446,6 +1472,8 @@ void test_chan_open_close_multiple()
 			conn_recv->transport_decoder, handle_channel_ack, conn_recv);
 	labcomm_decoder_register_firefly_protocol_channel_close(
 			conn_recv->transport_decoder, handle_channel_close, conn_recv);
+	labcomm_decoder_register_firefly_protocol_data_sample(
+			conn_recv->transport_decoder, handle_data_sample, conn_recv);
 
 	// register encoders Signatures will be sent to each connection
 	labcomm_encoder_register_firefly_protocol_channel_request(
@@ -1472,6 +1500,12 @@ void test_chan_open_close_multiple()
 			conn_open_write.size);
 	free_tmp_data(&conn_open_write);
 
+	labcomm_encoder_register_firefly_protocol_data_sample(
+			conn_open->transport_encoder);
+	protocol_data_received(conn_recv, conn_open_write.data,
+			conn_open_write.size);
+	free_tmp_data(&conn_open_write);
+
 	labcomm_encoder_register_firefly_protocol_channel_request(
 			conn_recv->transport_encoder);
 	protocol_data_received(conn_open, conn_recv_write.data,
@@ -1491,6 +1525,12 @@ void test_chan_open_close_multiple()
 	free_tmp_data(&conn_recv_write);
 
 	labcomm_encoder_register_firefly_protocol_channel_close(
+			conn_recv->transport_encoder);
+	protocol_data_received(conn_open, conn_recv_write.data,
+			conn_recv_write.size);
+	free_tmp_data(&conn_recv_write);
+
+	labcomm_encoder_register_firefly_protocol_data_sample(
 			conn_recv->transport_encoder);
 	protocol_data_received(conn_open, conn_recv_write.data,
 			conn_recv_write.size);
@@ -1571,7 +1611,10 @@ void test_chan_open_close_multiple()
 	chan_opened_called = false;
 
 	// Test second channel is created with correct id's
-	// assumes the sencod channel is placed first in the list
+	// assumes the second channel is placed first in the list
+	// The test of app data transfer depends on the order of channels asserted
+	// here, if these assertions ever change it must be reflected in the app
+	// data transfer test.
 	CU_ASSERT_PTR_NOT_NULL(conn_open->chan_list->next->chan);
 	CU_ASSERT_PTR_NOT_NULL(conn_recv->chan_list->next->chan);
 	CU_ASSERT_NOT_EQUAL(conn_recv->chan_list->chan->local_id,
@@ -1582,6 +1625,110 @@ void test_chan_open_close_multiple()
 			conn_open->chan_list->chan->remote_id);
 	CU_ASSERT_EQUAL(conn_recv->chan_list->chan->remote_id,
 			conn_open->chan_list->chan->local_id);
+
+	// Setup app data transfer, assumes the channels are placed identically in
+	// both connections, ie the first channel in conn_open corresponds to the
+	// first channel in conn_recv.
+	struct labcomm_encoder *open_chan1_enc = firefly_protocol_get_output_stream(
+			conn_open->chan_list->chan);
+	struct labcomm_decoder *open_chan1_dec = firefly_protocol_get_input_stream(
+			conn_open->chan_list->chan);
+
+	struct labcomm_encoder *open_chan2_enc = firefly_protocol_get_output_stream(
+			conn_open->chan_list->next->chan);
+	struct labcomm_decoder *open_chan2_dec = firefly_protocol_get_input_stream(
+			conn_open->chan_list->next->chan);
+
+	struct labcomm_encoder *recv_chan1_enc = firefly_protocol_get_output_stream(
+			conn_recv->chan_list->chan);
+	struct labcomm_decoder *recv_chan1_dec = firefly_protocol_get_input_stream(
+			conn_recv->chan_list->chan);
+
+	struct labcomm_encoder *recv_chan2_enc = firefly_protocol_get_output_stream(
+			conn_recv->chan_list->next->chan);
+	struct labcomm_decoder *recv_chan2_dec = firefly_protocol_get_input_stream(
+			conn_recv->chan_list->next->chan);
+
+	// Register type on the decoders
+	labcomm_decoder_register_test_test_var(open_chan1_dec,
+			handle_test_var_open1, NULL);
+	labcomm_decoder_register_test_test_var(open_chan2_dec,
+			handle_test_var_open2, NULL);
+
+	labcomm_decoder_register_test_test_var(recv_chan1_dec,
+			handle_test_var_recv1, NULL);
+	labcomm_decoder_register_test_test_var(recv_chan2_dec,
+			handle_test_var_recv2, NULL);
+
+	// register types on encoders, it will spawn one event per registration
+	labcomm_encoder_register_test_test_var(open_chan1_enc);
+	firefly_event_execute(firefly_event_pop(eq));
+	protocol_data_received(conn_recv, conn_open_write.data,
+			conn_open_write.size);
+	free_tmp_data(&conn_open_write);
+	firefly_event_execute(firefly_event_pop(eq));
+
+	labcomm_encoder_register_test_test_var(open_chan2_enc);
+	firefly_event_execute(firefly_event_pop(eq));
+	protocol_data_received(conn_recv, conn_open_write.data,
+			conn_open_write.size);
+	free_tmp_data(&conn_open_write);
+	firefly_event_execute(firefly_event_pop(eq));
+
+	labcomm_encoder_register_test_test_var(recv_chan1_enc);
+	firefly_event_execute(firefly_event_pop(eq));
+	protocol_data_received(conn_open, conn_recv_write.data,
+			conn_recv_write.size);
+	free_tmp_data(&conn_recv_write);
+	firefly_event_execute(firefly_event_pop(eq));
+
+	labcomm_encoder_register_test_test_var(recv_chan2_enc);
+	firefly_event_execute(firefly_event_pop(eq));
+	protocol_data_received(conn_open, conn_recv_write.data,
+			conn_recv_write.size);
+	free_tmp_data(&conn_recv_write);
+	firefly_event_execute(firefly_event_pop(eq));
+
+	// Send data on chan1 from conn_open
+	test_test_var var_oc1 = 1;
+	labcomm_encode_test_test_var(open_chan1_enc, &var_oc1);
+	firefly_event_execute(firefly_event_pop(eq));
+	protocol_data_received(conn_recv, conn_open_write.data,
+			conn_open_write.size);
+	free_tmp_data(&conn_open_write);
+	firefly_event_execute(firefly_event_pop(eq));
+	CU_ASSERT_TRUE(recv_chan1_var_received);
+	recv_chan1_var_received = false;
+	// Send data on chan1 from conn_recv
+	test_test_var var_oc2 = 2;
+	labcomm_encode_test_test_var(open_chan2_enc, &var_oc2);
+	firefly_event_execute(firefly_event_pop(eq));
+	protocol_data_received(conn_recv, conn_open_write.data,
+			conn_open_write.size);
+	free_tmp_data(&conn_open_write);
+	firefly_event_execute(firefly_event_pop(eq));
+	CU_ASSERT_TRUE(recv_chan2_var_received);
+	recv_chan2_var_received = false;
+	// Send data on chan2 from conn_open
+	test_test_var var_rc1 = 3;
+	labcomm_encode_test_test_var(recv_chan1_enc, &var_rc1);
+	firefly_event_execute(firefly_event_pop(eq));
+	protocol_data_received(conn_open, conn_recv_write.data,
+			conn_recv_write.size);
+	free_tmp_data(&conn_recv_write);
+	firefly_event_execute(firefly_event_pop(eq));
+	CU_ASSERT_TRUE(open_chan1_var_received);
+	open_chan1_var_received = false;
+	// Send data on chan2 from conn_recv
+	test_test_var var_rc2 = 4;
+	labcomm_encode_test_test_var(recv_chan2_enc, &var_rc2);
+	firefly_event_execute(firefly_event_pop(eq));
+	protocol_data_received(conn_open, conn_recv_write.data,
+			conn_recv_write.size);
+	free_tmp_data(&conn_recv_write);
+	firefly_event_execute(firefly_event_pop(eq));
+	CU_ASSERT_TRUE(open_chan2_var_received);
+	open_chan2_var_received = false;
 
 	// Close both channels from conn_open
 	// save channel id's form testing later

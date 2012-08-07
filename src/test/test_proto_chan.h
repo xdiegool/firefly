@@ -32,6 +32,8 @@ void test_transmit_app_data_over_mock_trans_layer();
 
 void test_chan_open_close_multiple();
 
+void test_chan_app_data_multiple();
+
 // TODO
 // multiple channels
 // importance?

@@ -70,7 +70,8 @@ struct firefly_connection {
 							associated with this
 							connection. */
 	struct firefly_event_queue *event_queue; /**< The queue to which spawned events are added. */
-	int channel_id_counter;
+	int channel_id_counter; /**< The unique id reserved to the next opened
+								channel on the connection. */
 };
 
 /**
@@ -109,7 +110,7 @@ struct firefly_connection *firefly_connection_new(
 		struct firefly_event_queue *event_queue);
 
 /**
- * Frees a connection.
+ * @brief Frees a connection.
  *
  */
 void firefly_connection_free(struct firefly_connection **conn);
@@ -121,7 +122,7 @@ void firefly_connection_free(struct firefly_connection **conn);
  * @param size The size of the received data.
  */
 void protocol_data_received(struct firefly_connection *conn,
-	       	unsigned char *data, size_t size);
+							unsigned char *data, size_t size);
 
 /**
  * @brief Create a new channel with some defaults.
@@ -141,6 +142,33 @@ struct firefly_channel *firefly_channel_new(struct firefly_connection *conn);
 void firefly_channel_free(struct firefly_channel *chan);
 
 /**
+ * @brief The action performed when a firefly_event_chan_open is executed.
+ *
+ * @pram conn The connection the channel is beeing opened on.
+ * @param on_chan_rejected The callback called if the channel request was
+ * rejected by the remote node.
+ */
+void firefly_channel_open_event(struct firefly_connection *conn,
+		firefly_channel_rejected_f on_chan_rejected);
+
+/**
+ * @brief The action performed when a firefly_event_chan_closed is executed.
+ *
+ * @pram conn The connection the channel is opened on.
+ * @param chan The channel to free.
+ */
+void firefly_channel_closed_event(struct firefly_channel *chan,
+								 struct firefly_connection *conn);
+/**
+ * @brief The action performed when a firefly_event_chan_close is executed.
+ *
+ * @pram conn The connection the channel is opened on.
+ * @param chan_close The close packet to send on the connection.
+ */
+void firefly_channel_close_event(struct firefly_connection *conn,
+		firefly_protocol_channel_close *chan_close);
+
+/**
  * @brief The callback registered with LabComm used to receive channel request.
  *
  * @param chan_req The decoded channel request
@@ -149,6 +177,12 @@ void firefly_channel_free(struct firefly_channel *chan);
 void handle_channel_request(firefly_protocol_channel_request *chan_req,
 		void *context);
 
+/**
+ * @brief The action performed when a firefly_event_chan_req_recv is executed.
+ *
+ * @param chan_req The received firefly_protocol_channel_request.
+ * @pram conn The connection the request was received on.
+ */
 void handle_channel_request_event(firefly_protocol_channel_request *chan_req,
 		struct firefly_connection *conn);
 
@@ -161,6 +195,12 @@ void handle_channel_request_event(firefly_protocol_channel_request *chan_req,
 void handle_channel_response(firefly_protocol_channel_response *chan_res,
 		void *context);
 
+/**
+ * @brief The action performed when a firefly_event_chan_res_recv is executed.
+ *
+ * @param chan_res The received firefly_protocol_channel_response.
+ * @pram conn The connection the response was received on.
+ */
 void handle_channel_response_event(firefly_protocol_channel_response *chan_res,
 		struct firefly_connection *conn);
 
@@ -172,6 +212,12 @@ void handle_channel_response_event(firefly_protocol_channel_response *chan_res,
  */
 void handle_channel_ack(firefly_protocol_channel_ack *chan_ack, void *context);
 
+/**
+ * @brief The action performed when a firefly_event_chan_ack_recv is executed.
+ *
+ * @param chan_ack The received firefly_protocol_channel_ack.
+ * @pram conn The connection the ack was received on.
+ */
 void handle_channel_ack_event(firefly_protocol_channel_ack *chan_ack,
 		struct firefly_connection *conn);
 
@@ -192,6 +238,13 @@ void handle_channel_close(firefly_protocol_channel_close *chan_close,
  */
 void handle_data_sample(firefly_protocol_data_sample *data,
 		void *context);
+
+/**
+ * @brief The action performed when a firefly_event_recv_sample is executed.
+ *
+ * @param data The received firefly_protocol_data_sample.
+ * @pram conn The connection the data was received on.
+ */
 void handle_data_sample_event(firefly_protocol_data_sample *data,
 		struct firefly_connection *conn);
 
@@ -287,17 +340,5 @@ int protocol_reader(labcomm_reader_t *r, labcomm_reader_action_t action);
  * @return Value indicating how the action could be handled.
  */
 int protocol_writer(labcomm_writer_t *w, labcomm_writer_action_t action);
-
-/**
- * @brief The actual work beeing done when executing an event.
- * @param conn The connection to open.
-  */
-void firefly_channel_open_event(struct firefly_connection *conn,
-		firefly_channel_rejected_f on_chan_rejected);
-
-void firefly_channel_closed_event(struct firefly_channel *chan,
-								 struct firefly_connection *conn);
-void firefly_channel_close_event(struct firefly_connection *conn,
-		firefly_protocol_channel_close *chan_close);
 
 #endif
