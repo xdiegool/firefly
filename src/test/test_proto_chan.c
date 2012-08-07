@@ -923,6 +923,7 @@ void test_chan_open_close_multiple()
 	CU_ASSERT_TRUE(chan_opened_called);
 	chan_opened_called = false;
 
+	// Test first channel is created with correct id's
 	CU_ASSERT_PTR_NOT_NULL(conn_open->chan_list->chan);
 	CU_ASSERT_PTR_NOT_NULL(conn_recv->chan_list->chan);
 	CU_ASSERT_EQUAL(conn_recv->chan_list->chan->local_id,
@@ -964,6 +965,8 @@ void test_chan_open_close_multiple()
 	CU_ASSERT_TRUE(chan_opened_called);
 	chan_opened_called = false;
 
+	// Test second channel is created with correct id's
+	// assumes the sencod channel is placed first in the list
 	CU_ASSERT_PTR_NOT_NULL(conn_open->chan_list->next->chan);
 	CU_ASSERT_PTR_NOT_NULL(conn_recv->chan_list->next->chan);
 	CU_ASSERT_NOT_EQUAL(conn_recv->chan_list->chan->local_id,
@@ -976,6 +979,7 @@ void test_chan_open_close_multiple()
 			conn_open->chan_list->chan->local_id);
 
 	// Close both channels from conn_open
+	// save channel id's form testing later
 	chan_id_conn_open = conn_open->chan_list->chan->local_id;
 	chan_id_conn_recv = conn_open->chan_list->chan->remote_id;
 	firefly_channel_close(conn_open->chan_list->chan, conn_open);
@@ -988,13 +992,17 @@ void test_chan_open_close_multiple()
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	firefly_event_execute(ev);
 	free_tmp_data(&conn_open_write);
+
+	// Test only one channel remains
 	CU_ASSERT_PTR_NULL(conn_open->chan_list->next);
 	CU_ASSERT_PTR_NULL(conn_recv->chan_list->next);
+	// Test the not closed channel remains
 	CU_ASSERT_NOT_EQUAL(conn_recv->chan_list->chan->local_id,
 			chan_id_conn_recv);
 	CU_ASSERT_NOT_EQUAL(conn_open->chan_list->chan->local_id,
 			chan_id_conn_open);
 
+	// Close the remaining channel
 	firefly_channel_close(conn_open->chan_list->chan, conn_open);
 	protocol_data_received(conn_recv, conn_open_write.data,
 			conn_open_write.size);
@@ -1005,6 +1013,7 @@ void test_chan_open_close_multiple()
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	firefly_event_execute(ev);
 	free_tmp_data(&conn_open_write);
+	// Test no channel remains
 	CU_ASSERT_PTR_NULL(conn_open->chan_list);
 	CU_ASSERT_PTR_NULL(conn_recv->chan_list);
 

@@ -206,6 +206,7 @@ void firefly_channel_close(struct firefly_channel *chan,
 	firefly_protocol_channel_close chan_close;
 	chan_close.dest_chan_id = chan->remote_id;
 	chan_close.source_chan_id = chan->local_id;
+	// Concorrency problem here, all encoding must be done in an event
 	labcomm_encode_firefly_protocol_channel_close(conn->transport_encoder,
 			&chan_close);
 	conn->writer_data->pos = 0;
