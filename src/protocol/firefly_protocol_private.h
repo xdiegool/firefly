@@ -8,6 +8,7 @@
 #include <gen/firefly_protocol.h>
 
 #define CHANNEL_ID_NOT_SET (-1)
+#define BUFFER_SIZE 128
 
 /**
  * @brief Write data on the specified connection

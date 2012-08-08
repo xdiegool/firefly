@@ -95,6 +95,46 @@ void firefly_transport_udp_posix_free(struct firefly_transport_llp **llp)
 	*llp = NULL;
 }
 
+static struct firefly_connection *new_connection(
+		struct firefly_transport_llp *llp,
+		 struct sockaddr_in *remote_addr)
+{
+	if (llp->on_conn_recv == NULL) {
+		firefly_error(FIREFLY_ERROR_MISSING_CALLBACK, 3,
+			  "Failed in %s on line %d. 'on_conn_recv missing'\n",
+			  __FUNCTION__, __LINE__);
+		return NULL;
+	}
+	struct transport_llp_udp_posix *llp_udp =
+		(struct transport_llp_udp_posix *) llp->llp_platspec;
+	struct firefly_connection *conn = firefly_connection_new(NULL, NULL,
+			NULL, NULL);;
+	struct protocol_connection_udp_posix *conn_udp =
+		malloc(sizeof(struct protocol_connection_udp_posix));
+	if (conn == NULL || conn_udp == NULL) {
+		firefly_error(FIREFLY_ERROR_ALLOC,
+				3, "Failed in %s on line %d.\n",
+					  __FUNCTION__, __LINE__);
+		free(conn);
+		free(conn_udp);
+		return NULL;
+	}
+	conn_udp->remote_addr = remote_addr;
+	conn->transport_conn_platspec = conn_udp;
+
+	if (llp->on_conn_recv(conn)) {
+		conn_udp->socket = llp_udp->local_udp_socket;
+		add_connection_to_llp(conn, llp);
+		return conn;
+	} else {
+		free(conn_udp);
+		firefly_connection_free(&conn);
+
+		return NULL;
+	}
+
+}
+
 void firefly_transport_connection_udp_posix_free(
 					struct firefly_connection **conn)
 {
@@ -103,16 +143,20 @@ void firefly_transport_connection_udp_posix_free(
 		(*conn)->transport_conn_platspec;
 	free(conn_udp->remote_addr);
 	free(conn_udp);
-	free((*conn));
+	firefly_connection_free(conn);
 	*conn = NULL;
 }
 
 struct firefly_connection *firefly_transport_connection_udp_posix_open(
+					firefly_channel_is_open_f on_channel_opened,
+					firefly_channel_closed_f on_channel_closed,
+					firefly_channel_accept_f on_channel_recv,
+					struct firefly_event_queue *event_queue,
 					char *ip_addr, unsigned short port,
 					struct firefly_transport_llp *llp)
 {
-	struct firefly_connection *conn = malloc(sizeof(
-						struct firefly_connection));
+	struct firefly_connection *conn = firefly_connection_new(on_channel_opened,
+				on_channel_closed, on_channel_recv, event_queue);
 	if (conn == NULL) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 2,
 				"Failed in %s on line %d.\n", __FUNCTION__,
@@ -149,9 +193,7 @@ struct firefly_connection *firefly_transport_connection_udp_posix_open(
 	return conn;
 }
 
-// TODO rename to firefly_transport_udp_posix_write,
-// like the corresponding read function.
-void firefly_transport_write_udp_posix(unsigned char *data, size_t data_size,
+void firefly_transport_udp_posix_write(unsigned char *data, size_t data_size,
 		struct firefly_connection *conn)
 {
 	struct protocol_connection_udp_posix *conn_udp =
@@ -164,46 +206,6 @@ void firefly_transport_write_udp_posix(unsigned char *data, size_t data_size,
 		firefly_error(FIREFLY_ERROR_SOCKET, 2,
 				"Failed in %s.\n", __FUNCTION__);
 	}
-}
-
-static struct firefly_connection *new_connection(
-		struct firefly_transport_llp *llp,
-		 struct sockaddr_in *remote_addr)
-{
-	if (llp->on_conn_recv == NULL) {
-		firefly_error(FIREFLY_ERROR_MISSING_CALLBACK, 3,
-			  "Failed in %s on line %d. 'on_conn_recv missing'\n",
-			  __FUNCTION__, __LINE__);
-		return NULL;
-	}
-	struct transport_llp_udp_posix *llp_udp =
-		(struct transport_llp_udp_posix *) llp->llp_platspec;
-	struct firefly_connection *conn =
-		malloc(sizeof(struct firefly_connection));
-	struct protocol_connection_udp_posix *conn_udp =
-		malloc(sizeof(struct protocol_connection_udp_posix));
-	if (conn == NULL || conn_udp == NULL) {
-		firefly_error(FIREFLY_ERROR_ALLOC,
-				3, "Failed in %s on line %d.\n",
-					  __FUNCTION__, __LINE__);
-		free(conn);
-		free(conn_udp);
-		return NULL;
-	}
-	conn_udp->remote_addr = remote_addr;
-	conn->transport_conn_platspec = conn_udp;
-
-	if (llp->on_conn_recv(conn)) {
-		conn_udp->socket = llp_udp->local_udp_socket;
-		add_connection_to_llp(conn, llp);
-		return conn;
-	} else {
-		free(conn_udp);
-		free(conn);
-
-		return NULL;
-	}
-
 }
 
 static void recv_buf_resize(struct transport_llp_udp_posix *llp_udp,

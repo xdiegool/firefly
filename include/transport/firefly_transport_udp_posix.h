@@ -11,6 +11,7 @@
 
 #include <protocol/firefly_protocol.h>
 #include <transport/firefly_transport.h>
+#include "eventqueue/event_queue.h"
 
 /**
  * @brief An opaque UDP specific link layer port data.
@@ -52,8 +53,12 @@ void firefly_transport_udp_posix_free(struct firefly_transport_llp **llp);
  * @retval NULL Returns \c NULL upon failure.
  */
 struct firefly_connection *firefly_transport_connection_udp_posix_open(
+		firefly_channel_is_open_f on_channel_opened,
+		firefly_channel_closed_f on_channel_closed,
+		firefly_channel_accept_f on_channel_recv,
+		struct firefly_event_queue *event_queue,
 		char *ip_addr, unsigned short port,
-	       	struct firefly_transport_llp *llp);
+		struct firefly_transport_llp *llp);
 
 /**
  * @brief Free the connection and any resources associated with it.
@@ -91,7 +96,7 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp);
  * @param data_size The size of the data to be written.
  * @param conn The connection to written the data on.
  */
-void firefly_transport_write_udp_posix(unsigned char *data, size_t data_size,
+void firefly_transport_udp_posix_write(unsigned char *data, size_t data_size,
 		struct firefly_connection *conn);
 
 /**
