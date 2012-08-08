@@ -102,7 +102,13 @@ struct firefly_channel {
  * Initializes a connection with protocol specific stuff.
  *
  * @param on_channel_opened Callback for when a channel has been opened.
+ * @param on_channel_closed Callback for when a channel has been closed.
  * @param on_channel_recv Callback for when a channel has been recveived.
+ * @param event_queue The event queue all events relating to this connection is
+ * offered to.
+ *
+ * @return A new firefly_connection.
+ * @retval NULL on error.
  */
 struct firefly_connection *firefly_connection_new(
 		firefly_channel_is_open_f on_channel_opened,
