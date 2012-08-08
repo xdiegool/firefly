@@ -48,7 +48,8 @@ struct labcomm_decoder *firefly_protocol_get_input_stream(
 typedef void (* firefly_channel_rejected_f)(struct firefly_connection *conn);
 
 /**
- * @brief Creates and offers an event to open a channel on the provided connection.
+ * @brief Creates and offers an event to open a channel on the provided
+ * connection.
  *
  * When and if the channel is successfully opened the on_channel_opened callback
  * associated with the supplied firefly_connection is called with the opened
@@ -64,8 +65,9 @@ void firefly_channel_open(struct firefly_connection *conn,
 		firefly_channel_rejected_f on_chan_rejected);
 
 /**
- * @brief Closes the channel, frees it's memory and removes it from the
- * connection's chan_list.
+ * @brief Offers an event to close the channel. The event will send a
+ * firefly_protocol_channel_close packet, free it's memory and removes it from
+ * the connection's chan_list.
  *
  * @param chan The channel to close and free.
  * @param conn The connection of the channel.

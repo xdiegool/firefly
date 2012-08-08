@@ -144,6 +144,10 @@ void firefly_channel_free(struct firefly_channel *chan);
 /**
  * @brief The action performed when a firefly_event_chan_open is executed.
  *
+ * A firefly_protocol_channel_open packet is sent with a reserved local id. The
+ * firefly_channel struct is alocated and added to the chan_list of the
+ * firefly_connection.
+ *
  * @pram conn The connection the channel is beeing opened on.
  * @param on_chan_rejected The callback called if the channel request was
  * rejected by the remote node.
@@ -154,6 +158,9 @@ void firefly_channel_open_event(struct firefly_connection *conn,
 /**
  * @brief The action performed when a firefly_event_chan_closed is executed.
  *
+ * The firefly_channel is removed from the chan_list of the firefly_connection
+ * and free'd.
+ *
  * @pram conn The connection the channel is opened on.
  * @param chan The channel to free.
  */
@@ -161,6 +168,8 @@ void firefly_channel_closed_event(struct firefly_channel *chan,
 								 struct firefly_connection *conn);
 /**
  * @brief The action performed when a firefly_event_chan_close is executed.
+ *
+ * The firefly_protocol_channel_close is sent on the connection.
  *
  * @pram conn The connection the channel is opened on.
  * @param chan_close The close packet to send on the connection.
@@ -180,6 +189,10 @@ void handle_channel_request(firefly_protocol_channel_request *chan_req,
 /**
  * @brief The action performed when a firefly_event_chan_req_recv is executed.
  *
+ * The request is parsed and a firefly_channel struct is allocated. The
+ * firefly_channel_accept_f is called, if it returns true a
+ * firefly_protocol_channel_response is sent acknowledging the request.
+ *
  * @param chan_req The received firefly_protocol_channel_request.
  * @pram conn The connection the request was received on.
  */
@@ -198,6 +211,10 @@ void handle_channel_response(firefly_protocol_channel_response *chan_res,
 /**
  * @brief The action performed when a firefly_event_chan_res_recv is executed.
  *
+ * The firefly_protocol_channel_repsonse is parsed and if valid the
+ * firefly_channel_is_open_f is called and a firefly_protocol_channel_ack is
+ * sent.
+ *
  * @param chan_res The received firefly_protocol_channel_response.
  * @pram conn The connection the response was received on.
  */
@@ -214,6 +231,9 @@ void handle_channel_ack(firefly_protocol_channel_ack *chan_ack, void *context);
 
 /**
  * @brief The action performed when a firefly_event_chan_ack_recv is executed.
+ *
+ * The firefly_protocol_channel_ack is parsed and if valid the
+ * firefly_channel_is_open_f is called.
  *
  * @param chan_ack The received firefly_protocol_channel_ack.
  * @pram conn The connection the ack was received on.
@@ -241,6 +261,9 @@ void handle_data_sample(firefly_protocol_data_sample *data,
 
 /**
  * @brief The action performed when a firefly_event_recv_sample is executed.
+ *
+ * The firefly_protocol_data_sample is parsed and if valid the app data is
+ * decoded.
  *
  * @param data The received firefly_protocol_data_sample.
  * @pram conn The connection the data was received on.
