@@ -11,7 +11,6 @@ struct firefly_event_queue *firefly_event_queue_new(firefly_offer_event offer_cb
 
 	if ((q = malloc(sizeof(struct firefly_event_queue))) != NULL) {
 		q->head = NULL;
-		q->tail = NULL;
 		q->offer_event_cb = offer_cb;
 	}
 
@@ -49,19 +48,30 @@ void firefly_event_free(struct firefly_event **ev)
 
 int firefly_event_add(struct firefly_event_queue *eq, struct firefly_event *ev)
 {
+	struct firefly_eq_node *n = eq->head;
+	if (n != NULL && n->event->base.prio < ev->base.prio) {
+		n = NULL;
+	}
+
+	while (n != NULL && n->next != NULL &&
+			n->event->base.prio >= ev->base.prio) {
+		n = n->next;
+	}
+
 	struct firefly_eq_node *node = malloc(sizeof(struct firefly_eq_node));
 	if (node == NULL) {
 		return -1;
 	}
 	node->event = ev;
-	node->next = NULL;
-	if (eq->tail != NULL) {
-		eq->tail->next = node;
-	}
-	eq->tail = node;
-	if (eq->head == NULL) {
+
+	if (n != NULL) {
+		node->next = n->next;
+		n->next = node;
+	} else {
+		node->next = eq->head;
 		eq->head = node;
 	}
+
 	return 0;
 }
 
@@ -79,9 +89,6 @@ struct firefly_event *firefly_event_pop(struct firefly_event_queue *eq)
 	eq->head = eq->head->next;
 	ev = event_node->event;
 	free(event_node);
-	if (eq->tail == event_node) {
-		eq->tail = NULL;
-	}
 
 	return ev;
 }

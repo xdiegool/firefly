@@ -22,6 +22,13 @@
 #include "protocol/firefly_protocol_private.h"
 
 /**
+ * Defines defferent priorities.
+ */
+#define FIREFLY_PRIORITY_LOW (20)
+#define FIREFLY_PRIORITY_MEDIUM (125)
+#define FIREFLY_PRIORITY_HIGH (235)
+
+/**
  * @brief Each event has a type defined here.
  */
 enum firefly_event_type {
@@ -164,8 +171,6 @@ typedef int (*firefly_offer_event)(struct firefly_event_queue *queue,
  */
 struct firefly_event_queue {
 	struct firefly_eq_node *head; /**< Reference to the first event in
-									the queue. */
-	struct firefly_eq_node *tail; /**< Refenrence to the last event in
 									the queue. */
 	firefly_offer_event offer_event_cb; /**< The callback used for adding new
 					       	       	       events. */

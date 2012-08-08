@@ -32,7 +32,6 @@ void test_add_pop_event_simple()
 	CU_ASSERT_EQUAL(ev->base.prio, test->base.prio);
 
 	CU_ASSERT_PTR_NULL(q->head);
-	CU_ASSERT_PTR_NULL(q->tail);
 
 	// Clean up
 	firefly_event_free(&ev);
@@ -42,15 +41,44 @@ void test_add_pop_event_simple()
 
 void test_queue_events_in_order()
 {
+	int st;
 	struct firefly_event_queue *q = firefly_event_queue_new(firefly_event_add);
 
-	struct firefly_event *ev_1 = firefly_event_new(1, 1);
-	int st = q->offer_event_cb(q, ev_1);
+	struct firefly_event *ev_low = firefly_event_new(1, FIREFLY_PRIORITY_LOW);
+	st = q->offer_event_cb(q, ev_low);
 	CU_ASSERT_EQUAL(st, 0);
-	struct firefly_event *ev_2 = firefly_event_new(2, 2);
+	struct firefly_event *ev_med = firefly_event_new(2, FIREFLY_PRIORITY_MEDIUM);
+	st = q->offer_event_cb(q, ev_med);
+	CU_ASSERT_EQUAL(st, 0);
+	struct firefly_event *ev_high = firefly_event_new(3, FIREFLY_PRIORITY_HIGH);
+	st = q->offer_event_cb(q, ev_high);
+	CU_ASSERT_EQUAL(st, 0);
+
+	CU_ASSERT_PTR_EQUAL(ev_high, firefly_event_pop(q));
+	CU_ASSERT_PTR_EQUAL(ev_med, firefly_event_pop(q));
+	CU_ASSERT_PTR_EQUAL(ev_low, firefly_event_pop(q));
+
+	CU_ASSERT_PTR_NULL(q->head);
+
+	firefly_event_free(&ev_low);
+	firefly_event_free(&ev_med);
+	firefly_event_free(&ev_high);
+	firefly_event_queue_free(&q);
+}
+
+void test_queue_event_same_prio()
+{
+
+	int st;
+	struct firefly_event_queue *q = firefly_event_queue_new(firefly_event_add);
+
+	struct firefly_event *ev_1 = firefly_event_new(1, FIREFLY_PRIORITY_MEDIUM);
+	st = q->offer_event_cb(q, ev_1);
+	CU_ASSERT_EQUAL(st, 0);
+	struct firefly_event *ev_2 = firefly_event_new(2, FIREFLY_PRIORITY_MEDIUM);
 	st = q->offer_event_cb(q, ev_2);
 	CU_ASSERT_EQUAL(st, 0);
-	struct firefly_event *ev_3 = firefly_event_new(3, 3);
+	struct firefly_event *ev_3 = firefly_event_new(3, FIREFLY_PRIORITY_MEDIUM);
 	st = q->offer_event_cb(q, ev_3);
 	CU_ASSERT_EQUAL(st, 0);
 
@@ -59,11 +87,53 @@ void test_queue_events_in_order()
 	CU_ASSERT_PTR_EQUAL(ev_3, firefly_event_pop(q));
 
 	CU_ASSERT_PTR_NULL(q->head);
-	CU_ASSERT_PTR_NULL(q->tail);
 
 	firefly_event_free(&ev_1);
 	firefly_event_free(&ev_2);
 	firefly_event_free(&ev_3);
+	firefly_event_queue_free(&q);
+}
+
+void test_queue_event_same_and_diff_prio()
+{
+
+	int st;
+	struct firefly_event_queue *q = firefly_event_queue_new(firefly_event_add);
+
+	struct firefly_event *ev_low1 = firefly_event_new(1, FIREFLY_PRIORITY_LOW);
+	st = q->offer_event_cb(q, ev_low1);
+	CU_ASSERT_EQUAL(st, 0);
+	struct firefly_event *ev_low2 = firefly_event_new(1, FIREFLY_PRIORITY_LOW);
+	st = q->offer_event_cb(q, ev_low2);
+	CU_ASSERT_EQUAL(st, 0);
+	struct firefly_event *ev_med1 = firefly_event_new(2, FIREFLY_PRIORITY_MEDIUM);
+	st = q->offer_event_cb(q, ev_med1);
+	CU_ASSERT_EQUAL(st, 0);
+	struct firefly_event *ev_med2 = firefly_event_new(2, FIREFLY_PRIORITY_MEDIUM);
+	st = q->offer_event_cb(q, ev_med2);
+	CU_ASSERT_EQUAL(st, 0);
+	struct firefly_event *ev_high1 = firefly_event_new(3, FIREFLY_PRIORITY_HIGH);
+	st = q->offer_event_cb(q, ev_high1);
+	CU_ASSERT_EQUAL(st, 0);
+	struct firefly_event *ev_high2 = firefly_event_new(3, FIREFLY_PRIORITY_HIGH);
+	st = q->offer_event_cb(q, ev_high2);
+	CU_ASSERT_EQUAL(st, 0);
+
+	CU_ASSERT_PTR_EQUAL(ev_high1, firefly_event_pop(q));
+	CU_ASSERT_PTR_EQUAL(ev_high2, firefly_event_pop(q));
+	CU_ASSERT_PTR_EQUAL(ev_med1, firefly_event_pop(q));
+	CU_ASSERT_PTR_EQUAL(ev_med2, firefly_event_pop(q));
+	CU_ASSERT_PTR_EQUAL(ev_low1, firefly_event_pop(q));
+	CU_ASSERT_PTR_EQUAL(ev_low2, firefly_event_pop(q));
+
+	CU_ASSERT_PTR_NULL(q->head);
+
+	firefly_event_free(&ev_low1);
+	firefly_event_free(&ev_low2);
+	firefly_event_free(&ev_med1);
+	firefly_event_free(&ev_med2);
+	firefly_event_free(&ev_high1);
+	firefly_event_free(&ev_high2);
 	firefly_event_queue_free(&q);
 }
 
@@ -129,10 +199,16 @@ int main()
 	if (
 		(CU_add_test(event_suite, "test_add_pop_event_simple",
 				test_add_pop_event_simple) == NULL)
-			   ||
+		||
 		(CU_add_test(event_suite, "test_queue_events_in_order",
 				test_queue_events_in_order) == NULL)
-			   ||
+		||
+		(CU_add_test(event_suite, "test_queue_event_same_prio",
+					 test_queue_event_same_prio) == NULL)
+		||
+		(CU_add_test(event_suite, "test_queue_event_same_and_diff_prio",
+					 test_queue_event_same_prio) == NULL)
+		||
 		(CU_add_test(event_suite, "test_pop_empty",
 				test_pop_empty) == NULL)
 		||
