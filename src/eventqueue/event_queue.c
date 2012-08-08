@@ -5,7 +5,8 @@
 #include "protocol/firefly_protocol_private.h"
 #include "firefly_errors.h"
 
-struct firefly_event_queue *firefly_event_queue_new(firefly_offer_event offer_cb)
+struct firefly_event_queue *firefly_event_queue_new(
+		firefly_offer_event offer_cb)
 {
 	struct firefly_event_queue *q;
 
@@ -28,7 +29,7 @@ void firefly_event_queue_free(struct firefly_event_queue **q)
 }
 
 struct firefly_event *firefly_event_new(enum firefly_event_type t,
-							unsigned char prio)
+		unsigned char prio)
 {
 	struct firefly_event *ev;
 
@@ -103,36 +104,36 @@ int firefly_event_execute(struct firefly_event *ev)
 	} break;
 	case EVENT_CHAN_CLOSED: {
 		struct firefly_event_chan_closed *ev_cc =
-						(struct firefly_event_chan_closed *) ev;
+				(struct firefly_event_chan_closed *) ev;
 		firefly_channel_closed_event(ev_cc->chan, ev_cc->conn);
 	} break;
 	case EVENT_CHAN_CLOSE: {
 		struct firefly_event_chan_close *ev_cc =
-						(struct firefly_event_chan_close *) ev;
+				(struct firefly_event_chan_close *) ev;
 		firefly_channel_close_event(ev_cc->conn, ev_cc->chan_close);
 		free(ev_cc->chan_close);
 	} break;
 	case EVENT_CHAN_REQ_RECV: {
 		struct firefly_event_chan_req_recv *ev_crr =
-			(struct firefly_event_chan_req_recv *) ev;
+				(struct firefly_event_chan_req_recv *) ev;
 		handle_channel_request_event(ev_crr->chan_req, ev_crr->conn);
 		free(ev_crr->chan_req);
 	} break;
 	case EVENT_CHAN_RES_RECV: {
 		struct firefly_event_chan_res_recv *ev_crr =
-			(struct firefly_event_chan_res_recv *) ev;
+				(struct firefly_event_chan_res_recv *) ev;
 		handle_channel_response_event(ev_crr->chan_res, ev_crr->conn);
 		free(ev_crr->chan_res);
 	} break;
 	case EVENT_CHAN_ACK_RECV: {
 		struct firefly_event_chan_ack_recv *ev_car =
-			(struct firefly_event_chan_ack_recv *) ev;
+				(struct firefly_event_chan_ack_recv *) ev;
 		handle_channel_ack_event(ev_car->chan_ack, ev_car->conn);
 		free(ev_car->chan_ack);
 	} break;
 	case EVENT_SEND_SAMPLE: {
 		struct firefly_event_send_sample *ev_ss =
-			(struct firefly_event_send_sample *) ev;
+				(struct firefly_event_send_sample *) ev;
 		labcomm_encode_firefly_protocol_data_sample(
 				ev_ss->conn->transport_encoder, ev_ss->pkt);
 		free(ev_ss->pkt->app_enc_data.a);
@@ -140,7 +141,7 @@ int firefly_event_execute(struct firefly_event *ev)
 	} break;
 	case EVENT_RECV_SAMPLE: {
 		struct firefly_event_recv_sample *ev_rs =
-			(struct firefly_event_recv_sample *) ev;
+				(struct firefly_event_recv_sample *) ev;
 		handle_data_sample_event(ev_rs->pkt, ev_rs->conn);
 		free(ev_rs->pkt->app_enc_data.a);
 		free(ev_rs->pkt);
