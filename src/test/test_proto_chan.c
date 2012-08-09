@@ -1,3 +1,5 @@
+#include "test/test_proto_chan.h"
+
 #include "CUnit/Basic.h"
 
 #include <labcomm.h>

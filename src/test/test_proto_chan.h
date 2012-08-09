@@ -1,4 +1,3 @@
-
 #ifndef TEST_PROTO_CHAN_H
 #define TEST_PROTO_CHAN_H
 
