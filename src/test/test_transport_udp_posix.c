@@ -149,7 +149,7 @@ void test_recv_connection()
 	CU_ASSERT_TRUE(good_conn_received);
 	data_received = false;
 	good_conn_received = false;
-	firefly_transport_udp_posix_free(&llp);
+	firefly_transport_llp_udp_posix_free(&llp);
 }
 
 struct firefly_connection *recv_data_recv_conn(
@@ -181,7 +181,7 @@ void test_recv_data()
 	CU_ASSERT_TRUE(data_received);
 	data_received = false;
 	good_conn_received = false;
-	firefly_transport_udp_posix_free(&llp);
+	firefly_transport_llp_udp_posix_free(&llp);
 }
 
 void test_recv_conn_and_data()
@@ -200,7 +200,7 @@ void test_recv_conn_and_data()
 	CU_ASSERT_TRUE(data_received);
 	good_conn_received = false;
 	data_received = false;
-	firefly_transport_udp_posix_free(&llp);
+	firefly_transport_llp_udp_posix_free(&llp);
 }
 
 void test_recv_conn_and_two_data()
@@ -227,7 +227,7 @@ void test_recv_conn_and_two_data()
 	CU_ASSERT_TRUE(data_received);
 	good_conn_received = false;
 	data_received = false;
-	firefly_transport_udp_posix_free(&llp);
+	firefly_transport_llp_udp_posix_free(&llp);
 }
 
 void test_recv_conn_keep()
@@ -249,7 +249,7 @@ void test_recv_conn_keep()
 
 	good_conn_received = false;
 	data_received = false;
-	firefly_transport_udp_posix_free(&llp);
+	firefly_transport_llp_udp_posix_free(&llp);
 }
 
 struct firefly_connection *recv_conn_keep_two(
@@ -296,7 +296,7 @@ void test_recv_conn_keep_two()
 
 	good_conn_received = false;
 	data_received = false;
-	firefly_transport_udp_posix_free(&llp);
+	firefly_transport_llp_udp_posix_free(&llp);
 }
 
 struct firefly_connection *recv_conn_reject_recv_conn(
@@ -321,7 +321,7 @@ void test_recv_conn_reject()
 	CU_ASSERT_FALSE(data_received);
 
 	CU_ASSERT_EQUAL(llp->conn_list, NULL);
-	firefly_transport_udp_posix_free(&llp);
+	firefly_transport_llp_udp_posix_free(&llp);
 }
 
 // NOTE: This test is supposed to segfault if it fails as that is the only way
@@ -337,7 +337,7 @@ void test_null_pointer_as_callback()
 
 	CU_PASS("Passed null pointer as callback\n");
 
-	firefly_transport_udp_posix_free(&llp);
+	firefly_transport_llp_udp_posix_free(&llp);
 }
 
 void test_find_conn_by_addr()
@@ -385,7 +385,7 @@ void test_find_conn_by_addr()
 		((struct protocol_connection_udp_posix *)
 		conn->transport_conn_platspec)->remote_addr));
 
-	firefly_transport_udp_posix_free(&llp);
+	firefly_transport_llp_udp_posix_free(&llp);
 }
 
 void test_add_conn_to_llp()
@@ -429,7 +429,7 @@ void test_add_conn_to_llp()
 	CU_ASSERT_PTR_NOT_NULL(llp->conn_list->next);
 	CU_ASSERT_PTR_EQUAL(llp->conn_list->next->conn, conn_1);
 
-	firefly_transport_udp_posix_free(&llp);
+	firefly_transport_llp_udp_posix_free(&llp);
 }
 
 void test_conn_open_and_send()
@@ -450,7 +450,7 @@ void test_conn_open_and_send()
 	recv_data(recv_soc);
 
 	close(recv_soc);
-	firefly_transport_udp_posix_free(&llp);
+	firefly_transport_llp_udp_posix_free(&llp);
 }
 
 void test_conn_open_and_recv()
@@ -471,7 +471,7 @@ void test_conn_open_and_recv()
 	CU_ASSERT_TRUE(data_received);
 
 	data_received = false;
-	firefly_transport_udp_posix_free(&llp);
+	firefly_transport_llp_udp_posix_free(&llp);
 }
 
 static struct firefly_connection *conn_recv = NULL;
@@ -518,8 +518,8 @@ void test_open_and_recv_with_two_llp()
 	CU_ASSERT_TRUE(data_received);
 
 	data_received = false;
-	firefly_transport_udp_posix_free(&llp_recv);
-	firefly_transport_udp_posix_free(&llp_send);
+	firefly_transport_llp_udp_posix_free(&llp_recv);
+	firefly_transport_llp_udp_posix_free(&llp_send);
 }
 
 void test_recv_big_connection()
@@ -552,7 +552,7 @@ void test_recv_big_connection()
 
 	data_received = false;
 	/* good_conn_received = false; */
-	firefly_transport_udp_posix_free(&llp);
+	firefly_transport_llp_udp_posix_free(&llp);
 }
 
 void test_reader_scale_back()
@@ -598,7 +598,7 @@ void test_reader_scale_back()
 		(struct transport_llp_udp_posix *)llp->llp_platspec;
 
 	CU_ASSERT_EQUAL(udp_llp->recv_buf_size, sizeof(send_buf_med));
-	firefly_transport_udp_posix_free(&llp);
+	firefly_transport_llp_udp_posix_free(&llp);
 	data_received = false;
 	good_conn_received = false;
 }

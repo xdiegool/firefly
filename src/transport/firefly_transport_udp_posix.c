@@ -75,7 +75,7 @@ struct firefly_transport_llp *firefly_transport_llp_udp_posix_new(
 	return llp;
 }
 
-void firefly_transport_udp_posix_free(struct firefly_transport_llp **llp)
+void firefly_transport_llp_udp_posix_free(struct firefly_transport_llp **llp)
 {
 	struct transport_llp_udp_posix *llp_udp =
 		(struct transport_llp_udp_posix *) (*llp)->llp_platspec;

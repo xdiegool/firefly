@@ -57,7 +57,7 @@ struct firefly_transport_llp *firefly_transport_llp_udp_posix_new(
  *
  * @param llp The firefly_transport_llp to free.
  */
-void firefly_transport_udp_posix_free(struct firefly_transport_llp **llp);
+void firefly_transport_llp_udp_posix_free(struct firefly_transport_llp **llp);
 
 /**
  * @brief Opens a connection on the provided link layer port.
