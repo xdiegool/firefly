@@ -38,52 +38,77 @@ void firefly_error(enum firefly_error error_id, size_t nbr_va_args, ...)
 	CU_ASSERT_EQUAL(expected_error, error_id);
 }
 
+
+static void mk_lc_and_reg_sigs_free(struct firefly_connection *conn_open,
+									struct firefly_connection *conn_recv,
+									struct firefly_event_queue *eq)
+{
+	// Clean up
+	chan_opened_called = false;
+	firefly_connection_free(&conn_open);
+	firefly_connection_free(&conn_recv);
+	firefly_event_queue_free(&eq);
+}
+
+
+static void mk_lc_and_reg_sigs(struct firefly_connection **conn_open,
+							   struct firefly_connection **conn_recv,
+							   struct firefly_event_queue **eq)
+{
+	*eq = firefly_event_queue_new(firefly_event_add);
+	if (*eq == NULL) {
+		CU_FAIL("Could not create queue.\n");
+	}
+	// Init connection to open channel
+	*conn_open = setup_test_conn_new(chan_opened_mock, NULL,
+									chan_open_recv_accept_open,
+									*eq);
+	(*conn_open)->transport_write = chan_open_recv_write_open;
+
+	// Init connection to receive channel
+	*conn_recv = setup_test_conn_new(chan_opened_mock, NULL,
+									chan_open_recv_accept_recv, *eq);
+	(*conn_recv)->transport_write = chan_open_recv_write_recv;
+
+	// register decoders
+	labcomm_decoder_register_firefly_protocol_channel_response((*conn_open)->transport_decoder,
+															   handle_channel_response,
+															   *conn_open);
+	labcomm_decoder_register_firefly_protocol_channel_request((*conn_recv)->transport_decoder,
+															  handle_channel_request,
+															  *conn_recv);
+	labcomm_decoder_register_firefly_protocol_channel_ack((*conn_recv)->transport_decoder,
+														  handle_channel_ack,
+														  *conn_recv);
+
+	// Register encoders. Signatures will be sent to each connection
+	labcomm_encoder_register_firefly_protocol_channel_ack((*conn_open)->transport_encoder);
+	protocol_data_received(*conn_recv,
+						   conn_open_write.data,
+						   conn_open_write.size);
+	free_tmp_data(&conn_open_write);
+
+	labcomm_encoder_register_firefly_protocol_channel_request((*conn_open)->transport_encoder);
+
+	protocol_data_received(*conn_recv, conn_open_write.data,
+			conn_open_write.size);
+
+	free_tmp_data(&conn_open_write);
+
+	labcomm_encoder_register_firefly_protocol_channel_response((*conn_recv)->transport_encoder);
+	protocol_data_received(*conn_open,
+						   conn_recv_write.data,
+						   conn_recv_write.size);
+	free_tmp_data(&conn_recv_write);
+}
+
 void test_unexpected_ack()
 {
 	struct firefly_connection *conn_open;
 	struct firefly_connection *conn_recv;
+	struct firefly_event_queue *eq;
 
-	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add);
-	if (eq == NULL) {
-		CU_FAIL("Could not create queue.\n");
-	}
-	// Init connection to open channel
-	conn_open = setup_test_conn_new(chan_opened_mock, NULL,
-									   chan_open_recv_accept_open, eq);
-	conn_open->transport_write = chan_open_recv_write_open;
-
-	// Init connection to receive channel
-	conn_recv = setup_test_conn_new(chan_opened_mock, NULL,
-									chan_open_recv_accept_recv, eq);
-	conn_recv->transport_write = chan_open_recv_write_recv;
-
-	// register decoders
-	labcomm_decoder_register_firefly_protocol_channel_response(
-			conn_open->transport_decoder, handle_channel_response, conn_open);
-	labcomm_decoder_register_firefly_protocol_channel_request(
-			conn_recv->transport_decoder, handle_channel_request, conn_recv);
-	labcomm_decoder_register_firefly_protocol_channel_ack(
-			conn_recv->transport_decoder, handle_channel_ack, conn_recv);
-
-	// Register encoders. Signatures will be sent to each connection
-	labcomm_encoder_register_firefly_protocol_channel_ack(
-			conn_open->transport_encoder);
-	protocol_data_received(conn_recv, conn_open_write.data,
-			conn_open_write.size);
-	free_tmp_data(&conn_open_write);
-
-	labcomm_encoder_register_firefly_protocol_channel_request(
-			conn_open->transport_encoder);
-	protocol_data_received(conn_recv, conn_open_write.data,
-			conn_open_write.size);
-	free_tmp_data(&conn_open_write);
-
-	labcomm_encoder_register_firefly_protocol_channel_response(
-			conn_recv->transport_encoder);
-	protocol_data_received(conn_open, conn_recv_write.data,
-			conn_recv_write.size);
-	free_tmp_data(&conn_recv_write);
-
+	mk_lc_and_reg_sigs(&conn_open, &conn_recv, &eq);
 
 	firefly_protocol_channel_ack ack;
 	ack.dest_chan_id = 14; // Non existing channel.
@@ -104,11 +129,7 @@ void test_unexpected_ack()
 	expected_error = FIREFLY_ERROR_FIRST; // Reset
 	CU_ASSERT_TRUE(was_in_error);
 	was_in_error = false; // Reset.
-
-	// Clean up
-	chan_opened_called = false;
-	firefly_connection_free(&conn_open);
-	firefly_connection_free(&conn_recv);
-	firefly_event_queue_free(&eq);
 	free(conn_open_write.data);
+
+	mk_lc_and_reg_sigs_free(conn_open, conn_recv, eq);
 }
