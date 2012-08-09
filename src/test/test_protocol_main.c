@@ -138,7 +138,7 @@ int main()
 	// Errors tests.
 	if (
 			(CU_add_test(chan_suite, "test_unexpected_ack",
-			     	     test_get_streams) == NULL)
+			     	     test_unexpected_ack) == NULL)
 	   		) {
 				CU_cleanup_registry();
 				return CU_get_error();

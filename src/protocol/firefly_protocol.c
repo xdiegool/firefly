@@ -288,7 +288,6 @@ void handle_channel_ack_event(firefly_protocol_channel_ack *chan_ack,
 	int local_chan_id = chan_ack->dest_chan_id;
 	struct firefly_channel *chan = find_channel_by_local_id(conn,
 			local_chan_id);
-
 	if (chan != NULL) {
 		conn->on_channel_opened(chan);
 	} else {

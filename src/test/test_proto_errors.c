@@ -29,6 +29,15 @@ int clean_suite_proto_errors()
 	return 0;
 }
 
+static bool was_in_error = false;
+static enum firefly_error expected_error;
+// Override.
+void firefly_error(enum firefly_error error_id, size_t nbr_va_args, ...)
+{
+	was_in_error = true;
+	CU_ASSERT_EQUAL(expected_error, error_id);
+}
+
 void test_unexpected_ack()
 {
 	struct firefly_connection *conn_open;
@@ -56,7 +65,7 @@ void test_unexpected_ack()
 	labcomm_decoder_register_firefly_protocol_channel_ack(
 			conn_recv->transport_decoder, handle_channel_ack, conn_recv);
 
-	// register encoders Signatures will be sent to each connection
+	// Register encoders. Signatures will be sent to each connection
 	labcomm_encoder_register_firefly_protocol_channel_ack(
 			conn_open->transport_encoder);
 	protocol_data_received(conn_recv, conn_open_write.data,
@@ -75,45 +84,31 @@ void test_unexpected_ack()
 			conn_recv_write.size);
 	free_tmp_data(&conn_recv_write);
 
-	// Init open channel from conn_open
-	firefly_channel_open(conn_open, NULL);
-	struct firefly_event *ev = firefly_event_pop(eq);
-	CU_ASSERT_PTR_NOT_NULL(ev);
-	firefly_event_execute(ev);
 
+	firefly_protocol_channel_ack ack;
+	ack.dest_chan_id = 14; // Non existing channel.
+	ack.source_chan_id = 14;
+	CU_ASSERT_EQUAL_FATAL(firefly_event_queue_length(eq), 0);
+	labcomm_encode_firefly_protocol_channel_ack(conn_open->transport_encoder,
+												&ack);
+
+	expected_error = FIREFLY_ERROR_PROTO_STATE;
 	protocol_data_received(conn_recv, conn_open_write.data,
-			conn_open_write.size);
-	ev = firefly_event_pop(eq);
-	CU_ASSERT_PTR_NOT_NULL(ev);
-	firefly_event_execute(ev);
-
-	free_tmp_data(&conn_open_write);
-	CU_ASSERT_TRUE(conn_recv_accept_called);
-	protocol_data_received(conn_open, conn_recv_write.data,
-						   conn_recv_write.size);
-	ev = firefly_event_pop(eq);
-	CU_ASSERT_PTR_NOT_NULL(ev);
-	firefly_event_execute(ev);
-	CU_ASSERT_TRUE(chan_opened_called);
-	chan_opened_called = false;
-
+						   conn_open_write.size);
 	free_tmp_data(&conn_recv_write);
-	protocol_data_received(conn_recv, conn_open_write.data,
-			conn_open_write.size);
-	free_tmp_data(&conn_open_write);
-	ev = firefly_event_pop(eq);
-	firefly_event_execute(ev);
-	CU_ASSERT_TRUE(chan_opened_called);
-	chan_opened_called = false;
 
-	CU_ASSERT_PTR_NOT_NULL(conn_open->chan_list->chan);
-	CU_ASSERT_PTR_NOT_NULL(conn_recv->chan_list->chan);
-	CU_ASSERT_EQUAL(conn_recv->chan_list->chan->local_id, conn_open->chan_list->chan->remote_id);
-	CU_ASSERT_EQUAL(conn_recv->chan_list->chan->remote_id, conn_open->chan_list->chan->local_id);
+	struct firefly_event *ev = firefly_event_pop(eq);
+	CU_ASSERT_PTR_NOT_NULL_FATAL(ev);
+	firefly_event_execute(ev);
+
+	expected_error = FIREFLY_ERROR_FIRST; // Reset
+	CU_ASSERT_TRUE(was_in_error);
+	was_in_error = false; // Reset.
 
 	// Clean up
 	chan_opened_called = false;
 	firefly_connection_free(&conn_open);
 	firefly_connection_free(&conn_recv);
 	firefly_event_queue_free(&eq);
+	free(conn_open_write.data);
 }
