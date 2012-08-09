@@ -45,7 +45,7 @@ DEPENDS_GEN=$(SRC_DIR)/protocol/firefly_protocol.c $(SRC_DIR)/protocol/firefly_p
 
 LIBS=$(patsubst %,$(BUILD_DIR)/lib%.a,firefly)
 
-TEST_PROTO_OBJS= $(patsubst %,$(BUILD_DIR)/test/%.o,test_labcomm_utils test_proto_chan test_proto_translc test_proto_protolc test_protocol_main)
+TEST_PROTO_OBJS= $(patsubst %,$(BUILD_DIR)/test/%.o,test_labcomm_utils test_proto_chan test_proto_translc test_proto_protolc test_proto_errors proto_helper test_protocol_main)
 
 TEST_TRANSP_OBJS= $(patsubst %,$(BUILD_DIR)/test/%.o,test_transport_main test_transport_udp_posix)
 

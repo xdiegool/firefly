@@ -10,7 +10,7 @@
 #include "test/test_proto_translc.h"
 #include "test/test_proto_protolc.h"
 #include "test/test_proto_chan.h"
-#include "test/test_proto_erros.h"
+#include "test/test_proto_errors.h"
 #include "test/test_transport_udp_posix.h"
 
 int main()
@@ -44,9 +44,9 @@ int main()
 		CU_cleanup_registry();
 		return CU_get_error();
 	}
-	errors_suite = CU_add_suite("errors_suitr", init_suit_proto_errors,
-					clean_suit_proto_errors);
-	if (proto_suite == NULL) {
+	errors_suite = CU_add_suite("errors_suite", init_suite_proto_errors,
+					clean_suite_proto_errors);
+	if (errors_suite == NULL) {
 		CU_cleanup_registry();
 		return CU_get_error();
 	}
