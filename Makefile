@@ -94,6 +94,12 @@ $(BUILD_DIR)/test/%: test/%.c $(BUILD_DIR)/libfirefly.a
 	$(CC) $(CFLAGS) -L$(BUILD_DIR) -L$(LABCOMMLIBPATH) $< -lcunit -lfirefly -llabcomm -o $@
 
 # Test programs depends on liblabcomm.
+$(BUILD_DIR)/test/pingpong/ping_pudp: $(BUILD_DIR) $(LIBS) $(BUILD_DIR)/test/pingpong/ping_pudp.o $(BUILD_DIR)/test/pingpong/pingpong_pudp.o $(BUILD_DIR)/gen/firefly_protocol.o $(LABCOMMLIBPATH)/liblabcomm.a
+	$(CC) -L$(BUILD_DIR) -L$(LABCOMMLIBPATH) $(filter %.o,$^) -lpthread -lfirefly -llabcomm -o $@
+
+$(BUILD_DIR)/test/pingpong/pong_pudp: $(BUILD_DIR) $(LIBS) $(BUILD_DIR)/test/pingpong/pong_pudp.o $(BUILD_DIR)/test/pingpong/pingpong_pudp.o $(BUILD_DIR)/gen/firefly_protocol.o $(LABCOMMLIBPATH)/liblabcomm.a
+	$(CC) -L$(BUILD_DIR) -L$(LABCOMMLIBPATH) $(filter %.o,$^) -lpthread -lfirefly -llabcomm -o $@
+
 $(BUILD_DIR)/test/test_protocol_main: $(TEST_PROTO_OBJS) $(BUILD_DIR) $(LIBS) $(LABCOMMLIBPATH)/liblabcomm.a $(BUILD_DIR)/gen/test.o $(BUILD_DIR)/gen/firefly_protocol.o
 	$(CC) -L$(BUILD_DIR) -L$(LABCOMMLIBPATH) $(filter %.o,$^) -lcunit -lfirefly -llabcomm -o $@
 
@@ -112,6 +118,12 @@ test: $(TEST_PROGS) gen_lc_files
 		./$$prog; \
 		echo "=========================>END TEST: $${prog}"; \
 	done
+
+ping: $(BUILD_DIR)/test/pingpong/ping_pudp
+	./$^
+
+pong: $(BUILD_DIR)/test/pingpong/pong_pudp
+	./$^
 
 # target: testc - Run all tests with sound effects!
 testc:
