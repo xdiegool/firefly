@@ -25,7 +25,7 @@
 #define SCALE_BACK_NBR_DEFAULT (32)
 
 struct firefly_transport_llp *firefly_transport_llp_udp_posix_new(
-	unsigned short local_udp_port, firefly_on_conn_recv on_conn_recv)
+	unsigned short local_udp_port, firefly_on_conn_recv_pudp on_conn_recv)
 {
 	struct transport_llp_udp_posix *llp_udp;
 
@@ -60,6 +60,7 @@ struct firefly_transport_llp *firefly_transport_llp_udp_posix_new(
 	llp_udp->recv_buf_size   = 0;
 	llp_udp->scale_back_size = 0;
 	llp_udp->recv_buf        = NULL;
+	llp_udp->on_conn_recv = on_conn_recv;
 
 	struct firefly_transport_llp *llp = malloc(sizeof(
 						struct firefly_transport_llp));
@@ -70,7 +71,6 @@ struct firefly_transport_llp *firefly_transport_llp_udp_posix_new(
 
 	llp->llp_platspec = llp_udp;
 	llp->conn_list = NULL;
-	llp->on_conn_recv = on_conn_recv;
 
 	return llp;
 }
@@ -123,7 +123,6 @@ struct firefly_connection *firefly_connection_udp_posix_new(
 	conn_udp->socket = llp_udp->local_udp_socket;
 
 	return conn;
-
 }
 
 void firefly_transport_connection_udp_posix_free(
@@ -225,12 +224,7 @@ static void recv_buf_resize(struct transport_llp_udp_posix *llp_udp,
 
 void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 {
-	struct sockaddr_in *remote_addr = malloc(sizeof(struct sockaddr_in));
-	if (remote_addr == NULL) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 3,
-				"Failed in %s on line %d.\n",
-				__FUNCTION__, __LINE__);
-	}
+	struct sockaddr_in remote_addr;
 	struct transport_llp_udp_posix *llp_udp =
 		(struct transport_llp_udp_posix *) llp->llp_platspec;
 
@@ -247,7 +241,7 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 	recv_buf_resize(llp_udp, pkg_len); /* Scaleback and such. */
 	socklen_t len = sizeof(struct sockaddr_in);
 	int res = recvfrom(llp_udp->local_udp_socket, llp_udp->recv_buf,
-			pkg_len, 0, (struct sockaddr *) remote_addr, &len);
+			pkg_len, 0, (struct sockaddr *) &remote_addr, &len);
 	if (res == -1) {
 		char err_buf[ERROR_STR_MAX_LEN];
 		strerror_r(errno, err_buf, ERROR_STR_MAX_LEN);
@@ -256,32 +250,23 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 	}
 
 	// Find existing connection or create new
-	struct firefly_connection *conn = find_connection_by_addr(remote_addr,
+	struct firefly_connection *conn = find_connection_by_addr(&remote_addr,
 									  llp);
-	bool retain_remote_addr = false;
-	if (llp->on_conn_recv == NULL) {
+	if (llp_udp->on_conn_recv == NULL) {
+		// TODO feature consideration, on_conn_recv == NULL => silently reject
+		// incomming connections.
 		firefly_error(FIREFLY_ERROR_MISSING_CALLBACK, 3,
 			  "Failed in %s on line %d. 'on_conn_recv missing'\n",
 			  __FUNCTION__, __LINE__);
 	}
-	if (conn == NULL && llp->on_conn_recv != NULL) {
-		conn = firefly_connection_udp_posix_new(NULL, NULL, NULL, NULL,
-				llp, remote_addr);
-		if (llp->on_conn_recv(conn)) {
-			add_connection_to_llp(conn, llp);
-			/* We just *successfully* used remote_addr. Do not free it. */
-			retain_remote_addr = true;
-		} else {
-			firefly_transport_connection_udp_posix_free(&conn);
-			/* The remote_addr is already free'd, do not free a second time. */
-			retain_remote_addr = true;
-		}
+	if (conn == NULL && llp_udp->on_conn_recv != NULL) {
+		char ip_addr[INET_ADDRSTRLEN];
+		sockaddr_in_ipaddr(&remote_addr, ip_addr);
+		conn = llp_udp->on_conn_recv(llp, ip_addr,
+				sockaddr_in_port(&remote_addr));
 	}
 	if (conn != NULL) { // Existing, not rejected and created conn. 
 		protocol_data_received(conn, llp_udp->recv_buf, pkg_len);
-	}
-	if (!retain_remote_addr) {
-		free(remote_addr);
 	}
 }
 
@@ -292,6 +277,16 @@ bool sockaddr_in_eq(struct sockaddr_in *one, struct sockaddr_in *other)
 		memcmp(&one->sin_addr, &other->sin_addr,
 			sizeof(one->sin_addr)) == 0;
 
+}
+
+void sockaddr_in_ipaddr(struct sockaddr_in *addr, char *ip_addr)
+{
+	inet_ntop(AF_INET, &addr->sin_addr.s_addr, ip_addr, INET_ADDRSTRLEN);
+}
+
+unsigned short sockaddr_in_port(struct sockaddr_in *addr)
+{
+	return ntohs(addr->sin_port);
 }
 
 struct firefly_connection *find_connection_by_addr(struct sockaddr_in *addr,

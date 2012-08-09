@@ -12,9 +12,6 @@
  * transport layer.
  */
 struct firefly_transport_llp {
-	firefly_on_conn_recv on_conn_recv; /**< The callback to be called
-							when a new connection is
-							detected. */
 	struct llp_connection_list_node *conn_list; /**< A linked list of
 							connections. */
 	void *llp_platspec; /**< Platform, and transport method, specific data.

@@ -21,6 +21,9 @@ struct transport_llp_udp_posix {
 	size_t scale_back_size;	/**< The next largest pkg seen among the n last pkgs */
 	size_t recv_buf_size;	/**< Current buffer size */
 	unsigned char *recv_buf;	/**< Pointer t the recv buffer  */
+	firefly_on_conn_recv_pudp on_conn_recv; /**< The callback to be called
+							when a new connection is
+							detected. */
 };
 
 /**
@@ -59,6 +62,16 @@ struct firefly_connection *find_connection_by_addr(struct sockaddr_in *addr,
  * @retval false otherwise.
  */
 bool sockaddr_in_eq(struct sockaddr_in *one, struct sockaddr_in *other);
+
+/**
+ * @brief TODO
+ */
+void sockaddr_in_ipaddr(struct sockaddr_in *addr, char *ip_addr);
+
+/**
+ * @brief TODO
+ */
+unsigned short sockaddr_in_port(struct sockaddr_in *addr);
 
 /**
  * @brief Adds a connection to the connection list in \a llp.

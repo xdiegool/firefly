@@ -19,6 +19,25 @@
 struct firefly_transport_llp_udp_posix;
 
 /**
+ * @brief This callback will be called when a new connection is received.
+ *
+ * This function is implemented by the application layer. It will be called
+ * when the transport layer receives a new connection. It will be called with
+ * address of the remote node of the connection as argument. The application
+ * layer may open a new connection to this remote node by calling
+ * firefly_transport_connection_udp_posix_open() with the address as argument.
+ * If the connection is opened it must be returned. If no new connection is
+ * opened return NULL.
+ *
+ * @param ip_addr The IP addr of the remote node.
+ * @param port The port number of the remote node.
+ * @return The opened connection.
+ * @retval NULL if no connection was opened.
+ */
+typedef struct firefly_connection *(*firefly_on_conn_recv_pudp)(
+		struct firefly_transport_llp *llp, char *ip_addr, unsigned short port);
+
+/**
  * @brief Allocates and initializes a new \c transport_llp with UDP specific
  * data and open an UDP socket bound to the specified \a local_port.
  *
@@ -27,7 +46,7 @@ struct firefly_transport_llp_udp_posix;
  * @return A pointer to the created \c firefly_transport_llp.
  */
 struct firefly_transport_llp *firefly_transport_llp_udp_posix_new(
-		unsigned short local_port, firefly_on_conn_recv on_conn_recv);
+		unsigned short local_port, firefly_on_conn_recv_pudp on_conn_recv);
 
 /**
  * @brief Close the socket and free any resources associated with this
