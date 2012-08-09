@@ -28,7 +28,7 @@ LC_FILES = $(addprefix $(LC_DIR)/, $(LC_FILE_NAMES))
 GEN_FILES= $(patsubst $(LC_DIR)/%.lc,$(GEN_DIR)/%.h,$(LC_FILES)) $(patsubst $(LC_DIR)/%.lc,$(GEN_DIR)/%.c,$(LC_FILES))
 GEN_OBJ_FILES= $(patsubst %.h,$(BUILD_DIR)/%.o,$(filter-out %.c,$(GEN_FILES)))
 
-FIREFLY_SRC= transport/firefly_transport_udp_posix.c protocol/firefly_protocol.c eventqueue/event_queue.c
+FIREFLY_SRC= transport/firefly_transport_udp_posix.c protocol/firefly_protocol.c protocol/firefly_protocol_labcomm.c protocol/firefly_protocol_connection.c protocol/firefly_protocol_channel.c eventqueue/event_queue.c
 
 # Disable default error handler that prints with fprintf. If set to true, you
 # must provide an own implementation at link time.
@@ -84,7 +84,7 @@ install: $(LIB_DIR) $(LIBS)
 	install -C $(filter-out $(LIB_DIR), $^) $(LIB_DIR)
 
 $(BUILD_DIR)/test/create_lc_files: $(patsubst %,$(BUILD_DIR)/%,test/test_labcomm_utils.o firefly_errors.o gen/firefly_protocol.o test/create_lc_files.o)
-	$(CC) $(CFLAGS) -L$(LABCOMMLIBPATH) $(filter %.o,$^) -lcunit -llabcomm -o $@
+	$(CC) -L$(LABCOMMLIBPATH) $(filter %.o,$^) -lcunit -llabcomm -o $@
 
 gen_lc_files: build/test/create_lc_files
 	build/test/create_lc_files
@@ -95,13 +95,13 @@ $(BUILD_DIR)/test/%: test/%.c $(BUILD_DIR)/libfirefly.a
 
 # Test programs depends on liblabcomm.
 $(BUILD_DIR)/test/test_protocol_main: $(TEST_PROTO_OBJS) $(BUILD_DIR) $(LIBS) $(LABCOMMLIBPATH)/liblabcomm.a $(BUILD_DIR)/gen/test.o $(BUILD_DIR)/gen/firefly_protocol.o
-	$(CC) $(CFLAGS) -L$(BUILD_DIR) -L$(LABCOMMLIBPATH) $(filter %.o,$^) -lcunit -lfirefly -llabcomm -o $@
+	$(CC) -L$(BUILD_DIR) -L$(LABCOMMLIBPATH) $(filter %.o,$^) -lcunit -lfirefly -llabcomm -o $@
 
-$(BUILD_DIR)/test/test_transport_main: $(TEST_TRANSP_OBJS) $(BUILD_DIR)/transport/firefly_transport_udp_posix.o $(BUILD_DIR)/firefly_errors.o $(BUILD_DIR) $(LABCOMMLIBPATH)/liblabcomm.a
-	$(CC) $(CFLAGS) -L$(BUILD_DIR) -L$(LABCOMMLIBPATH) $(filter %.o,$^) -lcunit -llabcomm -o $@
+$(BUILD_DIR)/test/test_transport_main: $(TEST_TRANSP_OBJS) $(BUILD_DIR)/transport/firefly_transport_udp_posix.o $(BUILD_DIR)/protocol/firefly_protocol_connection.o $(BUILD_DIR)/protocol/firefly_protocol_labcomm.o $(BUILD_DIR)/protocol/firefly_protocol_channel.o $(BUILD_DIR)/firefly_errors.o $(BUILD_DIR) $(LABCOMMLIBPATH)/liblabcomm.a
+	$(CC) -L$(BUILD_DIR) -L$(LABCOMMLIBPATH) $(filter %.o,$^) -lcunit -llabcomm -o $@
 
-$(BUILD_DIR)/test/test_event_main: $(TEST_EVENT_OBJS) $(BUILD_DIR) $(BUILD_DIR)/protocol/firefly_protocol.o $(BUILD_DIR)/firefly_errors.o $(LABCOMMLIBPATH)/liblabcomm.a $(BUILD_DIR)/gen/test.o $(BUILD_DIR)/gen/firefly_protocol.o
-	$(CC) $(CFLAGS) -L$(LABCOMMLIBPATH) $(filter %.o,$^) -lcunit -llabcomm -o $@
+$(BUILD_DIR)/test/test_event_main: $(TEST_EVENT_OBJS) $(BUILD_DIR) $(LIBS) $(LABCOMMLIBPATH)/liblabcomm.a $(BUILD_DIR)/gen/test.o $(BUILD_DIR)/gen/firefly_protocol.o
+	$(CC) -L$(LABCOMMLIBPATH) -L$(BUILD_DIR) $(filter %.o,$^) -lcunit -lfirefly -llabcomm -o $@
 
 $(TEST_PROGS): $(TESTFILES_DIR)
 

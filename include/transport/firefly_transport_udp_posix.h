@@ -11,11 +11,31 @@
 
 #include <protocol/firefly_protocol.h>
 #include <transport/firefly_transport.h>
+#include "eventqueue/event_queue.h"
 
 /**
  * @brief An opaque UDP specific link layer port data.
  */
 struct firefly_transport_llp_udp_posix;
+
+/**
+ * @brief This callback will be called when a new connection is received.
+ *
+ * This function is implemented by the application layer. It will be called
+ * when the transport layer receives a new connection. It will be called with
+ * address of the remote node of the connection as argument. The application
+ * layer may open a new connection to this remote node by calling
+ * firefly_transport_connection_udp_posix_open() with the address as argument.
+ * If the connection is opened it must be returned. If no new connection is
+ * opened return NULL.
+ *
+ * @param ip_addr The IP addr of the remote node.
+ * @param port The port number of the remote node.
+ * @return The opened connection.
+ * @retval NULL if no connection was opened.
+ */
+typedef struct firefly_connection *(*firefly_on_conn_recv_pudp)(
+		struct firefly_transport_llp *llp, char *ip_addr, unsigned short port);
 
 /**
  * @brief Allocates and initializes a new \c transport_llp with UDP specific
@@ -26,7 +46,7 @@ struct firefly_transport_llp_udp_posix;
  * @return A pointer to the created \c firefly_transport_llp.
  */
 struct firefly_transport_llp *firefly_transport_llp_udp_posix_new(
-		unsigned short local_port, firefly_on_conn_recv on_conn_recv);
+		unsigned short local_port, firefly_on_conn_recv_pudp on_conn_recv);
 
 /**
  * @brief Close the socket and free any resources associated with this
@@ -52,8 +72,12 @@ void firefly_transport_udp_posix_free(struct firefly_transport_llp **llp);
  * @retval NULL Returns \c NULL upon failure.
  */
 struct firefly_connection *firefly_transport_connection_udp_posix_open(
+		firefly_channel_is_open_f on_channel_opened,
+		firefly_channel_closed_f on_channel_closed,
+		firefly_channel_accept_f on_channel_recv,
+		struct firefly_event_queue *event_queue,
 		char *ip_addr, unsigned short port,
-	       	struct firefly_transport_llp *llp);
+		struct firefly_transport_llp *llp);
 
 /**
  * @brief Free the connection and any resources associated with it.
@@ -91,7 +115,7 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp);
  * @param data_size The size of the data to be written.
  * @param conn The connection to written the data on.
  */
-void firefly_transport_write_udp_posix(unsigned char *data, size_t data_size,
+void firefly_transport_udp_posix_write(unsigned char *data, size_t data_size,
 		struct firefly_connection *conn);
 
 /**

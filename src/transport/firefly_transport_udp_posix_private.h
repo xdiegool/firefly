@@ -21,6 +21,9 @@ struct transport_llp_udp_posix {
 	size_t scale_back_size;	/**< The next largest pkg seen among the n last pkgs */
 	size_t recv_buf_size;	/**< Current buffer size */
 	unsigned char *recv_buf;	/**< Pointer t the recv buffer  */
+	firefly_on_conn_recv_pudp on_conn_recv; /**< The callback to be called
+							when a new connection is
+							detected. */
 };
 
 /**
@@ -61,6 +64,16 @@ struct firefly_connection *find_connection_by_addr(struct sockaddr_in *addr,
 bool sockaddr_in_eq(struct sockaddr_in *one, struct sockaddr_in *other);
 
 /**
+ * @brief TODO
+ */
+void sockaddr_in_ipaddr(struct sockaddr_in *addr, char *ip_addr);
+
+/**
+ * @brief TODO
+ */
+unsigned short sockaddr_in_port(struct sockaddr_in *addr);
+
+/**
  * @brief Adds a connection to the connection list in \a llp.
  *
  * @param conn The connection to add.
@@ -68,5 +81,28 @@ bool sockaddr_in_eq(struct sockaddr_in *one, struct sockaddr_in *other);
  */
 void add_connection_to_llp(struct firefly_connection *conn,
 		struct firefly_transport_llp *llp);
+
+/**
+ * @brief Allocates and initializes a new connection with udp posix specific
+ * data.
+ *
+ * @param on_channel_opened Callback for when a channel has been opened.
+ * @param on_channel_closed Callback for when a channel has been closed.
+ * @param on_channel_recv Callback for when a channel has been recveived.
+ * @param event_queue The event queue all events relating to this connection is
+ * offered to.
+ * @param llp The link layer port this connection receives data from.
+ * @param remote_addr The address of the remote node.
+ *
+ * @return A new firefly_connection with udp posix specific data.
+ * @retval NULL on error.
+ */
+struct firefly_connection *firefly_connection_udp_posix_new(
+					firefly_channel_is_open_f on_channel_opened,
+					firefly_channel_closed_f on_channel_closed,
+					firefly_channel_accept_f on_channel_recv,
+					struct firefly_event_queue *event_queue,
+					struct firefly_transport_llp *llp,
+					struct sockaddr_in *remote_addr);
 
 #endif
