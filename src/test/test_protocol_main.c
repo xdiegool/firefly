@@ -139,6 +139,9 @@ int main()
 	if (
 			(CU_add_test(chan_suite, "test_unexpected_ack",
 			     	     test_unexpected_ack) == NULL)
+			||
+			(CU_add_test(chan_suite, "test_unexpected_response",
+			     	     test_unexpected_response) == NULL)
 	   		) {
 				CU_cleanup_registry();
 				return CU_get_error();
