@@ -7,6 +7,7 @@
 #include <eventqueue/event_queue.h>
 
 #include "gen/test.h"
+#include "test/pingpong/hack_lctypes.h"
 
 static struct firefly_event_queue *event_queue;
 //TODO fix an esier way to close channel but to know the connection.
@@ -23,18 +24,22 @@ void handle_test_var(test_test_var *var, void *ctx);
 struct firefly_connection *connection_received(
 		struct firefly_transport_llp *llp, char *ip_addr, unsigned short port)
 {
+	printf("PONG: Connection received.\n");
 	/* If address is correct, open a connection. */
 	if (strncmp(ip_addr, PING_ADDR, strlen(PING_ADDR)) == 0 &&
 			port == PING_PORT) {
+		printf("PONG: Connection accepted.\n");
 		recv_conn = firefly_transport_connection_udp_posix_open(
 				chan_opened, chan_closed, chan_received, event_queue,
 				ip_addr, port, llp);
+		hack_register_protocol_types(recv_conn);
 	}
 	return recv_conn;
 }
 
 void chan_opened(struct firefly_channel *chan)
 {
+	printf("PONG: Channel opened.\n");
 	struct labcomm_encoder *enc = firefly_protocol_get_output_stream(chan);
 	struct labcomm_decoder *dec = firefly_protocol_get_input_stream(chan);
 
@@ -44,11 +49,13 @@ void chan_opened(struct firefly_channel *chan)
 
 void chan_closed(struct firefly_channel *chan)
 {
+	printf("PONG: Channel closed\n");
 	firefly_transport_connection_udp_posix_free(&recv_conn);
 }
 
 bool chan_received(struct firefly_channel *chan)
 {
+	printf("PONG: Channel received\n");
 	return true;
 }
 
@@ -85,7 +92,7 @@ int main(int argc, char **argv)
 {
 	int res;
 	printf("Hello, Firefly from Pong!\n");
-	event_queue = firefly_event_queue_new(firefly_event_add);
+	event_queue = firefly_event_queue_new(event_add_mutex);
 	struct event_queue_signals eq_s;
 	res = pthread_mutex_init(&eq_s.eq_lock, NULL);
 	if (res) {
