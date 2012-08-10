@@ -11,4 +11,6 @@ void test_unexpected_response();
 
 void test_unexpected_data_sample();
 
+void test_unexpected_channel_close();
+
 #endif
