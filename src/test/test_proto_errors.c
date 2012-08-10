@@ -198,15 +198,15 @@ void test_unexpected_data_sample()
 
 	unsigned char *app_data = malloc(app_data_size);
 
-	firefly_protocol_data_sample resp;
-	resp.dest_chan_id = 14;
-	resp.src_chan_id = 14;
-	resp.app_enc_data.n_0 = app_data_size;
-	resp.app_enc_data.a = app_data;
+	firefly_protocol_data_sample sample;
+	sample.dest_chan_id = 14;
+	sample.src_chan_id = 14;
+	sample.app_enc_data.n_0 = app_data_size;
+	sample.app_enc_data.a = app_data;
 	CU_ASSERT_EQUAL_FATAL(firefly_event_queue_length(eq), 0);
 
 	labcomm_encode_firefly_protocol_data_sample(conn_open->transport_encoder,
-												&resp);
+												&sample);
 
 	expected_error = FIREFLY_ERROR_PROTO_STATE;
 	protocol_data_received(conn_recv, conn_open_write.data,
@@ -233,12 +233,12 @@ void test_unexpected_channel_close()
 
 	mk_lc_and_reg_sigs(&conn_open, &conn_recv, &eq);
 
-	firefly_protocol_channel_close ack;
-	ack.dest_chan_id = 14; // Non existing channel.
-	ack.source_chan_id = 14;
+	firefly_protocol_channel_close close;
+	close.dest_chan_id = 14; // Non existing channel.
+	close.source_chan_id = 14;
 	CU_ASSERT_EQUAL_FATAL(firefly_event_queue_length(eq), 0);
 	labcomm_encode_firefly_protocol_channel_close(conn_open->transport_encoder,
-												  &ack);
+												  &close);
 
 	expected_error = FIREFLY_ERROR_PROTO_STATE;
 	protocol_data_received(conn_recv, conn_open_write.data,
