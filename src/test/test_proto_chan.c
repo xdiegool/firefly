@@ -1,3 +1,5 @@
+#include "test/test_proto_chan.h"
+
 #include "CUnit/Basic.h"
 
 #include <labcomm.h>
@@ -13,13 +15,14 @@
 #include "protocol/firefly_protocol_private.h"
 #include <protocol/firefly_protocol.h>
 #include "eventqueue/event_queue.h"
+#include "test/proto_helper.h"
 
 #include "test/test_labcomm_utils.h"
 
 #define REMOTE_CHAN_ID (2)	// Chan id used by all simulated remote channels.
 
-static struct labcomm_decoder *test_dec;
-static labcomm_mem_reader_context_t *test_dec_ctx;
+extern struct labcomm_decoder *test_dec;
+extern labcomm_mem_reader_context_t *test_dec_ctx;
 
 struct encoded_packet {
 	unsigned char *sign;
@@ -45,16 +48,6 @@ void encoded_packet_free(struct encoded_packet *ep)
 	free(ep);
 }
 
-void transport_write_test_decoder(unsigned char *data, size_t size,
-		struct firefly_connection *conn)
-{
-	test_dec_ctx->enc_data = data;
-	test_dec_ctx->size = size;
-	labcomm_decoder_decode_one(test_dec);
-	test_dec_ctx->enc_data = NULL;
-	test_dec_ctx->size = 0;
-}
-
 void setup_test_decoder_new()
 {
 	test_dec_ctx = malloc(sizeof(labcomm_mem_reader_context_t));
@@ -78,25 +71,6 @@ void teardown_test_decoder_free()
 	test_dec_ctx = NULL;
 }
 
-struct firefly_connection *setup_test_conn_new(firefly_channel_is_open_f ch_op,
-		firefly_channel_closed_f ch_cl, firefly_channel_accept_f ch_acc,
-		struct firefly_event_queue *eq)
-{
-	struct firefly_connection *conn =
-		firefly_connection_new(ch_op, ch_cl, ch_acc, eq);
-	if (conn == NULL) {
-		CU_FAIL("Could not create connection.\n");
-	}
-	// Set some stuff that firefly_init_conn doesn't do
-	conn->transport_conn_platspec = NULL;
-	conn->transport_write = transport_write_test_decoder;
-	labcomm_register_error_handler_encoder(conn->transport_encoder,
-			handle_labcomm_error);
-	labcomm_register_error_handler_decoder(conn->transport_decoder,
-			handle_labcomm_error);
-	return conn;
-}
-
 int init_suit_proto_chan()
 {
 	return 0; // Success.
@@ -110,11 +84,7 @@ int clean_suit_proto_chan()
 static bool sent_chan_req = false;
 static bool sent_chan_ack = false;
 
-static bool chan_opened_called = false;
-void chan_opened_mock(struct firefly_channel *chan)
-{
-	chan_opened_called = true;
-}
+extern bool chan_opened_called;
 
 #define MAX_TESTED_ID (10)
 
@@ -520,49 +490,10 @@ void test_chan_open_rejected()
 	firefly_event_queue_free(&eq);
 }
 
-static bool conn_recv_accept_called = false;
+extern bool conn_recv_accept_called;
 
-bool chan_open_recv_accept_open(struct firefly_channel *chan)
-{
-	CU_FAIL("Connection open received channel.");
-	return false;
-}
-
-bool chan_open_recv_accept_recv(struct firefly_channel *chan)
-{
-	return conn_recv_accept_called = true;
-}
-
-struct tmp_data {
-	unsigned char *data;
-	size_t size;
-};
-
-static struct tmp_data conn_open_write;
-static struct tmp_data conn_recv_write;
-
-void free_tmp_data(struct tmp_data *td)
-{
-	free(td->data);
-	td->data = NULL;
-	td->size = 0;
-}
-
-void chan_open_recv_write_open(unsigned char *data, size_t size,
-		struct firefly_connection *conn)
-{
-	conn_open_write.data = malloc(size);
-	memcpy(conn_open_write.data, data, size);
-	conn_open_write.size = size;
-}
-
-void chan_open_recv_write_recv(unsigned char *data, size_t size,
-		struct firefly_connection *conn)
-{
-	conn_recv_write.data = malloc(size);
-	memcpy(conn_recv_write.data, data, size);
-	conn_recv_write.size = size;
-}
+extern struct tmp_data conn_open_write;
+extern struct tmp_data conn_recv_write;
 
 void test_chan_open_recv()
 {
