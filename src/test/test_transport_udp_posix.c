@@ -2,6 +2,7 @@
  * @file
  * @brief Test the transport layer with POSIX UDP.
  */
+#include <pthread.h>
 #include "test/test_transport_udp_posix.h"
 
 #include <stdio.h>
@@ -172,8 +173,7 @@ void test_recv_data()
 	conn_udp->remote_addr = malloc(sizeof(struct sockaddr_in));
 	memcpy(conn_udp->remote_addr, &remote_addr, sizeof(remote_addr));
 	struct firefly_connection *conn = firefly_connection_new(NULL, NULL,
-			NULL, NULL);
-	conn->transport_conn_platspec = conn_udp;
+			NULL, NULL, NULL, conn_udp);
 
 	add_connection_to_llp(conn, llp);
 
@@ -355,8 +355,7 @@ void test_find_conn_by_addr()
 		malloc(sizeof(struct protocol_connection_udp_posix));
 	conn_udp_1->remote_addr = malloc(sizeof(struct sockaddr_in));
 	memcpy(conn_udp_1->remote_addr, &addr_1, sizeof(addr_1));
-	node_1->conn = firefly_connection_new(NULL, NULL, NULL, NULL);
-	node_1->conn->transport_conn_platspec = conn_udp_1;
+	node_1->conn = firefly_connection_new(NULL, NULL, NULL, NULL, NULL, conn_udp_1);
 	node_1->next = NULL;
 	llp->conn_list = node_1;
 	// Try to find conn after adding it
@@ -375,8 +374,7 @@ void test_find_conn_by_addr()
 		malloc(sizeof(struct protocol_connection_udp_posix));
 	conn_udp_2->remote_addr = malloc(sizeof(struct sockaddr_in));
 	memcpy(conn_udp_2->remote_addr, &addr_2, sizeof(addr_2));
-	node_2->conn = firefly_connection_new(NULL, NULL, NULL, NULL);
-	node_2->conn->transport_conn_platspec = conn_udp_2;
+	node_2->conn = firefly_connection_new(NULL, NULL, NULL, NULL, NULL, conn_udp_2);
 	node_2->next = NULL;
 	node_1->next = node_2;
 	conn = find_connection_by_addr(&addr_2, llp);
@@ -401,8 +399,8 @@ void test_add_conn_to_llp()
 	conn_udp_1->remote_addr = malloc(sizeof(struct sockaddr_in));
 	memcpy(conn_udp_1->remote_addr, &addr_1, sizeof(addr_1));
 	struct firefly_connection *conn_1 = firefly_connection_new(NULL, NULL,
-															NULL, NULL);
-	conn_1->transport_conn_platspec = conn_udp_1;
+															NULL, NULL, NULL,
+															conn_udp_1);
 	add_connection_to_llp(conn_1, llp);
 
 	CU_ASSERT_PTR_NOT_NULL(llp->conn_list);
@@ -419,8 +417,8 @@ void test_add_conn_to_llp()
 	conn_udp_2->remote_addr = malloc(sizeof(struct sockaddr_in));
 	memcpy(conn_udp_2->remote_addr, &addr_2, sizeof(addr_2));
 	struct firefly_connection *conn_2 = firefly_connection_new(NULL, NULL,
-															NULL, NULL);
-	conn_2->transport_conn_platspec = conn_udp_2;
+															NULL, NULL, NULL,
+															conn_udp_2);
 	add_connection_to_llp(conn_2, llp);
 
 	CU_ASSERT_PTR_NOT_NULL(llp->conn_list);
@@ -601,4 +599,41 @@ void test_reader_scale_back()
 	firefly_transport_llp_udp_posix_free(&llp);
 	data_received = false;
 	good_conn_received = false;
+}
+
+void *reader_thread_main(void *args)
+{
+	struct firefly_transport_llp *llp = (struct firefly_transport_llp *) args;
+	firefly_transport_udp_posix_read(llp);
+
+	return NULL;
+}
+
+void test_read_mult_threads()
+{
+	struct firefly_transport_llp *llp = firefly_transport_llp_udp_posix_new(
+					local_port, recv_data_recv_conn);
+
+	struct sockaddr_in remote_addr;
+	setup_sockaddr(&remote_addr, remote_port);
+	struct protocol_connection_udp_posix *conn_udp =
+		malloc(sizeof(struct protocol_connection_udp_posix));
+	conn_udp->remote_addr = malloc(sizeof(struct sockaddr_in));
+	memcpy(conn_udp->remote_addr, &remote_addr, sizeof(remote_addr));
+	struct firefly_connection *conn = firefly_connection_new(NULL, NULL,
+			NULL, NULL, NULL, conn_udp);
+	add_connection_to_llp(conn, llp);
+
+	pthread_t reader_thread;
+	pthread_create(&reader_thread, NULL, reader_thread_main, llp);
+	sched_yield();
+	send_data(&remote_addr, remote_port, send_buf, sizeof(send_buf));
+
+	pthread_join(reader_thread, NULL);
+
+	CU_ASSERT_TRUE(data_received);
+	data_received = false;
+	good_conn_received = false;
+	firefly_transport_llp_udp_posix_free(&llp);
+
 }

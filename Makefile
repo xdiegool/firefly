@@ -104,7 +104,7 @@ $(BUILD_DIR)/test/test_protocol_main: $(TEST_PROTO_OBJS) $(BUILD_DIR) $(LIBS) $(
 	$(CC) -L$(BUILD_DIR) -L$(LABCOMMLIBPATH) $(filter %.o,$^) -lcunit -lfirefly -llabcomm -o $@
 
 $(BUILD_DIR)/test/test_transport_main: $(TEST_TRANSP_OBJS) $(BUILD_DIR)/transport/firefly_transport_udp_posix.o $(BUILD_DIR)/protocol/firefly_protocol_connection.o $(BUILD_DIR)/protocol/firefly_protocol_labcomm.o $(BUILD_DIR)/protocol/firefly_protocol_channel.o $(BUILD_DIR)/firefly_errors.o $(BUILD_DIR) $(LABCOMMLIBPATH)/liblabcomm.a
-	$(CC) -L$(BUILD_DIR) -L$(LABCOMMLIBPATH) $(filter %.o,$^) -lcunit -llabcomm -o $@
+	$(CC) -L$(BUILD_DIR) -L$(LABCOMMLIBPATH) $(filter %.o,$^) -lcunit -lpthread -llabcomm -o $@
 
 $(BUILD_DIR)/test/test_event_main: $(TEST_EVENT_OBJS) $(BUILD_DIR) $(LIBS) $(LABCOMMLIBPATH)/liblabcomm.a $(BUILD_DIR)/gen/test.o $(BUILD_DIR)/gen/firefly_protocol.o
 	$(CC) -L$(LABCOMMLIBPATH) -L$(BUILD_DIR) $(filter %.o,$^) -lcunit -lfirefly -llabcomm -o $@

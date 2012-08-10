@@ -114,7 +114,8 @@ struct firefly_connection *firefly_connection_new(
 		firefly_channel_is_open_f on_channel_opened,
 		firefly_channel_closed_f on_channel_closed,
 		firefly_channel_accept_f on_channel_recv,
-		struct firefly_event_queue *event_queue);
+		transport_write_f transport_write,
+		struct firefly_event_queue *event_queue, void *plat_spec);
 
 /**
  * @brief Frees a connection.

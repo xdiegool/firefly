@@ -7,7 +7,8 @@ struct firefly_connection *firefly_connection_new(
 		firefly_channel_is_open_f on_channel_opened,
 		firefly_channel_closed_f on_channel_closed,
 		firefly_channel_accept_f on_channel_recv,
-		struct firefly_event_queue *event_queue)
+		transport_write_f transport_write,
+		struct firefly_event_queue *event_queue, void *plat_spec)
 {
 	struct firefly_connection *conn =
 		malloc(sizeof(struct firefly_connection));
@@ -50,12 +51,17 @@ struct firefly_connection *firefly_connection_new(
 	if (conn->transport_encoder == NULL) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1, "malloc failed\n");
 	}
+	labcomm_register_error_handler_encoder(conn->transport_encoder, labcomm_error_to_ff_error);
 
 	conn->transport_decoder =
 		labcomm_decoder_new(ff_transport_reader, conn);
 	if (conn->transport_decoder == NULL) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1, "malloc failed\n");
 	}
+	labcomm_register_error_handler_decoder(conn->transport_decoder, labcomm_error_to_ff_error);
+
+	conn->transport_write = transport_write;
+	conn->transport_conn_platspec = plat_spec;
 
 	return conn;
 }

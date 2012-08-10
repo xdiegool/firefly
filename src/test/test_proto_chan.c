@@ -83,13 +83,12 @@ struct firefly_connection *setup_test_conn_new(firefly_channel_is_open_f ch_op,
 		struct firefly_event_queue *eq)
 {
 	struct firefly_connection *conn =
-		firefly_connection_new(ch_op, ch_cl, ch_acc, eq);
+		firefly_connection_new(ch_op, ch_cl, ch_acc,
+				transport_write_test_decoder, eq, NULL);
 	if (conn == NULL) {
 		CU_FAIL("Could not create connection.\n");
 	}
 	// Set some stuff that firefly_init_conn doesn't do
-	conn->transport_conn_platspec = NULL;
-	conn->transport_write = transport_write_test_decoder;
 	labcomm_register_error_handler_encoder(conn->transport_encoder,
 			handle_labcomm_error);
 	labcomm_register_error_handler_decoder(conn->transport_decoder,
@@ -1082,23 +1081,21 @@ struct firefly_connection *setup_conn(int conn_n, struct firefly_event_queue *eq
 	if (conn_n < 0 || conn_n > 1)
 		CU_FAIL("This test have functions to handle *2* connections!");
 
-
-	tcon = firefly_connection_new(chan_was_opened,
-								  chan_was_closed,
-								  should_accept_chan,
-								  eqs[conn_n]);
-	if (!tcon)
-		CU_FAIL("Could not create channel");
-	tcon->transport_conn_platspec = NULL; /* TODO: Fix. */
+	transport_write_f writer = NULL;
 	switch (conn_n) {					  /* TODO: Expandable later(?) */
 	case 0:
-		tcon->transport_write = trans_w_from_conn_0;
+		writer = trans_w_from_conn_0;
 		break;
 	case 1:
-		tcon->transport_write = trans_w_from_conn_1;
+		writer = trans_w_from_conn_1;
 		break;
 	}
-	tcon->transport_conn_platspec = NULL;
+
+	tcon = firefly_connection_new(chan_was_opened, chan_was_closed,
+								  should_accept_chan, writer,
+								  eqs[conn_n], NULL);
+	if (!tcon)
+		CU_FAIL("Could not create channel");
 	void *err_cb;
 	err_cb = handle_labcomm_error;
 	//err_cb = NULL;
