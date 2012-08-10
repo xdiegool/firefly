@@ -9,4 +9,6 @@ void test_unexpected_ack();
 
 void test_unexpected_response();
 
+void test_unexpected_data_sample();
+
 #endif

@@ -80,6 +80,9 @@ static void mk_lc_and_reg_sigs(struct firefly_connection **conn_open,
 	labcomm_decoder_register_firefly_protocol_channel_ack((*conn_recv)->transport_decoder,
 														  handle_channel_ack,
 														  *conn_recv);
+		labcomm_decoder_register_firefly_protocol_data_sample((*conn_recv)->transport_decoder,
+														  handle_data_sample,
+														  *conn_recv);
 
 	// Register encoders. Signatures will be sent to each connection
 	labcomm_encoder_register_firefly_protocol_channel_ack((*conn_open)->transport_encoder);
@@ -100,6 +103,12 @@ static void mk_lc_and_reg_sigs(struct firefly_connection **conn_open,
 						   conn_recv_write.data,
 						   conn_recv_write.size);
 	free_tmp_data(&conn_recv_write);
+
+	labcomm_encoder_register_firefly_protocol_data_sample((*conn_open)->transport_encoder);
+	protocol_data_received(*conn_recv,
+						   conn_open_write.data,
+						   conn_open_write.size);
+	free_tmp_data(&conn_open_write);
 }
 
 void test_unexpected_ack()
@@ -161,6 +170,45 @@ void test_unexpected_response()
 	CU_ASSERT_TRUE(was_in_error);
 	was_in_error = false; // Reset.
 	free(conn_open_write.data);
+	free(conn_recv_write.data);
 
 	mk_lc_and_reg_sigs_free(conn_open, conn_recv, eq);
+}
+
+void test_unexpected_data_sample()
+{
+	struct firefly_connection *conn_open;
+	struct firefly_connection *conn_recv;
+	struct firefly_event_queue *eq;
+	const size_t app_data_size = 12;
+
+	mk_lc_and_reg_sigs(&conn_open, &conn_recv, &eq);
+
+	unsigned char *app_data = malloc(app_data_size);
+
+	firefly_protocol_data_sample resp;
+	resp.dest_chan_id = 14;
+	resp.src_chan_id = 14;
+	resp.app_enc_data.n_0 = app_data_size;
+	resp.app_enc_data.a = app_data;
+	CU_ASSERT_EQUAL_FATAL(firefly_event_queue_length(eq), 0);
+
+	labcomm_encode_firefly_protocol_data_sample(conn_open->transport_encoder,
+												&resp);
+
+	expected_error = FIREFLY_ERROR_PROTO_STATE;
+	protocol_data_received(conn_recv, conn_open_write.data,
+						   conn_open_write.size);
+
+	struct firefly_event *ev = firefly_event_pop(eq);
+	CU_ASSERT_PTR_NOT_NULL_FATAL(ev);
+	firefly_event_execute(ev);
+
+	expected_error = FIREFLY_ERROR_FIRST; // Reset
+	CU_ASSERT_TRUE(was_in_error);
+	was_in_error = false; // Reset.
+	free(conn_open_write.data);
+
+	mk_lc_and_reg_sigs_free(conn_open, conn_recv, eq);
+	free(app_data);
 }

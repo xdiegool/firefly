@@ -334,13 +334,20 @@ void handle_data_sample_event(firefly_protocol_data_sample *data,
 {
 	struct firefly_channel *chan = find_channel_by_local_id(conn,
 			data->dest_chan_id);
-	chan->reader_data->data = data->app_enc_data.a;
-	chan->reader_data->data_size = data->app_enc_data.n_0;
-	chan->reader_data->pos = 0;
-	labcomm_decoder_decode_one(chan->proto_decoder);
-	chan->reader_data->data = NULL;
-	chan->reader_data->data_size = 0;
-	chan->reader_data->pos = 0;
+
+	if (chan != NULL) {
+		chan->reader_data->data = data->app_enc_data.a;
+		chan->reader_data->data_size = data->app_enc_data.n_0;
+		chan->reader_data->pos = 0;
+		labcomm_decoder_decode_one(chan->proto_decoder);
+		chan->reader_data->data = NULL;
+		chan->reader_data->data_size = 0;
+		chan->reader_data->pos = 0;
+	} else {
+		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
+					  "Received data sample on non-"
+					  "existing channel.\n");
+	}
 }
 
 struct firefly_channel *find_channel_by_local_id(struct firefly_connection *conn,
