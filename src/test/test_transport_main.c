@@ -64,6 +64,9 @@ int main()
 				||
 		(CU_add_test(trans_udp_posix, "test_reader_scale_back",
 					 test_reader_scale_back) == NULL)
+				||
+		(CU_add_test(trans_udp_posix, "test_read_mult_threads",
+					 test_read_mult_threads) == NULL)
 	   ) {
 		CU_cleanup_registry();
 		return CU_get_error();

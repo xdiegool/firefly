@@ -109,7 +109,7 @@ int ff_transport_writer(labcomm_writer_t *w, labcomm_writer_action_t action)
 			w->count = BUFFER_SIZE;
 			w->pos = 0;
 		}
-   	} break;
+	} break;
 	case labcomm_writer_free: {
 		free(w->data);
 		w->data = NULL;

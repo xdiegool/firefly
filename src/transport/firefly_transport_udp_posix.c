@@ -14,6 +14,7 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/ioctl.h>
+#include <sys/select.h>
 
 #include <transport/firefly_transport.h>
 #include <firefly_errors.h>
@@ -105,11 +106,13 @@ struct firefly_connection *firefly_connection_udp_posix_new(
 {
 	struct transport_llp_udp_posix *llp_udp =
 		(struct transport_llp_udp_posix *) llp->llp_platspec;
-	struct firefly_connection *conn = firefly_connection_new(
-			on_channel_opened, on_channel_closed,
-			on_channel_recv, event_queue);;
 	struct protocol_connection_udp_posix *conn_udp =
 		malloc(sizeof(struct protocol_connection_udp_posix));
+
+	struct firefly_connection *conn = firefly_connection_new(
+			on_channel_opened, on_channel_closed,
+			on_channel_recv, firefly_transport_udp_posix_write, event_queue,
+			conn_udp);
 	if (conn == NULL || conn_udp == NULL) {
 		firefly_error(FIREFLY_ERROR_ALLOC,
 				3, "Failed in %s on line %d.\n",
@@ -119,7 +122,6 @@ struct firefly_connection *firefly_connection_udp_posix_new(
 		return NULL;
 	}
 	conn_udp->remote_addr = remote_addr;
-	conn->transport_conn_platspec = conn_udp;
 	conn_udp->socket = llp_udp->local_udp_socket;
 
 	return conn;
@@ -164,7 +166,9 @@ struct firefly_connection *firefly_transport_connection_udp_posix_open(
 			on_channel_opened, on_channel_closed, on_channel_recv, event_queue,
 			llp, remote_addr);
 
-	add_connection_to_llp(conn, llp);
+	if (conn != NULL) {
+		add_connection_to_llp(conn, llp);
+	}
 	return conn;
 }
 
@@ -230,6 +234,9 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 
 	// Read data from socket, = 0 is crucial due to ioctl only sets the first 32
 	// bits of pkg_len
+	fd_set fs;
+	FD_SET(llp_udp->local_udp_socket, &fs);
+	select(llp_udp->local_udp_socket + 1, &fs, NULL, NULL, NULL);
 	size_t pkg_len = 0;
 	ioctl(llp_udp->local_udp_socket, FIONREAD, &pkg_len);
 	if (pkg_len == -1) {

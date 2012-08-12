@@ -22,4 +22,6 @@ void test_open_and_recv_with_two_llp();
 void test_recv_big_connection();
 void test_reader_scale_back();
 
+void test_read_mult_threads();
+
 #endif

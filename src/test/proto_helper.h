@@ -9,7 +9,9 @@ struct tmp_data {
 	size_t size;
 };
 
-struct firefly_connection *setup_test_conn_new(firefly_channel_is_open_f ch_op,	firefly_channel_closed_f ch_cl, firefly_channel_accept_f ch_acc, struct firefly_event_queue *eq);
+struct firefly_connection *setup_test_conn_new(firefly_channel_is_open_f ch_op,
+		firefly_channel_closed_f ch_cl, firefly_channel_accept_f ch_acc,
+		struct firefly_event_queue *eq);
 
 void chan_opened_mock(struct firefly_channel *chan);
 

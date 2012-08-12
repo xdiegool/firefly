@@ -20,17 +20,17 @@ struct tmp_data conn_open_write;
 struct tmp_data conn_recv_write;
 bool conn_recv_accept_called = false;
 
-struct firefly_connection *setup_test_conn_new(firefly_channel_is_open_f ch_op,	firefly_channel_closed_f ch_cl, firefly_channel_accept_f ch_acc, struct firefly_event_queue *eq)
-
+struct firefly_connection *setup_test_conn_new(firefly_channel_is_open_f ch_op,
+		firefly_channel_closed_f ch_cl, firefly_channel_accept_f ch_acc,
+		struct firefly_event_queue *eq)
 {
 	struct firefly_connection *conn =
-		firefly_connection_new(ch_op, ch_cl, ch_acc, eq);
+		firefly_connection_new(ch_op, ch_cl, ch_acc,
+				transport_write_test_decoder, eq, NULL);
 	if (conn == NULL) {
 		CU_FAIL("Could not create connection.\n");
 	}
 	// Set some stuff that firefly_init_conn doesn't do
-	conn->transport_conn_platspec = NULL;
-	conn->transport_write = transport_write_test_decoder;
 	labcomm_register_error_handler_encoder(conn->transport_encoder,
 			handle_labcomm_error);
 	labcomm_register_error_handler_decoder(conn->transport_decoder,
