@@ -166,7 +166,9 @@ struct firefly_connection *firefly_transport_connection_udp_posix_open(
 			on_channel_opened, on_channel_closed, on_channel_recv, event_queue,
 			llp, remote_addr);
 
-	add_connection_to_llp(conn, llp);
+	if (conn != NULL) {
+		add_connection_to_llp(conn, llp);
+	}
 	return conn;
 }
 
