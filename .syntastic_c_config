@@ -1,0 +1,4 @@
+
+-I../lib/labcomm/lib/c
+-I./src
+-I./include

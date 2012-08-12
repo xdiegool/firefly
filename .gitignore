@@ -1,7 +1,8 @@
 build/
 doc/gen
 lib/
-*.enc
 gen/
-makelog.tmp
 *.mp3
+testfiles/
+.clang_complete
+TAGS

@@ -2,12 +2,23 @@
 
 // Some projects can not use stdio.h.
 #include <stdio.h>
+#include <stdarg.h>
 
+/**
+ * @var firefly_error_strings
+ * @brief Error strings.
+ *
+ * \b _Must_ be the same order as in enum firefly_error.
+ */
 const char *firefly_error_strings[] = {
 	"First guard. Don't use this \"error\".",
 	"Memory allocation failed.",
 	"Socket operation failed.",
+	"LabComm error has occured.",
+	"Invalid protocol state occured.",
 	"User defined error.",
+	"User has not set callback.",
+	"Event type does not exist.",
 	"End guard. Don't use this \"error\".",
 };
 
@@ -23,7 +34,9 @@ const char *firefly_error_get_str(enum firefly_error error_id)
 
 void firefly_error(enum firefly_error error_id, size_t nbr_va_args, ...)
 {
-	const char *err_msg = firefly_error_get_str(error_id); // The final string to print.
+	/* The final string to print. */
+	const char *err_msg = firefly_error_get_str(error_id);
+
 	if (err_msg == NULL) {
 		err_msg = "Error with an unknown error ID occurred.";
 	}

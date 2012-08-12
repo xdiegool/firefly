@@ -1,0 +1,4 @@
+-Iinclude
+-I../lib/labcomm/lib/c
+-I.
+-Isrc
