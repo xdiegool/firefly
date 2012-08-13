@@ -31,7 +31,10 @@ LC_FILES = $(addprefix $(LC_DIR)/, $(LC_FILE_NAMES))
 GEN_FILES= $(patsubst $(LC_DIR)/%.lc,$(GEN_DIR)/%.h,$(LC_FILES)) $(patsubst $(LC_DIR)/%.lc,$(GEN_DIR)/%.c,$(LC_FILES))
 GEN_OBJ_FILES= $(patsubst %.h,$(BUILD_DIR)/%.o,$(filter-out %.c,$(GEN_FILES)))
 
-FIREFLY_SRC= transport/firefly_transport_udp_posix.c protocol/firefly_protocol.c protocol/firefly_protocol_labcomm.c protocol/firefly_protocol_connection.c protocol/firefly_protocol_channel.c eventqueue/event_queue.c
+# TODO separate the different transport implementations so you can choose which
+# one to compile.
+
+FIREFLY_SRC= transport/firefly_transport.c transport/firefly_transport_udp_posix.c transport/firefly_transport_udp_lwip.c protocol/firefly_protocol.c protocol/firefly_protocol_labcomm.c protocol/firefly_protocol_connection.c protocol/firefly_protocol_channel.c eventqueue/event_queue.c
 
 # Disable default error handler that prints with fprintf. If set to true, you
 # must provide an own implementation at link time.
