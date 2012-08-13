@@ -140,7 +140,6 @@ int main(int argc, char **argv)
 	struct firefly_transport_llp *llp =
 			firefly_transport_llp_udp_posix_new(PING_PORT, connection_received);
 
-	event_queue = firefly_event_queue_new(event_add_mutex);
 	struct event_queue_signals eq_s;
 	res = pthread_mutex_init(&eq_s.eq_lock, NULL);
 	if (res) {
@@ -150,7 +149,7 @@ int main(int argc, char **argv)
 	if (res) {
 		fprintf(stderr, "ERROR: init cond variable.\n");
 	}
-	event_queue->context = &eq_s;
+	event_queue = firefly_event_queue_new(event_add_mutex, &eq_s);
 	pthread_t event_thread;
 	res = pthread_create(&event_thread, NULL, event_thread_main, event_queue);
 

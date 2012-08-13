@@ -56,7 +56,8 @@ void proto_check_writer(unsigned char *data, size_t data_size,
 
 void test_proto_writer()
 {
-	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add);
+	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
+			NULL);
 	if (eq == NULL) {
 		CU_FAIL("Could not create queue.\n");
 	}

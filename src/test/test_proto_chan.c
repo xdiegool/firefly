@@ -90,7 +90,8 @@ extern bool chan_opened_called;
 
 void test_next_channel_id()
 {
-	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add);
+	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
+			NULL);
 	if (eq == NULL) {
 		CU_FAIL("Could not create queue.\n");
 	}
@@ -144,7 +145,8 @@ void test_get_streams()
 
 void test_get_conn()
 {
-	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add);
+	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
+			NULL);
 	if (eq == NULL) {
 		CU_FAIL("Could not create queue.\n");
 	}
@@ -182,7 +184,8 @@ static void chan_open_handle_req(firefly_protocol_channel_request *req,
 
 void test_chan_open()
 {
-	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add);
+	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
+			NULL);
 	if (eq == NULL) {
 		CU_FAIL("Could not create queue.\n");
 	}
@@ -276,7 +279,8 @@ void chan_recv_handle_res(firefly_protocol_channel_response *res, void *ctx)
 void test_chan_recv_accept()
 {
 	struct encoded_packet *ep;
-	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add);
+	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
+			NULL);
 	if (eq == NULL) {
 		CU_FAIL("Could not create queue.\n");
 	}
@@ -365,7 +369,8 @@ static bool chan_recv_reject_chan(struct firefly_channel *chan)
 
 void test_chan_recv_reject()
 {
-	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add);
+	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
+			NULL);
 	if (eq == NULL) {
 		CU_FAIL("Could not create queue.\n");
 	}
@@ -442,7 +447,8 @@ void chan_open_chan_rejected(struct firefly_connection *conn)
 void test_chan_open_rejected()
 {
 
-	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add);
+	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
+			NULL);
 	if (eq == NULL) {
 		CU_FAIL("Could not create queue.\n");
 	}
@@ -518,7 +524,8 @@ void test_chan_open_recv()
 	struct firefly_connection *conn_open;
 	struct firefly_connection *conn_recv;
 
-	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add);
+	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
+			NULL);
 	if (eq == NULL) {
 		CU_FAIL("Could not create queue.\n");
 	}
@@ -619,7 +626,8 @@ void chan_closed_cb(struct firefly_channel *chan)
 
 void test_chan_close()
 {
-	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add);
+	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
+			NULL);
 	if (eq == NULL) {
 		CU_FAIL("Could not create queue.\n");
 	}
@@ -648,11 +656,9 @@ void test_chan_close()
 	// pop event queue and execute
 	struct firefly_event *ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
-	CU_ASSERT_EQUAL(ev->base.type, EVENT_CHAN_CLOSE);
 	firefly_event_execute(ev);
 	ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
-	CU_ASSERT_EQUAL(ev->base.type, EVENT_CHAN_CLOSED);
 	firefly_event_execute(ev);
 
 	// test close packet sent
@@ -670,7 +676,8 @@ void test_chan_close()
 
 void test_chan_recv_close()
 {
-	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add);
+	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
+			NULL);
 	if (eq == NULL) {
 		CU_FAIL("Could not create queue.\n");
 	}
@@ -703,7 +710,6 @@ void test_chan_recv_close()
 	// pop and execute event
 	struct firefly_event *ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL_FATAL(ev);
-	CU_ASSERT_EQUAL(ev->base.type, EVENT_CHAN_CLOSED);
 	firefly_event_execute(ev);
 	// check callback called.
 	CU_ASSERT_TRUE(chan_closed_called);
@@ -742,7 +748,8 @@ void test_send_app_data()
 	test_test_var app_test_data = 1;
 	struct firefly_event *ev;
 
-	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add);
+	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
+			NULL);
 	if (eq == NULL) {
 		CU_FAIL("Could not create queue.\n");
 	}
@@ -818,7 +825,8 @@ void test_send_app_data()
 void test_recv_app_data()
 {
 	struct firefly_event *ev;
-	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add);
+	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
+			NULL);
 	if (eq == NULL) {
 		CU_FAIL("Could not create queue.\n");
 	}
@@ -1112,7 +1120,8 @@ void test_transmit_app_data_over_mock_trans_layer()
 
 	/* construct and configure queues with callback */
 	for (int i = 0; i < n_conn; i++) {
-		event_queues[i] = firefly_event_queue_new(firefly_event_add);
+		event_queues[i] = firefly_event_queue_new(firefly_event_add,
+				NULL);
 		if (!event_queues[i])
 			CU_FAIL("Could not allocate queue");
 	}
@@ -1385,7 +1394,8 @@ void test_chan_open_close_multiple()
 	struct firefly_connection *conn_open;
 	struct firefly_connection *conn_recv;
 
-	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add);
+	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
+			NULL);
 	if (eq == NULL) {
 		CU_FAIL("Could not create queue.\n");
 	}
