@@ -46,19 +46,16 @@ void pong_pass_test(enum pong_test_id test_id)
 }
 
 static struct firefly_event_queue *event_queue;
-//TODO fix an esier way to close channel but to know the connection.
 static struct firefly_connection *recv_conn = NULL;
 static pthread_mutex_t pong_done_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t pong_done_signal = PTHREAD_COND_INITIALIZER;
 static bool pong_done = false;
 
-void *send_data_and_close(void *args);
-
 void chan_opened(struct firefly_channel *chan);
 void chan_closed(struct firefly_channel *chan);
 bool chan_received(struct firefly_channel *chan);
-
 void handle_test_var(test_test_var *var, void *ctx);
+void *send_data_and_close(void *args);
 
 struct firefly_connection *connection_received(
 		struct firefly_transport_llp *llp, char *ip_addr, unsigned short port)
@@ -117,7 +114,8 @@ void handle_test_var(test_test_var *var, void *ctx)
 	pthread_attr_setdetachstate(&tattr, PTHREAD_CREATE_DETACHED);
 	int err = pthread_create(&sender, &tattr, send_data_and_close, ctx);
 	if (err) {
-		fprintf(stderr, "channel_received: Could not create sender thread for channel.\n");
+		fprintf(stderr, "channel_received: Could not create sender thread"
+				" for channel.\n");
 	}
 	pong_pass_test(DATA_RECEIVE);
 }
@@ -171,7 +169,6 @@ int main(int argc, char **argv)
 		pthread_cond_wait(&pong_done_signal, &pong_done_lock);
 	}
 	pthread_mutex_unlock(&pong_done_lock);
-	pong_pass_test(TEST_DONE);
 
 	pthread_cancel(reader_thread);
 	pthread_cancel(event_thread);
@@ -182,5 +179,6 @@ int main(int argc, char **argv)
 	firefly_event_queue_free(&event_queue);
 	firefly_transport_llp_udp_posix_free(&llp);
 
+	pong_pass_test(TEST_DONE);
 	pingpong_test_print_results(pong_tests, NBR_TESTS);
 }
