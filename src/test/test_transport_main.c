@@ -23,6 +23,12 @@ int main()
 		(CU_add_test(trans_udp_posix, "test_find_conn_by_addr",
 				test_find_conn_by_addr) == NULL)
 		       ||
+		(CU_add_test(trans_udp_posix, "test_cleanup_simple",
+				test_cleanup_simple) == NULL)
+		       ||
+		(CU_add_test(trans_udp_posix, "test_cleanup_many_conn",
+				test_cleanup_many_conn) == NULL)
+		       ||
 		(CU_add_test(trans_udp_posix, "test_add_conn_to_llp",
 				test_add_conn_to_llp) == NULL)
 		       ||

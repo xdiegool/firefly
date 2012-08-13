@@ -46,7 +46,6 @@ void pong_pass_test(enum pong_test_id test_id)
 }
 
 static struct firefly_event_queue *event_queue;
-static struct firefly_connection *recv_conn = NULL;
 static pthread_mutex_t pong_done_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t pong_done_signal = PTHREAD_COND_INITIALIZER;
 static bool pong_done = false;
@@ -60,19 +59,20 @@ void *send_data_and_close(void *args);
 struct firefly_connection *connection_received(
 		struct firefly_transport_llp *llp, char *ip_addr, unsigned short port)
 {
+	struct firefly_connection *conn;
 	/* If address is correct, open a connection. */
 	if (strncmp(ip_addr, PING_ADDR, strlen(PING_ADDR)) == 0 &&
 			port == PING_PORT) {
-		recv_conn = firefly_transport_connection_udp_posix_open(
+		conn = firefly_transport_connection_udp_posix_open(
 				chan_opened, chan_closed, chan_received, event_queue,
 				ip_addr, port, llp);
-		hack_register_protocol_types(recv_conn);
+		hack_register_protocol_types(conn);
 		pong_pass_test(CONNECTION_OPEN);
 	} else {
 		fprintf(stderr, "ERROR: Received unknown connection: %s:%hu\n",
 				ip_addr, port);
 	}
-	return recv_conn;
+	return conn;
 }
 
 void chan_opened(struct firefly_channel *chan)
@@ -87,7 +87,8 @@ void chan_opened(struct firefly_channel *chan)
 
 void chan_closed(struct firefly_channel *chan)
 {
-	//firefly_transport_connection_udp_posix_free(&recv_conn);
+	firefly_transport_connection_udp_posix_close(
+			firefly_channel_get_connection(chan));
 	pthread_mutex_lock(&pong_done_lock);
 	pong_done = true;
 	pthread_cond_signal(&pong_done_signal);

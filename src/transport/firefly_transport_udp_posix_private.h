@@ -7,7 +7,10 @@
 #define FIREFLY_TRANSPORT_UDP_POSIX_PRIVATE_H
 
 #include <transport/firefly_transport.h>
+#include <signal.h>
 
+#define FIREFLY_CONNECTION_OPEN (1)
+#define FIREFLY_CONNECTION_CLOSED (0)
 
 /**
  * @brief UDP specific link layer port data.
@@ -34,6 +37,7 @@ struct protocol_connection_udp_posix {
 						this connection */
 	int socket; /**< The socket file descriptor associated with this
 				connection. */
+	sig_atomic_t open;
 };
 
 /**

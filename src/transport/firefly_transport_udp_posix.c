@@ -15,6 +15,7 @@
 #include <arpa/inet.h>
 #include <sys/ioctl.h>
 #include <sys/select.h>
+#include <signal.h>
 
 #include <transport/firefly_transport.h>
 #include <firefly_errors.h>
@@ -123,6 +124,7 @@ struct firefly_connection *firefly_connection_udp_posix_new(
 	}
 	conn_udp->remote_addr = remote_addr;
 	conn_udp->socket = llp_udp->local_udp_socket;
+	conn_udp->open = FIREFLY_CONNECTION_OPEN;
 
 	return conn;
 }
@@ -170,6 +172,36 @@ struct firefly_connection *firefly_transport_connection_udp_posix_open(
 		add_connection_to_llp(conn, llp);
 	}
 	return conn;
+}
+
+void firefly_transport_connection_udp_posix_close(
+		struct firefly_connection *conn)
+{
+	struct protocol_connection_udp_posix *conn_udp =
+		(struct protocol_connection_udp_posix *)conn->transport_conn_platspec;
+	conn_udp->open = FIREFLY_CONNECTION_CLOSED;
+}
+
+int firefly_transport_clean_up(struct firefly_transport_llp *llp)
+{
+	int nbr_closed = 0;
+	struct llp_connection_list_node **head = &llp->conn_list;
+	struct protocol_connection_udp_posix *conn_udp;
+
+	while (*head != NULL) {
+		conn_udp = (struct protocol_connection_udp_posix *)
+			(*head)->conn->transport_conn_platspec;
+		if (!conn_udp->open) {
+			nbr_closed++;
+			firefly_transport_connection_udp_posix_free(&(*head)->conn);
+			struct llp_connection_list_node *tmp = *head;
+			*head = (*head)->next;
+			free(tmp);
+		} else {
+			head = &(*head)->next;
+		}
+	}
+	return nbr_closed;
 }
 
 void firefly_transport_udp_posix_write(unsigned char *data, size_t data_size,

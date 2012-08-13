@@ -76,6 +76,8 @@ void chan_opened(struct firefly_channel *chan)
 
 void chan_closed(struct firefly_channel *chan)
 {
+	firefly_transport_connection_udp_posix_close(
+			firefly_channel_get_connection(chan));
 	pthread_mutex_lock(&ping_done_lock);
 	ping_done = true;
 	pthread_cond_signal(&ping_done_signal);
