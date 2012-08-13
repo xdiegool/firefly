@@ -1,13 +1,10 @@
 /**
  * @file
- * @brief The public API of the transport UDP POSIX with specific structures and
+ * @brief The public API of the transport UDP LWIP with specific structures and
  * functions.
  */
-#ifndef FIREFLY_TRANSPORT_UDP_POSIX_H
-#define FIREFLY_TRANSPORT_UDP_POSIX_H
-
-#include <stdbool.h>
-#include <netinet/in.h>
+#ifndef FIREFLY_TRANSPORT_UDP_LWIP_H
+#define FIREFLY_TRANSPORT_UDP_LWIP_H
 
 #include <protocol/firefly_protocol.h>
 #include <transport/firefly_transport.h>
@@ -16,7 +13,7 @@
 /**
  * @brief An opaque UDP specific link layer port data.
  */
-struct firefly_transport_llp_udp_posix;
+struct firefly_transport_llp_udp_lwip;
 
 /**
  * @brief This callback will be called when a new connection is received.
@@ -25,7 +22,7 @@ struct firefly_transport_llp_udp_posix;
  * when the transport layer receives a new connection. It will be called with
  * address of the remote node of the connection as argument. The application
  * layer may open a new connection to this remote node by calling
- * firefly_transport_connection_udp_posix_open() with the address as argument.
+ * firefly_transport_connection_udp_lwip_open() with the address as argument.
  * If the connection is opened it must be returned. If no new connection is
  * opened return NULL.
  *
@@ -34,9 +31,9 @@ struct firefly_transport_llp_udp_posix;
  * @return The opened connection.
  * @retval NULL if no connection was opened.
  */
-typedef struct firefly_connection *(*firefly_on_conn_recv_pudp)(
-		struct firefly_transport_llp *llp,
-		char *ip_addr, unsigned short port);
+typedef struct firefly_connection *(*firefly_on_conn_recv_udp_lwip)(
+		struct firefly_transport_llp *llp, struct ip_addr *ip_addr,
+		u16_t port);
 
 /**
  * @brief Allocates and initializes a new \c transport_llp with UDP specific
@@ -46,9 +43,8 @@ typedef struct firefly_connection *(*firefly_on_conn_recv_pudp)(
  * @param on_conn_recv The callback to call when a new connection is received
  * @return A pointer to the created \c firefly_transport_llp.
  */
-struct firefly_transport_llp *firefly_transport_llp_udp_posix_new(
-		unsigned short local_port,
-		firefly_on_conn_recv_pudp on_conn_recv);
+struct firefly_transport_llp *firefly_transport_llp_udp_lwip_new(
+		u16_t local_port, firefly_on_conn_recv_udp_lwip on_conn_recv);
 
 /**
  * @brief Close the socket and free any resources associated with this
@@ -59,7 +55,7 @@ struct firefly_transport_llp *firefly_transport_llp_udp_posix_new(
  *
  * @param llp The firefly_transport_llp to free.
  */
-void firefly_transport_llp_udp_posix_free(struct firefly_transport_llp **llp);
+void firefly_transport_llp_udp_lwip_free(struct firefly_transport_llp **llp);
 
 /**
  * @brief Opens a connection on the provided link layer port.
@@ -73,12 +69,12 @@ void firefly_transport_llp_udp_posix_free(struct firefly_transport_llp **llp);
  * @return The newly opened connection.
  * @retval NULL Returns \c NULL upon failure.
  */
-struct firefly_connection *firefly_transport_connection_udp_posix_open(
+struct firefly_connection *firefly_transport_connection_udp_lwip_open(
 		firefly_channel_is_open_f on_channel_opened,
 		firefly_channel_closed_f on_channel_closed,
 		firefly_channel_accept_f on_channel_recv,
 		struct firefly_event_queue *event_queue,
-		char *ip_addr, unsigned short port,
+		struct ip_addr *ip_addr, u16_t port,
 		struct firefly_transport_llp *llp);
 
 /**
@@ -86,7 +82,7 @@ struct firefly_connection *firefly_transport_connection_udp_posix_open(
  *
  * @param conn The connection to set the sate on.
  */
-void firefly_transport_connection_udp_posix_close(
+void firefly_transport_connection_udp_lwip_close(
 		struct firefly_connection *conn);
 
 /**
@@ -97,7 +93,7 @@ void firefly_transport_connection_udp_posix_close(
  * @param conn A pointer to the pointer to the #firefly_connection to free. The
  * pointer will be set to \c NULL.
  */
-void firefly_transport_connection_udp_posix_free(
+void firefly_transport_connection_udp_lwip_free(
 		struct firefly_connection **conn);
 
 /**
@@ -108,7 +104,7 @@ void firefly_transport_connection_udp_posix_free(
  * @retval Negative number on error.
  * @retval 0 if no connection was closed.
  */
-int firefly_transport_udp_posix_clean_up(struct firefly_transport_llp *llp);
+int firefly_transport_udp_lwip_clean_up(struct firefly_transport_llp *llp);
 
 /**
  * @brief Read data from the connection and fire events.
@@ -126,7 +122,9 @@ int firefly_transport_udp_posix_clean_up(struct firefly_transport_llp *llp);
  *
  * @param llp The Link Layer Port to read data from.
  */
-void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp);
+// NOTE we don't need to read on an llp for FreeRTOS+LWIP since we just hook in
+// callbacks.
+//void firefly_transport_udp_lwip_read(struct firefly_transport_llp *llp);
 
 /**
  * @brief Write data on the specified connection.
@@ -135,18 +133,6 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp);
  * @param data_size The size of the data to be written.
  * @param conn The connection to written the data on.
  */
-void firefly_transport_udp_posix_write(unsigned char *data, size_t data_size,
+void firefly_transport_udp_lwip_write(unsigned char *data, size_t data_size,
 		struct firefly_connection *conn);
-
-/**
- * @brief Set the number of strictly smaller packages required before the size
- *        of the receive buffer is decreased.
- *
- * @param llp The llp to apply the change on.
- * @param nbr The number of package to set as the new threshold. \b Must be 
- * greater than zero.
- */
-void firefly_transport_udp_posix_set_n_scaleback(
-			struct firefly_transport_llp *llp, unsigned int nbr);
-
 #endif
