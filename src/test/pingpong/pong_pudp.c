@@ -87,6 +87,7 @@ void chan_opened(struct firefly_channel *chan)
 
 void chan_closed(struct firefly_channel *chan)
 {
+	// TODO concurrency problem conn freed before chan
 	firefly_transport_connection_udp_posix_close(
 			firefly_channel_get_connection(chan));
 	pthread_mutex_lock(&pong_done_lock);

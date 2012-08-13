@@ -152,7 +152,6 @@ int main(int argc, char **argv)
 	}
 	event_queue->context = &eq_s;
 	pthread_t event_thread;
-	printf("Starting event thread.\n");
 	res = pthread_create(&event_thread, NULL, event_thread_main, event_queue);
 
 	struct firefly_connection *conn =
