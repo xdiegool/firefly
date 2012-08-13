@@ -6,3 +6,5 @@ gen/
 testfiles/
 .clang_complete
 TAGS
+data.enc
+sig.enc
