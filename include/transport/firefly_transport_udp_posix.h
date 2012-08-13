@@ -145,6 +145,6 @@ void firefly_transport_udp_posix_write(unsigned char *data, size_t data_size,
  *        than zero.
  */
 void firefly_transport_udp_posix_set_n_scaleback(struct firefly_transport_llp *llp,
-												 unsigned int nbr);
+						 unsigned int nbr);
 
 #endif
