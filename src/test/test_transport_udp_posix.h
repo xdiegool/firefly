@@ -7,6 +7,8 @@ int init_suit_udp_posix();
 int clean_suit_udp_posix();
 
 void test_find_conn_by_addr();
+void test_cleanup_simple();
+void test_cleanup_many_conn();
 void test_add_conn_to_llp();
 void test_recv_connection();
 void test_recv_data();

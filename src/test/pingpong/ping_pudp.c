@@ -68,13 +68,16 @@ void chan_opened(struct firefly_channel *chan)
 	pthread_attr_setdetachstate(&tattr, PTHREAD_CREATE_DETACHED);
 	int err = pthread_create(&sender, &tattr, send_data, chan);
 	if (err) {
-		fprintf(stderr, "channel_received: Could not create sender thread for channel.\n");
+		fprintf(stderr, "channel_received: Could not create sender thread"
+				" for channel.\n");
 	}
 	ping_pass_test(CHAN_OPEN);
 }
 
 void chan_closed(struct firefly_channel *chan)
 {
+	firefly_transport_connection_udp_posix_close(
+			firefly_channel_get_connection(chan));
 	pthread_mutex_lock(&ping_done_lock);
 	ping_done = true;
 	pthread_cond_signal(&ping_done_signal);
@@ -149,7 +152,6 @@ int main(int argc, char **argv)
 	}
 	event_queue->context = &eq_s;
 	pthread_t event_thread;
-	printf("Starting event thread.\n");
 	res = pthread_create(&event_thread, NULL, event_thread_main, event_queue);
 
 	struct firefly_connection *conn =

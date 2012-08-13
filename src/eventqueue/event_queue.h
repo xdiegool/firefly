@@ -84,8 +84,6 @@ struct firefly_event_chan_open {
 struct firefly_event_chan_closed {
 	struct firefly_event_base base;
 	struct firefly_channel *chan; /**< The channel to be closed. */
-	struct firefly_connection *conn; /**< The connection on which the
-						channel is open on. */
 };
 
 /**

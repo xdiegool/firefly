@@ -142,6 +142,24 @@ void test_get_streams()
 	labcomm_mem_writer_context_t_free(&wmcontext);
 }
 
+void test_get_conn()
+{
+	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add);
+	if (eq == NULL) {
+		CU_FAIL("Could not create queue.\n");
+	}
+	// Init connection and register error handler on encoder and decoder
+	struct firefly_connection *conn =
+		setup_test_conn_new(chan_opened_mock, NULL, NULL, eq);
+	struct firefly_channel *chan = firefly_channel_new(conn);
+
+	struct firefly_connection *get_conn = firefly_channel_get_connection(chan);
+	CU_ASSERT_PTR_EQUAL(conn, get_conn);
+	firefly_channel_free(chan);
+	firefly_connection_free(&conn);
+	firefly_event_queue_free(&eq);
+}
+
 static void chan_open_handle_ack(firefly_protocol_channel_ack *ack, void *ctx)
 {
 	struct firefly_channel *chan = ((struct firefly_connection *) ctx)->
@@ -626,7 +644,7 @@ void test_chan_close()
 			conn->transport_encoder);
 
 	// close channel
-	firefly_channel_close(chan, conn);
+	firefly_channel_close(chan);
 	// pop event queue and execute
 	struct firefly_event *ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
@@ -1286,7 +1304,7 @@ void test_transmit_app_data_over_mock_trans_layer()
 	/* Sent appdata from 0 -> 1 */
 
 	/* Let conn 0 init closeing of channel */
-	firefly_channel_close(channels[0], connections[0]);
+	firefly_channel_close(channels[0]);
 	/* One event to remove chan locally and one to send close packet... */
 	CU_ASSERT_EQUAL(firefly_event_queue_length(connections[0]->event_queue), 2);
 	ev = firefly_event_pop(connections[0]->event_queue);
@@ -1663,7 +1681,7 @@ void test_chan_open_close_multiple()
 	// save channel id's form testing later
 	chan_id_conn_open = conn_open->chan_list->chan->local_id;
 	chan_id_conn_recv = conn_open->chan_list->chan->remote_id;
-	firefly_channel_close(conn_open->chan_list->chan, conn_open);
+	firefly_channel_close(conn_open->chan_list->chan);
 	ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	firefly_event_execute(ev);
@@ -1687,7 +1705,7 @@ void test_chan_open_close_multiple()
 			chan_id_conn_open);
 
 	// Close the remaining channel
-	firefly_channel_close(conn_open->chan_list->chan, conn_open);
+	firefly_channel_close(conn_open->chan_list->chan);
 	ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	firefly_event_execute(ev);

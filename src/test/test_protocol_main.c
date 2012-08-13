@@ -54,23 +54,23 @@ int main()
 	// Transport encoding and decoding tests.
 	if (
 			(CU_add_test(translc_suite, "test_encode_protocol",
-			     	     test_encode_protocol) == NULL)
+					test_encode_protocol) == NULL)
 			||
 			(CU_add_test(translc_suite, "test_decode_protocol",
-			     	     test_decode_protocol) == NULL)
+					test_decode_protocol) == NULL)
 			||
 			(CU_add_test(translc_suite,
-				     "test_encode_decode_protocol",
-			     	     test_encode_decode_protocol) == NULL)
+					"test_encode_decode_protocol",
+					test_encode_decode_protocol) == NULL)
 			||
 			(CU_add_test(translc_suite,
-			     "test_decode_protocol_multiple_times",
-			     test_decode_protocol_multiple_times) == NULL)
+					"test_decode_protocol_multiple_times",
+					test_decode_protocol_multiple_times) == NULL)
 			||
 			(CU_add_test(translc_suite,
-			     "test_encode_protocol_multiple_times",
-			     test_encode_protocol_multiple_times) == NULL)
-	   ) {
+					"test_encode_protocol_multiple_times",
+					test_encode_protocol_multiple_times) == NULL)
+		) {
 		CU_cleanup_registry();
 		return CU_get_error();
 	}
@@ -78,11 +78,11 @@ int main()
 	// Protocol writer/reader tests.
 	if (
 			(CU_add_test(protolc_suite, "test_proto_writer",
-			     	     test_proto_writer) == NULL)
+					test_proto_writer) == NULL)
 			||
 			(CU_add_test(protolc_suite, "test_proto_reader",
-			     	     test_proto_reader) == NULL)
-	   ) {
+					test_proto_reader) == NULL)
+		) {
 		CU_cleanup_registry();
 		return CU_get_error();
 	}
@@ -90,68 +90,70 @@ int main()
 	// Channel tests.
 	if (
 			(CU_add_test(chan_suite, "test_get_streams",
-			     	     test_get_streams) == NULL)
+					test_get_streams) == NULL)
 			||
-			(CU_add_test(chan_suite,
-			     	     "test_next_channel_id",
-			     	     test_next_channel_id) == NULL)
+			(CU_add_test(chan_suite, "test_next_channel_id",
+					test_next_channel_id) == NULL)
+			||
+			(CU_add_test(chan_suite, "test_get_conn",
+					test_get_conn) == NULL)
 			||
 			(CU_add_test(chan_suite, "test_chan_open",
-			     	     test_chan_open) == NULL)
+					test_chan_open) == NULL)
 			||
 			(CU_add_test(chan_suite, "test_chan_recv_accept",
-			     	     test_chan_recv_accept) == NULL)
+					test_chan_recv_accept) == NULL)
 			||
 			(CU_add_test(chan_suite, "test_chan_recv_reject",
-			     	     test_chan_recv_reject) == NULL)
+					test_chan_recv_reject) == NULL)
 			||
 			(CU_add_test(chan_suite, "test_chan_open_rejected",
-			     	     test_chan_open_rejected) == NULL)
+					test_chan_open_rejected) == NULL)
 			||
 			(CU_add_test(chan_suite, "test_chan_open_recv",
-			     	     test_chan_open_recv) == NULL)
+					test_chan_open_recv) == NULL)
 			||
-	   		(CU_add_test(chan_suite, "test_chan_close",
-				     test_chan_close) == NULL)
+			(CU_add_test(chan_suite, "test_chan_close",
+					test_chan_close) == NULL)
 			||
-	   		(CU_add_test(chan_suite, "test_chan_recv_close",
-				     test_chan_recv_close) == NULL)
+			(CU_add_test(chan_suite, "test_chan_recv_close",
+					test_chan_recv_close) == NULL)
 			||
-	   		(CU_add_test(chan_suite, "test_send_app_data",
-				     test_send_app_data) == NULL)
+			(CU_add_test(chan_suite, "test_send_app_data",
+					test_send_app_data) == NULL)
 			||
-	   		(CU_add_test(chan_suite, "test_recv_app_data",
-				     test_recv_app_data) == NULL)
+			(CU_add_test(chan_suite, "test_recv_app_data",
+					test_recv_app_data) == NULL)
 			||
 			(CU_add_test(chan_suite,
-			     "test_transmit_app_data_over_mock_trans_layer",
-			     test_transmit_app_data_over_mock_trans_layer)
-			 	 == NULL)
+					"test_transmit_app_data_over_mock_trans_layer",
+					test_transmit_app_data_over_mock_trans_layer)
+					== NULL)
 			||
-	   		(CU_add_test(chan_suite, "test_chan_open_close_multiple",
-				     test_chan_open_close_multiple) == NULL)
-	   		) {
+			(CU_add_test(chan_suite, "test_chan_open_close_multiple",
+					test_chan_open_close_multiple) == NULL)
+			) {
 				CU_cleanup_registry();
 				return CU_get_error();
-	   		}
+			}
 
 	// Errors tests.
 	if (
 			(CU_add_test(chan_suite, "test_unexpected_ack",
-			     	     test_unexpected_ack) == NULL)
+					test_unexpected_ack) == NULL)
 			||
 			(CU_add_test(chan_suite, "test_unexpected_response",
-			     	     test_unexpected_response) == NULL)
+					test_unexpected_response) == NULL)
 			||
 			(CU_add_test(chan_suite, "test_unexpected_data_sample",
-			     	     test_unexpected_data_sample) == NULL)
+					test_unexpected_data_sample) == NULL)
 			||
 			(CU_add_test(chan_suite, "test_unexpected_channel_close",
-			     	     test_unexpected_channel_close) == NULL)
-	   		) {
+					test_unexpected_channel_close) == NULL)
+			) {
 				CU_cleanup_registry();
 				return CU_get_error();
-	   		}
+			}
 
 	// Set verbosity.
 	CU_basic_set_mode(CU_BRM_VERBOSE);

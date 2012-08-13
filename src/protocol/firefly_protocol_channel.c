@@ -57,3 +57,9 @@ void firefly_channel_free(struct firefly_channel *chan)
 	}
 	free(chan);
 }
+
+struct firefly_connection *firefly_channel_get_connection(
+		struct firefly_channel *chan)
+{
+	return chan->conn;
+}
