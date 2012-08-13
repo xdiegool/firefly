@@ -68,7 +68,6 @@ void *event_thread_main(void *args)
 		}
 		ev = firefly_event_pop(eq);
 		pthread_mutex_unlock(&eq_s->eq_lock);
-		printf("EVENT: Executing event.\n");
 		firefly_event_execute(ev);
 	}
 	return NULL;

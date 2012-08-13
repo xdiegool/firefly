@@ -68,7 +68,8 @@ void chan_opened(struct firefly_channel *chan)
 	pthread_attr_setdetachstate(&tattr, PTHREAD_CREATE_DETACHED);
 	int err = pthread_create(&sender, &tattr, send_data, chan);
 	if (err) {
-		fprintf(stderr, "channel_received: Could not create sender thread for channel.\n");
+		fprintf(stderr, "channel_received: Could not create sender thread"
+				" for channel.\n");
 	}
 	ping_pass_test(CHAN_OPEN);
 }
