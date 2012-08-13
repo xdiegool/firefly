@@ -72,8 +72,7 @@ void firefly_channel_open(struct firefly_connection *conn,
  * @param chan The channel to close and free.
  * @param conn The connection of the channel.
  */
-void firefly_channel_close(struct firefly_channel *chan,
-		struct firefly_connection *conn);
+void firefly_channel_close(struct firefly_channel *chan);
 
 /**
  * @brief A prototype for a callback from the protocol layer called when a new

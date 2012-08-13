@@ -105,7 +105,7 @@ int firefly_event_execute(struct firefly_event *ev)
 	case EVENT_CHAN_CLOSED: {
 		struct firefly_event_chan_closed *ev_cc =
 				(struct firefly_event_chan_closed *) ev;
-		firefly_channel_closed_event(ev_cc->chan, ev_cc->conn);
+		firefly_channel_closed_event(ev_cc->chan);
 	} break;
 	case EVENT_CHAN_CLOSE: {
 		struct firefly_event_chan_close *ev_cc =

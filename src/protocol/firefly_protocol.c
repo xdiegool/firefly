@@ -57,8 +57,7 @@ void firefly_channel_open_event(struct firefly_connection *conn,
 			&chan_req);
 }
 
-static void create_channel_closed_event(struct firefly_channel *chan,
-						struct firefly_connection *conn)
+static void create_channel_closed_event(struct firefly_channel *chan)
 {
 	struct firefly_event_chan_closed *ev;
 	int ret;
@@ -70,9 +69,8 @@ static void create_channel_closed_event(struct firefly_channel *chan,
 	}
 	ev->base.type = EVENT_CHAN_CLOSED;
 	ev->base.prio = 1;
-	ev->conn = conn;
 	ev->chan = chan;
-	ret = conn->event_queue->offer_event_cb(conn->event_queue,
+	ret = chan->conn->event_queue->offer_event_cb(chan->conn->event_queue,
 						(struct firefly_event *) ev);
 	if (ret) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1,
@@ -80,8 +78,7 @@ static void create_channel_closed_event(struct firefly_channel *chan,
 	}
 }
 
-void firefly_channel_close(struct firefly_channel *chan,
-						struct firefly_connection *conn)
+void firefly_channel_close(struct firefly_channel *chan)
 {
 
 	struct firefly_event_chan_close *ev;
@@ -91,21 +88,21 @@ void firefly_channel_close(struct firefly_channel *chan,
 	}
 	ev->base.type = EVENT_CHAN_CLOSE;
 	ev->base.prio = 1;
-	ev->conn = conn;
+	ev->conn = chan->conn;
 	ev->chan_close = malloc(sizeof(firefly_protocol_channel_close));
 	if (ev->chan_close == NULL) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Could not create event.");
 	}
 	ev->chan_close->dest_chan_id = chan->remote_id;
 	ev->chan_close->source_chan_id = chan->local_id;
-	int ret = conn->event_queue->offer_event_cb(conn->event_queue,
+	int ret = chan->conn->event_queue->offer_event_cb(chan->conn->event_queue,
 			(struct firefly_event *) ev);
 
 	if (ret) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Could not add event to queue.");
 	}
 
-	create_channel_closed_event(chan, conn);
+	create_channel_closed_event(chan);
 }
 
 void firefly_channel_close_event(struct firefly_connection *conn,
@@ -115,13 +112,12 @@ void firefly_channel_close_event(struct firefly_connection *conn,
 			chan_close);
 }
 
-void firefly_channel_closed_event(struct firefly_channel *chan,
-						struct firefly_connection *conn)
+void firefly_channel_closed_event(struct firefly_channel *chan)
 {
-	if (conn->on_channel_closed != NULL) {
-		conn->on_channel_closed(chan);
+	if (chan->conn->on_channel_closed != NULL) {
+		chan->conn->on_channel_closed(chan);
 	}
-	firefly_channel_free(remove_channel_from_connection(chan, conn));
+	firefly_channel_free(remove_channel_from_connection(chan, chan->conn));
 }
 
 void protocol_data_received(struct firefly_connection *conn,
@@ -303,7 +299,7 @@ void handle_channel_close(firefly_protocol_channel_close *chan_close,
 	struct firefly_channel *chan = find_channel_by_local_id(
 			conn, chan_close->dest_chan_id);
 	if (chan != NULL){
-		create_channel_closed_event(chan, conn);
+		create_channel_closed_event(chan);
 	} else {
 		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
 				"Received closed on non-existing channel.\n");

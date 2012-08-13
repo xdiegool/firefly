@@ -127,7 +127,7 @@ void *send_data_and_close(void *args)
 	struct labcomm_encoder *enc = firefly_protocol_get_output_stream(chan);
 	labcomm_encode_test_test_var(enc, &data);
 	pong_pass_test(DATA_SEND);
-	firefly_channel_close(chan, recv_conn);
+	firefly_channel_close(chan);
 
 	return NULL;
 }

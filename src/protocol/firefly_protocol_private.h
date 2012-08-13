@@ -172,8 +172,7 @@ void firefly_channel_open_event(struct firefly_connection *conn,
  * @pram conn The connection the channel is opened on.
  * @param chan The channel to free.
  */
-void firefly_channel_closed_event(struct firefly_channel *chan,
-								 struct firefly_connection *conn);
+void firefly_channel_closed_event(struct firefly_channel *chan);
 /**
  * @brief The action performed when a firefly_event_chan_close is executed.
  *

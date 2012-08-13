@@ -626,7 +626,7 @@ void test_chan_close()
 			conn->transport_encoder);
 
 	// close channel
-	firefly_channel_close(chan, conn);
+	firefly_channel_close(chan);
 	// pop event queue and execute
 	struct firefly_event *ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
@@ -1286,7 +1286,7 @@ void test_transmit_app_data_over_mock_trans_layer()
 	/* Sent appdata from 0 -> 1 */
 
 	/* Let conn 0 init closeing of channel */
-	firefly_channel_close(channels[0], connections[0]);
+	firefly_channel_close(channels[0]);
 	/* One event to remove chan locally and one to send close packet... */
 	CU_ASSERT_EQUAL(firefly_event_queue_length(connections[0]->event_queue), 2);
 	ev = firefly_event_pop(connections[0]->event_queue);
@@ -1663,7 +1663,7 @@ void test_chan_open_close_multiple()
 	// save channel id's form testing later
 	chan_id_conn_open = conn_open->chan_list->chan->local_id;
 	chan_id_conn_recv = conn_open->chan_list->chan->remote_id;
-	firefly_channel_close(conn_open->chan_list->chan, conn_open);
+	firefly_channel_close(conn_open->chan_list->chan);
 	ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	firefly_event_execute(ev);
@@ -1687,7 +1687,7 @@ void test_chan_open_close_multiple()
 			chan_id_conn_open);
 
 	// Close the remaining channel
-	firefly_channel_close(conn_open->chan_list->chan, conn_open);
+	firefly_channel_close(conn_open->chan_list->chan);
 	ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	firefly_event_execute(ev);
