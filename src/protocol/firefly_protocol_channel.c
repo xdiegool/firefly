@@ -63,3 +63,13 @@ struct firefly_connection *firefly_channel_get_connection(
 {
 	return chan->conn;
 }
+
+int firefly_channel_closed_event(void *event_arg)
+{
+	struct firefly_channel *chan = (struct firefly_channel *) event_arg;
+	if (chan->conn->on_channel_closed != NULL) {
+		chan->conn->on_channel_closed(chan);
+	}
+	firefly_channel_free(remove_channel_from_connection(chan, chan->conn));
+	return 0;
+}

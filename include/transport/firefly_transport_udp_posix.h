@@ -96,7 +96,7 @@ void firefly_transport_connection_udp_posix_close(
  * pointer will be set to \c NULL.
  */
 void firefly_transport_connection_udp_posix_free(
-		struct firefly_connection **conn);
+		struct firefly_connection *conn);
 
 /**
  * @brief Free any closed conenctions on the given firefly_transport_llp

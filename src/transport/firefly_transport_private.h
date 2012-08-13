@@ -26,4 +26,6 @@ struct llp_connection_list_node {
 	struct firefly_connection *conn;
 };
 
+int firefly_transport_connection_udp_posix_free_event(void *event_arg);
+
 #endif

@@ -86,7 +86,7 @@ void firefly_transport_llp_udp_posix_free(struct firefly_transport_llp **llp)
 	struct llp_connection_list_node *tmp = NULL;
 	while(head != NULL) {
 		tmp = head->next;
-		firefly_transport_connection_udp_posix_free(&head->conn);
+		firefly_transport_connection_udp_posix_free_event(head->conn);
 		free(head);
 		head = tmp;
 	}
@@ -130,15 +130,23 @@ struct firefly_connection *firefly_connection_udp_posix_new(
 }
 
 void firefly_transport_connection_udp_posix_free(
-					struct firefly_connection **conn)
+					struct firefly_connection *conn)
 {
+	struct firefly_event *ev = firefly_event_new(1,
+			firefly_transport_connection_udp_posix_free_event, conn);
+	conn->event_queue->offer_event_cb(conn->event_queue, ev);
+}
+
+int firefly_transport_connection_udp_posix_free_event(void *event_arg)
+{
+	struct firefly_connection *conn = (struct firefly_connection *) event_arg;
 	struct protocol_connection_udp_posix *conn_udp =
 		(struct protocol_connection_udp_posix *)
-		(*conn)->transport_conn_platspec;
+		conn->transport_conn_platspec;
 	free(conn_udp->remote_addr);
 	free(conn_udp);
-	firefly_connection_free(conn);
-	*conn = NULL;
+	firefly_connection_free(&conn);
+	return 0;
 }
 
 struct firefly_connection *firefly_transport_connection_udp_posix_open(
@@ -193,7 +201,7 @@ int firefly_transport_udp_posix_clean_up(struct firefly_transport_llp *llp)
 			(*head)->conn->transport_conn_platspec;
 		if (!conn_udp->open) {
 			nbr_closed++;
-			firefly_transport_connection_udp_posix_free(&(*head)->conn);
+			firefly_transport_connection_udp_posix_free((*head)->conn);
 			struct llp_connection_list_node *tmp = *head;
 			*head = (*head)->next;
 			free(tmp);

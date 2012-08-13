@@ -68,6 +68,12 @@ struct firefly_connection *firefly_connection_new(
 
 void firefly_connection_free(struct firefly_connection **conn)
 {
+	while ((*conn)->chan_list != NULL) {
+		firefly_channel_closed_event((*conn)->chan_list->chan);
+		/*firefly_channel_free(remove_channel_from_connection(*/
+					/*(*conn)->chan_list->chan, *conn));*/
+	}
+	free((*conn)->chan_list);
 	if ((*conn)->transport_encoder != NULL) {
 		labcomm_encoder_free((*conn)->transport_encoder);
 	}
@@ -77,11 +83,6 @@ void firefly_connection_free(struct firefly_connection **conn)
 	free((*conn)->reader_data);
 	free((*conn)->writer_data->data);
 	free((*conn)->writer_data);
-	while ((*conn)->chan_list != NULL) {
-		firefly_channel_free(remove_channel_from_connection(
-					(*conn)->chan_list->chan, *conn));
-	}
-	free((*conn)->chan_list);
 	free((*conn));
 	*conn = NULL;
 }

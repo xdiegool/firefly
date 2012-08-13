@@ -108,16 +108,6 @@ int firefly_channel_close_event(void *event_arg)
 	return 0;
 }
 
-int firefly_channel_closed_event(void *event_arg)
-{
-	struct firefly_channel *chan = (struct firefly_channel *) event_arg;
-	if (chan->conn->on_channel_closed != NULL) {
-		chan->conn->on_channel_closed(chan);
-	}
-	firefly_channel_free(remove_channel_from_connection(chan, chan->conn));
-	return 0;
-}
-
 void protocol_data_received(struct firefly_connection *conn,
 		unsigned char *data, size_t size)
 {
