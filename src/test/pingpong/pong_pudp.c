@@ -142,7 +142,6 @@ int main(int argc, char **argv)
 
 	printf("Hello, Firefly from Pong!\n");
 	pong_init_tests();
-	event_queue = firefly_event_queue_new(event_add_mutex);
 	struct event_queue_signals eq_s;
 	res = pthread_mutex_init(&eq_s.eq_lock, NULL);
 	if (res) {
@@ -152,7 +151,7 @@ int main(int argc, char **argv)
 	if (res) {
 		fprintf(stderr, "ERROR: init cond variable.\n");
 	}
-	event_queue->context = &eq_s;
+	event_queue = firefly_event_queue_new(event_add_mutex, &eq_s);
 	res = pthread_create(&event_thread, NULL, event_thread_main, event_queue);
 	if (res) {
 		fprintf(stderr, "ERROR: starting event thread.\n");

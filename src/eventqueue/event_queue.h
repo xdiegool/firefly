@@ -15,10 +15,7 @@
 
 #include <stdlib.h>
 
-/* TODO: refac. */
-
 #include "gen/firefly_protocol.h"
-#include "protocol/firefly_protocol_private.h"
 
 /**
  * Defines different priorities.
@@ -27,29 +24,7 @@
 #define FIREFLY_PRIORITY_MEDIUM (125)
 #define FIREFLY_PRIORITY_HIGH (235)
 
-/**
- * @brief Each event has a type defined here.
- */
-enum firefly_event_type {
-	EVENT_CHAN_OPEN,
-	EVENT_CHAN_CLOSED,
-	EVENT_CHAN_CLOSE,
-	EVENT_CHAN_REQ_RECV,
-	EVENT_CHAN_RES_RECV,
-	EVENT_CHAN_ACK_RECV,
-	EVENT_SEND_SAMPLE,
-	EVENT_RECV_SAMPLE
-};
-
-/**
- * @brief The common data structure of each event, each event should have a
- * pointer to this.
- */
-struct firefly_event_base {
-	enum firefly_event_type type; /**< The type of the event. */
-	unsigned char prio; /**< The priority of the event, higher value means
-					higher priority. */
-};
+typedef int (*firefly_event_execute_f)(void *event_arg);
 
 /**
  * @brief A generic event.
@@ -58,96 +33,10 @@ struct firefly_event_base {
  * larger context may (most likely) imply concurrency problems.
  */
 struct firefly_event {
-	struct firefly_event_base base; /**< The common data structure of each
-						event. */
-};
-
-/* Concrete events */
-
-/**
- * @brief The event sending the firefly_protocol_channel_request on the
- * connection.
- */
-struct firefly_event_chan_open {
-	struct firefly_event_base base;
-	struct firefly_connection *conn; /**< The connection the channel is
-						opened on. */
-	firefly_channel_rejected_f rejected_cb; /**< The callback called if the
-							request was rejected by
-							the remote node. */
-};
-
-/**
- * @brief The event calling the firefly_channel_closed_f callback and freeing
- * any resources occupied by the channel.
- */
-struct firefly_event_chan_closed {
-	struct firefly_event_base base;
-	struct firefly_channel *chan; /**< The channel to be closed. */
-};
-
-/**
- * @brief The event sending a firefly_protocol_channel_close to the remote node.
- */
-struct firefly_event_chan_close {
-	struct firefly_event_base base;
-	struct firefly_connection *conn; /**< The connection to send the packet
-						on. */
-	firefly_protocol_channel_close *chan_close; /**< The packet to send,
-							must be correctly
-							initialized with id's.
-							*/
-};
-
-/**
- * @brief The event handling a received firefly_protocol_channel_request.
- */
-struct firefly_event_chan_req_recv {
-	struct firefly_event_base base;
-	struct firefly_connection *conn; /**< The connection the request was
-						received on. */
-	firefly_protocol_channel_request *chan_req; /**< The received request.*/
-};
-
-/**
- * @brief The event handling a received firefly_protocol_channel_response.
- */
-struct firefly_event_chan_res_recv {
-	struct firefly_event_base base;
-	struct firefly_connection *conn; /**< The connection the request was
-						received on. */
-	firefly_protocol_channel_response *chan_res; /**< The received
-							response. */
-};
-
-/**
- * @brief The event handling a received firefly_protocol_channel_ack.
- */
-struct firefly_event_chan_ack_recv {
-	struct firefly_event_base base;
-	struct firefly_connection *conn; /**< The connection the ack was
-						received on. */
-	firefly_protocol_channel_ack *chan_ack; /**< The received ack. */
-};
-
-/**
- * @brief The event sending a firefly_protocol_data_sample.
- */
-struct firefly_event_send_sample {
-	struct firefly_event_base base;
-	struct firefly_connection *conn; /**< The connection to send the sample
-						on. */
-	firefly_protocol_data_sample *pkt; /**< The sample to send. */
-};
-
-/**
- * @brief The event handling a received firefly_protocol_data_sample.
- */
-struct firefly_event_recv_sample {
-	struct firefly_event_base base;
-	struct firefly_connection *conn; /**< The connection the sample was
-						received on. */
-	firefly_protocol_data_sample *pkt; /**< The received sample. */
+	unsigned char prio; /**< The priority of the event, higher value means
+					higher priority. */
+	firefly_event_execute_f execute;
+	void *context;
 };
 
 /* Forward declaration. */
@@ -200,7 +89,7 @@ struct firefly_eq_node {
  * @return The created firefly_event_queue.
  */
 struct firefly_event_queue *firefly_event_queue_new(
-		firefly_offer_event offer_cb);
+		firefly_offer_event offer_cb, void *context);
 
 /**
  * @brief Free the provided firefly_event_queue, this function will also free
@@ -226,8 +115,8 @@ void firefly_event_queue_free(struct firefly_event_queue **eq);
  * @return The new event.
  * @retval NULL upon error.
  */
-struct firefly_event *firefly_event_new(enum firefly_event_type t,
-		unsigned char prio);
+struct firefly_event *firefly_event_new(unsigned char prio,
+		firefly_event_execute_f execute, void *context);
 
 /**
  * @brief Frees a generic event.

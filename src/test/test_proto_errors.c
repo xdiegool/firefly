@@ -55,7 +55,7 @@ static void mk_lc_and_reg_sigs(struct firefly_connection **conn_open,
 							   struct firefly_connection **conn_recv,
 							   struct firefly_event_queue **eq)
 {
-	*eq = firefly_event_queue_new(firefly_event_add);
+	*eq = firefly_event_queue_new(firefly_event_add, NULL);
 	if (*eq == NULL) {
 		CU_FAIL("Could not create queue.\n");
 	}

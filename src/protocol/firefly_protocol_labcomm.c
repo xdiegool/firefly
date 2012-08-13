@@ -216,26 +216,23 @@ int protocol_writer(labcomm_writer_t *w, labcomm_writer_action_t action)
 			w->pos = 0;
 			result = 0;
 			// create protocol packet and encode it
-			struct firefly_event_send_sample *ev =
+			struct firefly_event_send_sample *fess =
 				malloc(sizeof(struct firefly_event_send_sample));
-			firefly_protocol_data_sample *pkt =
-				malloc(sizeof(firefly_protocol_data_sample));
 			unsigned char *a = malloc(writer_data->pos);
-			if (ev == NULL || pkt == NULL || a == NULL) {
+			if (fess == NULL || a == NULL) {
 				firefly_error(FIREFLY_ERROR_ALLOC, 1,
 						"Protocol writer could not allocate send event\n");
 			}
-			ev->base.type = EVENT_SEND_SAMPLE;
-			ev->base.prio = 1;
-			ev->conn = chan->conn;
-			ev->pkt = pkt;
-			ev->pkt->dest_chan_id = chan->remote_id;
-			ev->pkt->src_chan_id = chan->local_id;
-			ev->pkt->important = true;
-			ev->pkt->app_enc_data.n_0 = writer_data->pos;
-			ev->pkt->app_enc_data.a = a;
-			memcpy(ev->pkt->app_enc_data.a, writer_data->data,
+			fess->conn = chan->conn;
+			fess->data.dest_chan_id = chan->remote_id;
+			fess->data.src_chan_id = chan->local_id;
+			fess->data.important = true;
+			fess->data.app_enc_data.n_0 = writer_data->pos;
+			fess->data.app_enc_data.a = a;
+			memcpy(fess->data.app_enc_data.a, writer_data->data,
 					writer_data->pos);
+			struct firefly_event *ev = firefly_event_new(1,
+					send_data_sample_event, fess);
 			chan->conn->event_queue->offer_event_cb(chan->conn->event_queue,
 					(struct firefly_event *) ev);
 			writer_data->pos = 0;
@@ -246,6 +243,17 @@ int protocol_writer(labcomm_writer_t *w, labcomm_writer_action_t action)
 	} break;
 	}
 	return result;
+}
+
+int send_data_sample_event(void *event_arg)
+{
+	struct firefly_event_send_sample *fess =
+		(struct firefly_event_send_sample *) event_arg;
+	labcomm_encode_firefly_protocol_data_sample(
+			fess->conn->transport_encoder, &fess->data);
+	free(fess->data.app_enc_data.a);
+	free(event_arg);
+	return 0;
 }
 
 int protocol_reader(labcomm_reader_t *r, labcomm_reader_action_t action)
