@@ -104,7 +104,17 @@ typedef void (* firefly_channel_closed_f)(struct firefly_channel *chan);
  *brief The number of channels in the connection.
  *
  * @param The connection
+ * @return The number of channels open on this connection.
 */
 size_t firefly_number_channels_in_connection(struct firefly_connection *conn);
+
+/**
+ * @brief Get the firefly_connection the channel is open on.
+ *
+ * @param The channel.
+ * @return The connection the channel is open on.
+ */
+struct firefly_connection *firefly_channel_get_connection(
+		struct firefly_channel *chan);
 
 #endif

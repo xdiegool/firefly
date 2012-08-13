@@ -142,6 +142,24 @@ void test_get_streams()
 	labcomm_mem_writer_context_t_free(&wmcontext);
 }
 
+void test_get_conn()
+{
+	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add);
+	if (eq == NULL) {
+		CU_FAIL("Could not create queue.\n");
+	}
+	// Init connection and register error handler on encoder and decoder
+	struct firefly_connection *conn =
+		setup_test_conn_new(chan_opened_mock, NULL, NULL, eq);
+	struct firefly_channel *chan = firefly_channel_new(conn);
+
+	struct firefly_connection *get_conn = firefly_channel_get_connection(chan);
+	CU_ASSERT_PTR_EQUAL(conn, get_conn);
+	firefly_channel_free(chan);
+	firefly_connection_free(&conn);
+	firefly_event_queue_free(&eq);
+}
+
 static void chan_open_handle_ack(firefly_protocol_channel_ack *ack, void *ctx)
 {
 	struct firefly_channel *chan = ((struct firefly_connection *) ctx)->

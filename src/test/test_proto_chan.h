@@ -9,6 +9,8 @@ void test_next_channel_id();
 
 void test_get_streams();
 
+void test_get_conn();
+
 void test_chan_open();
 
 void test_chan_open_rejected();
