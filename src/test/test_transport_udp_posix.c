@@ -392,7 +392,7 @@ void test_cleanup_simple()
 	struct firefly_transport_llp *llp = firefly_transport_llp_udp_posix_new(
 							local_port, NULL);
 	// Test no segfault or simillar error
-	res = firefly_transport_clean_up(llp);
+	res = firefly_transport_udp_posix_clean_up(llp);
 	CU_ASSERT_EQUAL(0, res);
 	struct firefly_connection *conn_1 =
 		firefly_transport_connection_udp_posix_open(NULL, NULL, NULL, NULL,
@@ -400,11 +400,11 @@ void test_cleanup_simple()
 	struct sockaddr_in addr;
 	setup_sockaddr(&addr, 55550);
 	// Test clean up does not remove non closed connections.
-	res = firefly_transport_clean_up(llp);
+	res = firefly_transport_udp_posix_clean_up(llp);
 	CU_ASSERT_EQUAL(0, res);
 	CU_ASSERT_PTR_NOT_NULL(find_connection_by_addr(&addr, llp));
 	firefly_transport_connection_udp_posix_close(conn_1);
-	res = firefly_transport_clean_up(llp);
+	res = firefly_transport_udp_posix_clean_up(llp);
 	CU_ASSERT_EQUAL(1, res);
 	CU_ASSERT_PTR_NULL(find_connection_by_addr(&addr, llp));
 	firefly_transport_llp_udp_posix_free(&llp);
@@ -416,30 +416,30 @@ void test_cleanup_many_conn()
 	struct firefly_transport_llp *llp = firefly_transport_llp_udp_posix_new(
 							local_port, NULL);
 	// Test no segfault or simillar error
-	res = firefly_transport_clean_up(llp);
+	res = firefly_transport_udp_posix_clean_up(llp);
 	CU_ASSERT_EQUAL(0, res);
 	struct firefly_connection *conn_1 =
-		firefly_transport_connection_udp_posix_open(NULL, NULL, NULL, NULL,
-				"127.0.0.1", 55551, llp);
+		firefly_transport_connection_udp_posix_open(NULL, NULL, NULL,
+						NULL, "127.0.0.1", 55551, llp);
 	struct sockaddr_in addr_1;
 	setup_sockaddr(&addr_1, 55551);
 	struct firefly_connection *conn_2 =
-		firefly_transport_connection_udp_posix_open(NULL, NULL, NULL, NULL,
-				"127.0.0.1", 55552, llp);
+		firefly_transport_connection_udp_posix_open(NULL, NULL, NULL,
+						NULL, "127.0.0.1", 55552, llp);
 	struct sockaddr_in addr_2;
 	setup_sockaddr(&addr_2, 55552);
 	struct firefly_connection *conn_3 =
-		firefly_transport_connection_udp_posix_open(NULL, NULL, NULL, NULL,
-				"127.0.0.1", 55553, llp);
+		firefly_transport_connection_udp_posix_open(NULL, NULL, NULL,
+						NULL, "127.0.0.1", 55553, llp);
 	struct sockaddr_in addr_3;
 	setup_sockaddr(&addr_3, 55553);
 	struct firefly_connection *conn_4 =
-		firefly_transport_connection_udp_posix_open(NULL, NULL, NULL, NULL,
-				"127.0.0.1", 55554, llp);
+		firefly_transport_connection_udp_posix_open(NULL, NULL, NULL,
+						NULL, "127.0.0.1", 55554, llp);
 	struct sockaddr_in addr_4;
 	setup_sockaddr(&addr_4, 55554);
 	// Test clean up does not remove non closed connections.
-	res = firefly_transport_clean_up(llp);
+	res = firefly_transport_udp_posix_clean_up(llp);
 	CU_ASSERT_EQUAL(0, res);
 	CU_ASSERT_PTR_NOT_NULL(find_connection_by_addr(&addr_1, llp));
 	CU_ASSERT_PTR_NOT_NULL(find_connection_by_addr(&addr_2, llp));
@@ -448,7 +448,7 @@ void test_cleanup_many_conn()
 
 	firefly_transport_connection_udp_posix_close(conn_1);
 	firefly_transport_connection_udp_posix_close(conn_3);
-	res = firefly_transport_clean_up(llp);
+	res = firefly_transport_udp_posix_clean_up(llp);
 	CU_ASSERT_EQUAL(2, res);
 	CU_ASSERT_PTR_NULL(find_connection_by_addr(&addr_1, llp));
 	CU_ASSERT_PTR_NOT_NULL(find_connection_by_addr(&addr_2, llp));
@@ -457,7 +457,7 @@ void test_cleanup_many_conn()
 
 	firefly_transport_connection_udp_posix_close(conn_2);
 	firefly_transport_connection_udp_posix_close(conn_4);
-	res = firefly_transport_clean_up(llp);
+	res = firefly_transport_udp_posix_clean_up(llp);
 	CU_ASSERT_EQUAL(2, res);
 	CU_ASSERT_PTR_NULL(find_connection_by_addr(&addr_1, llp));
 	CU_ASSERT_PTR_NULL(find_connection_by_addr(&addr_2, llp));
@@ -479,8 +479,8 @@ void test_add_conn_to_llp()
 	conn_udp_1->remote_addr = malloc(sizeof(struct sockaddr_in));
 	memcpy(conn_udp_1->remote_addr, &addr_1, sizeof(addr_1));
 	struct firefly_connection *conn_1 = firefly_connection_new(NULL, NULL,
-															NULL, NULL, NULL,
-															conn_udp_1);
+							NULL, NULL, NULL,
+							conn_udp_1);
 	add_connection_to_llp(conn_1, llp);
 
 	CU_ASSERT_PTR_NOT_NULL(llp->conn_list);

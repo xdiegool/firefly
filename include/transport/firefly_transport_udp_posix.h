@@ -106,7 +106,7 @@ void firefly_transport_connection_udp_posix_free(
  * @retval Negative number on error.
  * @retval 0 if no connection was closed.
  */
-int firefly_transport_clean_up(struct firefly_transport_llp *llp);
+int firefly_transport_udp_posix_clean_up(struct firefly_transport_llp *llp);
 
 /**
  * @brief Read data from the connection and fire events.

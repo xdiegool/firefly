@@ -182,7 +182,7 @@ void firefly_transport_connection_udp_posix_close(
 	conn_udp->open = FIREFLY_CONNECTION_CLOSED;
 }
 
-int firefly_transport_clean_up(struct firefly_transport_llp *llp)
+int firefly_transport_udp_posix_clean_up(struct firefly_transport_llp *llp)
 {
 	int nbr_closed = 0;
 	struct llp_connection_list_node **head = &llp->conn_list;
