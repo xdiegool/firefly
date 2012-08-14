@@ -44,7 +44,7 @@ FIREFLY_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(FIREFLY_SRC)) $(GEN_OBJ_FILES)
 
 DEPENDS_GEN=$(SRC_DIR)/protocol/firefly_protocol.c $(SRC_DIR)/protocol/firefly_protocol_private.h \
 	    $(SRC_DIR)/test/test_protocol.c $(SRC_DIR)/transport/firefly_transport_udp_posix.c \
-	    $(SRC_DIR)/eventqueue/event_queue.h
+	    $(SRC_DIR)/eventqueue/event_queue.h $(SRC_DIR)/test/test_proto_chan.c
 
 LIBS=$(patsubst %,$(BUILD_DIR)/lib%.a,firefly)
 
@@ -146,12 +146,9 @@ $(LABCOMMLIBPATH)/liblabcomm.a:
 # Let the labcomm .o-file depend on the generated .c and .h files.
 $(GEN_OBJ_FILES): $$(patsubst $$(BUILD_DIR)/%.o,%.c,$$@) $$(patsubst $$(BUILD_DIR)/%.o,%.h,$$@)
 
-#$(GEN_FILES): $(GEN_DIR) $$(patsubst $$(GEN_DIR)/%,c,$$(LC_DIR)/%.lc,$$@)
-# TODO try to not have .c in $@
-$(GEN_FILES): $(LABCOMMC) $(GEN_DIR) $$(patsubst $$(GEN_DIR)/%.h,$$(LC_DIR)/%.lc,$$@)
-	java -jar $(LABCOMMC) --c=$(patsubst %.h,%.c,$@) --h=$(patsubst %.c,%.h,$@) $(filter-out $(LABCOMMC) $(GEN_DIR),$^)
+$(GEN_DIR)/%.c $(GEN_DIR)/%.h: $(LC_DIR)/%.lc $(LABCOMMC) $(GEN_DIR)
+	java -jar $(LABCOMMC) --c=$(patsubst %.h,%.c,$@) --h=$(patsubst %.c,%.h,$@) $<
 
-#<<<<<<< HEAD
 $(DOC_GEN_DIR)/doxygen_full.cfg: $(DOC_DIR)/doxygen_template.cfg
 	cp $^ $@
 	echo "INPUT                  = doc/gen/index.dox include src" >> $@
@@ -163,10 +160,7 @@ $(DOC_GEN_DIR)/doxygen_api.cfg: $(DOC_DIR)/doxygen_template.cfg
 	echo "OUTPUT_DIRECTORY       = \"$(DOC_GEN_API_DIR)\"" >> $@
 
 $(DOC_GEN_DIR)/index.dox: $(DOC_GEN_DIR) $(DOC_DIR)/README.dox $(DOC_DIR)/index_template.dox
-	#cp $(DOC_DIR)/index_template.dox $@
-	#sed -e 's/^.*$$/ \* \0/g' $(DOC_DIR)/README.dox >> $@
 	cat $(DOC_DIR)/README.dox >> $@
-	#echo " */" >> $@
 
 # target: doc - Generate both full and API documentation.
 doc: doc-full doc-api
