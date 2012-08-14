@@ -120,11 +120,13 @@ struct firefly_connection *firefly_connection_new(
 /**
  * @brief Frees a connection.
  *
+ * @param conn The connection to free.
  */
 void firefly_connection_free(struct firefly_connection **conn);
 
 /**
  * @brief The function called by the transport layer upon received data.
+ *
  * @param conn The connection the data is associated with.
  * @param data The received data.
  * @param size The size of the received data.
@@ -150,8 +152,7 @@ struct firefly_channel *firefly_channel_new(struct firefly_connection *conn);
 void firefly_channel_free(struct firefly_channel *chan);
 
 /**
- * @brief The event sending the firefly_protocol_channel_request on the
- * connection.
+ * @brief The event argument of firefly_channel_open_event.
  */
 struct firefly_event_chan_open {
 	struct firefly_connection *conn; /**< The connection the channel is
@@ -162,29 +163,33 @@ struct firefly_event_chan_open {
 };
 
 /**
- * @brief The action performed when a firefly_event_chan_open is executed.
+ * @brief Open a channel on the connection. This is ment to be run in an event.
  *
  * A firefly_protocol_channel_open packet is sent with a reserved local id. The
  * firefly_channel struct is alocated and added to the chan_list of the
  * firefly_connection.
  *
  * @pram event_arg A firefly_event_chan_open.
+ * @return Integer idicating the resutlt of the event.
+ * @retval Negative integer upon error.
  */
 int firefly_channel_open_event(void *event_arg);
 
 /**
- * @brief The action performed when a firefly_event_chan_closed is executed.
+ * @brief Free's and removes the firefly_channel from the firefly_connection.
+ * This is ment to be run in an event.
  *
  * The firefly_channel is removed from the chan_list of the firefly_connection
  * and free'd.
  *
- * @pram conn The connection the channel is opened on.
- * @param chan The channel to free.
+ * @param event_arg The channel to be free'd.
+ * @return Integer idicating the resutlt of the event.
+ * @retval Negative integer upon error.
  */
 int firefly_channel_closed_event(void *event_arg);
 
 /**
- * @brief The event sending a firefly_protocol_channel_close to the remote node.
+ * @brief The event argument of firefly_channel_close_event.
  */
 struct firefly_event_chan_close {
 	struct firefly_connection *conn; /**< The connection to send the packet
@@ -196,12 +201,12 @@ struct firefly_event_chan_close {
 };
 
 /**
- * @brief The action performed when a firefly_event_chan_close is executed.
+ * @brief Sends a \c #firefly_protocol_channel_close and pushes an event to free
+ * and remove the channel from its firefly_connection.
  *
- * The firefly_protocol_channel_close is sent on the connection.
- *
- * @pram conn The connection the channel is opened on.
- * @param chan_close The close packet to send on the connection.
+ * @pram event_arg A firefly_event_chan_close.
+ * @return Integer idicating the resutlt of the event.
+ * @retval Negative integer upon error.
  */
 int firefly_channel_close_event(void *event_arg);
 
@@ -215,7 +220,7 @@ void handle_channel_request(firefly_protocol_channel_request *chan_req,
 		void *context);
 
 /**
- * @brief The event handling a received firefly_protocol_channel_request.
+ * @brief The event argument of handle_channel_request_event.
  */
 struct firefly_event_chan_req_recv {
 	struct firefly_connection *conn; /**< The connection the request was
@@ -224,14 +229,16 @@ struct firefly_event_chan_req_recv {
 };
 
 /**
- * @brief The action performed when a firefly_event_chan_req_recv is executed.
+ * @brief Parses the firefly_protocol_channel_request. Calls the
+ * firefly_channel_accept_f of the firefly_connection if the request is valid.
  *
  * The request is parsed and a firefly_channel struct is allocated. The
  * firefly_channel_accept_f is called, if it returns true a
  * firefly_protocol_channel_response is sent acknowledging the request.
  *
- * @param chan_req The received firefly_protocol_channel_request.
- * @pram conn The connection the request was received on.
+ * @param event_arg A firefly_event_chan_req_recv.
+ * @return Integer idicating the resutlt of the event.
+ * @retval Negative integer upon error.
  */
 int handle_channel_request_event(void *event_arg);
 
@@ -245,7 +252,7 @@ void handle_channel_response(firefly_protocol_channel_response *chan_res,
 		void *context);
 
 /**
- * @brief The event handling a received firefly_protocol_channel_response.
+ * @brief The event argument of handle_channel_response_event.
  */
 struct firefly_event_chan_res_recv {
 	struct firefly_connection *conn; /**< The connection the request was
@@ -255,14 +262,13 @@ struct firefly_event_chan_res_recv {
 };
 
 /**
- * @brief The action performed when a firefly_event_chan_res_recv is executed.
- *
- * The firefly_protocol_channel_repsonse is parsed and if valid the
+ * @brief The firefly_protocol_channel_repsonse is parsed and if valid the
  * firefly_channel_is_open_f is called and a firefly_protocol_channel_ack is
  * sent.
  *
- * @param chan_res The received firefly_protocol_channel_response.
- * @pram conn The connection the response was received on.
+ * @param event_arg A firefly_event_chan_res_recv.
+ * @return Integer idicating the resutlt of the event.
+ * @retval Negative integer upon error.
  */
 int handle_channel_response_event(void *event_arg);
 
@@ -275,7 +281,7 @@ int handle_channel_response_event(void *event_arg);
 void handle_channel_ack(firefly_protocol_channel_ack *chan_ack, void *context);
 
 /**
- * @brief The event handling a received firefly_protocol_channel_ack.
+ * @brief The event argument of handle_channel_ack_event.
  */
 struct firefly_event_chan_ack_recv {
 	struct firefly_connection *conn; /**< The connection the ack was
@@ -284,13 +290,12 @@ struct firefly_event_chan_ack_recv {
 };
 
 /**
- * @brief The action performed when a firefly_event_chan_ack_recv is executed.
- *
- * The firefly_protocol_channel_ack is parsed and if valid the
+ * @brief The firefly_protocol_channel_ack is parsed and if valid the
  * firefly_channel_is_open_f is called.
  *
- * @param chan_ack The received firefly_protocol_channel_ack.
- * @pram conn The connection the ack was received on.
+ * @param event_arg A firefly_event_chan_ack_recv.
+ * @return Integer idicating the resutlt of the event.
+ * @retval Negative integer upon error.
  */
 int handle_channel_ack_event(void *event_arg);
 
@@ -313,7 +318,7 @@ void handle_data_sample(firefly_protocol_data_sample *data,
 		void *context);
 
 /**
- * @brief The event receiving a firefly_protocol_data_sample.
+ * @brief The event argument of handle_channel_ack_event.
  */
 struct firefly_event_recv_sample {
 	struct firefly_connection *conn; /**< The connection to send the sample
@@ -322,17 +327,17 @@ struct firefly_event_recv_sample {
 };
 
 /**
- * @brief The action performed when a firefly_event_recv_sample is executed.
- *
- * The firefly_protocol_data_sample is parsed and if valid the app data is
+ * @brief The firefly_protocol_data_sample is parsed and if valid the app data is
  * decoded.
  *
- * @param data The received firefly_protocol_data_sample.
- * @pram conn The connection the data was received on.
+ * @param event_arg A firefly_event_recv_sample.
+ * @return Integer idicating the resutlt of the event.
+ * @retval Negative integer upon error.
  */
 int handle_data_sample_event(void *event_arg);
+
 /**
- * @brief The event receiving a firefly_protocol_data_sample.
+ * @brief The event argument of handle_channel_ack_event.
  */
 struct firefly_event_send_sample {
 	struct firefly_connection *conn; /**< The connection to send the sample
@@ -340,6 +345,13 @@ struct firefly_event_send_sample {
 	firefly_protocol_data_sample data; /**< The sample to send. */
 };
 
+/**
+ * @brief Encodes and sends a firefly_protocol_data_sample on the firefly_connection.
+ *
+ * @param event_arg A firefly_event_recv_sample.
+ * @return Integer idicating the resutlt of the event.
+ * @retval Negative integer upon error.
+ */
 int send_data_sample_event(void *event_arg);
 
 /**

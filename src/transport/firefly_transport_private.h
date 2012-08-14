@@ -26,6 +26,11 @@ struct llp_connection_list_node {
 	struct firefly_connection *conn;
 };
 
+/**
+ * @brief The event free'ing a firefly_connection and all it's channels.
+ *
+ * @param event_arg The firefly_connection to free.
+ */
 int firefly_transport_connection_udp_posix_free_event(void *event_arg);
 
 #endif

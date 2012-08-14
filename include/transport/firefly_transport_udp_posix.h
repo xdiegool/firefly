@@ -88,17 +88,6 @@ void firefly_transport_connection_udp_posix_close(
 		struct firefly_connection *conn);
 
 /**
- * @brief Free the connection and any resources associated with it.
- *
- * The freed resources includes all channels.
- *
- * @param conn A pointer to the pointer to the #firefly_connection to free. The
- * pointer will be set to \c NULL.
- */
-void firefly_transport_connection_udp_posix_free(
-		struct firefly_connection *conn);
-
-/**
  * @brief Free any closed conenctions on the given firefly_transport_llp
  *
  * @param llp The llp to search for closed connections on.

@@ -37,7 +37,8 @@ struct protocol_connection_udp_posix {
 						this connection */
 	int socket; /**< The socket file descriptor associated with this
 				connection. */
-	sig_atomic_t open;
+	sig_atomic_t open; /**< The flag indicating the opened state of a
+						 connection. */
 };
 
 /**
@@ -68,12 +69,19 @@ struct firefly_connection *find_connection_by_addr(struct sockaddr_in *addr,
 bool sockaddr_in_eq(struct sockaddr_in *one, struct sockaddr_in *other);
 
 /**
- * @brief TODO
+ * @brief Retrieves the IP address of a sockaddr_in.
+ *
+ * @param addr The sockaddr_in to retreive the IP addres from.
+ * @param ip_addr The string to store the IP address in.
+ * @warning The string ip_addr must be at least of length INET_ADDRSTRLEN.
  */
 void sockaddr_in_ipaddr(struct sockaddr_in *addr, char *ip_addr);
 
 /**
- * @brief TODO
+ * @brief Retrieves the port number of a sockaddr_in.
+ *
+ * @param addr The sockaddr_in to get the posrt number from.
+ * @returns The port number.
  */
 unsigned short sockaddr_in_port(struct sockaddr_in *addr);
 
@@ -108,5 +116,16 @@ struct firefly_connection *firefly_connection_udp_posix_new(
 					struct firefly_event_queue *event_queue,
 					struct firefly_transport_llp *llp,
 					struct sockaddr_in *remote_addr);
+
+/**
+ * @brief Free the connection and any resources associated with it.
+ *
+ * The freed resources includes all channels.
+ *
+ * @param conn A pointer to the pointer to the #firefly_connection to free. The
+ * pointer will be set to \c NULL.
+ */
+void firefly_transport_connection_udp_posix_free(
+		struct firefly_connection *conn);
 
 #endif
