@@ -36,7 +36,7 @@ struct firefly_transport_llp_udp_posix;
  */
 typedef struct firefly_connection *(*firefly_on_conn_recv_pudp)(
 		struct firefly_transport_llp *llp,
-		char *ip_addr, unsigned short port);
+		const char *ip_addr, unsigned short port);
 
 /**
  * @brief Allocates and initializes a new \c transport_llp with UDP specific
@@ -67,19 +67,20 @@ void firefly_transport_llp_udp_posix_free(struct firefly_transport_llp **llp);
  * To recieve data on this connection, a read operation should be performed on
  * the provided #firefly_transport_llp.
  *
- * @param ip_addr The IP address to connect to.
- * @param port The port to connect to.
+ * @param remote_ip_addr The IP address to connect to.
+ * @param remote_port The port to connect to.
  * @param llp The \c #firefly_transport_llp to open a connection on.
  * @return The newly opened connection.
  * @retval NULL Returns \c NULL upon failure.
  */
 struct firefly_connection *firefly_transport_connection_udp_posix_open(
-		firefly_channel_is_open_f on_channel_opened,
-		firefly_channel_closed_f on_channel_closed,
-		firefly_channel_accept_f on_channel_recv,
-		struct firefly_event_queue *event_queue,
-		char *ip_addr, unsigned short port,
-		struct firefly_transport_llp *llp);
+				firefly_channel_is_open_f on_channel_opened,
+				firefly_channel_closed_f on_channel_closed,
+				firefly_channel_accept_f on_channel_recv,
+				struct firefly_event_queue *event_queue,
+				char *remote_ip_addr,
+				unsigned short remote_port,
+				struct firefly_transport_llp *llp);
 
 /**
  * @brief Set the state of the connection to closed.
@@ -101,7 +102,7 @@ void firefly_transport_connection_udp_posix_free(
 		struct firefly_connection **conn);
 
 /**
- * @brief Free any closed conenctions on the given firefly_transport_llp
+ * @brief Free any closed conenctions on the given firefly_transport_llp.
  *
  * @param llp The llp to search for closed connections on.
  * @return The number of connections closed.

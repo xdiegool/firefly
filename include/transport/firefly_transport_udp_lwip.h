@@ -5,6 +5,7 @@
  */
 #ifndef FIREFLY_TRANSPORT_UDP_LWIP_H
 #define FIREFLY_TRANSPORT_UDP_LWIP_H
+// TODO add lwip headers.
 
 #include <protocol/firefly_protocol.h>
 #include <transport/firefly_transport.h>
@@ -31,20 +32,25 @@ struct firefly_transport_llp_udp_lwip;
  * @return The opened connection.
  * @retval NULL if no connection was opened.
  */
+// TODO rename to _f to follow our function typedef standard.
 typedef struct firefly_connection *(*firefly_on_conn_recv_udp_lwip)(
-		struct firefly_transport_llp *llp, struct ip_addr *ip_addr,
-		u16_t port);
+		struct firefly_transport_llp *llp, char *ip_addr,
+		unsigned short port);
 
 /**
  * @brief Allocates and initializes a new \c transport_llp with UDP specific
  * data and open an UDP socket bound to the specified \a local_port.
  *
+ * @param local_ip_addr The local IP address to bind to. Can be IP_ADDR_ANY to
+ * bind to all known interfaces.
  * @param local_port The port to bind the new socket to.
  * @param on_conn_recv The callback to call when a new connection is received
  * @return A pointer to the created \c firefly_transport_llp.
  */
 struct firefly_transport_llp *firefly_transport_llp_udp_lwip_new(
-		u16_t local_port, firefly_on_conn_recv_udp_lwip on_conn_recv);
+		char *local_ip_addr,
+		unsigned short local_port,
+		firefly_on_conn_recv_udp_lwip on_conn_recv);
 
 /**
  * @brief Close the socket and free any resources associated with this
@@ -74,7 +80,8 @@ struct firefly_connection *firefly_transport_connection_udp_lwip_open(
 		firefly_channel_closed_f on_channel_closed,
 		firefly_channel_accept_f on_channel_recv,
 		struct firefly_event_queue *event_queue,
-		struct ip_addr *ip_addr, u16_t port,
+		char *ip_addr,
+		unsigned short port,
 		struct firefly_transport_llp *llp);
 
 /**
@@ -97,7 +104,7 @@ void firefly_transport_connection_udp_lwip_free(
 		struct firefly_connection **conn);
 
 /**
- * @brief Free any closed conenctions on the given firefly_transport_llp
+ * @brief Free any closed conenctions on the given firefly_transport_llp.
  *
  * @param llp The llp to search for closed connections on.
  * @return The number of connections closed.

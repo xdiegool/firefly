@@ -90,13 +90,13 @@ typedef bool (* firefly_channel_accept_f)(struct firefly_channel *chan);
  *
  * @param chan The newly opened channel.
  */
-typedef void (* firefly_channel_is_open_f)(struct firefly_channel *chan);
+wypedef void (* firefly_channel_is_open_f)(struct firefly_channel *chan);
 
 /**
  * @brief A prototype for a callback from the protocol layer called when a
  * channel is closed.
  *
- * @param chan The closed channel.
+ * @qaram chan The closed channel.
  */
 typedef void (* firefly_channel_closed_f)(struct firefly_channel *chan);
 

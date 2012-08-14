@@ -120,6 +120,7 @@ void firefly_channel_closed_event(struct firefly_channel *chan)
 	firefly_channel_free(remove_channel_from_connection(chan, chan->conn));
 }
 
+// Add const to data?
 void protocol_data_received(struct firefly_connection *conn,
 		unsigned char *data, size_t size)
 {
