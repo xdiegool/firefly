@@ -11,7 +11,9 @@
 
 #include <protocol/firefly_protocol.h>
 #include <transport/firefly_transport.h>
-#include "eventqueue/event_queue.h"
+#include <eventqueue/firefly_event_queue.h>
+
+#include "eventqueue/firefly_event_queue_private.h"
 
 /**
  * @brief An opaque UDP specific link layer port data.
@@ -133,7 +135,7 @@ void firefly_transport_udp_posix_write(unsigned char *data, size_t data_size,
  *        of the receive buffer is decreased.
  *
  * @param llp The llp to apply the change on.
- * @param nbr The number of package to set as the new threshold. \b Must be 
+ * @param nbr The number of package to set as the new threshold. \b Must be
  * greater than zero.
  */
 void firefly_transport_udp_posix_set_n_scaleback(

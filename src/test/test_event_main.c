@@ -6,7 +6,9 @@
 #include "CUnit/Basic.h"
 #include "CUnit/Console.h"
 
-#include "eventqueue/event_queue.h"
+#include <eventqueue/firefly_event_queue.h>
+
+#include "eventqueue/firefly_event_queue_private.h"
 
 int init_suite_event()
 {

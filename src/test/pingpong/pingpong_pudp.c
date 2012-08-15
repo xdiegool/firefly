@@ -56,8 +56,10 @@ int event_add_mutex(struct firefly_event_queue *eq, struct firefly_event *ev)
 void *event_thread_main(void *args)
 {
 	struct firefly_event_queue *eq = (struct firefly_event_queue *) args;
+	// TODO eq
 	struct event_queue_signals *eq_s =
-		(struct event_queue_signals *) eq->context;
+		(struct event_queue_signals *)
+		firefly_event_queue_get_context(eq);
 	struct firefly_event *ev = NULL;
 
 	// TODO consider another expression besides '1'

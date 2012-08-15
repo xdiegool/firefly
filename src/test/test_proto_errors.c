@@ -9,9 +9,10 @@
 #include <gen/firefly_protocol.h>
 #include <gen/test.h>
 #include <firefly_errors.h>
-#include "protocol/firefly_protocol_private.h"
 #include <protocol/firefly_protocol.h>
-#include "eventqueue/event_queue.h"
+#include <eventqueue/firefly_event_queue.h>
+
+#include "protocol/firefly_protocol_private.h"
 #include "proto_helper.h"
 
 extern struct tmp_data conn_open_write;

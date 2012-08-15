@@ -9,8 +9,9 @@
 
 #include <firefly_errors.h>
 #include <gen/firefly_protocol.h>
-#include "eventqueue/event_queue.h"
+#include <eventqueue/firefly_event_queue.h>
 
+#include "eventqueue/firefly_event_queue_private.h"
 
 void firefly_channel_open(struct firefly_connection *conn,
 		firefly_channel_rejected_f on_chan_rejected)
