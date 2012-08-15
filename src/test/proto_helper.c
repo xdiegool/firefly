@@ -11,7 +11,8 @@
 #include <gen/firefly_protocol.h>
 #include <gen/test.h>
 #include <firefly_errors.h>
-#include "eventqueue/event_queue.h"
+#include <eventqueue/firefly_event_queue.h>
+
 #include "test/test_labcomm_utils.h"
 
 labcomm_mem_reader_context_t *test_dec_ctx = NULL;

@@ -34,7 +34,7 @@ int clean_suit_udp_posix()
 	return 0; // Success.
 }
 
-static unsigned short local_port = 55555;
+static const unsigned short local_port = 55555;
 static unsigned short remote_port = 55556;
 static unsigned char send_buf[] = {0,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16};
 
@@ -129,7 +129,7 @@ void protocol_data_received(struct firefly_connection *conn, unsigned char *data
 static bool good_conn_received = false;
 /* Callback when a new connection arrives at transport layer. */
 struct firefly_connection *recv_conn_recv_conn(
-		struct firefly_transport_llp *llp, char *ip_addr, unsigned short port)
+		struct firefly_transport_llp *llp, const char *ip_addr, unsigned short port)
 {
 	CU_ASSERT_STRING_EQUAL(ip_addr, "127.0.0.1");
 	CU_ASSERT_EQUAL(port, remote_port);
@@ -159,7 +159,7 @@ void test_recv_connection()
 }
 
 struct firefly_connection *recv_data_recv_conn(
-		struct firefly_transport_llp *llp, char *ip_addr, unsigned short port)
+		struct firefly_transport_llp *llp, const char *ip_addr, unsigned short port)
 {
 	CU_FAIL("Received connection but shouldn't have.\n");
 	return NULL;
@@ -258,7 +258,7 @@ void test_recv_conn_keep()
 }
 
 struct firefly_connection *recv_conn_keep_two(
-		struct firefly_transport_llp *llp, char *ip_addr, unsigned short port)
+		struct firefly_transport_llp *llp, const char *ip_addr, unsigned short port)
 {
 	good_conn_received = true;
 	struct firefly_connection *conn =
@@ -305,7 +305,7 @@ void test_recv_conn_keep_two()
 }
 
 struct firefly_connection *recv_conn_reject_recv_conn(
-		struct firefly_transport_llp *llp, char *ip_addr, unsigned short port)
+		struct firefly_transport_llp *llp, const char *ip_addr, unsigned short port)
 {
 	good_conn_received = true;
 	return NULL;
@@ -571,7 +571,7 @@ void test_conn_open_and_recv()
 static struct firefly_connection *conn_recv = NULL;
 /* Callback when a new connection arrives at transport layer. */
 struct firefly_connection *open_and_recv_conn_recv_conn(
-		struct firefly_transport_llp *llp, char *ip_addr, unsigned short port)
+		struct firefly_transport_llp *llp, const char *ip_addr, unsigned short port)
 {
 	good_conn_received = true;
 	conn_recv = firefly_transport_connection_udp_posix_open(NULL, NULL, NULL,

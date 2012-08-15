@@ -2,7 +2,7 @@
 #ifndef PINGPONG_PUDP_H
 #define PINGPONG_PUDP_H
 
-#include <eventqueue/event_queue.h>
+#include <eventqueue/firefly_event_queue.h>
 #include <transport/firefly_transport_udp_posix.h>
 
 #define PING_PORT (55555)

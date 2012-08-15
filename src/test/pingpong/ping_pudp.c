@@ -4,7 +4,7 @@
 #include <labcomm.h>
 #include <protocol/firefly_protocol.h>
 #include <transport/firefly_transport_udp_posix.h>
-#include <eventqueue/event_queue.h>
+#include <eventqueue/firefly_event_queue.h>
 
 #include "gen/test.h"
 #include "test/pingpong/hack_lctypes.h"
@@ -97,7 +97,7 @@ void channel_rejected(struct firefly_connection *conn)
 }
 
 struct firefly_connection *connection_received(
-		struct firefly_transport_llp *llp, char *ip_addr, unsigned short port)
+		struct firefly_transport_llp *llp, const char *ip_addr, unsigned short port)
 {
 	printf("PING: Connection received.\n");
 	struct firefly_connection *conn = NULL;

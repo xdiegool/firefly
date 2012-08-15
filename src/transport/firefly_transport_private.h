@@ -33,4 +33,13 @@ struct llp_connection_list_node {
  */
 int firefly_transport_connection_udp_posix_free_event(void *event_arg);
 
+/**
+ * @brief Adds a connection to the connection list in \a llp.
+ *
+ * @param conn The connection to add.
+ * @param llp The link layer port structure to add the connection to.
+ */
+void add_connection_to_llp(struct firefly_connection *conn,
+		struct firefly_transport_llp *llp);
+
 #endif

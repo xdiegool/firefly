@@ -9,7 +9,8 @@
 
 #include <firefly_errors.h>
 #include <gen/firefly_protocol.h>
-#include "eventqueue/event_queue.h"
+#include <eventqueue/firefly_event_queue.h>
+#include "eventqueue/firefly_event_queue_private.h"
 
 struct firefly_connection *tmp_conn;
 
@@ -153,6 +154,7 @@ int firefly_channel_close_event(void *event_arg)
 	return 0;
 }
 
+// Add const to data?
 void protocol_data_received(struct firefly_connection *conn,
 		unsigned char *data, size_t size)
 {

@@ -51,14 +51,16 @@ struct firefly_connection *firefly_connection_new_register(
 	if (conn->transport_encoder == NULL) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1, "malloc failed\n");
 	}
-	labcomm_register_error_handler_encoder(conn->transport_encoder, labcomm_error_to_ff_error);
+	labcomm_register_error_handler_encoder(conn->transport_encoder,
+			labcomm_error_to_ff_error);
 
 	conn->transport_decoder =
 		labcomm_decoder_new(ff_transport_reader, conn);
 	if (conn->transport_decoder == NULL) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1, "malloc failed\n");
 	}
-	labcomm_register_error_handler_decoder(conn->transport_decoder, labcomm_error_to_ff_error);
+	labcomm_register_error_handler_decoder(conn->transport_decoder,
+			labcomm_error_to_ff_error);
 
 	conn->transport_write = transport_write;
 	conn->transport_conn_platspec = plat_spec;

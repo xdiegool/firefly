@@ -1,7 +1,7 @@
 #include <pthread.h>
 #include "test/pingpong/pingpong_pudp.h"
 
-#include <eventqueue/event_queue.h>
+#include <eventqueue/firefly_event_queue.h>
 #include <transport/firefly_transport_udp_posix.h>
 
 
@@ -56,8 +56,10 @@ int event_add_mutex(struct firefly_event_queue *eq, struct firefly_event *ev)
 void *event_thread_main(void *args)
 {
 	struct firefly_event_queue *eq = (struct firefly_event_queue *) args;
+	// TODO eq
 	struct event_queue_signals *eq_s =
-		(struct event_queue_signals *) eq->context;
+		(struct event_queue_signals *)
+		firefly_event_queue_get_context(eq);
 	struct firefly_event *ev = NULL;
 
 	// TODO consider another expression besides '1'

@@ -1,7 +1,7 @@
 /**
  * @file
  * @brief This file contains definitions of the event queue used by firefly.
- * 
+ *
  * Firefly is an event driven API. Most actions accesible from the public API
  * will spawn one or more events which must be run in order for the action to be
  * performed.
@@ -24,6 +24,21 @@
 #define FIREFLY_PRIORITY_HIGH (235)
 
 /**
+ * @brief An event.
+ *
+ * @warning The largest context of an event is a single firefly_connection. A
+ * larger context may (most likely) imply concurrency problems.
+ */
+struct firefly_event;
+
+/**
+ * @brief An event queue
+ *
+ * This is a priority queue, the events are placed in order upon insertion.
+ */
+struct firefly_event_queue;
+
+/**
  * @brief The function called when an event is executed.
  *
  * @param event_arg The context of the event executed.
@@ -31,24 +46,6 @@
  * @retval Negative integer upon error.
  */
 typedef int (*firefly_event_execute_f)(void *event_arg);
-
-/**
- * @brief An event.
- *
- * @warning The largest context of an event is a single firefly_connection. A
- * larger context may (most likely) imply concurrency problems.
- */
-struct firefly_event {
-	unsigned char prio; /**< The priority of the event, higher value means
-					higher priority. */
-	firefly_event_execute_f execute; /**< The function to call when the event is
-									   executed. */
-	void *context; /**< The context passed to firefly_event_execute_f() when
-					 the event is executed. */
-};
-
-/* Forward declaration. */
-struct firefly_event_queue;
 
 /**
  * @brief The function implementing any extra logic needed to add an event to the
@@ -69,29 +66,6 @@ struct firefly_event_queue;
  */
 typedef int (*firefly_offer_event)(struct firefly_event_queue *queue,
 		struct firefly_event *event);
-
-/**
- * @brief An event queue
- *
- * This is a priority queue, the events are placed in order upon insertion.
- */
-struct firefly_event_queue {
-	struct firefly_eq_node *head; /**< Reference to the first event in
-						the queue. */
-	firefly_offer_event offer_event_cb; /**< The callback used for adding
-							new events. */
-	void *context; /**< A application defined context for this queue.
-							  Possibly a mutex. */
-};
-
-/**
- * @brief A node in the prioritized firefly_event_queue implemented as a linked
- * list.
- */
-struct firefly_eq_node {
-	struct firefly_eq_node *next; /**< The next node. */
-	struct firefly_event *event; /**< The event. */
-};
 
 /**
  * @brief Initializes and allocates a new firefly_event_queue.
@@ -194,5 +168,13 @@ int firefly_event_execute(struct firefly_event *ev);
  * @return The length of the queue.
  */
 size_t firefly_event_queue_length(struct firefly_event_queue *eq);
+
+/**
+ * @brief Get the context in the event queue.
+ *
+ * @param ev The event queue to get the context from
+ * @return The context.
+ */
+void * firefly_event_queue_get_context(struct firefly_event_queue *ev);
 
 #endif

@@ -1,4 +1,4 @@
--Iinclude
--I../lib/labcomm/lib/c
--I.
--Isrc
+-I include
+-I ../lib/labcomm/lib/c
+-I .
+-I src
