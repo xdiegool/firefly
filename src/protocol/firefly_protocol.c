@@ -108,6 +108,7 @@ int firefly_channel_close_event(void *event_arg)
 	return 0;
 }
 
+// Add const to data?
 void protocol_data_received(struct firefly_connection *conn,
 		unsigned char *data, size_t size)
 {

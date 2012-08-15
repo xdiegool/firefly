@@ -57,7 +57,7 @@ void handle_test_var(test_test_var *var, void *ctx);
 void *send_data_and_close(void *args);
 
 struct firefly_connection *connection_received(
-		struct firefly_transport_llp *llp, char *ip_addr, unsigned short port)
+		struct firefly_transport_llp *llp, const char *ip_addr, unsigned short port)
 {
 	struct firefly_connection *conn;
 	/* If address is correct, open a connection. */

@@ -17,6 +17,12 @@ enum firefly_error {
 	FIREFLY_ERROR_ALLOC,
 	/**< Represents an error while allocating memory. */
 	FIREFLY_ERROR_SOCKET,
+	/**< Something went wrong when binding a LLP. */
+	FIREFLY_ERROR_LLP_BIND,
+	/**< Failed to parse an IP address. */
+	FIREFLY_ERROR_IP_PARSE,
+	/**< Failed to write data at transport medium.. */
+	FIREFLY_ERROR_TRANS_WRITE,
 	/**< Represents an error while opening, binding or performing similar operations on a socket. */
 	FIREFLY_ERROR_LABCOMM,
 	/**< An LabComm error has occured. */

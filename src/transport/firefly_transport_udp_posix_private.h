@@ -17,11 +17,13 @@
  */
 struct transport_llp_udp_posix {
 	int local_udp_socket; /**< The file descriptor of the UDP socket */
-	struct sockaddr_in *local_addr; /**< The address the socket is bound to */
+	struct sockaddr_in *local_addr; /**< The address the socket is bound to. 
+	*/
 	/* buffer related stuff */
 	size_t scale_back_nbr;	/**< The number of pkgs before scaleback */
 	size_t nbr_smaller; 	/**< The number of smaller pkgs received */
-	size_t scale_back_size;	/**< The next largest pkg seen among the n last pkgs */
+	size_t scale_back_size;	/**< The next largest pkg seen among the n last 
+				  pkgs */
 	size_t recv_buf_size;	/**< Current buffer size */
 	unsigned char *recv_buf;	/**< Pointer t the recv buffer  */
 	firefly_on_conn_recv_pudp on_conn_recv; /**< The callback to be called
@@ -55,7 +57,7 @@ struct protocol_connection_udp_posix {
  * @retval struct #firefly_connection* is returned with the matching address if
  * it was found.
  */
-struct firefly_connection *find_connection_by_addr(struct sockaddr_in *addr,
+struct firefly_connection *find_connection_by_addr(struct sockaddr_in *ip_addr,
 		struct firefly_transport_llp *llp);
 
 /**
@@ -69,19 +71,19 @@ struct firefly_connection *find_connection_by_addr(struct sockaddr_in *addr,
 bool sockaddr_in_eq(struct sockaddr_in *one, struct sockaddr_in *other);
 
 /**
- * @brief Retrieves the IP address of a sockaddr_in.
- *
- * @param addr The sockaddr_in to retreive the IP addres from.
- * @param ip_addr The string to store the IP address in.
+ * @brief Convert a struct sockaddr_in to a string representation.
+ * 
+ * @param addr The struct sockaddr_in to convert.
+ * @param ip_addr Where the resulting string should be written.
  * @warning The string ip_addr must be at least of length INET_ADDRSTRLEN.
  */
 void sockaddr_in_ipaddr(struct sockaddr_in *addr, char *ip_addr);
 
 /**
- * @brief Retrieves the port number of a sockaddr_in.
- *
- * @param addr The sockaddr_in to get the posrt number from.
- * @returns The port number.
+ * @brief Get the port in an struct sockaddr_in.
+ * 
+ * @param addr The struct sockaddr_in
+ * @retnr The port.
  */
 unsigned short sockaddr_in_port(struct sockaddr_in *addr);
 
