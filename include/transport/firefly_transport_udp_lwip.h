@@ -5,7 +5,6 @@
  */
 #ifndef FIREFLY_TRANSPORT_UDP_LWIP_H
 #define FIREFLY_TRANSPORT_UDP_LWIP_H
-// TODO add lwip headers.
 
 #include <protocol/firefly_protocol.h>
 #include <transport/firefly_transport.h>

@@ -97,7 +97,7 @@ void channel_rejected(struct firefly_connection *conn)
 }
 
 struct firefly_connection *connection_received(
-		struct firefly_transport_llp *llp, char *ip_addr, unsigned short port)
+		struct firefly_transport_llp *llp, const char *ip_addr, unsigned short port)
 {
 	printf("PING: Connection received.\n");
 	struct firefly_connection *conn = NULL;

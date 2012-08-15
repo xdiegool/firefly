@@ -9,7 +9,6 @@
 
 #include "protocol/firefly_protocol_private.h"
 #include "transport/firefly_transport_private.h"
-// TODO add lwip headers.
 
 static void udp_lwip_recv_callback(void *recv_arg, struct udp_pcb *upcb,
 		struct pbuf *pbuf, struct ip_addr *remote_ip_addr,
@@ -17,10 +16,13 @@ static void udp_lwip_recv_callback(void *recv_arg, struct udp_pcb *upcb,
 {
 	struct firefly_transport_llp *llp =
 		(struct firefly_transport_llp *) recv_arg;
+	struct transport_llp_udp_lwip *llp_udp =
+		(struct transport_llp_udp_lwip *) llp->llp_platspec;
 
 	// Find existing connection or create new.
 	struct firefly_connection *conn = find_connection_by_addr(
 			remote_ip_addr, llp);
+
 	if (llp_udp->on_conn_recv == NULL) {
 		// TODO feature consideration,
 		// on_conn_recv == NULL => silently reject incomming connections
@@ -41,7 +43,7 @@ static void udp_lwip_recv_callback(void *recv_arg, struct udp_pcb *upcb,
 struct firefly_transport_llp *firefly_transport_llp_udp_lwip_new(
 				char *local_ip_addr,
 				unsigned short local_port,
-				firefly_on_conn_recv_udp_lwip on_conn_recv);
+				firefly_on_conn_recv_udp_lwip on_conn_recv)
 {
 	struct transport_llp_udp_lwip *llp_udp =
 				malloc(sizeof(struct transport_llp_udp_lwip));
@@ -50,7 +52,7 @@ struct firefly_transport_llp *firefly_transport_llp_udp_lwip_new(
 					  "Failed in %s().\n", __FUNCTION__);
 	}
 	llp_udp->upcb = udp_new();
-	if (lli_udp->upcb == NULL) {
+	if (llp_udp->upcb == NULL) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 2,
 				"Failed to allocate udp_pcb in"
 				" %s().\n", __FUNCTION__);
@@ -59,7 +61,7 @@ struct firefly_transport_llp *firefly_transport_llp_udp_lwip_new(
 	if (ip_lwip == NULL) {
 		return NULL;
 	}
-	err_t u_err = udp_bind(llp->upcb, ip_lwip, local_port);
+	err_t u_err = udp_bind(llp_udp->upcb, ip_lwip, local_port);
 	if (u_err == ERR_USE) {
 		firefly_error(FIREFLY_ERROR_LLP_BIND, 1,
 				"UDP port %u already bound!\n", local_port);
@@ -69,7 +71,7 @@ struct firefly_transport_llp *firefly_transport_llp_udp_lwip_new(
 
 	llp_udp->local_ip_addr = ip_lwip;
 	llp_udp->local_port = local_port;
-	llp_upd->on_conn_recv = on_conn_recv;
+	llp_udp->on_conn_recv = on_conn_recv;
 
 	struct firefly_transport_llp *llp = malloc(sizeof(
 						struct firefly_transport_llp));
@@ -86,7 +88,7 @@ struct firefly_transport_llp *firefly_transport_llp_udp_lwip_new(
 	return llp;
 }
 
-void firefly_transport_llp_udp_lwip_free(struct firefly_transport_llp **llp);
+void firefly_transport_llp_udp_lwip_free(struct firefly_transport_llp **llp)
 {
 	struct transport_llp_udp_lwip *llp_udp =
 		(struct transport_llp_udp_lwip *) (*llp)->llp_platspec;
@@ -108,7 +110,7 @@ void firefly_transport_llp_udp_lwip_free(struct firefly_transport_llp **llp);
 }
 
 void firefly_transport_connection_udp_lwip_free(
-		struct firefly_connection **conn);
+		struct firefly_connection **conn)
 {
 	struct protocol_connection_udp_lwip *conn_udp =
 		(struct protocol_connection_udp_lwip *)
@@ -124,12 +126,10 @@ struct firefly_connection *firefly_transport_connection_udp_posix_open(
 				firefly_channel_closed_f on_channel_closed,
 				firefly_channel_accept_f on_channel_recv,
 				struct firefly_event_queue *event_queue,
-				char *ip_addr,
-				unsigned short port,
+				char *remote_ip_addr,
+				unsigned short remote_port,
 				struct firefly_transport_llp *llp)
 {
-	struct transport_llp_udp_lwip *llp_udp =
-			(struct transport_llp_udp_lwip *) llp->llp_platspec;
 	struct protocol_connection_udp_lwip *conn_udp =
 		malloc(sizeof(struct protocol_connection_udp_lwip));
 
@@ -146,11 +146,11 @@ struct firefly_connection *firefly_transport_connection_udp_posix_open(
 		return NULL;
 	}
 
-	struct ip_addr *ip_addr = str_to_ip_addr(remote_ip_addr);
-	if (ip_addr == NULL) {
+	struct ip_addr *ip_lwip = str_to_ip_addr(remote_ip_addr);
+	if (ip_lwip == NULL) {
 		return NULL;
 	}
-	conn_udp_remote_addr = ip_addr;
+	conn_udp->remote_ip_addr = ip_lwip;
 	conn_udp->remote_port = (u16_t) remote_port;
 	conn_udp->open = FIREFLY_CONNECTION_OPEN;
 
@@ -159,7 +159,7 @@ struct firefly_connection *firefly_transport_connection_udp_posix_open(
 }
 
 void firefly_transport_connection_udp_lwip_close(
-		struct firefly_connection *conn);
+		struct firefly_connection *conn)
 {
 	struct protocol_connection_udp_lwip *conn_udp =
 		(struct protocol_connection_udp_lwip *)
@@ -167,7 +167,7 @@ void firefly_transport_connection_udp_lwip_close(
 	conn_udp->open = FIREFLY_CONNECTION_CLOSED;
 }
 
-int firefly_transport_udp_lwip_clean_up(struct firefly_transport_llp *llp);
+int firefly_transport_udp_lwip_clean_up(struct firefly_transport_llp *llp)
 {
 	int nbr_closed = 0;
 	struct llp_connection_list_node **head = &llp->conn_list;
@@ -193,7 +193,7 @@ int firefly_transport_udp_lwip_clean_up(struct firefly_transport_llp *llp);
 // TODO we should not have to memcpy the data to write. Can we make memory alloc
 // transport specific or avoid this problem somehow?
 void firefly_transport_udp_lwip_write(unsigned char *data, size_t data_size,
-		struct firefly_connection *conn);
+		struct firefly_connection *conn)
 {
 	struct protocol_connection_udp_lwip *conn_udp =
 		(struct protocol_connection_udp_lwip *)
@@ -206,7 +206,7 @@ void firefly_transport_udp_lwip_write(unsigned char *data, size_t data_size,
 	}
 	memcpy(pbuf->payload, data, data_size);
 
-	u08 err = udp_sendto(conn_udp->upcb, pbuf, conn_udp->remote_ip_addr,
+	err_t err = udp_sendto(conn_udp->upcb, pbuf, conn_udp->remote_ip_addr,
 			conn_udp->remote_port);
 	if (err != ERR_OK) {
 		firefly_error(FIREFLY_ERROR_TRANS_WRITE, 2,
@@ -223,7 +223,7 @@ struct firefly_connection *find_connection_by_addr(struct ip_addr *ip_addr,
 	while (head != NULL) {
 		conn_udp = (struct protocol_connection_udp_lwip *)
 			head->conn->transport_conn_platspec;
-		if (ip_addr_cmp(ip_addr, conn_udp->remot_ip_addr)) {
+		if (ip_addr_cmp(ip_addr, conn_udp->remote_ip_addr)) {
 			return head->conn;
 		} else {
 			head = head->next;
@@ -250,15 +250,15 @@ struct ip_addr *str_to_ip_addr(const char *ip_str)
 			pch = strtok(NULL, delim);
 		}
 		if (i != 3 && pch == NULL) {
-			firefly_error(FIREFLY_ERROR_IP_PARSE,
+			firefly_error(FIREFLY_ERROR_IP_PARSE, 2,
 					"Failed to parse IP address \"%s\""
 					"in %s().\n", __FUNCTION__);
 			return NULL;
 		}
 		char *endptr;
 		ip_parts[i] = strtol(pch, &endptr, 10);
-		if (endptr == pch || *end != '\0' || errno == ERANGE) {
-			firefly_error(FIREFLY_ERROR_IP_PARSE,
+		if (endptr == pch || *endptr != '\0' || errno == ERANGE) {
+			firefly_error(FIREFLY_ERROR_IP_PARSE, 2,
 					"Failed to parse IP address \"%s\""
 					"in %s().\n", __FUNCTION__);
 			return NULL;
@@ -272,11 +272,11 @@ struct ip_addr *str_to_ip_addr(const char *ip_str)
 				__LINE__);
 		return NULL;
 	}
-	IP4_ADDR(&ip_addr,ip_parts[0],ip_parts[1],ip_parts[2],ip_parts[3],);
+	IP4_ADDR(ip_addr,ip_parts[0],ip_parts[1],ip_parts[2],ip_parts[3]);
 	return ip_addr;
 }
 
-char *ip_addr_to_str(struct *ip_addr)
+char *ip_addr_to_str(struct ip_addr *ip_addr)
 {
 	char *ip_str = malloc(4*3 + 3 + 1); // Max length of IPv4 address string.
 	if (ip_str == NULL) {
@@ -285,13 +285,13 @@ char *ip_addr_to_str(struct *ip_addr)
 				__FUNCTION__);
 		return NULL;
 	}
-	u32_t ip = ntohl((u32) ip_addr);
+	long unsigned int ip = ntohl((long unsigned int) ip_addr);
 	int nbr_printed;
-	nbr_printed = snprintf(ip_str, (3 + 1 + 1), "%i.", (u8_t) (ip >> 24));
+	nbr_printed = snprintf(ip_str, (3 + 1 + 1), "%i.", (unsigned char) (ip >> 24));
 	nbr_printed = snprintf(ip_str + nbr_printed, (3 + 1 + 1), "%i.",
-				(u8_t) (ip >> 16));
-	snprintf(ip_str + nbr_printed, (3 + 1 + 1), "%i.", (u8_t) (ip >> 8));
-	snprintf(ip_str, 3, "%i", (u8_t) ip);
+				(unsigned char) (ip >> 16));
+	snprintf(ip_str + nbr_printed, (3 + 1 + 1), "%i.", (unsigned char) (ip >> 8));
+	snprintf(ip_str, 3, "%i", (unsigned char) ip);
 
 	return ip_str;
 }

@@ -2,7 +2,7 @@
 
 # Use LLVM clang if it's found.
 CC = $(shell hash clang 2>/dev/null && echo clang || echo gcc)
-CFLAGS= -g -O2 -std=c99 -Wall -Werror -I$(INCLUDE_DIR) -I$(LABCOMMLIBPATH) -I. -I$(SRC_DIR)
+CFLAGS= -g -O2 -std=c99 -Wall -Werror -I$(INCLUDE_DIR) -I$(LABCOMMLIBPATH) -I. -I$(SRC_DIR) $(FREERTOS_LWIP_INCLUDES)
 
 LIBPATH=../lib
 LABCOMMPATH=$(LIBPATH)/labcomm
@@ -59,6 +59,35 @@ TEST_EVENT_OBJS= $(patsubst %,$(BUILD_DIR)/test/%.o,test_event_main)
 TEST_EVENT_OBJS+= $(patsubst %,$(BUILD_DIR)/%.o,eventqueue/event_queue)
 
 TEST_PROGS= $(addprefix $(BUILD_DIR)/test/test_,protocol_main transport_main event_main)
+
+# FreeRTOS and LWIP Stuff.
+RTOS_BASE= ../ft-sense/lib/freertos/
+RTOS_SOURCE_DIR=$(RTOS_BASE)/Source
+RTOS_COMMON_PORTS=$(RTOS_BASE)/Demo/Common
+LWIP_DRIVER_DIR=$(RTOS_COMMON_PORTS)/ethernet
+LWIP_SOURCE_DIR=$(LWIP_DRIVER_DIR)/lwip-1.3.0
+LWIP_INCLUDE_DIR=$(LWIP_SOURCE_DIR)/src/include
+LWIP_PORT_DIR=$(LWIP_SOURCE_DIR)/contrib/port/FreeRTOS/LM3S/arch
+WEB_SERVER_DIR=$(LWIP_SOURCE_DIR)/Apps
+LUMINARY_DRIVER_DIR=$(RTOS_COMMON_PORTS)/drivers/LuminaryMicro
+COMMOM_INCLUDE=$(RTOS_COMMON_PORTS)/include
+COMMOM_ADC=../ft-sense/src/common/
+DRIVERLIB_DIR=../ft-sense/lib/driverlib/
+FREERTOS_LWIP_INCLUDES= -I $(RTOS_SOURCE_DIR)/include \
+       			-I $(LWIP_SOURCE_DIR)/src/include/ipv4 \
+			-I $(LWIP_SOURCE_DIR)/src/include \
+			-I $(LWIP_SOURCE_DIR)/contrib/port/FreeRTOS/LM3S \
+			-I $(COMMOM_INCLUDE) \
+			-I $(LWIP_DRIVER_DIR) \
+			-I $(DRIVERLIB_DIR) \
+			-I ../ft-sense/lib/ \
+			-I $(DRIVERLIB_DIR)/inc \
+			-I $(RTOS_SOURCE_DIR)/portable/GCC/ARM_CM3 \
+			-I $(WEB_SERVER_DIR) \
+			-I $(LUMINARY_DRIVER_DIR) \
+			-I $(LWIP_PORT_DIR) \
+			-I $(LWIP_INCLUDE_DIR) \
+			-I $(COMMOM_ADC)
 
 ## Targets
 
@@ -119,8 +148,8 @@ $(BUILD_DIR)/test/test_event_main: $(TEST_EVENT_OBJS) $(BUILD_DIR) $(LIBS) $(LAB
 $(TEST_PROGS): $(TESTFILES_DIR)
 
 # target: test - Run all tests.
-test: $(TEST_PROGS) gen_lc_files
-	@for prog in $(filter-out $(BUILD_DIR) $(LIBS) $(LABCOMMLIBPATH)/liblabcomm.a gen_lc_files,$^); do \
+test: $(TEST_PROGS) gen_lc_files $(BUILD_DIR)/test/pingpong/ping_pudp $(BUILD_DIR)/test/pingpong/pong_pudp
+	@for prog in $(filter-out $(BUILD_DIR) $(LIBS) $(LABCOMMLIBPATH)/liblabcomm.a gen_lc_files $(BUILD_DIR)/test/pingpong/ping_pudp $(BUILD_DIR)/test/pingpong/pong_pudp,$^); do \
 		echo "=========================>BEGIN TEST: $${prog}"; \
 		./$$prog; \
 		echo "=========================>END TEST: $${prog}"; \

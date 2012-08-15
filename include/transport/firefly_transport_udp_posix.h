@@ -78,7 +78,7 @@ struct firefly_connection *firefly_transport_connection_udp_posix_open(
 				firefly_channel_closed_f on_channel_closed,
 				firefly_channel_accept_f on_channel_recv,
 				struct firefly_event_queue *event_queue,
-				char *remote_ip_addr,
+				const char *remote_ip_addr,
 				unsigned short remote_port,
 				struct firefly_transport_llp *llp);
 
