@@ -2,7 +2,6 @@
  * @file
  * @brief Test the protocol layer.
  */
-#include <stdio.h>
 
 #include "CUnit/Basic.h"
 #include "CUnit/Console.h"
