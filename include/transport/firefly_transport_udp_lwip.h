@@ -8,7 +8,8 @@
 
 #include <protocol/firefly_protocol.h>
 #include <transport/firefly_transport.h>
-#include "eventqueue/event_queue.h"
+
+#include "eventqueue/firefly_event_queue.h"
 
 /**
  * @brief An opaque UDP specific link layer port data.
@@ -99,6 +100,7 @@ void firefly_transport_connection_udp_lwip_close(
  * @param conn A pointer to the pointer to the #firefly_connection to free. The
  * pointer will be set to \c NULL.
  */
+// TODO should this really be a public API function??
 void firefly_transport_connection_udp_lwip_free(
 		struct firefly_connection **conn);
 
@@ -110,27 +112,8 @@ void firefly_transport_connection_udp_lwip_free(
  * @retval Negative number on error.
  * @retval 0 if no connection was closed.
  */
+// TODO should this really be a public API function??
 int firefly_transport_udp_lwip_clean_up(struct firefly_transport_llp *llp);
-
-/**
- * @brief Read data from the connection and fire events.
- *
- * This function is the backbone of the entire API. It can be viewed as an event
- * dispatcher. Any events will be fired from here and all data received will be
- * distributed to the different layers of the system from here. This function
- * is \b blocking.
- *
- * If data is received from an unknown source a new connection will be created
- * and the \c application_on_conn_recv_cb() associated with this
- * firefly_transport_llp * will called with the new connection as argument. See
- * application_on_conn_recv_cb() for more information regarding received
- * connections.
- *
- * @param llp The Link Layer Port to read data from.
- */
-// NOTE we don't need to read on an llp for FreeRTOS+LWIP since we just hook in
-// callbacks.
-//void firefly_transport_udp_lwip_read(struct firefly_transport_llp *llp);
 
 /**
  * @brief Write data on the specified connection.
@@ -139,6 +122,7 @@ int firefly_transport_udp_lwip_clean_up(struct firefly_transport_llp *llp);
  * @param data_size The size of the data to be written.
  * @param conn The connection to written the data on.
  */
+// TODO should this really be a public API function??
 void firefly_transport_udp_lwip_write(unsigned char *data, size_t data_size,
 		struct firefly_connection *conn);
 #endif

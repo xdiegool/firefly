@@ -12,11 +12,11 @@
 #include <gen/firefly_protocol.h>
 #include <gen/test.h>
 #include <firefly_errors.h>
-#include "protocol/firefly_protocol_private.h"
 #include <protocol/firefly_protocol.h>
-#include "eventqueue/event_queue.h"
-#include "test/proto_helper.h"
+#include <eventqueue/firefly_event_queue.h>
 
+#include "test/proto_helper.h"
+#include "protocol/firefly_protocol_private.h"
 #include "test/test_labcomm_utils.h"
 
 #define REMOTE_CHAN_ID (2)	// Chan id used by all simulated remote channels.

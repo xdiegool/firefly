@@ -1,8 +1,12 @@
-#include "eventqueue/event_queue.h"
+/**
+ * @file
+ * @brief Implementation of the event stuff.
+ */
+#include "eventqueue/firefly_event_queue_private.h"
 
 #include <stdlib.h>
 
-#include "firefly_errors.h"
+#include <firefly_errors.h>
 
 struct firefly_event_queue *firefly_event_queue_new(
 		firefly_offer_event offer_cb, void *context)
@@ -80,7 +84,7 @@ int firefly_event_add(struct firefly_event_queue *eq, struct firefly_event *ev)
 struct firefly_event *firefly_event_pop(struct firefly_event_queue *eq)
 {
 	// The node containing the event.
-	struct firefly_eq_node *event_node; 
+	struct firefly_eq_node *event_node;
 
 	// The actual event
 	struct firefly_event *ev;
@@ -120,4 +124,9 @@ size_t firefly_event_queue_length(struct firefly_event_queue *eq)
 	}
 
 	return n;
+}
+
+void * firefly_event_queue_get_context(struct firefly_event_queue *ev)
+{
+	return ev->context;
 }
