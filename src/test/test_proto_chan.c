@@ -1048,10 +1048,15 @@ struct firefly_connection *setup_conn(int conn_n, struct firefly_event_queue *eq
 		writer = trans_w_from_conn_1;
 		break;
 	}
-
+#if testing_testing
 	tcon = firefly_connection_new(chan_was_opened, chan_was_closed,
 								  should_accept_chan, writer,
 								  eqs[conn_n], NULL);
+ #else
+	tcon = firefly_connection_new_register(chan_was_opened, chan_was_closed,
+										   should_accept_chan, writer,
+										   eqs[conn_n], NULL, true);
+#endif
 	if (!tcon)
 		CU_FAIL("Could not create channel");
 	void *err_cb;
@@ -1061,6 +1066,7 @@ struct firefly_connection *setup_conn(int conn_n, struct firefly_event_queue *eq
 										   err_cb);
 	labcomm_register_error_handler_decoder(tcon->transport_decoder,
 										   err_cb);
+#if testing_testing
 
 	/* The encoder should know the protocol */
 	/* The encoder registrations should show up as a "packet" in the data space */
@@ -1099,7 +1105,7 @@ struct firefly_connection *setup_conn(int conn_n, struct firefly_event_queue *eq
 	labcomm_decoder_register_firefly_protocol_channel_close(tcon->transport_decoder,
 															handle_channel_close,
 															tcon);
-
+#endif
 	return tcon;
 }
 
@@ -1136,7 +1142,7 @@ void test_transmit_app_data_over_mock_trans_layer()
 	for (int i = 0; i < n_conn; i++) {
 		CU_ASSERT_EQUAL(firefly_event_queue_length(connections[i]->event_queue), 0);
 	}
-
+#if testing_testing
 	/* Read signatures. No events should be spawned. */
 	for (int i = 0; i < n_conn; i++) {
 		int cnt = 0;
@@ -1145,7 +1151,7 @@ void test_transmit_app_data_over_mock_trans_layer()
 		CU_ASSERT_EQUAL(cnt, 5);
 		CU_ASSERT_EQUAL(firefly_event_queue_length(connections[0]->event_queue), 0);
 	}
-
+#endif
 	/* Chan 0 wants to open a connection... */
 	/* TODO: Might want to check the callback too... */
 	firefly_channel_open(connections[0], NULL);

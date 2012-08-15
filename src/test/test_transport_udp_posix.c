@@ -46,6 +46,11 @@ static unsigned char send_buf_big[] = {0,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,
 				   0,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,
 				   0,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16};
 
+void reg_proto_sigs(struct labcomm_encoder *enc,
+					struct labcomm_decoder *dec,
+					struct firefly_connection *conn)
+{ }
+
 void setup_sockaddr(struct sockaddr_in *addr, unsigned short port)
 {
 	addr->sin_family = AF_INET;

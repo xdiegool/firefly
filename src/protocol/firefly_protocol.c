@@ -11,6 +11,51 @@
 #include <gen/firefly_protocol.h>
 #include "eventqueue/event_queue.h"
 
+struct firefly_connection *tmp_conn;
+
+void mock_trans_write(unsigned char *data, size_t size,
+					  struct firefly_connection *conn)
+{
+	protocol_data_received(tmp_conn, data, size);
+}
+
+void reg_proto_sigs(struct labcomm_encoder *enc,
+					struct labcomm_decoder *dec,
+					struct firefly_connection *conn)
+{
+	transport_write_f orig_twf = conn->transport_write;
+	conn->transport_write = mock_trans_write;
+	tmp_conn = conn;
+
+	labcomm_decoder_register_firefly_protocol_data_sample(dec,
+														  handle_data_sample,
+														  conn);
+
+	labcomm_decoder_register_firefly_protocol_channel_request(dec,
+															  handle_channel_request,
+															  conn);
+
+	labcomm_decoder_register_firefly_protocol_channel_response(dec,
+															   handle_channel_response,
+															   conn);
+
+	labcomm_decoder_register_firefly_protocol_channel_ack(dec,
+														  handle_channel_ack,
+														  conn);
+
+	labcomm_decoder_register_firefly_protocol_channel_close(dec,
+															handle_channel_close,
+															conn);
+
+	labcomm_encoder_register_firefly_protocol_data_sample(enc);
+	labcomm_encoder_register_firefly_protocol_channel_request(enc);
+	labcomm_encoder_register_firefly_protocol_channel_response(enc);
+	labcomm_encoder_register_firefly_protocol_channel_ack(enc);
+	labcomm_encoder_register_firefly_protocol_channel_close(enc);
+
+	conn->transport_write = orig_twf;
+	tmp_conn = NULL;
+}
 
 void firefly_channel_open(struct firefly_connection *conn,
 		firefly_channel_rejected_f on_chan_rejected)

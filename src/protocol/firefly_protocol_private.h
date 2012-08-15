@@ -10,6 +10,10 @@
 #define CHANNEL_ID_NOT_SET (-1)
 #define BUFFER_SIZE 128
 
+void reg_proto_sigs(struct labcomm_encoder *enc,
+					struct labcomm_decoder *dec,
+					struct firefly_connection *conn);
+
 /**
  * @brief Write data on the specified connection
  * This is an interface implemented by all transport layers.
@@ -116,6 +120,15 @@ struct firefly_connection *firefly_connection_new(
 		firefly_channel_accept_f on_channel_recv,
 		transport_write_f transport_write,
 		struct firefly_event_queue *event_queue, void *plat_spec);
+
+struct firefly_connection *firefly_connection_new_register(
+		firefly_channel_is_open_f on_channel_opened,
+		firefly_channel_closed_f on_channel_closed,
+		firefly_channel_accept_f on_channel_recv,
+		transport_write_f transport_write,
+		struct firefly_event_queue *event_queue, void *plat_spec,
+		bool reg);
+
 
 /**
  * @brief Frees a connection.
