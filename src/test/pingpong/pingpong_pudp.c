@@ -39,7 +39,7 @@ int event_add_mutex(struct firefly_event_queue *eq, struct firefly_event *ev)
 {
 	int res = 0;
 	struct event_queue_signals *eq_s =
-		(struct event_queue_signals *) eq->context;
+		(struct event_queue_signals *)firefly_event_queue_get_context(eq);
 
 	res = pthread_mutex_lock(&eq_s->eq_lock);
 	if (res) {
