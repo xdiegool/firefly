@@ -59,7 +59,7 @@ void *send_data_and_close(void *args);
 struct firefly_connection *connection_received(
 		struct firefly_transport_llp *llp, const char *ip_addr, unsigned short port)
 {
-	struct firefly_connection *conn;
+	struct firefly_connection *conn = NULL;
 	/* If address is correct, open a connection. */
 	if (strncmp(ip_addr, PING_ADDR, strlen(PING_ADDR)) == 0 &&
 			port == PING_PORT) {

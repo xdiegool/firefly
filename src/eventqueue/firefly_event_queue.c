@@ -66,6 +66,8 @@ int firefly_event_add(struct firefly_event_queue *eq, struct firefly_event *ev)
 
 	struct firefly_eq_node *node = malloc(sizeof(struct firefly_eq_node));
 	if (node == NULL) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 1,
+				"Could not allocate event");
 		return -1;
 	}
 	node->event = ev;

@@ -1302,8 +1302,7 @@ void test_transmit_app_data_over_mock_trans_layer()
 	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[1]), 0);
 
 	/* Let other chan (1) read */
-	size_t n_read;
-	n_read = read_connection_mock(connections, 1);
+	read_connection_mock(connections, 1);
 	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[0]), 0);
 	CU_ASSERT_EQUAL(firefly_event_queue_length(connections[1]->event_queue), 1);
 	ev = firefly_event_pop(connections[1]->event_queue);
