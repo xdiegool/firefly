@@ -283,6 +283,7 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 	// Read data from socket, = 0 is crucial due to ioctl only sets the
 	// first 32 bits of pkg_len
 	fd_set fs;
+	FD_ZERO(&fs);
 	FD_SET(llp_udp->local_udp_socket, &fs);
 	select(llp_udp->local_udp_socket + 1, &fs, NULL, NULL, NULL);
 	size_t pkg_len = 0;
