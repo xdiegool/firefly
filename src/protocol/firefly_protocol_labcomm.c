@@ -20,7 +20,7 @@ void labcomm_error_to_ff_error(enum labcomm_error error_id, size_t nbr_va_args,
 									...)
 {
 	char *err_msg = malloc(MAX_ERR_LEN);
-	if (error_id == NULL) {
+	if (err_msg == NULL) {
 		err_msg = "Error with an unknown error ID occured.";
 		firefly_error(FIREFLY_ERROR_LABCOMM, 1, err_msg);
 		return;
@@ -35,7 +35,7 @@ void labcomm_error_to_ff_error(enum labcomm_error error_id, size_t nbr_va_args,
 
 	size_t chars_left = MAX_ERR_LEN;
 	int chars_written;
-	chars_written = snprintf(err_msg, chars_left, "%s\n", err_msg);
+	chars_written = snprintf(err_msg, chars_left, "%s\n", lc_err_msg);
 	if (chars_written == -1) {
 		exit(EXIT_FAILURE); // Error in error function. We're screwed.
 	} 
