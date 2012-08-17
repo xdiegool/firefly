@@ -135,3 +135,15 @@ int next_channel_id(struct firefly_connection *conn)
 {
 	return conn->channel_id_counter++;
 }
+
+void *firefly_connection_get_context(struct firefly_connection *conn)
+{
+	return conn->context;
+}
+
+/* TODO: At some point this might be done when creating a new conn. */
+void firefly_connection_set_context(struct firefly_connection * const conn,
+				    void * const context)
+{
+	conn->context = context;
+}

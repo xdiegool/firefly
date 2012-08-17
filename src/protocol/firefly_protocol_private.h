@@ -78,6 +78,7 @@ struct firefly_connection {
 	struct firefly_event_queue *event_queue; /**< The queue to which spawned events are added. */
 	int channel_id_counter; /**< The unique id reserved to the next opened
 								channel on the connection. */
+	void *context; /**< A reference to an optional, user defined context.  */
 };
 
 /**
