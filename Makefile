@@ -1,13 +1,15 @@
-# TODO .d files
-# TODO labcomm
 # TODO update clean(er) targets
+# TODO libtransudpposx
+# TODO testsprograms
+# TODO copy residual functionallity
+# TODO fix so pinpong is run automatically with make test
 
 # Makefile for project Firely. run `make help` for help on targets.
 ### Macros
 
 ## Compiler optons.
 # Use LLVM clang if it's found.
-CC = $(shell hash clang 2>/dev/null && echo clang || echo gcc)
+CC = $(shell hash clang 2>/dev/null && echo clang || echo cc)
 
 # Change with $make -e DEBUG=false
 DEBUG = true
@@ -144,7 +146,7 @@ GEN_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(filter-out %.h,$(GEN_FILES)))
 
 ## Firefly
 # Source files for libfirefly.
-FIREFLY_SRC = $(shell find $(SRC_DIR)/protocol/ -type f -name '*.c' -print | sed 's/^$(SRC_DIR)\///') $(filter-out utils/firefly_errors.c,$(shell find $(SRC_DIR)/utils/ -type f -name '*.c' -print| sed 's/^$(SRC_DIR)\///')) $(BUILD_DIR)/$(GEN_DIR)/firefly_protocol.o
+FIREFLY_SRC = $(shell find $(SRC_DIR)/protocol/ -type f -name '*.c' -print | sed 's/^$(SRC_DIR)\///') $(filter-out utils/firefly_errors.c,$(shell find $(SRC_DIR)/utils/ -type f -name '*.c' -print| sed 's/^$(SRC_DIR)\///')) $(GEN_DIR)/firefly_protocol.c
 
 # Disable default error handler that prints with fprintf. If set to true, you
 # must provide an own implementation at link time.
@@ -168,13 +170,16 @@ TEST_PROGS = $(addsuffix _main,$(addprefix $(BUILD_DIR)/test/test_,protocol tran
 
 ### Targets
 
-## Setting targets.
+## Special built-in targets
 # Non-file targets.
-.PHONY: all clean clean cleaner doc doc-api doc-api-open doc-full doc-full-open doc-open install tags-all test uninstall
+.PHONY: all clean cleaner doc doc-api doc-api-open doc-full doc-full-open doc-open install tags-all test uninstall
 
 # This will enable expression involving automatic variables in the prerequisities list. It must be defined before any usage of these feauteres.
 .SECONDEXPANSION:
 
+# Keep my damn labcomm files! Make treats the generated files as intermediate and deletes them when it think that they're not needed anymore. Usually the .PRECIOUS target should solve this but it does not. .SECONDARY solves it though.
+# References: http://darrendev.blogspot.se/2008/06/stopping-make-delete-intermediate-files.html
+.SECONDARY: $(wildcard $(GEN_DIR)/firefly_protocol.*)
 
 ## General targets.
 
@@ -182,9 +187,6 @@ TEST_PROGS = $(addsuffix _main,$(addprefix $(BUILD_DIR)/test/test_,protocol tran
 # TODO enable targets successively
 #all: $(LIBS) $(TEST_PROGS) $(TAGSFILE_VIM) $(TAGSFILE_EMACS)
 all: $(LIBS)
-
-echo:
-	@echo $(FIREFLY_SRC)
 
 # target: $(BUILD_DIR) - Everything that is to be build depend on the build dir.
 $(BUILD_DIR)/%: $(BUILD_DIR)
@@ -207,14 +209,19 @@ $(LABCOMMLIBPATH)/liblabcomm.a:
 	$(MAKE) -C $(LABCOMMLIBPATH) -e LABCOMM_NO_EXPERIMENTAL=true all
 	@echo "======End building LabComm======"
 
-$(GEN_DIR)/%.c $(GEN_DIR)/%.h: $(LC_DIR)/%.lc $(LABCOMMC) $(GEN_DIR)
+# target: GENFILES - Generate labcomm files. 
+# NOTE Can not use "$(@D)" since it causes realloc invalid next size.
+$(GEN_DIR)/%.c $(GEN_DIR)/%.h: $(LC_DIR)/%.lc $(LABCOMMC) |$(GEN_DIR)
 	java -jar $(LABCOMMC) --c=$(patsubst %.h,%.c,$@) --h=$(patsubst %.c,%.h,$@) $<
 
 # Let the LabComm .o file depend on the generated .c and .h files.
-$(GEN_OBJ_FILES): $$(patsubst $$(BUILD_DIR)/%.o,%.c,$$@) $$(patsubst $$(BUILD_DIR)/%.o,%.h,$$@)
+# TODO not neede with .d files. Delete this when everything works.
+#$(GEN_OBJ_FILES): $$(patsubst $$(BUILD_DIR)/%.o,%.c,$$@) $$(patsubst $$(BUILD_DIR)/%.o,%.h,$$@)
 
 $(BUILD_DIR)/gen/%.o: %.c $$(dir $$@)
 	$(CC) -c $(CFLAGS) -L$(LABCOMMLIBPATH) -o $@ -llabcomm $<
+
+
 
 ## Firefly targets
 
@@ -223,13 +230,17 @@ $(BUILD_DIR)/libfirefly.a: $(FIREFLY_OBJS)
 	ar -rc $@ $^
 
 # Usually these is an implicit rule but it does not work when the target dir is not the same as the source. Anyhow we need to add some includes for the different namespaces so it doesnt matter.
-$(BUILD_DIR)/protocol/%.o: protocol/%.c $$(@D)
+# "|<target>" means that <target> is order-only so if it changed it won't cause recompilcation of the target. This is needed here since the modify timestamp is changed when new files are added/removed from a dirctory which will cause constant unneccessary recomplications. This soluton requres GNU Make >= 3.80.
+# References: http://darrendev.blogspot.se/2008/06/stopping-make-delete-intermediate-files.html
+$(BUILD_DIR)/protocol/%.o: protocol/%.c |$$(@D)
 	$(CC) -c $(CFLAGS) $(INC_FIREFLY) -o $@ $<
 
-$(BUILD_DIR)/utils/%.o: utils/%.c $$(@D)
+$(BUILD_DIR)/utils/%.o: utils/%.c |$$(@D)
 	$(CC) -c $(CFLAGS) $(INC_FIREFLY) -o $@ $<
 
-
+# Delete compiler warning flags. LabComm's errors is not our fault.
+$(BUILD_DIR)/gen/%.o: gen/%.c |$$(@D)
+	$(CC) -c $(filter-out -W%,$(CFLAGS)) $(INC_FIREFLY) -o $@ $<
 
 
 
@@ -305,5 +316,5 @@ cleaner: clean
 	$(RM) -r $(GEN_DIR)
 	$(RM) -r $(TESTFILES_DIR)
 	@echo "======Cleaning LabComm compiler======"
-	cd $(LABCOMMPATH)/compiler; ant clean
+	cd $(LABCOMMPATH)/compiler; ant clean 
 	@echo "======End cleaning LabComm compiler======"
