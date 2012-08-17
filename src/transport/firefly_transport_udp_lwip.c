@@ -4,7 +4,7 @@
 #include <string.h>
 
 #include <transport/firefly_transport.h>
-#include <firefly_errors.h>
+#include <utils/firefly_errors.h>
 #include <lwip/udp.h>
 
 #include "protocol/firefly_protocol_private.h"

@@ -4,7 +4,7 @@
 #include <labcomm.h>
 #include <protocol/firefly_protocol.h>
 #include <transport/firefly_transport_udp_posix.h>
-#include <eventqueue/firefly_event_queue.h>
+#include <utils/firefly_event_queue.h>
 
 #include "gen/test.h"
 #include "test/pingpong/hack_lctypes.h"

@@ -5,10 +5,10 @@
 
 #include <labcomm.h>
 
-#include <firefly_errors.h>
-#include <eventqueue/firefly_event_queue.h>
+#include <utils/firefly_errors.h>
+#include <utils/firefly_event_queue.h>
 
-#include "eventqueue/firefly_event_queue_private.h"
+#include "utils/firefly_event_queue_private.h"
 
 // TODO use this for errors.
 void labcomm_error_to_ff_error(enum labcomm_error error_id, size_t nbr_va_args,

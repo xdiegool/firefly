@@ -10,8 +10,8 @@
 
 #include <gen/firefly_protocol.h>
 #include <gen/test.h>
-#include <firefly_errors.h>
-#include <eventqueue/firefly_event_queue.h>
+#include <utils/firefly_errors.h>
+#include <utils/firefly_event_queue.h>
 
 #include "test/test_labcomm_utils.h"
 

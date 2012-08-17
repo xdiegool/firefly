@@ -23,7 +23,7 @@
 
 #include <gen/firefly_protocol.h>
 #include <gen/test.h>
-#include <firefly_errors.h>
+#include <utils/firefly_errors.h>
 #include "protocol/firefly_protocol_private.h"
 #include <protocol/firefly_protocol.h>
 

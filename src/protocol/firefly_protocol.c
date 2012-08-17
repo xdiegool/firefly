@@ -7,11 +7,11 @@
 
 #include <labcomm.h>
 
-#include <firefly_errors.h>
+#include <utils/firefly_errors.h>
 #include <gen/firefly_protocol.h>
-#include <eventqueue/firefly_event_queue.h>
-#include "eventqueue/firefly_event_queue_private.h"
-
+#include <utils/firefly_event_queue.h>
+#include "utils/firefly_event_queue_private.h"
+// TODO fix indent
 struct firefly_connection *tmp_conn;
 
 void mock_trans_write(unsigned char *data, size_t size,

@@ -19,10 +19,10 @@
 #include <signal.h>
 
 #include <transport/firefly_transport.h>
-#include <firefly_errors.h>
-#include <eventqueue/firefly_event_queue.h>
+#include <utils/firefly_errors.h>
+#include <utils/firefly_event_queue.h>
 
-#include "eventqueue/firefly_event_queue_private.h"
+#include "utils/firefly_event_queue_private.h"
 #include "protocol/firefly_protocol_private.h"
 #include "transport/firefly_transport_private.h"
 

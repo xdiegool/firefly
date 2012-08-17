@@ -6,7 +6,7 @@
 #include <CUnit/Basic.h>
 #include <labcomm_fd_reader_writer.h>
 
-#include "firefly_errors.h"
+#include "utils/firefly_errors.h"
 
 size_t read_file_to_mem(unsigned char **data, char *file_name)
 {

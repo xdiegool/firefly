@@ -1,7 +1,7 @@
 #include <pthread.h>
 #include "test/pingpong/pingpong_pudp.h"
 
-#include <eventqueue/firefly_event_queue.h>
+#include <utils/firefly_event_queue.h>
 #include <transport/firefly_transport_udp_posix.h>
 
 

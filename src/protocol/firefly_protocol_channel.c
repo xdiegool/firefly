@@ -1,6 +1,6 @@
 #include "protocol/firefly_protocol_private.h"
 
-#include <firefly_errors.h>
+#include <utils/firefly_errors.h>
 
 struct firefly_channel *firefly_channel_new(struct firefly_connection *conn)
 {

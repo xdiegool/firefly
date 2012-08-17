@@ -6,7 +6,7 @@
 
 #include <stdlib.h>
 
-#include <firefly_errors.h>
+#include <utils/firefly_errors.h>
 
 struct firefly_event_queue *firefly_event_queue_new(
 		firefly_offer_event offer_cb, void *context)

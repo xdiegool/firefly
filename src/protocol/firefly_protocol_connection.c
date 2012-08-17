@@ -1,7 +1,7 @@
 #include <protocol/firefly_protocol.h>
 #include "protocol/firefly_protocol_private.h"
 
-#include <firefly_errors.h>
+#include <utils/firefly_errors.h>
 
 struct firefly_connection *firefly_connection_new_register(
 		firefly_channel_is_open_f on_channel_opened,
