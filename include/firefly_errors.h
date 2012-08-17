@@ -17,7 +17,7 @@ enum firefly_error {
 	FIREFLY_ERROR_ALLOC,
 	/**< Represents an error while allocating memory. */
 	FIREFLY_ERROR_SOCKET,
-	/**< Something went wrong when binding a LLP. */
+	/**< Something went wrong with a socker operation. */
 	FIREFLY_ERROR_LLP_BIND,
 	/**< Failed to parse an IP address. */
 	FIREFLY_ERROR_IP_PARSE,

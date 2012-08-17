@@ -31,10 +31,10 @@ struct firefly_event_queue {
 struct firefly_event {
 	unsigned char prio; /**< The priority of the event, higher value means
 					higher priority. */
-	firefly_event_execute_f execute; /**< The function to call when the event is
-									   executed. */
+	firefly_event_execute_f execute; /**< The function to call when the
+						event is executed. */
 	void *context; /**< The context passed to firefly_event_execute_f() when
-					 the event is executed. */
+				the event is executed. */
 };
 
 /**
