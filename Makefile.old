@@ -92,10 +92,9 @@ FREERTOS_LWIP_INCLUDES= -I $(RTOS_SOURCE_DIR)/include \
 ## Targets
 
 # Non file targets.
-.PHONY: all doc doc-full doc-apiclean clean cleaner install test
-#.PHONY: all doc doc-open clean cleaner install test
+.PHONY: all doc doc-full doc-api doc-open doc-full-open doc-api-open clean clean cleaner install test
 
-# This will enable expression involving automatic variables in the prerequisities list. it must be defined before any usage of these feauteres.
+# This will enable expression involving automatic variables in the prerequisities list. It must be defined before any usage of these feauteres.
 .SECONDEXPANSION:
 
 # target: all - Build all libs and tests.
@@ -127,7 +126,7 @@ gen_lc_files: build/test/create_lc_files
 
 $(BUILD_DIR)/test/%: test/%.c $(BUILD_DIR)/libfirefly.a
 	mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -L$(BUILD_DIR) -L$(LABCOMMLIBPATH) $< -lcunit -lfirefly -llabcomm -o $@
+	$(CC) $(CFLAGS) -L$(BUILD_DIR) -L$(LABCOMMLIBPATH) $< it -lfirefly -llabcomm -o $@
 
 # Test programs depends on liblabcomm.
 $(BUILD_DIR)/test/pingpong/ping_pudp: $(BUILD_DIR) $(LIBS) $(BUILD_DIR)/test/pingpong/ping_pudp.o $(BUILD_DIR)/test/pingpong/pingpong_pudp.o $(BUILD_DIR)/test/pingpong/hack_lctypes.o $(BUILD_DIR)/gen/firefly_protocol.o $(LABCOMMLIBPATH)/liblabcomm.a
