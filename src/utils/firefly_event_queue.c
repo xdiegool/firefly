@@ -2,7 +2,7 @@
  * @file
  * @brief Implementation of the event stuff.
  */
-#include "eventqueue/firefly_event_queue_private.h"
+#include "utils/firefly_event_queue_private.h"
 
 #include <stdlib.h>
 

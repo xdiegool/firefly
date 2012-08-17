@@ -247,9 +247,8 @@ clean:
 	$(RM) $(TEST_PROTO_OBJS)
 	$(RM) $(TEST_TRANSP_OBJS)
 	$(RM) $(TEST_PROGS)
-	$(RM) $(GEN_DIR)/*
-#	$(RM) $(addprefix $(TESTFILES_DIR)/,$(addsuffix .enc, data sig))
-	$(RM) $(TESTFILES_DIR)/*
+	$(RM) $(wildcard GEN_DIR)/*)
+	$(RM) $(wildcard $(TESTFILES_DIR)/*)
 	@echo "======Cleaning LabComm======"
 	$(MAKE) -C $(LABCOMMLIBPATH) distclean
 	@echo "======End cleaning LabComm======"

@@ -11,7 +11,7 @@
 
 #include <protocol/firefly_protocol.h>
 #include <transport/firefly_transport.h>
-#include <eventqueue/firefly_event_queue.h>
+#include <utils/firefly_event_queue.h>
 
 /**
  * @brief An opaque UDP specific link layer port data.

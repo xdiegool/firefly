@@ -1,5 +1,6 @@
 # TODO .d files
 # TODO labcomm
+# TODO update clean(er) targets
 
 # Makefile for project Firely. run `make help` for help on targets.
 ### Macros
@@ -40,29 +41,44 @@ endif
 
 ERRFLAGS = -Wall -Wextra
 OPTLVL= 2
-INC_COMMON = $(addprefix -I,. $(INCLUDE_DIR) $(LABCOMMPATH) $(SRC_DIR)) # TODO do we need labcommpath here?
-CFLAGS = -std=c99 $(ERRFLAGS) $(INC_COMMON)
+INC_COMMON = $(addprefix -I, \
+		. \
+		$(INCLUDE_DIR) \
+		$(SRC_DIR) \
+		)
 
-FREERTOS_LWIP_INCLUDES= -I $(RTOS_SOURCE_DIR)/include \
-       			-I $(LWIP_SOURCE_DIR)/src/include/ipv4 \
-			-I $(LWIP_SOURCE_DIR)/src/include \
-			-I $(LWIP_SOURCE_DIR)/contrib/port/FreeRTOS/LM3S \
-			-I $(COMMOM_INCLUDE) \
-			-I $(LWIP_DRIVER_DIR) \
-			-I $(DRIVERLIB_DIR) \
-			-I ../ft-sense/lib/ \
-			-I $(DRIVERLIB_DIR)/inc \
-			-I $(RTOS_SOURCE_DIR)/portable/GCC/ARM_CM3 \
-			-I $(WEB_SERVER_DIR) \
-			-I $(LUMINARY_DRIVER_DIR) \
-			-I $(LWIP_PORT_DIR) \
-			-I $(LWIP_INCLUDE_DIR) \
-			-I $(COMMOM_ADC)
+
+INC_FIREFLY = $(addprefix -I, \
+	      $(LABCOMMLIBPATH) \
+	      )
+
+INC_FREERTOS_LWIP= $(addprefix -I, \
+			$(RTOS_SOURCE_DIR)/include \
+       			$(LWIP_SOURCE_DIR)/src/include/ipv4 \
+			$(LWIP_SOURCE_DIR)/src/include \
+			$(LWIP_SOURCE_DIR)/contrib/port/FreeRTOS/LM3S \
+			$(COMMOM_INCLUDE) \
+			$(LWIP_DRIVER_DIR) \
+			$(DRIVERLIB_DIR) \
+			$(DRIVERLIB_DIR)/inc \
+			$(RTOS_SOURCE_DIR)/portable/GCC/ARM_CM3 \
+			$(WEB_SERVER_DIR) \
+			$(LUMINARY_DRIVER_DIR) \
+			$(LWIP_PORT_DIR) \
+			$(LWIP_INCLUDE_DIR) \
+			$(COMMOM_ADC) \
+			../ft-sense/lib/ \
+			)
+
+CFLAGS = -std=c99 $(ERRFLAGS) $(INC_COMMON)
 
 ## File and path macros.
 
 # We want to have Makefile in / and have source and builds separated. Therefore Make can't find targets in CWD so we have to tell is where to look for targets.
 VPATH = $(SRC_DIR) $(INCLUDE_DIR)
+
+# Automatically generated prerequisities files.
+DFILES= $(patsubst %.o,%.d,$(FIREFLY_OBJS) $(TEST_OBJS) $(GEN_OBJS))
 
 # Project dirctories.
 BUILD_DIR = build
@@ -80,13 +96,13 @@ TESTFILES_DIR = testfiles
 
 # Package/namespace dirs
 NS_PROTOCOL_DIR = $(BUILD_DIR)/protocol
-NS_EVENTQUEUE_DIR = $(BUILD_DIR)/eventqueue
+NS_UTILS_DIR = $(BUILD_DIR)/utils
 NS_TRANSPORT_DIR = $(BUILD_DIR)/transport
 NS_TEST_DIR = $(BUILD_DIR)/test
-NS_TESTPINGPONG_DIR = $(NS_PROTOCOL_DIR)/pingpong
+NS_TESTPINGPONG_DIR = $(NS_TEST_DIR)/pingpong
 
 # All volatile directories that are to be created.
-DIRS_TO_CREATE= $(BUILD_DIR) $(LIB_DIR) $(DOC_GEN_DIR) $(DOC_GEN_FULL_DIR) $(DOC_GEN_API_DIR) $(GEN_DIR) $(TESTFILES_DIR) $(INSTALL_INCLUDE_DIR) $(NS_PROTOCOL_DIR) $(NS_EVENTQUEUE_DIR) $(NS_TRANSPORT_DIR) $(NS_TEST_DIR) $(NS_TESTPINGPONG_DIR)
+DIRS_TO_CREATE= $(BUILD_DIR) $(LIB_DIR) $(DOC_GEN_DIR) $(DOC_GEN_FULL_DIR) $(DOC_GEN_API_DIR) $(GEN_DIR) $(TESTFILES_DIR) $(INSTALL_INCLUDE_DIR) $(NS_PROTOCOL_DIR) $(NS_UTILS_DIR) $(NS_TRANSPORT_DIR) $(NS_TEST_DIR) $(NS_TESTPINGPONG_DIR)
 
 # LabComm
 LIBPATH = ../lib
@@ -114,33 +130,34 @@ TAGSFILE_EMACS = TAGS
 
 ## Target macros and translations.
 
+## Libraries to build.
+LIBS=$(patsubst %,$(BUILD_DIR)/lib%.a,firefly ) # TODO add transport_udp_posix transport_udp_lwip
+
 ## LabComm
 # LabComm sample files to used for code generation.
 LC_FILE_NAMES = firefly_protocol.lc test.lc
 LC_FILES = $(addprefix $(LC_DIR)/, $(LC_FILE_NAMES))
 # LabComm generated files to be compiled.
 GEN_FILES= $(patsubst $(LC_DIR)/%.lc,$(GEN_DIR)/%.h,$(LC_FILES)) $(patsubst $(LC_DIR)/%.lc,$(GEN_DIR)/%.c,$(LC_FILES))
-GEN_OBJ_FILES= $(patsubst %.h,$(BUILD_DIR)/%.o,$(filter-out %.c,$(GEN_FILES)))
+GEN_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(filter-out %.h,$(GEN_FILES)))
 
 ## Firefly
 # Source files for libfirefly.
-FIREFLY_SRC = $(wildcard $(SRC_DIR)/protocol/**/*.c) $(wildcard $(SRC_DIR)/eventqueue/**/*.c)
+FIREFLY_SRC = $(shell find $(SRC_DIR)/protocol/ -type f -name '*.c' -print | sed 's/^$(SRC_DIR)\///') $(filter-out utils/firefly_errors.c,$(shell find $(SRC_DIR)/utils/ -type f -name '*.c' -print| sed 's/^$(SRC_DIR)\///')) $(BUILD_DIR)/$(GEN_DIR)/firefly_protocol.o
 
 # Disable default error handler that prints with fprintf. If set to true, you
 # must provide an own implementation at link time.
 # Set with $make -e FIREFLY_ERROR_USER_DEFINED=true
 ifneq ($(FIREFLY_ERROR_USER_DEFINED),true)
-	FIREFLY_SRC += firefly_errors.c
+	FIREFLY_SRC += utils/firefly_errors.c
 endif
 
 # Object files from sources.
-FIREFLY_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(FIREFLY_SRC)) $(BUILD_DIR)/$(GEN_DIR)/firefly_protocol.o
+FIREFLY_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(FIREFLY_SRC))
 
-## Libraries to build.
-LIBS=$(patsubst %,$(BUILD_DIR)/lib%.a,firefly ) # TODO add transport_udp_posix transport_udp_lwip
 
 ## Tests
-TEST_SRC = $(wildcard $(SRC_DIR)/test/**/*.c)
+TEST_SRC = $(shell find $(SRC_DIR)/test/ -type f -name '*.c' | sed 's/^$(SRC_DIR)\///')
 TEST_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(TEST_SRC)) $(BUILD_DIR)/$(GEN_DIR)/test.o
 TEST_PROGS = $(addsuffix _main,$(addprefix $(BUILD_DIR)/test/test_,protocol transport event))
 
@@ -157,29 +174,59 @@ TEST_PROGS = $(addsuffix _main,$(addprefix $(BUILD_DIR)/test/test_,protocol tran
 # This will enable expression involving automatic variables in the prerequisities list. It must be defined before any usage of these feauteres.
 .SECONDEXPANSION:
 
-## Real targets.
+
+## General targets.
 
 # target: all - Build all libs and tests.
-all: $(BUILD_DIR) $(LIBS) $(TEST_PROGS) $(TAGSFILE_VIM) $(TAGSFILE_EMACS)
+# TODO enable targets successively
+#all: $(LIBS) $(TEST_PROGS) $(TAGSFILE_VIM) $(TAGSFILE_EMACS)
+all: $(LIBS)
+
+echo:
+	@echo $(FIREFLY_SRC)
+
+# target: $(BUILD_DIR) - Everything that is to be build depend on the build dir.
+$(BUILD_DIR)/%: $(BUILD_DIR)
+
+# target: $(DIRS_TO_CREATE) - Create directories as needed.
+$(DIRS_TO_CREATE): 
+	mkdir -p $@
+
+
+## Labcomm targets
+# target: $(LABCOMMC) - Construct the LabComm compiler.
+$(LABCOMMC):
+	@echo "======Building LabComm compiler======"
+	cd $(LABCOMMPATH)/compiler; ant jar
+	@echo "======End building LabComm compiler======"
+
+# target: $(LABCOMMLIBPATH/liblabconn.a) - Build static LabComm library.
+$(LABCOMMLIBPATH)/liblabcomm.a:
+	@echo "======Building LabComm======"
+	$(MAKE) -C $(LABCOMMLIBPATH) -e LABCOMM_NO_EXPERIMENTAL=true all
+	@echo "======End building LabComm======"
+
+$(GEN_DIR)/%.c $(GEN_DIR)/%.h: $(LC_DIR)/%.lc $(LABCOMMC) $(GEN_DIR)
+	java -jar $(LABCOMMC) --c=$(patsubst %.h,%.c,$@) --h=$(patsubst %.c,%.h,$@) $<
+
+# Let the LabComm .o file depend on the generated .c and .h files.
+$(GEN_OBJ_FILES): $$(patsubst $$(BUILD_DIR)/%.o,%.c,$$@) $$(patsubst $$(BUILD_DIR)/%.o,%.h,$$@)
+
+$(BUILD_DIR)/gen/%.o: %.c $$(dir $$@)
+	$(CC) -c $(CFLAGS) -L$(LABCOMMLIBPATH) -o $@ -llabcomm $<
+
+## Firefly targets
 
 # target: build/libfirefly.a  - Build static library for firefly.
 $(BUILD_DIR)/libfirefly.a: $(FIREFLY_OBJS)
 	ar -rc $@ $^
 
-# Create directories as needed.
-$(DIRS_TO_CREATE):
-	mkdir -p $@
+# Usually these is an implicit rule but it does not work when the target dir is not the same as the source. Anyhow we need to add some includes for the different namespaces so it doesnt matter.
+$(BUILD_DIR)/protocol/%.o: protocol/%.c $$(@D)
+	$(CC) -c $(CFLAGS) $(INC_FIREFLY) -o $@ $<
 
-# Usually this is an implicit rule but it does not work when the target dir is not the same as the source.
-# TODO make protocol specific since they need different includes.
-$(BUILD_DIR)/%.o: %.c $$(dir $$@)
-	mkdir -p $(dir $@)
-	$(CC) -c $(CFLAGS) -o $@ $<
-
-
-
-
-
+$(BUILD_DIR)/utils/%.o: utils/%.c $$(@D)
+	$(CC) -c $(CFLAGS) $(INC_FIREFLY) -o $@ $<
 
 
 
@@ -196,8 +243,17 @@ $(BUILD_DIR)/test/test_transport_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_t
 $(BUILD_DIR)/test/test_event_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_event_main) $(patsubst %,$(BUILD_DIR)/%.o,eventqueue/firefly_event_queue)
 
 
-
 ## Utility targets
+
+# target: %.d - Automatic prerequisities generation.
+$(BUILD_DIR)/%.d: %.c $$(@D) $(GEN_FILES)
+	$(SHELL) -ec '$(CC) -M $(CFLAGS) $(INC_FIREFLY) $< \
+	| sed '\''s/\(.*\)\.o[ :]*/$(patsubst %.d,%.o,$(subst /,\/,$@)) : /g'\'' > $@; \
+	[ -s $@ ] || rm -f $@'
+
+## Include dependency files and ignore ".d file missing" the first time.
+#-include $(DFILES) /dev/null
+include $(DFILES)
 
 # target: tags-all  - Generate all tagsfiles.
 tags-all: $(TAGSFILE_VIM) $(TAGSFILE_EMACS)
@@ -212,9 +268,9 @@ $(TAGSFILE_EMACS):
 
 # target: install - Install libraries and headers to your system (/usr/local/{lib,include}).
 # TODO test this.
-install: $(INSTALL_INCLUDE_DIR) $(LIBS) $(wildcard $(INCLUDE_DIR)/**/*.h))
+install: $(INSTALL_INCLUDE_DIR) $(LIBS) $$(shell find $$(INCLUDE_DIR) -type f -name '*.h')
 	install -C $(filter %.a,$^) $(INSTALL_LIB_DIR)
-	install -C $(filter %.h,$^) $(INSTALL_INCLUDE_DIR)
+	install -C $(wildcard $(INCLUDE_DIR)/*) $(INSTALL_INCLUDE_DIR)
 
 # target: uninstall - Undo that install done.
 # TODO test this.
@@ -226,24 +282,24 @@ uninstall:
 help:
 	@egrep "#\starget:" [Mm]akefile  | sed 's/\s-\s/\t\t\t/' | cut -d " " -f3- | sort -d
 
-# target: clean  - Clean most generated files..
+# target: clean  - Clean most compiled or generated files.
 clean:
 	$(RM) $(LIBS)
 	$(RM) $(FIREFLY_OBJS)
 	$(RM) $(FIREFLY_OBJS:.o=.d)
-	$(RM) $(TEST_EVENT_OBJS)
-	$(RM) $(TEST_PROTO_OBJS)
-	$(RM) $(TEST_TRANSP_OBJS)
+	$(RM) $(GEN_OBJS)
+	$(RM) $(GEN_OBJS:.o=.d)
+	$(RM) $(TEST_OBJS)
+	$(RM) $(TEST_OBJS:.o=.d)
 	$(RM) $(TEST_PROGS)
-	$(RM) $(GEN_DIR)/*
-#	$(RM) $(addprefix $(TESTFILES_DIR)/,$(addsuffix .enc, data sig))
-	$(RM) $(TESTFILES_DIR)/*
+	$(RM) $(wildcard $(GEN_DIR)/*)
+	$(RM) $(wildcard $(TESTFILES_DIR)/*)
 	@echo "======Cleaning LabComm======"
 	$(MAKE) -C $(LABCOMMLIBPATH) distclean
 	@echo "======End cleaning LabComm======"
 	$(RM) $(TAGSFILE_VIM) $(TAGSFILE_EMACS)
 
-# target: cleaner - Clean all generated files.
+# target: cleaner - Clean all created files.
 cleaner: clean
 	$(RM) -r $(DOC_GEN_DIR)
 	$(RM) -r $(BUILD_DIR)
