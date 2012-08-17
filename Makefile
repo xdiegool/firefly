@@ -77,9 +77,6 @@ CFLAGS = -std=c99 $(ERRFLAGS) $(INC_COMMON)
 # We want to have Makefile in / and have source and builds separated. Therefore Make can't find targets in CWD so we have to tell is where to look for targets.
 VPATH = $(SRC_DIR) $(INCLUDE_DIR)
 
-# Automatically generated prerequisities files.
-DFILES= $(patsubst %.o,%.d,$(FIREFLY_OBJS) $(TEST_OBJS) $(GEN_OBJS))
-
 # Project dirctories.
 BUILD_DIR = build
 DOC_DIR = doc
@@ -94,7 +91,8 @@ INSTALL_INCLUDE_DIR = /usr/local/include/firefly/
 SRC_DIR = src
 TESTFILES_DIR = testfiles
 
-# Package/namespace dirs
+# Namespace/package dirs
+NS_GEN_DIR = $(BUILD_DIR)/$(GEN_DIR)
 NS_PROTOCOL_DIR = $(BUILD_DIR)/protocol
 NS_UTILS_DIR = $(BUILD_DIR)/utils
 NS_TRANSPORT_DIR = $(BUILD_DIR)/transport
@@ -102,7 +100,7 @@ NS_TEST_DIR = $(BUILD_DIR)/test
 NS_TESTPINGPONG_DIR = $(NS_TEST_DIR)/pingpong
 
 # All volatile directories that are to be created.
-DIRS_TO_CREATE= $(BUILD_DIR) $(LIB_DIR) $(DOC_GEN_DIR) $(DOC_GEN_FULL_DIR) $(DOC_GEN_API_DIR) $(GEN_DIR) $(TESTFILES_DIR) $(INSTALL_INCLUDE_DIR) $(NS_PROTOCOL_DIR) $(NS_UTILS_DIR) $(NS_TRANSPORT_DIR) $(NS_TEST_DIR) $(NS_TESTPINGPONG_DIR)
+DIRS_TO_CREATE= $(BUILD_DIR) $(LIB_DIR) $(DOC_GEN_DIR) $(DOC_GEN_FULL_DIR) $(DOC_GEN_API_DIR) $(GEN_DIR) $(TESTFILES_DIR) $(INSTALL_INCLUDE_DIR) $(NS_GEN_DIR) $(NS_PROTOCOL_DIR) $(NS_UTILS_DIR) $(NS_TRANSPORT_DIR) $(NS_TEST_DIR) $(NS_TESTPINGPONG_DIR)
 
 # LabComm
 LIBPATH = ../lib
@@ -132,6 +130,9 @@ TAGSFILE_EMACS = TAGS
 
 ## Libraries to build.
 LIBS=$(patsubst %,$(BUILD_DIR)/lib%.a,firefly ) # TODO add transport_udp_posix transport_udp_lwip
+
+# Automatically generated prerequisities files.
+DFILES= $(patsubst %.o,%.d,$(FIREFLY_OBJS) $(TEST_OBJS) $(GEN_OBJS))
 
 ## LabComm
 # LabComm sample files to used for code generation.
@@ -247,13 +248,12 @@ $(BUILD_DIR)/test/test_event_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_event
 
 # target: %.d - Automatic prerequisities generation.
 $(BUILD_DIR)/%.d: %.c $$(@D) $(GEN_FILES)
-	$(SHELL) -ec '$(CC) -M $(CFLAGS) $(INC_FIREFLY) $< \
+	@$(SHELL) -ec '$(CC) -M $(CFLAGS) $(INC_FIREFLY) $< \
 	| sed '\''s/\(.*\)\.o[ :]*/$(patsubst %.d,%.o,$(subst /,\/,$@)) : /g'\'' > $@; \
 	[ -s $@ ] || rm -f $@'
 
 ## Include dependency files and ignore ".d file missing" the first time.
-#-include $(DFILES) /dev/null
-include $(DFILES)
+-include $(DFILES) /dev/null
 
 # target: tags-all  - Generate all tagsfiles.
 tags-all: $(TAGSFILE_VIM) $(TAGSFILE_EMACS)
@@ -286,12 +286,10 @@ help:
 clean:
 	$(RM) $(LIBS)
 	$(RM) $(FIREFLY_OBJS)
-	$(RM) $(FIREFLY_OBJS:.o=.d)
 	$(RM) $(GEN_OBJS)
-	$(RM) $(GEN_OBJS:.o=.d)
 	$(RM) $(TEST_OBJS)
-	$(RM) $(TEST_OBJS:.o=.d)
 	$(RM) $(TEST_PROGS)
+	$(RM) $(DFILES)
 	$(RM) $(wildcard $(GEN_DIR)/*)
 	$(RM) $(wildcard $(TESTFILES_DIR)/*)
 	@echo "======Cleaning LabComm======"
