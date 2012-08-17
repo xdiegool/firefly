@@ -336,19 +336,22 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 
 	// Find existing connection or create new.
 	conn = find_connection_by_addr(&remote_addr, llp);
-	if (llp_udp->on_conn_recv == NULL) {
-		// TODO feature consideration, on_conn_recv == NULL => silently
-		// reject incomming connections.
-		firefly_error(FIREFLY_ERROR_MISSING_CALLBACK, 3,
-			  "Failed in %s() on line %d. 'on_conn_recv missing'\n",
-			  __FUNCTION__, __LINE__);
-	}
 
-	if (conn == NULL && llp_udp->on_conn_recv != NULL) {
-		char ip_addr[INET_ADDRSTRLEN];
-		sockaddr_in_ipaddr(&remote_addr, ip_addr);
-		conn = llp_udp->on_conn_recv(llp, ip_addr,
-				sockaddr_in_port(&remote_addr));
+	if (conn == NULL) {
+		if (llp_udp->on_conn_recv != NULL) {
+			char ip_addr[INET_ADDRSTRLEN];
+			sockaddr_in_ipaddr(&remote_addr, ip_addr);
+			conn = llp_udp->on_conn_recv(llp, ip_addr,
+					sockaddr_in_port(&remote_addr));
+		} else {
+			firefly_error(FIREFLY_ERROR_MISSING_CALLBACK, 4,
+				      "Cannot accept incoming connection "
+				      "on port %d.\n"
+				      "Callback 'on_conn_recv' not set on llp.\n"
+				      "(in %s() at %s:%d)",
+				      ntohs(llp_udp->local_addr->sin_port),
+				      __FUNCTION__, __FILE__, __LINE__);
+		}
 	}
 
 	// Existing or newly created conn. Passing data to procol layer.
