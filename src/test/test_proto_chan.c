@@ -884,7 +884,7 @@ void test_recv_app_data()
 		&proto_data_pkt);
 
 	struct labcomm_decoder *ch_dec = firefly_protocol_get_input_stream(ch);
-	labcomm_decoder_register_test_test_var(ch_dec, handle_test_test_var
+	labcomm_decoder_register_test_test_var(ch_dec, handle_test_test_var,
 			NULL);
 
 	labcomm_decoder_register_firefly_protocol_data_sample(
