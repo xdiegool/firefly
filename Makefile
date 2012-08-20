@@ -4,7 +4,6 @@
 # }
 
 # TODO fix so multiple targets can be run like `make clean all`
-# TODO fix all other TODOs in this file.
 
 ### Macros {
 ## Compiler options. {
@@ -101,7 +100,7 @@ endif
 
 # Add options depending on target. Default is x86/x64.
 # Set with $make -e TARGET_ISA=<isa>
-# TODO test this.
+# TODO test this. Probably LINKER_FLAGS are needed to from ft-sens/Makefile.
 ifeq ($(TARGET_ISA), arm_thumb)
 	CFLAGS += -Wfloat-equal -Werror-implicit-function-declaration \
 		-mthumb -mcpu=cortex-m3 -T$(LDSCRIPT) \
@@ -130,8 +129,8 @@ DOC_GEN_DIR = $(DOC_DIR)/gen
 DOC_GEN_FULL_DIR = $(DOC_GEN_DIR)/full
 GEN_DIR = gen
 INCLUDE_DIR = include
-INSTALL_INCLUDE_DIR = /usr/local/include/firefly/
-INSTALL_LIB_DIR = /usr/local/lib/
+INSTALL_INCLUDE_DIR = /usr/local/include/firefly
+INSTALL_LIB_DIR = /usr/local/lib
 LC_DIR = lc
 SRC_DIR = src
 TESTFILES_DIR = testfiles
@@ -154,7 +153,8 @@ LABCOMMLIBPATH = $(LABCOMMPATH)/lib/c
 LABCOMMC = $(LABCOMMPATH)/compiler/labComm.jar
 
 # FreeRTOS and LWIP
-RTOS_BASE = ../ft-sense/lib/freertos/
+FT_SENSE_DIR = ../ft-sense
+RTOS_BASE = $(FT_SENSE_DIR)/lib/freertos/
 RTOS_SOURCE_DIR = $(RTOS_BASE)/Source
 RTOS_COMMON_PORTS = $(RTOS_BASE)/Demo/Common
 LWIP_DRIVER_DIR = $(RTOS_COMMON_PORTS)/ethernet
@@ -164,8 +164,9 @@ LWIP_PORT_DIR = $(LWIP_SOURCE_DIR)/contrib/port/FreeRTOS/LM3S/arch
 WEB_SERVER_DIR = $(LWIP_SOURCE_DIR)/Apps
 LUMINARY_DRIVER_DIR = $(RTOS_COMMON_PORTS)/drivers/LuminaryMicro
 COMMOM_INCLUDE = $(RTOS_COMMON_PORTS)/include
-COMMOM_ADC = ../ft-sense/src/common/
-DRIVERLIB_DIR = ../ft-sense/lib/driverlib/
+COMMOM_ADC = $(FT_SENSE_DIR)/src/common/
+DRIVERLIB_DIR = $(FT_SENSE_DIR)/lib/driverlib/
+LDSCRIPT= $(FT_SENSE_DIR)/src/adc_freertos_lwip/standalone.ld
 
 # Tagsfile
 TAGSFILE_VIM = tags
@@ -184,7 +185,7 @@ LIB_TRANSPORT_UDP_LWIP_NAME = transport-udp-lwip
 LIBS=$(patsubst %,$(BUILD_DIR)/lib%.a,$(LIB_FIREFLY_NAME) $(LIB_TRANSPORT_UDP_POSIX_NAME) $(LIB_TRANSPORT_UDP_LWIP_NAME))
 
 # Automatically generated prerequisities files.
-DFILES= $(patsubst %.o,%.d,$(FIREFLY_OBJS) $(TEST_OBJS) $(GEN_OBJS))
+DFILES= $(patsubst %.o,%.d,$(filter-out $(BUILD_DIR)/$(GEN_DIR)/firefly_protocol.o,$(FIREFLY_OBJS)) $(TEST_OBJS) $(GEN_OBJS))
 
 ### }
 
@@ -244,7 +245,6 @@ TEST_PROGS = $(shell find $(SRC_DIR)/test/{,pingpong/} -type f -name '*_main.c' 
 ### Targets {
 ## Special built-in targets {
 # Non-file targets.
-# TODO update this
 .PHONY: all clean cleaner doc doc-api doc-api-open doc-full doc-full-open doc-open install ping pong tags-all test testc uninstall
 
 # This will enable expression involving automatic variables in the prerequisities list. It must be defined before any usage of these feauteres.
@@ -423,19 +423,15 @@ testc:
 	$(CLI_DIR)/celebrate.sh
 
 # target: ping - Run ping test program. Must be started _after_ "make pong"
-# TODO fix this
 ping: $(BUILD_DIR)/test/pingpong/pingpong_main
 	$< $@
 
 # target: pong - Run pong test program. Must be started _before_ "make ping"
-# TODO fix this
 pong: $(BUILD_DIR)/test/pingpong/pingpong_main
 	$< $@
 
 # target: %.d - Automatic prerequisities generation.
-# TODO prepend | to $$(@D)??
-# TODO replace target with $(DFILES)?
-$(BUILD_DIR)/%.d: %.c $$(@D) $(GEN_FILES)
+$(BUILD_DIR)/%.d: %.c $(GEN_FILES) |$$(@D)
 	@$(SHELL) -ec '$(CC) -M $(CFLAGS) $(INC_FIREFLY) $< \
 	| sed '\''s/\(.*\)\.o[ :]*/$(patsubst %.d,%.o,$(subst /,\/,$@)) : /g'\'' > $@; \
 	[ -s $@ ] || rm -f $@'
@@ -455,15 +451,13 @@ $(TAGSFILE_EMACS):
 	ctags --recurse --tag-relative=yes -e -f $@
 
 # target: install - Install libraries and headers to your system (/usr/local/{lib,include}).
-# TODO test this.
-install: $(INSTALL_INCLUDE_DIR) $(LIBS) $$(shell find $$(INCLUDE_DIR) -type f -name '*.h')
+install: $(LIBS) $$(shell find $$(INCLUDE_DIR) -type f -name '*.h') |$(INSTALL_INCLUDE_DIR)
 	install -C $(filter %.a,$^) $(INSTALL_LIB_DIR)
-	install -C $(wildcard $(INCLUDE_DIR)/*) $(INSTALL_INCLUDE_DIR)
+	cp -r $(wildcard $(INCLUDE_DIR)/*) $(INSTALL_INCLUDE_DIR)
 
 # target: uninstall - Undo that install done.
-# TODO test this.
 uninstall:
-	$(RM) $(addprefix $(INSTALL_LIB_DIR)/,$(LIBS))
+	$(RM) $(addprefix $(INSTALL_LIB_DIR)/,$(patsubst $(BUILD_DIR)/%,%,$(LIBS)))
 	$(RM) -r $(INSTALL_INCLUDE_DIR)
 
 # target: help - Display all targets.
