@@ -3,8 +3,6 @@
 # vi: foldmarker={,} foldmethod=marker foldlevel=0
 # }
 
-# TODO fix so multiple targets can be run like `make clean all`
-
 ### Macros {
 ## Compiler options. {
 # NOTE the order of macro declaration is, apparently, of importance. E.g. having "ifeq(...) CFLAGS+=..." before "CFLAGS=.." will not work.
