@@ -4,8 +4,6 @@
 # }
 
 # TODO fix so pinpong is run automatically with make test
-# TODO copy residual functionallity
-# TODO update clean(er) targets
 # TODO fix so multiple targets can be run like `make clean all`
 # TODO fix all other TODOs in this file.
 
@@ -237,7 +235,7 @@ TRANSPORT_UDP_LWIP_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(TRANSPORT_UDP_LWIP_SR
 ### Tests {
 TEST_SRC = $(shell find $(SRC_DIR)/test/ -type f -name '*.c' | sed 's/^$(SRC_DIR)\///')
 TEST_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(TEST_SRC))
-TEST_PROGS = $(shell find $(SRC_DIR)/test/ -type f -name '*_main.c' | sed -e 's/^$(SRC_DIR)\//$(BUILD_DIR)\//' -e 's/\.c//')
+TEST_PROGS = $(shell find $(SRC_DIR)/test/{,pingpong/} -type f -name '*_main.c' | sed -e 's/^$(SRC_DIR)\//$(BUILD_DIR)\//' -e 's/\.c//')
 
 ### }
 
@@ -262,9 +260,7 @@ TEST_PROGS = $(shell find $(SRC_DIR)/test/ -type f -name '*_main.c' | sed -e 's/
 ## General targets. {
 
 # target: all - Build all libs and tests.
-# TODO enable targets successively
-#all: $(LIBS) $(TEST_PROGS) $(TAGSFILE_VIM) $(TAGSFILE_EMACS)
-all: $(LIBS) $(TEST_PROGS)
+all: $(LIBS) $(TEST_PROGS) $(TAGSFILE_VIM) $(TAGSFILE_EMACS)
 
 # target: $(BUILD_DIR) - Everything that is to be build depends on the build dir.
 $(BUILD_DIR)/%: $(BUILD_DIR)
@@ -403,6 +399,10 @@ $(BUILD_DIR)/test/test_transport_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_t
 $(BUILD_DIR)/test/test_event_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_event_main) $(patsubst %,$(BUILD_DIR)/%.o,utils/firefly_event_queue)
 	$(CC) $(LDFLAGS) $(LDFlAGS_TEST) $^ $(LDLIBS_TEST) -o $@ 
 
+# Main test program for the ping program.
+$(BUILD_DIR)/test/pingpong/pingpong_main: $(patsubst %,$(BUILD_DIR)/test/pingpong/%.o,pingpong_main pingpong_pudp pong_pudp ping_pudp hack_lctypes) $(BUILD_DIR)/$(GEN_DIR)/test.o
+	$(CC) $(LDFLAGS) $(LDFlAGS_TEST) $^ $(LDLIBS_TEST) -o $@ 
+
 ### }
 ## }
 
@@ -422,13 +422,13 @@ testc:
 
 # target: ping - Run ping test program. Must be started _after_ "make pong"
 # TODO fix this
-#ping: $(BUILD_DIR)/test/pingpong/ping_pudp
-	#./$^
+ping: $(BUILD_DIR)/test/pingpong/pingpong_main
+	$< $@
 
 # target: pong - Run pong test program. Must be started _before_ "make ping"
 # TODO fix this
-#pong: $(BUILD_DIR)/test/pingpong/pong_pudp
-	#./$^
+pong: $(BUILD_DIR)/test/pingpong/pingpong_main
+	$< $@
 
 # target: %.d - Automatic prerequisities generation.
 $(BUILD_DIR)/%.d: %.c $$(@D) $(GEN_FILES)
@@ -469,18 +469,16 @@ help:
 # target: clean  - Clean most compiled or generated files.
 clean:
 	$(RM) $(LIBS)
-	$(RM) $(GEN_OBJS)
 	$(RM) $(FIREFLY_OBJS)
 	$(RM) $(TRANSPORT_UDP_POSIX_OBJS)
 	$(RM) $(TRANSPORT_UDP_LWIP_OBJS)
 	$(RM) $(TEST_OBJS)
 	$(RM) $(TEST_PROGS)
 	$(RM) $(DFILES)
+	$(RM) $(GEN_OBJS)
 	$(RM) $(wildcard $(GEN_DIR)/*)
 	$(RM) $(wildcard $(TESTFILES_DIR)/*)
-	@echo "======Cleaning LabComm======"
-	$(MAKE) -C $(LABCOMMLIBPATH) distclean
-	@echo "======End cleaning LabComm======"
+	$(RM) $(wildcard $(TESTFILES_DIR)/pingpong/*)
 	$(RM) $(TAGSFILE_VIM) $(TAGSFILE_EMACS)
 
 # target: cleaner - Clean all created files.
@@ -490,6 +488,9 @@ cleaner: clean
 	$(RM) -r $(LIB_DIR)
 	$(RM) -r $(GEN_DIR)
 	$(RM) -r $(TESTFILES_DIR)
+	@echo "======Cleaning LabComm======"
+	$(MAKE) -C $(LABCOMMLIBPATH) distclean
+	@echo "======End cleaning LabComm======"
 	@echo "======Cleaning LabComm compiler======"
 	cd $(LABCOMMPATH)/compiler; ant clean 
 	@echo "======End cleaning LabComm compiler======"

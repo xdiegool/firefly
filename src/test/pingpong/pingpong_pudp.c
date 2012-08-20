@@ -18,9 +18,10 @@ void pingpong_test_pass(struct pingpong_test *test)
 	test->pass = true;
 }
 
-void pingpong_test_print_results(struct pingpong_test *tests, size_t nbr_tests)
+void pingpong_test_print_results(struct pingpong_test *tests, size_t nbr_tests,
+		char *test_suite_name)
 {
-	printf("======TEST RESULTS=======\n");
+	printf("======%s test results=======\n", test_suite_name);
 	for (size_t i = 0; i < nbr_tests; i++) {
 		printf("phase %d: %s...%s\n", i, tests[i].name,
 				tests[i].pass ? "passed" : "failed");
