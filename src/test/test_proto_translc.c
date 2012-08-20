@@ -178,7 +178,7 @@ void transport_write_udp_posix_mock_cmp(unsigned char *data, size_t data_size,
 }
 
 void test_encode_protocol()
-{
+{ 
 	firefly_protocol_data_sample data_sample;
 	data_sample.src_chan_id = SRC_CHAN_ID;
 	data_sample.dest_chan_id = DEST_CHAN_ID;

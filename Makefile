@@ -7,47 +7,23 @@
 # TODO fix so pinpong is run automatically with make test
 # TODO copy residual functionallity
 # TODO update clean(er) targets
-
+# TODO fix so multiple targets can be run like `make clean all`
 
 ### Macros {
-
 ## Compiler options. {
+# NOTE the order of macro declaration is, apparently, of importance. E.g. having "ifeq(...) CFLAGS+=..." before "CFLAGS=.." will not work.
+
 # Use LLVM clang if it's found.
 CC = $(shell hash clang 2>/dev/null && echo clang || echo cc)
 
-# Change with $make -e DEBUG=false
-DEBUG = true
-DEBUGOPT = -g
-ifeq ($(DEBUG), true)
-	CFLAGS += $(DEBUGOPT) -O0
-	LDFLAGS += $(DEBUGOPT)
-else
-	CFLAGS += -O$(OPTLVL)
-endif
-
-# Enable instrumented compilation with $make -e COVERAGE=true
-ifeq ($(COVERAGE), true)
-	CFLAGS += --coverage
-	LDFLAGS += --coverage
-endif
-
-# Add options depending on target. Default is x86/x64.
-# Set with $make -e TARGET_ISA=<isa>
-# TODO test this.
-ifeq ($(TARGET_ISA), arm_thumb)
-	CFLAGS += -Wfloat-equal -Werror-implicit-function-declaration \
-		-mthumb -mcpu=cortex-m3 -T$(LDSCRIPT) \
-		-ffunction-sections -fdata-sections
-endif
-
-# Clang does not support noexecstack it seems.
-ifeq ($(CC), gcc)
-	CFLAGS += -z noexecstack
-endif
-
+# Error flags to the compiler.
 ERRFLAGS = -Wall -Wextra
-OPTLVL= 2
 
+# Common flags to the compiler.
+CFLAGS = -std=c99 $(ERRFLAGS) $(INC_COMMON)
+
+
+### Includes {
 # Common include paths.
 INC_COMMON = $(addprefix -I, \
 		. \
@@ -91,17 +67,55 @@ INC_TEST = $(addprefix -I, \
 		$(LABCOMMLIBPATH) \
 		)
 
+### }
+
+### Linker flags. {
+
+# Common linker flags.
+LDFLAGS=
+
 # Linker flags for test programs.
 LDFlAGS_TEST= -L$(LABCOMMLIBPATH)
 
 # Libraries to link with test programs.
-LDLIBS_TEST= -llabcomm -lcunit
+LDLIBS_TEST= -llabcomm -lcunit -lpthread
 
-# Common linker flags.
-#LDFLAGS=
+### }
 
-# Common flags to the compiler.
-CFLAGS = -std=c99 $(ERRFLAGS) $(INC_COMMON)
+### Conditional flags {
+OPTLVL= 2
+DEBUG = true
+DEBUGOPT = -g
+
+# Change with $make -e DEBUG=false
+ifeq ($(DEBUG), true)
+	# Disalbe optimizations when deubbing.
+	CFLAGS += $(DEBUGOPT) -O0
+	LDFLAGS += -g
+else
+	CFLAGS += -O$(OPTLVL)
+endif
+
+# Enable instrumented compilation with $make -e COVERAGE=true
+ifeq ($(COVERAGE), true)
+	CFLAGS += --coverage
+	LDFLAGS += --coverage
+endif
+
+# Add options depending on target. Default is x86/x64.
+# Set with $make -e TARGET_ISA=<isa>
+# TODO test this.
+ifeq ($(TARGET_ISA), arm_thumb)
+	CFLAGS += -Wfloat-equal -Werror-implicit-function-declaration \
+		-mthumb -mcpu=cortex-m3 -T$(LDSCRIPT) \
+		-ffunction-sections -fdata-sections
+endif
+
+# Clang does not support noexecstack it seems.
+ifeq ($(CC), gcc)
+	CFLAGS += -z noexecstack
+endif
+### }
 
 ## }
 
@@ -112,15 +126,16 @@ VPATH = $(SRC_DIR) $(INCLUDE_DIR)
 
 # Project dirctories.
 BUILD_DIR = build
+CLI_DIR = cli
 DOC_DIR = doc
 DOC_GEN_API_DIR = $(DOC_GEN_DIR)/api
 DOC_GEN_DIR = $(DOC_DIR)/gen
 DOC_GEN_FULL_DIR = $(DOC_GEN_DIR)/full
 GEN_DIR = gen
 INCLUDE_DIR = include
-LC_DIR = lc
-INSTALL_LIB_DIR = /usr/local/lib/
 INSTALL_INCLUDE_DIR = /usr/local/include/firefly/
+INSTALL_LIB_DIR = /usr/local/lib/
+LC_DIR = lc
 SRC_DIR = src
 TESTFILES_DIR = testfiles
 
@@ -163,30 +178,29 @@ TAGSFILE_EMACS = TAGS
 
 ## Target macros and translations. {
 
+### Our libraries {
 LIB_FIREFLY_NAME = firefly
 LIB_TRANSPORT_UDP_POSIX_NAME = transport-udp-posix
 LIB_TRANSPORT_UDP_LWIP_NAME = transport-udp-lwip
 
-## }
-
-## Libraries to build. {
+# Libraries to build.
 LIBS=$(patsubst %,$(BUILD_DIR)/lib%.a,$(LIB_FIREFLY_NAME) $(LIB_TRANSPORT_UDP_POSIX_NAME) $(LIB_TRANSPORT_UDP_LWIP_NAME))
 
 # Automatically generated prerequisities files.
 DFILES= $(patsubst %.o,%.d,$(FIREFLY_OBJS) $(TEST_OBJS) $(GEN_OBJS))
 
-## }
+### }
 
-## LabComm {
+### LabComm {
 # LabComm sample files to used for code generation.
 LC_FILE_NAMES = firefly_protocol.lc test.lc
 LC_FILES = $(addprefix $(LC_DIR)/, $(LC_FILE_NAMES))
 # LabComm generated files to be compiled.
 GEN_FILES= $(patsubst $(LC_DIR)/%.lc,$(GEN_DIR)/%.h,$(LC_FILES)) $(patsubst $(LC_DIR)/%.lc,$(GEN_DIR)/%.c,$(LC_FILES))
 GEN_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(filter-out %.h,$(GEN_FILES)))
-## }
+### }
 
-## Firefly {
+### Firefly {
 # Source files for libfirefly.
 FIREFLY_SRC = $(shell find $(SRC_DIR)/protocol/ -type f -name '*.c' -print | sed 's/^$(SRC_DIR)\///') $(filter-out utils/firefly_errors.c,$(shell find $(SRC_DIR)/utils/ -type f -name '*.c' -print| sed 's/^$(SRC_DIR)\///')) $(GEN_DIR)/firefly_protocol.c
 
@@ -200,33 +214,34 @@ endif
 # Object files from sources.
 FIREFLY_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(FIREFLY_SRC))
 
-## }
+### }
 
-## Transport UPD POSIX {
+### Transport UPD POSIX {
 # Source files for lib$(LIB_TRANSPORT_UDP_POSIX_NAME).a
 TRANSPORT_UDP_POSIX_SRC = $(shell find $(SRC_DIR)/transport/ -type f -name '*udp_posix*.c' -print | sed 's/^$(SRC_DIR)\///')
 
 # Object files from sources.
 TRANSPORT_UDP_POSIX_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(TRANSPORT_UDP_POSIX_SRC))
 
-## }
+### }
 
-## Transport UPD LWIP {
+### Transport UPD LWIP {
 # Source files for lib$(LIB_TRANSPORT_UDP_LWIP_NAME).a
 TRANSPORT_UDP_LWIP_SRC = $(shell find $(SRC_DIR)/transport/ -type f -name '*udp_lwip*.c' -print | sed 's/^$(SRC_DIR)\///')
 
 # Object files from sources.
 TRANSPORT_UDP_LWIP_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(TRANSPORT_UDP_LWIP_SRC))
 
-## }
+### }
 
-## Tests {
+### Tests {
 TEST_SRC = $(shell find $(SRC_DIR)/test/ -type f -name '*.c' | sed 's/^$(SRC_DIR)\///')
 TEST_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(TEST_SRC))
 TEST_PROGS = $(shell find $(SRC_DIR)/test/ -type f -name '*_main.c' | sed -e 's/^$(SRC_DIR)\//$(BUILD_DIR)\//' -e 's/\.c//')
 
-## }
+### }
 
+## }
 ### }
 
 ### Targets {
@@ -330,18 +345,37 @@ $(TRANSPORT_UDP_LWIP_OBJS): $$(patsubst $$(BUILD_DIR)/%.o,%.c,$$@) |$$(@D)
 $(TEST_OBJS): $$(patsubst $$(BUILD_DIR)/%.o,%.c,$$@) |$$(@D)
 	$(CC) -c $(CFLAGS) $(INC_TEST) -o $@ $<
 
-# Linking for test programs.
-$(TEST_PROGS): $(TEST_OBJS)
-	$(CC) $(LDFlAGS_TEST) $^ $(LDLIBS_TEST) -o $@ 
+# The test programs all depends on the libraries it uses and the test files output directory.
+$(TEST_PROGS): $$(patsubst %,$$(BUILD_DIR)/lib%.a,$$(LIB_FIREFLY_NAME) $$(LIB_TRANSPORT_UDP_POSIX_NAME)) $(LABCOMMLIBPATH)/liblabcomm.a |$(TESTFILES_DIR)
 
-#$(BUILD_DIR)/test/test_protocol_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_protocol_main test_labcomm_utils test_proto_chan test_proto_translc test_proto_protolc test_proto_errors proto_helper)
-#$(BUILD_DIR)/test/test_transport_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_transport_main test_transport_udp_posix)
-#$(BUILD_DIR)/test/test_event_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_event_main) $(patsubst %,$(BUILD_DIR)/%.o,eventqueue/firefly_event_queue)
+# Main test program for the protocol tests.
+$(BUILD_DIR)/test/test_protocol_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_protocol_main test_labcomm_utils test_proto_chan test_proto_translc test_proto_protolc test_proto_errors proto_helper) $(BUILD_DIR)/$(GEN_DIR)/test.o
+	$(CC) $(LDFLAGS) $(LDFlAGS_TEST) $^ $(LDLIBS_TEST) -o $@ 
+
+# Main test program for the transport tests.
+$(BUILD_DIR)/test/test_transport_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_transport_main test_transport_udp_posix)
+	$(CC) $(LDFLAGS) $(LDFlAGS_TEST) $^ $(LDLIBS_TEST) -o $@ 
+
+# Main test program for the event queue tests.
+$(BUILD_DIR)/test/test_event_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_event_main) $(patsubst %,$(BUILD_DIR)/%.o,utils/firefly_event_queue)
+	$(CC) $(LDFLAGS) $(LDFlAGS_TEST) $^ $(LDLIBS_TEST) -o $@ 
 
 ### }
 ## }
 
 ## Utility targets {
+
+# target: test - Run all tests.
+test: $(TEST_PROGS)
+	@for prog in $^; do \
+		echo "=========================>BEGIN TEST: $${prog}"; \
+		./$$prog; \
+		echo "=========================>END TEST: $${prog}"; \
+	done
+
+# target: testc - Run all tests with sound effects!
+testc:
+	$(CLI_DIR)/celebrate.sh
 
 # target: %.d - Automatic prerequisities generation.
 $(BUILD_DIR)/%.d: %.c $$(@D) $(GEN_FILES)
