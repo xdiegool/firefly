@@ -147,3 +147,9 @@ void firefly_connection_set_context(struct firefly_connection * const conn,
 {
 	conn->context = context;
 }
+
+struct firefly_event_queue *firefly_connection_get_event_queue(
+		struct firefly_connection *conn)
+{
+	return conn->event_queue;
+}

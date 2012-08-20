@@ -131,4 +131,13 @@ void *firefly_connection_get_context(struct firefly_connection *conn);
 void firefly_connection_set_context(struct firefly_connection * const conn,
 				    void * const context);
 
+/**
+ * @brief Gets the event queue associated with the connection.
+ * @param The connection.
+ * @return The event queue.
+ */
+struct firefly_event_queue *firefly_connection_get_event_queue(
+	       struct firefly_connection *conn);
+
+
 #endif

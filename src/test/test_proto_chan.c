@@ -1742,3 +1742,20 @@ void test_chan_open_close_multiple()
 	firefly_connection_free(&conn_recv);
 	firefly_event_queue_free(&eq);
 }
+
+void test_nbr_chan()
+{
+	struct firefly_connection conn;
+	struct channel_list_node ln[2];
+
+	conn.chan_list = NULL;
+	CU_ASSERT_EQUAL(firefly_number_channels_in_connection(&conn), 0);
+
+	ln[0].next = NULL;
+	conn.chan_list = &ln[0];
+	CU_ASSERT_EQUAL(firefly_number_channels_in_connection(&conn), 1);
+
+	ln[1].next = NULL;
+	conn.chan_list->next = &ln[1];
+	CU_ASSERT_EQUAL(firefly_number_channels_in_connection(&conn), 2);
+}

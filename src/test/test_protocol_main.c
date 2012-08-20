@@ -149,6 +149,9 @@ int main()
 			||
 			(CU_add_test(chan_suite, "test_unexpected_channel_close",
 					test_unexpected_channel_close) == NULL)
+			||
+			(CU_add_test(chan_suite, "test_nbr_chan",
+					test_nbr_chan) == NULL)
 			) {
 				CU_cleanup_registry();
 				return CU_get_error();

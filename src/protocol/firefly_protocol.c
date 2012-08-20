@@ -436,16 +436,14 @@ struct labcomm_decoder *firefly_protocol_get_input_stream(
 
 size_t firefly_number_channels_in_connection(struct firefly_connection *conn)
 {
-	struct channel_list_node *node;
-	size_t n_chan = 0;
+       	struct channel_list_node *node;
+	int cnt = 0;
 
 	node = conn->chan_list;
-	if (node) {
-		n_chan++;
-		while ((node = node->next) != NULL)
-			n_chan++;
+	while (node) {
+		node = node->next;
+		cnt++;
 	}
 
-	return n_chan;
-
+	return cnt;
 }

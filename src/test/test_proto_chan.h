@@ -35,6 +35,8 @@ void test_chan_open_close_multiple();
 
 void test_chan_app_data_multiple();
 
+void test_nbr_chan();
+
 // TODO
 // multiple channels
 // importance?
