@@ -4,6 +4,8 @@
 #include <utils/firefly_event_queue.h>
 #include <transport/firefly_transport_udp_posix.h>
 
+#include "utils/cppmacros.h"
+
 
 void pingpong_test_init(struct pingpong_test *test, char *name)
 {
@@ -19,7 +21,7 @@ void pingpong_test_pass(struct pingpong_test *test)
 void pingpong_test_print_results(struct pingpong_test *tests, size_t nbr_tests)
 {
 	printf("======TEST RESULTS=======\n");
-	for (int i = 0; i < nbr_tests; i++) {
+	for (size_t i = 0; i < nbr_tests; i++) {
 		printf("phase %d: %s...%s\n", i, tests[i].name,
 				tests[i].pass ? "passed" : "failed");
 	}

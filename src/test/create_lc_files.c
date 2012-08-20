@@ -2,9 +2,12 @@
 
 #include "test/test_labcomm_utils.h"
 #include "gen/firefly_protocol.h"
+#include "utils/cppmacros.h"
 
 int main(int argc, char **argv)
 {
+	UNUSED_VAR(argc);
+	UNUSED_VAR(argv);
 	firefly_protocol_channel_request chan_req;
 	chan_req.source_chan_id = 0;
 	chan_req.dest_chan_id = 1;

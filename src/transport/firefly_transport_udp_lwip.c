@@ -9,11 +9,13 @@
 
 #include "protocol/firefly_protocol_private.h"
 #include "transport/firefly_transport_private.h"
+#include "utils/cppmacros.h"
 
 static void udp_lwip_recv_callback(void *recv_arg, struct udp_pcb *upcb,
 		struct pbuf *pbuf, struct ip_addr *remote_ip_addr,
 		u16_t remote_port)
 {
+	UNUSED_VAR(upcb);
 	struct firefly_transport_llp *llp =
 		(struct firefly_transport_llp *) recv_arg;
 	struct transport_llp_udp_lwip *llp_udp =

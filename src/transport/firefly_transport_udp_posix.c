@@ -316,8 +316,8 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 	// Read data from socket, = 0 is crucial due to ioctl only sets the
 	// first 32 bits of pkg_len
 	size_t pkg_len = 0;
-	ioctl(llp_udp->local_udp_socket, FIONREAD, &pkg_len);
-	if (pkg_len == -1) {
+	res = ioctl(llp_udp->local_udp_socket, FIONREAD, &pkg_len);
+	if (res == -1) {
 		firefly_error(FIREFLY_ERROR_SOCKET, 3,
 				"Failed in %s() on line %d.\n", __FUNCTION__,
 				__LINE__);

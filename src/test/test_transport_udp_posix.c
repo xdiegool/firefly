@@ -23,6 +23,7 @@
 #include "transport/firefly_transport_private.h"
 #include "transport/firefly_transport_udp_posix_private.h"
 #include "protocol/firefly_protocol_private.h"
+#include "utils/cppmacros.h"
 
 int init_suit_udp_posix()
 {
@@ -49,7 +50,11 @@ static unsigned char send_buf_big[] = {0,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,
 void reg_proto_sigs(struct labcomm_encoder *enc,
 					struct labcomm_decoder *dec,
 					struct firefly_connection *conn)
-{ }
+{ 
+	UNUSED_VAR(enc);
+	UNUSED_VAR(dec);
+	UNUSED_VAR(conn);
+}
 
 void setup_sockaddr(struct sockaddr_in *addr, unsigned short port)
 {
@@ -117,6 +122,7 @@ static unsigned char *data_recv_buf;
 void protocol_data_received(struct firefly_connection *conn, unsigned char *data,
 							size_t size)
 {
+	UNUSED_VAR(conn);
 	if (!data_recv_buf) {
 		data_recv_buf = send_buf;
 		data_recv_size = sizeof(send_buf);
@@ -161,6 +167,9 @@ void test_recv_connection()
 struct firefly_connection *recv_data_recv_conn(
 		struct firefly_transport_llp *llp, const char *ip_addr, unsigned short port)
 {
+	UNUSED_VAR(llp);
+	UNUSED_VAR(ip_addr);
+	UNUSED_VAR(port);
 	CU_FAIL("Received connection but shouldn't have.\n");
 	return NULL;
 }
@@ -307,6 +316,9 @@ void test_recv_conn_keep_two()
 struct firefly_connection *recv_conn_reject_recv_conn(
 		struct firefly_transport_llp *llp, const char *ip_addr, unsigned short port)
 {
+	UNUSED_VAR(llp);
+	UNUSED_VAR(ip_addr);
+	UNUSED_VAR(port);
 	good_conn_received = true;
 	return NULL;
 }
@@ -670,7 +682,7 @@ void test_reader_scale_back()
 	good_conn_received = false;
 	data_received = false;
 
-	for (int i = 0; i <= sbn; i++) {
+	for (size_t i = 0; i <= sbn; i++) {
 		unsigned char *buf;
 		unsigned int s;
 		if (i != 3) {

@@ -1,13 +1,17 @@
-# TODO update clean(er) targets
-# TODO libtransudpposx
-# TODO testsprograms
-# TODO copy residual functionallity
-# TODO fix so pinpong is run automatically with make test
-
 # Makefile for project Firely. run `make help` for help on targets.
-### Macros
+# Modeline {
+# vi: foldmarker={,} foldmethod=marker foldlevel=0
+# }
 
-## Compiler optons.
+# TODO testsprograms
+# TODO fix so pinpong is run automatically with make test
+# TODO copy residual functionallity
+# TODO update clean(er) targets
+
+
+### Macros {
+
+## Compiler options. {
 # Use LLVM clang if it's found.
 CC = $(shell hash clang 2>/dev/null && echo clang || echo cc)
 
@@ -43,6 +47,8 @@ endif
 
 ERRFLAGS = -Wall -Wextra
 OPTLVL= 2
+
+# Common include paths.
 INC_COMMON = $(addprefix -I, \
 		. \
 		$(INCLUDE_DIR) \
@@ -50,31 +56,56 @@ INC_COMMON = $(addprefix -I, \
 		)
 
 
+# Inluces for $(LIB_FIREFLY_NAME).
 INC_FIREFLY = $(addprefix -I, \
-	      $(LABCOMMLIBPATH) \
+		$(LABCOMMLIBPATH) \
+		)
+
+# Inluces for $(LIB_TRANSPORT_UDP_POSIX_NAME).
+INC_TRANSPORT_UDP_POSIX = $(addprefix -I, \
+		$(LABCOMMLIBPATH) \
 	      )
 
-INC_FREERTOS_LWIP= $(addprefix -I, \
-			$(RTOS_SOURCE_DIR)/include \
-       			$(LWIP_SOURCE_DIR)/src/include/ipv4 \
-			$(LWIP_SOURCE_DIR)/src/include \
-			$(LWIP_SOURCE_DIR)/contrib/port/FreeRTOS/LM3S \
-			$(COMMOM_INCLUDE) \
-			$(LWIP_DRIVER_DIR) \
-			$(DRIVERLIB_DIR) \
-			$(DRIVERLIB_DIR)/inc \
-			$(RTOS_SOURCE_DIR)/portable/GCC/ARM_CM3 \
-			$(WEB_SERVER_DIR) \
-			$(LUMINARY_DRIVER_DIR) \
-			$(LWIP_PORT_DIR) \
-			$(LWIP_INCLUDE_DIR) \
-			$(COMMOM_ADC) \
-			../ft-sense/lib/ \
-			)
+# Inluces for $(LIB_TRANSPORT_UDP_LWIP_NAME).
+INC_TRANSPORT_UDP_LWIP = $(addprefix -I, \
+		$(LABCOMMLIBPATH) \
+		$(RTOS_SOURCE_DIR)/include \
+       		$(LWIP_SOURCE_DIR)/src/include/ipv4 \
+		$(LWIP_SOURCE_DIR)/src/include \
+		$(LWIP_SOURCE_DIR)/contrib/port/FreeRTOS/LM3S \
+		$(COMMOM_INCLUDE) \
+		$(LWIP_DRIVER_DIR) \
+		$(DRIVERLIB_DIR) \
+		$(DRIVERLIB_DIR)/inc \
+		$(RTOS_SOURCE_DIR)/portable/GCC/ARM_CM3 \
+		$(WEB_SERVER_DIR) \
+		$(LUMINARY_DRIVER_DIR) \
+		$(LWIP_PORT_DIR) \
+		$(LWIP_INCLUDE_DIR) \
+		$(COMMOM_ADC) \
+		../ft-sense/lib/ \
+		)
 
+# Includes for test programs.
+INC_TEST = $(addprefix -I, \
+		$(LABCOMMLIBPATH) \
+		)
+
+# Linker flags for test programs.
+LDFlAGS_TEST= -L$(LABCOMMLIBPATH)
+
+# Libraries to link with test programs.
+LDLIBS_TEST= -llabcomm -lcunit
+
+# Common linker flags.
+#LDFLAGS=
+
+# Common flags to the compiler.
 CFLAGS = -std=c99 $(ERRFLAGS) $(INC_COMMON)
 
-## File and path macros.
+## }
+
+## File and path macros. {
 
 # We want to have Makefile in / and have source and builds separated. Therefore Make can't find targets in CWD so we have to tell is where to look for targets.
 VPATH = $(SRC_DIR) $(INCLUDE_DIR)
@@ -128,23 +159,34 @@ DRIVERLIB_DIR = ../ft-sense/lib/driverlib/
 TAGSFILE_VIM = tags
 TAGSFILE_EMACS = TAGS
 
-## Target macros and translations.
+## }
 
-## Libraries to build.
-LIBS=$(patsubst %,$(BUILD_DIR)/lib%.a,firefly ) # TODO add transport_udp_posix transport_udp_lwip
+## Target macros and translations. {
+
+LIB_FIREFLY_NAME = firefly
+LIB_TRANSPORT_UDP_POSIX_NAME = transport-udp-posix
+LIB_TRANSPORT_UDP_LWIP_NAME = transport-udp-lwip
+
+## }
+
+## Libraries to build. {
+LIBS=$(patsubst %,$(BUILD_DIR)/lib%.a,$(LIB_FIREFLY_NAME) $(LIB_TRANSPORT_UDP_POSIX_NAME) $(LIB_TRANSPORT_UDP_LWIP_NAME))
 
 # Automatically generated prerequisities files.
 DFILES= $(patsubst %.o,%.d,$(FIREFLY_OBJS) $(TEST_OBJS) $(GEN_OBJS))
 
-## LabComm
+## }
+
+## LabComm {
 # LabComm sample files to used for code generation.
 LC_FILE_NAMES = firefly_protocol.lc test.lc
 LC_FILES = $(addprefix $(LC_DIR)/, $(LC_FILE_NAMES))
 # LabComm generated files to be compiled.
 GEN_FILES= $(patsubst $(LC_DIR)/%.lc,$(GEN_DIR)/%.h,$(LC_FILES)) $(patsubst $(LC_DIR)/%.lc,$(GEN_DIR)/%.c,$(LC_FILES))
 GEN_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(filter-out %.h,$(GEN_FILES)))
+## }
 
-## Firefly
+## Firefly {
 # Source files for libfirefly.
 FIREFLY_SRC = $(shell find $(SRC_DIR)/protocol/ -type f -name '*.c' -print | sed 's/^$(SRC_DIR)\///') $(filter-out utils/firefly_errors.c,$(shell find $(SRC_DIR)/utils/ -type f -name '*.c' -print| sed 's/^$(SRC_DIR)\///')) $(GEN_DIR)/firefly_protocol.c
 
@@ -158,19 +200,37 @@ endif
 # Object files from sources.
 FIREFLY_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(FIREFLY_SRC))
 
+## }
 
-## Tests
+## Transport UPD POSIX {
+# Source files for lib$(LIB_TRANSPORT_UDP_POSIX_NAME).a
+TRANSPORT_UDP_POSIX_SRC = $(shell find $(SRC_DIR)/transport/ -type f -name '*udp_posix*.c' -print | sed 's/^$(SRC_DIR)\///')
+
+# Object files from sources.
+TRANSPORT_UDP_POSIX_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(TRANSPORT_UDP_POSIX_SRC))
+
+## }
+
+## Transport UPD LWIP {
+# Source files for lib$(LIB_TRANSPORT_UDP_LWIP_NAME).a
+TRANSPORT_UDP_LWIP_SRC = $(shell find $(SRC_DIR)/transport/ -type f -name '*udp_lwip*.c' -print | sed 's/^$(SRC_DIR)\///')
+
+# Object files from sources.
+TRANSPORT_UDP_LWIP_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(TRANSPORT_UDP_LWIP_SRC))
+
+## }
+
+## Tests {
 TEST_SRC = $(shell find $(SRC_DIR)/test/ -type f -name '*.c' | sed 's/^$(SRC_DIR)\///')
-TEST_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(TEST_SRC)) $(BUILD_DIR)/$(GEN_DIR)/test.o
-TEST_PROGS = $(addsuffix _main,$(addprefix $(BUILD_DIR)/test/test_,protocol transport event))
+TEST_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(TEST_SRC))
+TEST_PROGS = $(shell find $(SRC_DIR)/test/ -type f -name '*_main.c' | sed -e 's/^$(SRC_DIR)\//$(BUILD_DIR)\//' -e 's/\.c//')
 
+## }
 
+### }
 
-
-
-### Targets
-
-## Special built-in targets
+### Targets {
+## Special built-in targets {
 # Non-file targets.
 .PHONY: all clean cleaner doc doc-api doc-api-open doc-full doc-full-open doc-open install tags-all test uninstall
 
@@ -181,14 +241,16 @@ TEST_PROGS = $(addsuffix _main,$(addprefix $(BUILD_DIR)/test/test_,protocol tran
 # References: http://darrendev.blogspot.se/2008/06/stopping-make-delete-intermediate-files.html
 .SECONDARY: $(wildcard $(GEN_DIR)/firefly_protocol.*)
 
-## General targets.
+## }
+
+## General targets. {
 
 # target: all - Build all libs and tests.
 # TODO enable targets successively
 #all: $(LIBS) $(TEST_PROGS) $(TAGSFILE_VIM) $(TAGSFILE_EMACS)
-all: $(LIBS)
+all: $(LIBS) $(TEST_PROGS)
 
-# target: $(BUILD_DIR) - Everything that is to be build depend on the build dir.
+# target: $(BUILD_DIR) - Everything that is to be build depends on the build dir.
 $(BUILD_DIR)/%: $(BUILD_DIR)
 
 # target: $(DIRS_TO_CREATE) - Create directories as needed.
@@ -196,7 +258,7 @@ $(DIRS_TO_CREATE):
 	mkdir -p $@
 
 
-## Labcomm targets
+### Labcomm targets {
 # target: $(LABCOMMC) - Construct the LabComm compiler.
 $(LABCOMMC):
 	@echo "======Building LabComm compiler======"
@@ -214,16 +276,12 @@ $(LABCOMMLIBPATH)/liblabcomm.a:
 $(GEN_DIR)/%.c $(GEN_DIR)/%.h: $(LC_DIR)/%.lc $(LABCOMMC) |$(GEN_DIR)
 	java -jar $(LABCOMMC) --c=$(patsubst %.h,%.c,$@) --h=$(patsubst %.c,%.h,$@) $<
 
-# Let the LabComm .o file depend on the generated .c and .h files.
-# TODO not neede with .d files. Delete this when everything works.
-#$(GEN_OBJ_FILES): $$(patsubst $$(BUILD_DIR)/%.o,%.c,$$@) $$(patsubst $$(BUILD_DIR)/%.o,%.h,$$@)
-
 $(BUILD_DIR)/gen/%.o: %.c $$(dir $$@)
 	$(CC) -c $(CFLAGS) -L$(LABCOMMLIBPATH) -o $@ -llabcomm $<
 
+### }
 
-
-## Firefly targets
+### Firefly targets {
 
 # target: build/libfirefly.a  - Build static library for firefly.
 $(BUILD_DIR)/libfirefly.a: $(FIREFLY_OBJS)
@@ -243,19 +301,47 @@ $(BUILD_DIR)/gen/%.o: gen/%.c |$$(@D)
 	$(CC) -c $(filter-out -W%,$(CFLAGS)) $(INC_FIREFLY) -o $@ $<
 
 
+### }
+
+### Transport UDP POSIX targets {
+
+# target: build/lib$(LIB_TRANSPORT_UDP_POSIX_NAME).a  - Build static library for transport udp posix.
+$(BUILD_DIR)/lib$(LIB_TRANSPORT_UDP_POSIX_NAME).a: $(TRANSPORT_UDP_POSIX_OBJS)
+	ar -rc $@ $^
+
+$(TRANSPORT_UDP_POSIX_OBJS): $$(patsubst $$(BUILD_DIR)/%.o,%.c,$$@) |$$(@D)
+	$(CC) -c $(CFLAGS) $(INC_TRANSPORT_UDP_POSIX) -o $@ $<
+
+### }
+
+### Transport UDP LWIP targets {
+
+# target: build/lib$(LIB_TRANSPORT_UDP_LWIP_NAME).a  - Build static library for transport udp lwip.
+$(BUILD_DIR)/lib$(LIB_TRANSPORT_UDP_LWIP_NAME).a: $(TRANSPORT_UDP_LWIP_OBJS)
+	ar -rc $@ $^
+
+$(TRANSPORT_UDP_LWIP_OBJS): $$(patsubst $$(BUILD_DIR)/%.o,%.c,$$@) |$$(@D)
+	$(CC) -c $(CFLAGS) $(INC_TRANSPORT_UDP_LWIP) -o $@ $<
 
 
+### }
 
-
-
+### Test programs. {
+$(TEST_OBJS): $$(patsubst $$(BUILD_DIR)/%.o,%.c,$$@) |$$(@D)
+	$(CC) -c $(CFLAGS) $(INC_TEST) -o $@ $<
 
 # Linking for test programs.
-$(BUILD_DIR)/test/test_protocol_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_protocol_main test_labcomm_utils test_proto_chan test_proto_translc test_proto_protolc test_proto_errors proto_helper)
-$(BUILD_DIR)/test/test_transport_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_transport_main test_transport_udp_posix)
-$(BUILD_DIR)/test/test_event_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_event_main) $(patsubst %,$(BUILD_DIR)/%.o,eventqueue/firefly_event_queue)
+$(TEST_PROGS): $(TEST_OBJS)
+	$(CC) $(LDFlAGS_TEST) $^ $(LDLIBS_TEST) -o $@ 
 
+#$(BUILD_DIR)/test/test_protocol_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_protocol_main test_labcomm_utils test_proto_chan test_proto_translc test_proto_protolc test_proto_errors proto_helper)
+#$(BUILD_DIR)/test/test_transport_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_transport_main test_transport_udp_posix)
+#$(BUILD_DIR)/test/test_event_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_event_main) $(patsubst %,$(BUILD_DIR)/%.o,eventqueue/firefly_event_queue)
 
-## Utility targets
+### }
+## }
+
+## Utility targets {
 
 # target: %.d - Automatic prerequisities generation.
 $(BUILD_DIR)/%.d: %.c $$(@D) $(GEN_FILES)
@@ -296,8 +382,10 @@ help:
 # target: clean  - Clean most compiled or generated files.
 clean:
 	$(RM) $(LIBS)
-	$(RM) $(FIREFLY_OBJS)
 	$(RM) $(GEN_OBJS)
+	$(RM) $(FIREFLY_OBJS)
+	$(RM) $(TRANSPORT_UDP_POSIX_OBJS)
+	$(RM) $(TRANSPORT_UDP_LWIP_OBJS)
 	$(RM) $(TEST_OBJS)
 	$(RM) $(TEST_PROGS)
 	$(RM) $(DFILES)
@@ -318,3 +406,6 @@ cleaner: clean
 	@echo "======Cleaning LabComm compiler======"
 	cd $(LABCOMMPATH)/compiler; ant clean 
 	@echo "======End cleaning LabComm compiler======"
+
+## }
+### }

@@ -32,4 +32,9 @@
  *     ├── test			# Source files for the CUnit test suite.
  *     └── transport		# Source files for the transport layer.
  * \endcode
+ *
+ * \subsection Coding style.
+ *
+ * When you want to extend and further develop firefly please follow the same coding style that we have used. We have tried to follow the "Linux kernel coding style" as much as possible. Read it here: http://www.kernel.org/doc/Documentation/CodingStyle
+ *
  */

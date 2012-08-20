@@ -8,6 +8,7 @@
 
 #include "gen/test.h"
 #include "test/pingpong/hack_lctypes.h"
+#include "utils/cppmacros.h"
 
 #define NBR_TESTS (7)
 
@@ -99,17 +100,21 @@ void chan_closed(struct firefly_channel *chan)
 
 bool chan_received(struct firefly_channel *chan)
 {
+	UNUSED_VAR(chan);
 	pong_pass_test(CHAN_RECEIVE);
 	return true;
 }
 
 void channel_rejected(struct firefly_connection *conn)
 {
+	UNUSED_VAR(conn);
 	fprintf(stderr, "ERROR: Channel rejected.\n");
 }
 
 void handle_test_var(test_test_var *var, void *ctx)
 {
+	UNUSED_VAR(var);
+	UNUSED_VAR(ctx);
 	pthread_t sender;
 	pthread_attr_t tattr;
 	pthread_attr_init(&tattr);
@@ -136,6 +141,8 @@ void *send_data_and_close(void *args)
 
 int main(int argc, char **argv)
 {
+	UNUSED_VAR(argc);
+	UNUSED_VAR(argv);
 	int res;
 	pthread_t event_thread;
 	pthread_t reader_thread;
