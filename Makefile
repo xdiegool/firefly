@@ -3,11 +3,11 @@
 # vi: foldmarker={,} foldmethod=marker foldlevel=0
 # }
 
-# TODO testsprograms
 # TODO fix so pinpong is run automatically with make test
 # TODO copy residual functionallity
 # TODO update clean(er) targets
 # TODO fix so multiple targets can be run like `make clean all`
+# TODO fix all other TODOs in this file.
 
 ### Macros {
 ## Compiler options. {
@@ -247,7 +247,8 @@ TEST_PROGS = $(shell find $(SRC_DIR)/test/ -type f -name '*_main.c' | sed -e 's/
 ### Targets {
 ## Special built-in targets {
 # Non-file targets.
-.PHONY: all clean cleaner doc doc-api doc-api-open doc-full doc-full-open doc-open install tags-all test uninstall
+# TODO update this
+.PHONY: all clean cleaner doc doc-api doc-api-open doc-full doc-full-open doc-open install ping pong tags-all test testc uninstall
 
 # This will enable expression involving automatic variables in the prerequisities list. It must be defined before any usage of these feauteres.
 .SECONDEXPANSION:
@@ -329,6 +330,48 @@ $(TRANSPORT_UDP_POSIX_OBJS): $$(patsubst $$(BUILD_DIR)/%.o,%.c,$$@) |$$(@D)
 
 ### }
 
+### Documentation {
+# Modify the template configuration.
+$(DOC_GEN_DIR)/doxygen_full.cfg: $(DOC_DIR)/doxygen_template.cfg |$$(@D)
+	cp $^ $@
+	echo "INPUT                  = doc/gen/index.dox include src" >> $@
+	echo "OUTPUT_DIRECTORY       = \"$(DOC_GEN_FULL_DIR)\"" >> $@
+
+# Modify the template configuration.
+$(DOC_GEN_DIR)/doxygen_api.cfg: $(DOC_DIR)/doxygen_template.cfg |$$(@D)
+	cp $^ $@
+	echo "INPUT                  = doc/gen/index.dox include" >> $@
+	echo "OUTPUT_DIRECTORY       = \"$(DOC_GEN_API_DIR)\"" >> $@
+
+# Append our README to the index file.
+$(DOC_GEN_DIR)/index.dox: $(DOC_DIR)/README.dox $(DOC_DIR)/index_template.dox |$$(@D) 
+	cat $< >> $@
+
+# target: doc - Generate both full and API documentation.
+doc: doc-full doc-api
+
+# target: doc - Generate full documentation.
+doc-full:  $(DOC_GEN_DIR)/doxygen_full.cfg $(DOC_GEN_DIR)/index.dox |$(DOC_GEN_FULL_DIR)
+	doxygen $(DOC_GEN_DIR)/doxygen_full.cfg
+
+# target: doc-api - Generate API documentation.
+doc-api: $(DOC_GEN_DIR)/doxygen_api.cfg $(DOC_GEN_DIR)/index.dox |$(DOC_GEN_API_DIR) 
+	doxygen $(DOC_GEN_DIR)/doxygen_api.cfg
+
+# target: doc-open - Open all documentation.
+doc-open: $(DOC_GEN_FULL_DIR)/html/index.html $(DOC_GEN_API_DIR)/html/index.html
+	xdg-open $(DOC_GEN_FULL_DIR)/html/index.html
+	xdg-open $(DOC_GEN_API_DIR)/html/index.html
+
+# target: doc-api-open - Open API documentation.
+doc-api-open: $(DOC_GEN_API_DIR)/html/index.html
+	xdg-open $(DOC_GEN_API_DIR)/html/index.html
+
+# target: doc-full-open - Open full documentation.
+doc-full-open: $(DOC_GEN_FULL_DIR)/html/index.html
+	xdg-open $(DOC_GEN_FULL_DIR)/html/index.html
+### }
+
 ### Transport UDP LWIP targets {
 
 # target: build/lib$(LIB_TRANSPORT_UDP_LWIP_NAME).a  - Build static library for transport udp lwip.
@@ -376,6 +419,16 @@ test: $(TEST_PROGS)
 # target: testc - Run all tests with sound effects!
 testc:
 	$(CLI_DIR)/celebrate.sh
+
+# target: ping - Run ping test program. Must be started _after_ "make pong"
+# TODO fix this
+#ping: $(BUILD_DIR)/test/pingpong/ping_pudp
+	#./$^
+
+# target: pong - Run pong test program. Must be started _before_ "make ping"
+# TODO fix this
+#pong: $(BUILD_DIR)/test/pingpong/pong_pudp
+	#./$^
 
 # target: %.d - Automatic prerequisities generation.
 $(BUILD_DIR)/%.d: %.c $$(@D) $(GEN_FILES)
