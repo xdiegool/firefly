@@ -29,7 +29,6 @@ void start_ping()
 	}
 }
 
-// TODO make use of own .lc file.
 int main(int argc, char **argv)
 {
 	if (argc == 1) {

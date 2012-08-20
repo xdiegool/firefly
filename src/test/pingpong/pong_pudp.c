@@ -1,14 +1,14 @@
 #include "test/pingpong/pong_pudp.h"
 
 #include <pthread.h>
-#include "test/pingpong/pingpong_pudp.h"
 
 #include <labcomm.h>
 #include <protocol/firefly_protocol.h>
 #include <transport/firefly_transport_udp_posix.h>
 #include <utils/firefly_event_queue.h>
+#include <gen/pingpong.h>
 
-#include "gen/test.h"
+#include "test/pingpong/pingpong_pudp.h"
 #include "test/pingpong/hack_lctypes.h"
 #include "utils/cppmacros.h"
 
@@ -55,7 +55,7 @@ static bool pong_done = false;
 void pong_chan_opened(struct firefly_channel *chan);
 void pong_chan_closed(struct firefly_channel *chan);
 bool pong_chan_received(struct firefly_channel *chan);
-void pong_handle_test_var(test_test_var *var, void *ctx);
+void pong_handle_pingpong_data(pingpong_data *data, void *ctx);
 void *send_data_and_close(void *args);
 
 struct firefly_connection *pong_connection_received(
@@ -82,8 +82,8 @@ void pong_chan_opened(struct firefly_channel *chan)
 	struct labcomm_encoder *enc = firefly_protocol_get_output_stream(chan);
 	struct labcomm_decoder *dec = firefly_protocol_get_input_stream(chan);
 
-	labcomm_decoder_register_test_test_var(dec, pong_handle_test_var, chan);
-	labcomm_encoder_register_test_test_var(enc);
+	labcomm_decoder_register_pingpong_data(dec, pong_handle_pingpong_data, chan);
+	labcomm_encoder_register_pingpong_data(enc);
 	pong_pass_test(CHAN_OPEN);
 }
 
@@ -112,9 +112,9 @@ void pong_channel_rejected(struct firefly_connection *conn)
 	fprintf(stderr, "ERROR: Channel rejected.\n");
 }
 
-void pong_handle_test_var(test_test_var *var, void *ctx)
+void pong_handle_pingpong_data(pingpong_data *data, void *ctx)
 {
-	UNUSED_VAR(var);
+	UNUSED_VAR(data);
 	UNUSED_VAR(ctx);
 	pthread_t sender;
 	pthread_attr_t tattr;
@@ -131,9 +131,9 @@ void pong_handle_test_var(test_test_var *var, void *ctx)
 void *send_data_and_close(void *args)
 {
 	struct firefly_channel *chan = (struct firefly_channel *) args;
-	test_test_var data = PONG_DATA;
+	pingpong_data data = PONG_DATA;
 	struct labcomm_encoder *enc = firefly_protocol_get_output_stream(chan);
-	labcomm_encode_test_test_var(enc, &data);
+	labcomm_encode_pingpong_data(enc, &data);
 	pong_pass_test(DATA_SEND);
 	firefly_channel_close(chan);
 

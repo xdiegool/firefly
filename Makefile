@@ -3,7 +3,6 @@
 # vi: foldmarker={,} foldmethod=marker foldlevel=0
 # }
 
-# TODO fix so pinpong is run automatically with make test
 # TODO fix so multiple targets can be run like `make clean all`
 # TODO fix all other TODOs in this file.
 
@@ -191,8 +190,8 @@ DFILES= $(patsubst %.o,%.d,$(FIREFLY_OBJS) $(TEST_OBJS) $(GEN_OBJS))
 
 ### LabComm {
 # LabComm sample files to used for code generation.
-LC_FILE_NAMES = firefly_protocol.lc test.lc
-LC_FILES = $(addprefix $(LC_DIR)/, $(LC_FILE_NAMES))
+LC_FILE_NAMES = firefly_protocol.lc test.lc pingpong.lc
+LC_FILES = $(addprefix $(LC_DIR)/,$(LC_FILE_NAMES))
 # LabComm generated files to be compiled.
 GEN_FILES= $(patsubst $(LC_DIR)/%.lc,$(GEN_DIR)/%.h,$(LC_FILES)) $(patsubst $(LC_DIR)/%.lc,$(GEN_DIR)/%.c,$(LC_FILES))
 GEN_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(filter-out %.h,$(GEN_FILES)))
@@ -253,7 +252,7 @@ TEST_PROGS = $(shell find $(SRC_DIR)/test/{,pingpong/} -type f -name '*_main.c' 
 
 # Keep my damn labcomm files! Make treats the generated files as intermediate and deletes them when it think that they're not needed anymore. Usually the .PRECIOUS target should solve this but it does not. .SECONDARY solves it though.
 # References: http://darrendev.blogspot.se/2008/06/stopping-make-delete-intermediate-files.html
-.SECONDARY: $(wildcard $(GEN_DIR)/firefly_protocol.*)
+.SECONDARY: $(GEN_FILES)
 
 ## }
 
@@ -283,13 +282,15 @@ $(LABCOMMLIBPATH)/liblabcomm.a:
 	$(MAKE) -C $(LABCOMMLIBPATH) -e LABCOMM_NO_EXPERIMENTAL=true all
 	@echo "======End building LabComm======"
 
-# target: GENFILES - Generate labcomm files. 
+# Generate labcomm files. 
 # NOTE Can not use "$(@D)" since it causes realloc invalid next size.
 $(GEN_DIR)/%.c $(GEN_DIR)/%.h: $(LC_DIR)/%.lc $(LABCOMMC) |$(GEN_DIR)
 	java -jar $(LABCOMMC) --c=$(patsubst %.h,%.c,$@) --h=$(patsubst %.c,%.h,$@) $<
 
-$(BUILD_DIR)/gen/%.o: %.c $$(dir $$@)
-	$(CC) -c $(CFLAGS) -L$(LABCOMMLIBPATH) -o $@ -llabcomm $<
+# Compile the generated LabComm files.
+# Remove compiler warning flags. LabComm's errors is not our fault.
+$(BUILD_DIR)/gen/%.o: gen/%.c |$$(@D)
+	$(CC) -c $(filter-out -W%,$(CFLAGS)) $(INC_FIREFLY) -o $@ $<
 
 ### }
 
@@ -299,18 +300,16 @@ $(BUILD_DIR)/gen/%.o: %.c $$(dir $$@)
 $(BUILD_DIR)/libfirefly.a: $(FIREFLY_OBJS)
 	ar -rc $@ $^
 
+# Compile protocol files.
 # Usually these is an implicit rule but it does not work when the target dir is not the same as the source. Anyhow we need to add some includes for the different namespaces so it doesnt matter.
 # "|<target>" means that <target> is order-only so if it changed it won't cause recompilcation of the target. This is needed here since the modify timestamp is changed when new files are added/removed from a dirctory which will cause constant unneccessary recomplications. This soluton requres GNU Make >= 3.80.
 # References: http://darrendev.blogspot.se/2008/06/stopping-make-delete-intermediate-files.html
 $(BUILD_DIR)/protocol/%.o: protocol/%.c |$$(@D)
 	$(CC) -c $(CFLAGS) $(INC_FIREFLY) -o $@ $<
 
+# Compile utils files.
 $(BUILD_DIR)/utils/%.o: utils/%.c |$$(@D)
 	$(CC) -c $(CFLAGS) $(INC_FIREFLY) -o $@ $<
-
-# Delete compiler warning flags. LabComm's errors is not our fault.
-$(BUILD_DIR)/gen/%.o: gen/%.c |$$(@D)
-	$(CC) -c $(filter-out -W%,$(CFLAGS)) $(INC_FIREFLY) -o $@ $<
 
 
 ### }
@@ -321,8 +320,47 @@ $(BUILD_DIR)/gen/%.o: gen/%.c |$$(@D)
 $(BUILD_DIR)/lib$(LIB_TRANSPORT_UDP_POSIX_NAME).a: $(TRANSPORT_UDP_POSIX_OBJS)
 	ar -rc $@ $^
 
+# Compile UDP POSIX files.
 $(TRANSPORT_UDP_POSIX_OBJS): $$(patsubst $$(BUILD_DIR)/%.o,%.c,$$@) |$$(@D)
 	$(CC) -c $(CFLAGS) $(INC_TRANSPORT_UDP_POSIX) -o $@ $<
+
+### }
+
+### Transport UDP LWIP targets {
+
+# target: build/lib$(LIB_TRANSPORT_UDP_LWIP_NAME).a  - Build static library for transport udp lwip.
+$(BUILD_DIR)/lib$(LIB_TRANSPORT_UDP_LWIP_NAME).a: $(TRANSPORT_UDP_LWIP_OBJS)
+	ar -rc $@ $^
+
+# Compile UDP LWIP files.
+$(TRANSPORT_UDP_LWIP_OBJS): $$(patsubst $$(BUILD_DIR)/%.o,%.c,$$@) |$$(@D)
+	$(CC) -c $(CFLAGS) $(INC_TRANSPORT_UDP_LWIP) -o $@ $<
+
+
+### }
+
+### Test programs. {
+$(TEST_OBJS): $$(patsubst $$(BUILD_DIR)/%.o,%.c,$$@) |$$(@D)
+	$(CC) -c $(CFLAGS) $(INC_TEST) -o $@ $<
+
+# The test programs all depends on the libraries it uses and the test files output directory.
+$(TEST_PROGS): $$(patsubst %,$$(BUILD_DIR)/lib%.a,$$(LIB_FIREFLY_NAME) $$(LIB_TRANSPORT_UDP_POSIX_NAME)) $(LABCOMMLIBPATH)/liblabcomm.a |$(TESTFILES_DIR)
+
+# Main test program for the protocol tests.
+$(BUILD_DIR)/test/test_protocol_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_protocol_main test_labcomm_utils test_proto_chan test_proto_translc test_proto_protolc test_proto_errors proto_helper) $(BUILD_DIR)/$(GEN_DIR)/test.o
+	$(CC) $(LDFLAGS) $(LDFlAGS_TEST) $^ $(LDLIBS_TEST) -o $@ 
+
+# Main test program for the transport tests.
+$(BUILD_DIR)/test/test_transport_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_transport_main test_transport_udp_posix)
+	$(CC) $(LDFLAGS) $(LDFlAGS_TEST) $^ $(LDLIBS_TEST) -o $@ 
+
+# Main test program for the event queue tests.
+$(BUILD_DIR)/test/test_event_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_event_main) $(patsubst %,$(BUILD_DIR)/%.o,utils/firefly_event_queue)
+	$(CC) $(LDFLAGS) $(LDFlAGS_TEST) $^ $(LDLIBS_TEST) -o $@ 
+
+# Main test program for the ping program.
+$(BUILD_DIR)/test/pingpong/pingpong_main: $(patsubst %,$(BUILD_DIR)/test/pingpong/%.o,pingpong_main pingpong_pudp pong_pudp ping_pudp hack_lctypes) $(BUILD_DIR)/$(GEN_DIR)/pingpong.o
+	$(CC) $(LDFLAGS) $(LDFlAGS_TEST) $^ $(LDLIBS_TEST) -o $@ 
 
 ### }
 
@@ -368,42 +406,6 @@ doc-full-open: $(DOC_GEN_FULL_DIR)/html/index.html
 	xdg-open $(DOC_GEN_FULL_DIR)/html/index.html
 ### }
 
-### Transport UDP LWIP targets {
-
-# target: build/lib$(LIB_TRANSPORT_UDP_LWIP_NAME).a  - Build static library for transport udp lwip.
-$(BUILD_DIR)/lib$(LIB_TRANSPORT_UDP_LWIP_NAME).a: $(TRANSPORT_UDP_LWIP_OBJS)
-	ar -rc $@ $^
-
-$(TRANSPORT_UDP_LWIP_OBJS): $$(patsubst $$(BUILD_DIR)/%.o,%.c,$$@) |$$(@D)
-	$(CC) -c $(CFLAGS) $(INC_TRANSPORT_UDP_LWIP) -o $@ $<
-
-
-### }
-
-### Test programs. {
-$(TEST_OBJS): $$(patsubst $$(BUILD_DIR)/%.o,%.c,$$@) |$$(@D)
-	$(CC) -c $(CFLAGS) $(INC_TEST) -o $@ $<
-
-# The test programs all depends on the libraries it uses and the test files output directory.
-$(TEST_PROGS): $$(patsubst %,$$(BUILD_DIR)/lib%.a,$$(LIB_FIREFLY_NAME) $$(LIB_TRANSPORT_UDP_POSIX_NAME)) $(LABCOMMLIBPATH)/liblabcomm.a |$(TESTFILES_DIR)
-
-# Main test program for the protocol tests.
-$(BUILD_DIR)/test/test_protocol_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_protocol_main test_labcomm_utils test_proto_chan test_proto_translc test_proto_protolc test_proto_errors proto_helper) $(BUILD_DIR)/$(GEN_DIR)/test.o
-	$(CC) $(LDFLAGS) $(LDFlAGS_TEST) $^ $(LDLIBS_TEST) -o $@ 
-
-# Main test program for the transport tests.
-$(BUILD_DIR)/test/test_transport_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_transport_main test_transport_udp_posix)
-	$(CC) $(LDFLAGS) $(LDFlAGS_TEST) $^ $(LDLIBS_TEST) -o $@ 
-
-# Main test program for the event queue tests.
-$(BUILD_DIR)/test/test_event_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_event_main) $(patsubst %,$(BUILD_DIR)/%.o,utils/firefly_event_queue)
-	$(CC) $(LDFLAGS) $(LDFlAGS_TEST) $^ $(LDLIBS_TEST) -o $@ 
-
-# Main test program for the ping program.
-$(BUILD_DIR)/test/pingpong/pingpong_main: $(patsubst %,$(BUILD_DIR)/test/pingpong/%.o,pingpong_main pingpong_pudp pong_pudp ping_pudp hack_lctypes) $(BUILD_DIR)/$(GEN_DIR)/test.o
-	$(CC) $(LDFLAGS) $(LDFlAGS_TEST) $^ $(LDLIBS_TEST) -o $@ 
-
-### }
 ## }
 
 ## Utility targets {
@@ -431,6 +433,8 @@ pong: $(BUILD_DIR)/test/pingpong/pingpong_main
 	$< $@
 
 # target: %.d - Automatic prerequisities generation.
+# TODO prepend | to $$(@D)??
+# TODO replace target with $(DFILES)?
 $(BUILD_DIR)/%.d: %.c $$(@D) $(GEN_FILES)
 	@$(SHELL) -ec '$(CC) -M $(CFLAGS) $(INC_FIREFLY) $< \
 	| sed '\''s/\(.*\)\.o[ :]*/$(patsubst %.d,%.o,$(subst /,\/,$@)) : /g'\'' > $@; \

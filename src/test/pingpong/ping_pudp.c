@@ -1,12 +1,12 @@
 #include <pthread.h>
-#include "test/pingpong/pingpong_pudp.h"
 
 #include <labcomm.h>
 #include <protocol/firefly_protocol.h>
 #include <transport/firefly_transport_udp_posix.h>
 #include <utils/firefly_event_queue.h>
+#include <gen/pingpong.h>
 
-#include "gen/test.h"
+#include "test/pingpong/pingpong_pudp.h"
 #include "test/pingpong/hack_lctypes.h"
 #include "utils/cppmacros.h"
 
@@ -15,7 +15,7 @@
 void *event_thread_main(void *args);
 void *send_data(void *args);
 
-void ping_handle_test_var(test_test_var *var, void *ctx);
+void ping_handle_pingpong_data(pingpong_data *data, void *ctx);
 
 static char *ping_test_names[] = {
 	"Open connection",
@@ -60,8 +60,8 @@ void ping_chan_opened(struct firefly_channel *chan)
 	struct labcomm_encoder *enc = firefly_protocol_get_output_stream(chan);
 	struct labcomm_decoder *dec = firefly_protocol_get_input_stream(chan);
 
-	labcomm_decoder_register_test_test_var(dec, ping_handle_test_var, chan);
-	labcomm_encoder_register_test_test_var(enc);
+	labcomm_decoder_register_pingpong_data(dec, ping_handle_pingpong_data, chan);
+	labcomm_encoder_register_pingpong_data(enc);
 
 	pthread_t sender;
 	pthread_attr_t tattr;
@@ -119,17 +119,17 @@ struct firefly_connection *ping_connection_received(
 void *send_data(void *args)
 {
 	struct firefly_channel *chan = (struct firefly_channel *) args;
-	test_test_var data = PING_DATA;
+	pingpong_data data = PING_DATA;
 	struct labcomm_encoder *enc = firefly_protocol_get_output_stream(chan);
-	labcomm_encode_test_test_var(enc, &data);
+	labcomm_encode_pingpong_data(enc, &data);
 	ping_pass_test(DATA_SEND);
 	return NULL;
 }
 
-void ping_handle_test_var(test_test_var *var, void *ctx)
+void ping_handle_pingpong_data(pingpong_data *data, void *ctx)
 {
 	UNUSED_VAR(ctx);
-	if (*var == PONG_DATA) {
+	if (*data == PONG_DATA) {
 		ping_pass_test(DATA_RECEIVE);
 	}
 }
