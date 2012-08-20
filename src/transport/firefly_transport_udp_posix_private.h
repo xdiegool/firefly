@@ -40,7 +40,8 @@ struct protocol_connection_udp_posix {
 	int socket; /**< The socket file descriptor associated with this
 				connection. */
 	sig_atomic_t open; /**< The flag indicating the opened state of a
-						 connection. */
+						 connection. TRUE or FALSE from
+						 stdbool are used.*/
 };
 
 /**

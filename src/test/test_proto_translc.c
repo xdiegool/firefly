@@ -23,13 +23,13 @@
 
 #include <gen/firefly_protocol.h>
 #include <gen/test.h>
-#include <firefly_errors.h>
-#include "protocol/firefly_protocol_private.h"
+#include <utils/firefly_errors.h>
 #include <protocol/firefly_protocol.h>
 
+#include "protocol/firefly_protocol_private.h"
 #include "test/test_labcomm_utils.h"
-
 #include "test/test_proto_chan.h"
+#include "utils/cppmacros.h"
 
 #define DATA_FILE	("testfiles/data.enc")	/* Encoded test data. */
 #define SIG_FILE	("testfiles/sig.enc")	/* uncoded test signature. */
@@ -54,6 +54,7 @@ static bool successfully_decoded = false;
 void handle_firefly_protocol_data_sample(
 		firefly_protocol_data_sample *data_sample, void *context)
 {
+	UNUSED_VAR(context);
 	CU_ASSERT_EQUAL(data_sample->src_chan_id, SRC_CHAN_ID);
 	CU_ASSERT_EQUAL(data_sample->dest_chan_id, DEST_CHAN_ID);
 	CU_ASSERT_EQUAL(data_sample->important, important);
@@ -70,6 +71,7 @@ static size_t last_written_size = 0;
 void transport_write_udp_posix_mock(unsigned char *data, size_t data_size,
 		struct firefly_connection *conn)
 {
+	UNUSED_VAR(conn);
 	unsigned char *zero_buf = calloc(1, WRITE_BUF_SIZE);
 	// The buffer shoule not be empty anymore.
 	CU_ASSERT_NOT_EQUAL(0, memcmp(data, zero_buf, WRITE_BUF_SIZE));
@@ -159,6 +161,7 @@ static size_t nbr_entries = 0;
 void transport_write_udp_posix_mock_cmp(unsigned char *data, size_t data_size,
 					struct firefly_connection *conn)
 {
+	UNUSED_VAR(conn);
 	size_t file_size;
 	unsigned char *file_data;
 	if (nbr_entries == 0) {
@@ -175,7 +178,7 @@ void transport_write_udp_posix_mock_cmp(unsigned char *data, size_t data_size,
 }
 
 void test_encode_protocol()
-{
+{ 
 	firefly_protocol_data_sample data_sample;
 	data_sample.src_chan_id = SRC_CHAN_ID;
 	data_sample.dest_chan_id = DEST_CHAN_ID;
@@ -279,6 +282,7 @@ static int i = 0;
 void handle_firefly_protocol_data_sample_counter(
 		firefly_protocol_data_sample *data_sample, void *context)
 {
+	UNUSED_VAR(context);
 	CU_ASSERT_EQUAL(data_sample->src_chan_id, i);
 	CU_ASSERT_EQUAL(data_sample->dest_chan_id, i);
 	CU_ASSERT_EQUAL(data_sample->important, important);

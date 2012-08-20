@@ -7,11 +7,13 @@
 #include <labcomm.h>
 
 #include <protocol/firefly_protocol.h>
-#include "protocol/firefly_protocol_private.h"
-
-#include "test/test_labcomm_utils.h"
 #include <gen/test.h>
 #include <gen/firefly_protocol.h>
+
+#include "protocol/firefly_protocol_private.h"
+#include "test/test_labcomm_utils.h"
+#include "utils/cppmacros.h"
+
 
 #define DATA_FILE	("testfiles/data.enc")	/* Encoded test data. */
 #define SIG_FILE	("testfiles/sig.enc")	/* Encoded test signature. */
@@ -36,6 +38,7 @@ static size_t proto_check_cnt = 0;
 void proto_check_writer(unsigned char *data, size_t data_size,
 			struct firefly_connection *conn)
 {
+	UNUSED_VAR(conn);
 	if (proto_check_cnt == 0) {
 		// DO nothing
 	} else if (proto_check_cnt == 1 || proto_check_cnt == 2) {

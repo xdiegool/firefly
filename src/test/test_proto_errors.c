@@ -8,12 +8,13 @@
 
 #include <gen/firefly_protocol.h>
 #include <gen/test.h>
-#include <firefly_errors.h>
+#include <utils/firefly_errors.h>
 #include <protocol/firefly_protocol.h>
-#include <eventqueue/firefly_event_queue.h>
+#include <utils/firefly_event_queue.h>
 
 #include "protocol/firefly_protocol_private.h"
 #include "proto_helper.h"
+#include "utils/cppmacros.h"
 
 extern struct tmp_data conn_open_write;
 extern struct tmp_data conn_recv_write;
@@ -35,6 +36,7 @@ static enum firefly_error expected_error;
 // Override.
 void firefly_error(enum firefly_error error_id, size_t nbr_va_args, ...)
 {
+	UNUSED_VAR(nbr_va_args);
 	was_in_error = true;
 	CU_ASSERT_EQUAL(expected_error, error_id);
 }

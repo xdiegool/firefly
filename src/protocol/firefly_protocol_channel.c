@@ -1,6 +1,6 @@
 #include "protocol/firefly_protocol_private.h"
 
-#include <firefly_errors.h>
+#include <utils/firefly_errors.h>
 
 struct firefly_channel *firefly_channel_new(struct firefly_connection *conn)
 {
@@ -66,9 +66,8 @@ struct firefly_connection *firefly_channel_get_connection(
 
 int firefly_channel_closed_event(void *event_arg)
 {
-	struct firefly_channel *chan;
+	struct firefly_channel *chan = (struct firefly_channel *) event_arg;
 
-	chan = (struct firefly_channel *) event_arg;
 	remove_channel_from_connection(chan, chan->conn);
 	if (chan->conn->on_channel_closed != NULL) {
 		chan->conn->on_channel_closed(chan);

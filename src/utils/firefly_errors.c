@@ -1,6 +1,6 @@
-#include <firefly_errors.h>
+#include <utils/firefly_errors.h>
 
-// Some projects can not use stdio.h.
+// TODO Some projects can not use stdio.h so we need to make this include conditional.
 #include <stdio.h>
 #include <stdarg.h>
 

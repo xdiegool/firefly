@@ -10,10 +10,11 @@
 
 #include <gen/firefly_protocol.h>
 #include <gen/test.h>
-#include <firefly_errors.h>
-#include <eventqueue/firefly_event_queue.h>
+#include <utils/firefly_errors.h>
+#include <utils/firefly_event_queue.h>
 
 #include "test/test_labcomm_utils.h"
+#include "utils/cppmacros.h"
 
 labcomm_mem_reader_context_t *test_dec_ctx = NULL;
 struct labcomm_decoder *test_dec = NULL;
@@ -42,12 +43,14 @@ struct firefly_connection *setup_test_conn_new(firefly_channel_is_open_f ch_op,
 bool chan_opened_called = false;
 void chan_opened_mock(struct firefly_channel *chan)
 {
+	UNUSED_VAR(chan);
 	chan_opened_called = true;
 }
 
 void transport_write_test_decoder(unsigned char *data, size_t size,
-								  struct firefly_connection *conn)
+					  struct firefly_connection *conn)
 {
+	UNUSED_VAR(conn);
 	test_dec_ctx->enc_data = data;
 	test_dec_ctx->size = size;
 	labcomm_decoder_decode_one(test_dec);
@@ -57,13 +60,15 @@ void transport_write_test_decoder(unsigned char *data, size_t size,
 
 bool chan_open_recv_accept_open(struct firefly_channel *chan)
 {
+	UNUSED_VAR(chan);
 	CU_FAIL("Connection open received channel.");
 	return false;
 }
 
 void chan_open_recv_write_open(unsigned char *data, size_t size,
-							   struct firefly_connection *conn)
+					   struct firefly_connection *conn)
 {
+	UNUSED_VAR(conn);
 	conn_open_write.data = malloc(size);
 	memcpy(conn_open_write.data, data, size);
 	conn_open_write.size = size;
@@ -71,12 +76,14 @@ void chan_open_recv_write_open(unsigned char *data, size_t size,
 
 bool chan_open_recv_accept_recv(struct firefly_channel *chan)
 {
+	UNUSED_VAR(chan);
 	return conn_recv_accept_called = true;
 }
 
 void chan_open_recv_write_recv(unsigned char *data, size_t size,
-							   struct firefly_connection *conn)
+					   struct firefly_connection *conn)
 {
+	UNUSED_VAR(conn);
 	conn_recv_write.data = malloc(size);
 	memcpy(conn_recv_write.data, data, size);
 	conn_recv_write.size = size;

@@ -2,7 +2,7 @@
 #ifndef PINGPONG_PUDP_H
 #define PINGPONG_PUDP_H
 
-#include <eventqueue/firefly_event_queue.h>
+#include <utils/firefly_event_queue.h>
 #include <transport/firefly_transport_udp_posix.h>
 
 #define PING_PORT (55555)
@@ -27,7 +27,8 @@ void pingpong_test_init(struct pingpong_test *test, char *name);
 
 void pingpong_test_pass(struct pingpong_test *test);
 
-void pingpong_test_print_results(struct pingpong_test *tests, size_t nbr_tests);
+void pingpong_test_print_results(struct pingpong_test *tests, size_t nbr_tests,
+		char *test_suite_name);
 
 void *reader_thread_main(void *args);
 

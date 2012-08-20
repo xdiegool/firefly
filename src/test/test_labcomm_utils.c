@@ -6,7 +6,8 @@
 #include <CUnit/Basic.h>
 #include <labcomm_fd_reader_writer.h>
 
-#include "firefly_errors.h"
+#include "utils/firefly_errors.h"
+#include "utils/cppmacros.h"
 
 size_t read_file_to_mem(unsigned char **data, char *file_name)
 {
@@ -44,6 +45,7 @@ size_t read_file_to_mem(unsigned char **data, char *file_name)
 
 void handle_labcomm_error(enum labcomm_error error_id, size_t nbr_va_args, ...)
 {
+	UNUSED_VAR(nbr_va_args);
 	const char *err_msg = labcomm_error_get_str(error_id);
 	if (err_msg == NULL) {
 		err_msg = "Error with an unknown error ID occured.";

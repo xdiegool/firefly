@@ -1,15 +1,17 @@
+#include "test/pingpong/pong_pudp.h"
+
 #include <pthread.h>
-#include "test/pingpong/pingpong_pudp.h"
 
 #include <labcomm.h>
 #include <protocol/firefly_protocol.h>
 #include <transport/firefly_transport_udp_posix.h>
-#include <eventqueue/firefly_event_queue.h>
+#include <utils/firefly_event_queue.h>
+#include <gen/pingpong.h>
 
-#include "gen/test.h"
+#include "test/pingpong/pingpong_pudp.h"
 #include "test/pingpong/hack_lctypes.h"
+#include "utils/cppmacros.h"
 
-#define NBR_TESTS (7)
 
 static char *pong_test_names[] = {
 	"Open connection",
@@ -21,7 +23,7 @@ static char *pong_test_names[] = {
 	"Ping done"
 };
 
-static struct pingpong_test pong_tests[NBR_TESTS];
+static struct pingpong_test pong_tests[PONG_NBR_TESTS];
 
 enum pong_test_id {
 	CONNECTION_OPEN,
@@ -35,7 +37,7 @@ enum pong_test_id {
 
 void pong_init_tests()
 {
-	for (int i = 0; i < NBR_TESTS; i++) {
+	for (int i = 0; i < PONG_NBR_TESTS; i++) {
 		pingpong_test_init(&pong_tests[i], pong_test_names[i]);
 	}
 }
@@ -50,13 +52,13 @@ static pthread_mutex_t pong_done_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t pong_done_signal = PTHREAD_COND_INITIALIZER;
 static bool pong_done = false;
 
-void chan_opened(struct firefly_channel *chan);
-void chan_closed(struct firefly_channel *chan);
-bool chan_received(struct firefly_channel *chan);
-void handle_test_var(test_test_var *var, void *ctx);
+void pong_chan_opened(struct firefly_channel *chan);
+void pong_chan_closed(struct firefly_channel *chan);
+bool pong_chan_received(struct firefly_channel *chan);
+void pong_handle_pingpong_data(pingpong_data *data, void *ctx);
 void *send_data_and_close(void *args);
 
-struct firefly_connection *connection_received(
+struct firefly_connection *pong_connection_received(
 		struct firefly_transport_llp *llp, const char *ip_addr, unsigned short port)
 {
 	struct firefly_connection *conn = NULL;
@@ -64,7 +66,7 @@ struct firefly_connection *connection_received(
 	if (strncmp(ip_addr, PING_ADDR, strlen(PING_ADDR)) == 0 &&
 			port == PING_PORT) {
 		conn = firefly_transport_connection_udp_posix_open(
-				chan_opened, chan_closed, chan_received, event_queue,
+				pong_chan_opened, pong_chan_closed, pong_chan_received, event_queue,
 				ip_addr, port, llp);
 		hack_register_protocol_types(conn);
 		pong_pass_test(CONNECTION_OPEN);
@@ -75,17 +77,17 @@ struct firefly_connection *connection_received(
 	return conn;
 }
 
-void chan_opened(struct firefly_channel *chan)
+void pong_chan_opened(struct firefly_channel *chan)
 {
 	struct labcomm_encoder *enc = firefly_protocol_get_output_stream(chan);
 	struct labcomm_decoder *dec = firefly_protocol_get_input_stream(chan);
 
-	labcomm_decoder_register_test_test_var(dec, handle_test_var, chan);
-	labcomm_encoder_register_test_test_var(enc);
+	labcomm_decoder_register_pingpong_data(dec, pong_handle_pingpong_data, chan);
+	labcomm_encoder_register_pingpong_data(enc);
 	pong_pass_test(CHAN_OPEN);
 }
 
-void chan_closed(struct firefly_channel *chan)
+void pong_chan_closed(struct firefly_channel *chan)
 {
 	// TODO concurrency problem conn freed before chan
 	firefly_transport_connection_udp_posix_close(
@@ -97,19 +99,23 @@ void chan_closed(struct firefly_channel *chan)
 	pthread_mutex_unlock(&pong_done_lock);
 }
 
-bool chan_received(struct firefly_channel *chan)
+bool pong_chan_received(struct firefly_channel *chan)
 {
+	UNUSED_VAR(chan);
 	pong_pass_test(CHAN_RECEIVE);
 	return true;
 }
 
-void channel_rejected(struct firefly_connection *conn)
+void pong_channel_rejected(struct firefly_connection *conn)
 {
+	UNUSED_VAR(conn);
 	fprintf(stderr, "ERROR: Channel rejected.\n");
 }
 
-void handle_test_var(test_test_var *var, void *ctx)
+void pong_handle_pingpong_data(pingpong_data *data, void *ctx)
 {
+	UNUSED_VAR(data);
+	UNUSED_VAR(ctx);
 	pthread_t sender;
 	pthread_attr_t tattr;
 	pthread_attr_init(&tattr);
@@ -125,17 +131,18 @@ void handle_test_var(test_test_var *var, void *ctx)
 void *send_data_and_close(void *args)
 {
 	struct firefly_channel *chan = (struct firefly_channel *) args;
-	test_test_var data = PONG_DATA;
+	pingpong_data data = PONG_DATA;
 	struct labcomm_encoder *enc = firefly_protocol_get_output_stream(chan);
-	labcomm_encode_test_test_var(enc, &data);
+	labcomm_encode_pingpong_data(enc, &data);
 	pong_pass_test(DATA_SEND);
 	firefly_channel_close(chan);
 
 	return NULL;
 }
 
-int main(int argc, char **argv)
+void *pong_main_thread(void *arg)
 {
+	UNUSED_VAR(arg);
 	int res;
 	pthread_t event_thread;
 	pthread_t reader_thread;
@@ -158,7 +165,7 @@ int main(int argc, char **argv)
 	}
 
 	struct firefly_transport_llp *llp =
-			firefly_transport_llp_udp_posix_new(PONG_PORT, connection_received);
+			firefly_transport_llp_udp_posix_new(PONG_PORT, pong_connection_received);
 
 	res = pthread_create(&reader_thread, NULL, reader_thread_main, llp);
 	if (res) {
@@ -181,5 +188,7 @@ int main(int argc, char **argv)
 	firefly_transport_llp_udp_posix_free(&llp);
 
 	pong_pass_test(TEST_DONE);
-	pingpong_test_print_results(pong_tests, NBR_TESTS);
+	pingpong_test_print_results(pong_tests, PONG_NBR_TESTS, "Pong");
+
+	return NULL;
 }

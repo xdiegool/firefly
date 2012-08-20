@@ -6,7 +6,7 @@
 #include <protocol/firefly_protocol.h>
 #include <gen/firefly_protocol.h>
 
-#include "eventqueue/firefly_event_queue.h"
+#include "utils/firefly_event_queue.h"
 
 #define CHANNEL_ID_NOT_SET (-1)
 #define BUFFER_SIZE 128

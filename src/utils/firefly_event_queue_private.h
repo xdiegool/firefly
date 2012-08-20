@@ -6,7 +6,7 @@
 #ifndef EVENT_QUEUE_PRIVATE_H
 #define EVENT_QUEUE_PRIVATE_H
 
-#include <eventqueue/firefly_event_queue.h>
+#include <utils/firefly_event_queue.h>
 
 /**
  * @brief An event queue

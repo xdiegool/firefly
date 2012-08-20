@@ -19,10 +19,10 @@
 #include <signal.h>
 
 #include <transport/firefly_transport.h>
-#include <firefly_errors.h>
-#include <eventqueue/firefly_event_queue.h>
+#include <utils/firefly_errors.h>
+#include <utils/firefly_event_queue.h>
 
-#include "eventqueue/firefly_event_queue_private.h"
+#include "utils/firefly_event_queue_private.h"
 #include "protocol/firefly_protocol_private.h"
 #include "transport/firefly_transport_private.h"
 
@@ -317,8 +317,8 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 	// Read data from socket, = 0 is crucial due to ioctl only sets the
 	// first 32 bits of pkg_len
 	size_t pkg_len = 0;
-	ioctl(llp_udp->local_udp_socket, FIONREAD, &pkg_len);
-	if (pkg_len == -1) {
+	res = ioctl(llp_udp->local_udp_socket, FIONREAD, &pkg_len);
+	if (res == -1) {
 		firefly_error(FIREFLY_ERROR_SOCKET, 3,
 				"Failed in %s() on line %d.\n", __FUNCTION__,
 				__LINE__);
@@ -349,8 +349,8 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 			firefly_error(FIREFLY_ERROR_MISSING_CALLBACK, 4,
 				      "Cannot accept incoming connection "
 				      "on port %d.\n"
-				      "Callback 'on_conn_recv' not set on llp.\n"
-				      "(in %s() at %s:%d)",
+				      "Callback 'on_conn_recv' not set"
+				      "on llp.\n (in %s() at %s:%d)",
 				      ntohs(llp_udp->local_addr->sin_port),
 				      __FUNCTION__, __FILE__, __LINE__);
 		}

@@ -11,13 +11,14 @@
 
 #include <gen/firefly_protocol.h>
 #include <gen/test.h>
-#include <firefly_errors.h>
+#include <utils/firefly_errors.h>
 #include <protocol/firefly_protocol.h>
-#include <eventqueue/firefly_event_queue.h>
+#include <utils/firefly_event_queue.h>
 
 #include "test/proto_helper.h"
 #include "protocol/firefly_protocol_private.h"
 #include "test/test_labcomm_utils.h"
+#include "utils/cppmacros.h"
 
 #define REMOTE_CHAN_ID (2) // Chan id used by all simulated remote channels.
 
@@ -356,6 +357,7 @@ void test_chan_recv_accept()
 static void chan_recv_reject_handle_chan_res(
 		firefly_protocol_channel_response *res, void *context)
 {
+	UNUSED_VAR(context);
 	CU_ASSERT_FALSE(res->ack);
 	CU_ASSERT_EQUAL(res->dest_chan_id, REMOTE_CHAN_ID);
 	CU_ASSERT_EQUAL(res->source_chan_id, CHANNEL_ID_NOT_SET);
@@ -364,6 +366,7 @@ static void chan_recv_reject_handle_chan_res(
 
 static bool chan_recv_reject_chan(struct firefly_channel *chan)
 {
+	UNUSED_VAR(chan);
 	chan_accept_called = true;
 	return false;
 }
@@ -430,18 +433,23 @@ void test_chan_recv_reject()
 void chan_open_reject_handle_chan_req(firefly_protocol_channel_request *req,
 		void *context)
 {
+	UNUSED_VAR(req);
+	UNUSED_VAR(context);
 	sent_chan_req = true;
 }
 
 void chan_open_reject_handle_chan_ack(firefly_protocol_channel_ack *ack,
 		void *context)
 {
+	UNUSED_VAR(ack);
+	UNUSED_VAR(context);
 	sent_chan_ack = true;
 }
 
 static bool chan_rejected_called = false;
 void chan_open_chan_rejected(struct firefly_connection *conn)
 {
+	UNUSED_VAR(conn);
 	chan_rejected_called = true;
 }
 
@@ -629,6 +637,7 @@ void chan_close_chan_close(firefly_protocol_channel_close *chan_clse, void *ctx)
 static bool chan_closed_called = false;
 void chan_closed_cb(struct firefly_channel *chan)
 {
+	UNUSED_VAR(chan);
 	chan_closed_called = true;
 }
 
@@ -748,6 +757,7 @@ void send_app_data_handle_data_sample(firefly_protocol_data_sample *data,
 
 void handle_test_test_var(test_test_var *data, void *ctx)
 {
+	UNUSED_VAR(ctx);
 	CU_ASSERT_EQUAL(*data, 1);
 	sent_app_data = true;
 }
@@ -958,6 +968,7 @@ void trans_w(struct data_space **space,
 			 size_t data_size,
 			 struct firefly_connection *conn)
 {
+	UNUSED_VAR(conn);
 	struct data_space *tmp;
 
 	if (*space == NULL) {
@@ -1033,14 +1044,19 @@ static int n_chan_opens;
 
 static bool should_accept_chan(struct firefly_channel *chan)
 {
+	UNUSED_VAR(chan);
 	return true;
 }
-void chan_was_opened(struct firefly_channel *chan) {
+void chan_was_opened(struct firefly_channel *chan)
+{
 	new_chan = chan;
 	n_chan_opens++;
 }
 
-void chan_was_closed(struct firefly_channel *chan) { }
+void chan_was_closed(struct firefly_channel *chan) 
+{
+	UNUSED_VAR(chan);
+}
 
 void handle_ttv(test_test_var *ttv, void *cont)
 {
@@ -1405,8 +1421,8 @@ void test_transmit_app_data_over_mock_trans_layer()
 		firefly_connection_free(&connections[i]);
 		firefly_event_queue_free(&event_queues[i]);
 	}
-	for (int i = 0; i < sizeof(space_from_conn) / sizeof(*space_from_conn);
-			i++) {
+	for (size_t i = 0;
+		(i < sizeof(space_from_conn) / sizeof(*space_from_conn)); i++) {
 		struct data_space *tmp = space_from_conn[i];
 		while (tmp) {
 			struct data_space *next =  tmp->next;
@@ -1419,6 +1435,7 @@ void test_transmit_app_data_over_mock_trans_layer()
 
 bool chan_accept_mock(struct firefly_channel *chan)
 {
+	UNUSED_VAR(chan);
 	chan_accept_called = true;
 	return true;
 }
@@ -1429,21 +1446,25 @@ static bool recv_chan1_var_received = false;
 static bool recv_chan2_var_received = false;
 void handle_test_var_open1(test_test_var *var, void *ctx)
 {
+	UNUSED_VAR(ctx);
 	CU_ASSERT_EQUAL(*var, 3);
 	open_chan1_var_received = true;
 }
 void handle_test_var_open2(test_test_var *var, void *ctx)
 {
+	UNUSED_VAR(ctx);
 	CU_ASSERT_EQUAL(*var, 4);
 	open_chan2_var_received = true;
 }
 void handle_test_var_recv1(test_test_var *var, void *ctx)
 {
+	UNUSED_VAR(ctx);
 	CU_ASSERT_EQUAL(*var, 1);
 	recv_chan1_var_received = true;
 }
 void handle_test_var_recv2(test_test_var *var, void *ctx)
 {
+	UNUSED_VAR(ctx);
 	CU_ASSERT_EQUAL(*var, 2);
 	recv_chan2_var_received = true;
 }

@@ -1,7 +1,12 @@
-#include <protocol/firefly_protocol.h>
-#include "protocol/firefly_protocol_private.h"
+/**
+ * @file
+ * @brief Connection related functions for the protocol layer.
+ */
 
-#include <firefly_errors.h>
+#include <protocol/firefly_protocol.h>
+#include <utils/firefly_errors.h>
+
+#include "protocol/firefly_protocol_private.h"
 
 struct firefly_connection *firefly_connection_new_register(
 		firefly_channel_is_open_f on_channel_opened,
