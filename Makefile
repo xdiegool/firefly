@@ -256,7 +256,7 @@ TEST_PROGS = $(shell find $(SRC_DIR)/test/{,pingpong/} -type f -name '*_main.c' 
 
 ## General targets. {
 
-# target: all - Build all libs and tests.
+# target: all - Build everything that can be build (except documentation).
 all: $(LIBS) $(TEST_PROGS) $(TAGSFILE_VIM) $(TAGSFILE_EMACS)
 
 # target: $(BUILD_DIR) - Everything that is to be build depends on the build dir.
@@ -414,7 +414,7 @@ test: $(TEST_PROGS)
 		echo "=========================>BEGIN TEST: $${prog}"; \
 		./$$prog; \
 		test "$$?" -ne 0 && \
-		echo "Program exited with failure status." && \
+		echo "FAILURE: Program exited with failure status." >&2 && \
 		break; \
 		echo "=========================>END TEST: $${prog}"; \
 	done

@@ -301,7 +301,6 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 	struct transport_llp_udp_posix *llp_udp =
 		(struct transport_llp_udp_posix *) llp->llp_platspec;
 	struct firefly_connection *conn;
-	struct protocol_connection_udp_posix *conn_udp;
 	int res;
 
 	fd_set fs;
@@ -338,8 +337,8 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 	// Find existing connection or create new.
 	// Ignore connections marked as closed.
 	conn = find_connection_by_addr(&remote_addr, llp);
-	conn_udp = conn->transport_conn_platspec;
-	if (conn == NULL || !conn_udp->open) {
+	if (conn == NULL || !((struct protocol_connection_udp_posix *)
+				conn->transport_conn_platspec)->open) {
 		if (llp_udp->on_conn_recv != NULL) {
 			char ip_addr[INET_ADDRSTRLEN];
 			sockaddr_in_ipaddr(&remote_addr, ip_addr);
