@@ -4,6 +4,66 @@
 # }
 
 ### Macros {
+## File and path macros. {
+
+# We want to have Makefile in / and have source and builds separated. Therefore Make can't find targets in CWD so we have to tell is where to look for targets.
+VPATH = $(SRC_DIR) $(INCLUDE_DIR)
+
+# Project dirctories.
+BUILD_DIR = build
+CLI_DIR = cli
+DOC_DIR = doc
+DOC_GEN_API_DIR = $(DOC_GEN_DIR)/api
+DOC_GEN_DIR = $(DOC_DIR)/gen
+DOC_GEN_FULL_DIR = $(DOC_GEN_DIR)/full
+GEN_DIR = gen
+INCLUDE_DIR = include
+INSTALL_INCLUDE_DIR = /usr/local/include/firefly
+INSTALL_LIB_DIR = /usr/local/lib
+LC_DIR = lc
+SRC_DIR = src
+TESTFILES_DIR = testfiles
+
+# Namespace/package dirs
+NS_GEN_DIR = $(BUILD_DIR)/$(GEN_DIR)
+NS_PROTOCOL_DIR = $(BUILD_DIR)/protocol
+NS_UTILS_DIR = $(BUILD_DIR)/utils
+NS_TRANSPORT_DIR = $(BUILD_DIR)/transport
+NS_TEST_DIR = $(BUILD_DIR)/test
+NS_TESTPINGPONG_DIR = $(NS_TEST_DIR)/pingpong
+
+# All volatile directories that are to be created.
+DIRS_TO_CREATE= $(BUILD_DIR) $(LIB_DIR) $(DOC_GEN_DIR) $(DOC_GEN_FULL_DIR) $(DOC_GEN_API_DIR) $(GEN_DIR) $(TESTFILES_DIR) $(INSTALL_INCLUDE_DIR) $(NS_GEN_DIR) $(NS_PROTOCOL_DIR) $(NS_UTILS_DIR) $(NS_TRANSPORT_DIR) $(NS_TEST_DIR) $(NS_TESTPINGPONG_DIR)
+
+# LabComm
+LIBPATH = ../lib
+LABCOMMPATH = $(LIBPATH)/labcomm
+LABCOMMLIBPATH = $(LABCOMMPATH)/lib/c
+LABCOMMC = $(LABCOMMPATH)/compiler/labComm.jar
+
+# FreeRTOS and LWIP
+COMPILER_DIR=$$HOME/bin/arm-2010q1/bin
+FT_SENSE_DIR = ../ft-sense
+LDSCRIPT= $(FT_SENSE_DIR)/src/adc_freertos_lwip/standalone.ld
+RTOS_BASE = $(FT_SENSE_DIR)/lib/freertos/
+RTOS_SOURCE_DIR = $(RTOS_BASE)/Source
+RTOS_COMMON_PORTS = $(RTOS_BASE)/Demo/Common
+LWIP_DRIVER_DIR = $(RTOS_COMMON_PORTS)/ethernet
+LWIP_SOURCE_DIR = $(LWIP_DRIVER_DIR)/lwip-1.3.0
+LWIP_INCLUDE_DIR = $(LWIP_SOURCE_DIR)/src/include
+LWIP_PORT_DIR = $(LWIP_SOURCE_DIR)/contrib/port/FreeRTOS/LM3S/arch
+WEB_SERVER_DIR = $(LWIP_SOURCE_DIR)/Apps
+LUMINARY_DRIVER_DIR = $(RTOS_COMMON_PORTS)/drivers/LuminaryMicro
+COMMOM_INCLUDE = $(RTOS_COMMON_PORTS)/include
+COMMOM_ADC = $(FT_SENSE_DIR)/src/common/
+DRIVERLIB_DIR = $(FT_SENSE_DIR)/lib/driverlib/
+
+# Tagsfile
+TAGSFILE_VIM = tags
+TAGSFILE_EMACS = TAGS
+
+## }
+
 ## Compiler options. {
 # NOTE the order of macro declaration is, apparently, of importance. E.g. having "ifeq(...) CFLAGS+=..." before "CFLAGS=.." will not work.
 
@@ -69,10 +129,10 @@ INC_TEST = $(addprefix -I, \
 LDFLAGS=
 
 # Linker flags for test programs.
-LDFlAGS_TEST= -L$(LABCOMMLIBPATH)
+LDFLAGS_TEST= -L$(BUILD_DIR) -L$(LABCOMMLIBPATH)
 
 # Libraries to link with test programs.
-LDLIBS_TEST= -llabcomm -lcunit -lpthread
+LDLIBS_TEST= -l$(LIB_FIREFLY_NAME) -l$(LIB_TRANSPORT_UDP_POSIX_NAME) -llabcomm -lcunit -lpthread
 
 ### }
 
@@ -98,11 +158,21 @@ endif
 
 # Add options depending on target. Default is x86/x64.
 # Set with $make -e TARGET_ISA=<isa>
-# TODO test this. Probably LINKER_FLAGS are needed to from ft-sens/Makefile.
+# TODO test this. 
 ifeq ($(TARGET_ISA), arm_thumb)
+	CC = $(COMPILER_DIR)/arm-none-eabi-gcc
 	CFLAGS += -Wfloat-equal -Werror-implicit-function-declaration \
-		-mthumb -mcpu=cortex-m3 -T$(LDSCRIPT) \
-		-ffunction-sections -fdata-sections
+		  -mthumb -mcpu=cortex-m3 -T$(LDSCRIPT) \
+		  -ffunction-sections -fdata-sections \
+		  $(INC_TRANSPORT_UDP_LWIP) \
+		  -D sprintf=usprintf \
+		  -D snprintf=usnprintf \
+		  -D printf=uipprintf \
+	    	  -D malloc=pvPortMalloc \
+	    	  -D free=vPortFree \
+		  -D ARM_CORTEXM3_CODESOURCERY \
+		  -D LABCOMM_NO_STDIO
+
 endif
 
 # Clang does not support noexecstack it seems.
@@ -110,65 +180,6 @@ ifeq ($(CC), gcc)
 	CFLAGS += -z noexecstack
 endif
 ### }
-
-## }
-
-## File and path macros. {
-
-# We want to have Makefile in / and have source and builds separated. Therefore Make can't find targets in CWD so we have to tell is where to look for targets.
-VPATH = $(SRC_DIR) $(INCLUDE_DIR)
-
-# Project dirctories.
-BUILD_DIR = build
-CLI_DIR = cli
-DOC_DIR = doc
-DOC_GEN_API_DIR = $(DOC_GEN_DIR)/api
-DOC_GEN_DIR = $(DOC_DIR)/gen
-DOC_GEN_FULL_DIR = $(DOC_GEN_DIR)/full
-GEN_DIR = gen
-INCLUDE_DIR = include
-INSTALL_INCLUDE_DIR = /usr/local/include/firefly
-INSTALL_LIB_DIR = /usr/local/lib
-LC_DIR = lc
-SRC_DIR = src
-TESTFILES_DIR = testfiles
-
-# Namespace/package dirs
-NS_GEN_DIR = $(BUILD_DIR)/$(GEN_DIR)
-NS_PROTOCOL_DIR = $(BUILD_DIR)/protocol
-NS_UTILS_DIR = $(BUILD_DIR)/utils
-NS_TRANSPORT_DIR = $(BUILD_DIR)/transport
-NS_TEST_DIR = $(BUILD_DIR)/test
-NS_TESTPINGPONG_DIR = $(NS_TEST_DIR)/pingpong
-
-# All volatile directories that are to be created.
-DIRS_TO_CREATE= $(BUILD_DIR) $(LIB_DIR) $(DOC_GEN_DIR) $(DOC_GEN_FULL_DIR) $(DOC_GEN_API_DIR) $(GEN_DIR) $(TESTFILES_DIR) $(INSTALL_INCLUDE_DIR) $(NS_GEN_DIR) $(NS_PROTOCOL_DIR) $(NS_UTILS_DIR) $(NS_TRANSPORT_DIR) $(NS_TEST_DIR) $(NS_TESTPINGPONG_DIR)
-
-# LabComm
-LIBPATH = ../lib
-LABCOMMPATH = $(LIBPATH)/labcomm
-LABCOMMLIBPATH = $(LABCOMMPATH)/lib/c
-LABCOMMC = $(LABCOMMPATH)/compiler/labComm.jar
-
-# FreeRTOS and LWIP
-FT_SENSE_DIR = ../ft-sense
-RTOS_BASE = $(FT_SENSE_DIR)/lib/freertos/
-RTOS_SOURCE_DIR = $(RTOS_BASE)/Source
-RTOS_COMMON_PORTS = $(RTOS_BASE)/Demo/Common
-LWIP_DRIVER_DIR = $(RTOS_COMMON_PORTS)/ethernet
-LWIP_SOURCE_DIR = $(LWIP_DRIVER_DIR)/lwip-1.3.0
-LWIP_INCLUDE_DIR = $(LWIP_SOURCE_DIR)/src/include
-LWIP_PORT_DIR = $(LWIP_SOURCE_DIR)/contrib/port/FreeRTOS/LM3S/arch
-WEB_SERVER_DIR = $(LWIP_SOURCE_DIR)/Apps
-LUMINARY_DRIVER_DIR = $(RTOS_COMMON_PORTS)/drivers/LuminaryMicro
-COMMOM_INCLUDE = $(RTOS_COMMON_PORTS)/include
-COMMOM_ADC = $(FT_SENSE_DIR)/src/common/
-DRIVERLIB_DIR = $(FT_SENSE_DIR)/lib/driverlib/
-LDSCRIPT= $(FT_SENSE_DIR)/src/adc_freertos_lwip/standalone.ld
-
-# Tagsfile
-TAGSFILE_VIM = tags
-TAGSFILE_EMACS = TAGS
 
 ## }
 
@@ -180,7 +191,7 @@ LIB_TRANSPORT_UDP_POSIX_NAME = transport-udp-posix
 LIB_TRANSPORT_UDP_LWIP_NAME = transport-udp-lwip
 
 # Libraries to build.
-LIBS=$(patsubst %,$(BUILD_DIR)/lib%.a,$(LIB_FIREFLY_NAME) $(LIB_TRANSPORT_UDP_POSIX_NAME) $(LIB_TRANSPORT_UDP_LWIP_NAME))
+OUR_LIBS=$(patsubst %,$(BUILD_DIR)/lib%.a,$(LIB_FIREFLY_NAME) $(LIB_TRANSPORT_UDP_POSIX_NAME) $(LIB_TRANSPORT_UDP_LWIP_NAME))
 
 # Automatically generated prerequisities files.
 DFILES= $(patsubst %.o,%.d,$(filter-out $(BUILD_DIR)/$(GEN_DIR)/firefly_protocol.o,$(FIREFLY_OBJS)) $(TEST_OBJS) $(GEN_OBJS))
@@ -257,7 +268,7 @@ TEST_PROGS = $(shell find $(SRC_DIR)/test/{,pingpong/} -type f -name '*_main.c' 
 ## General targets. {
 
 # target: all - Build everything that can be build (except documentation).
-all: $(LIBS) $(TEST_PROGS) $(TAGSFILE_VIM) $(TAGSFILE_EMACS)
+all: $(OUR_LIBS) $(TEST_PROGS) $(TAGSFILE_VIM) $(TAGSFILE_EMACS)
 
 # target: $(BUILD_DIR) - Everything that is to be build depends on the build dir.
 $(BUILD_DIR)/%: $(BUILD_DIR)
@@ -277,7 +288,7 @@ $(LABCOMMC):
 # target: $(LABCOMMLIBPATH/liblabconn.a) - Build static LabComm library.
 $(LABCOMMLIBPATH)/liblabcomm.a:
 	@echo "======Building LabComm======"
-	$(MAKE) -C $(LABCOMMLIBPATH) -e LABCOMM_NO_EXPERIMENTAL=true all
+	$(MAKE) -C $(LABCOMMLIBPATH) -e CC=$(CC) CFLAGS="$(CFLAGS) -D MEM_WRITER_ENCODED_BUFFER=1" -e LABCOMM_NO_EXPERIMENTAL=true liblabcomm.a
 	@echo "======End building LabComm======"
 
 # Generate labcomm files. 
@@ -345,20 +356,21 @@ $(TEST_OBJS): $$(patsubst $$(BUILD_DIR)/%.o,%.c,$$@) |$$(@D)
 $(TEST_PROGS): $$(patsubst %,$$(BUILD_DIR)/lib%.a,$$(LIB_FIREFLY_NAME) $$(LIB_TRANSPORT_UDP_POSIX_NAME)) $(LABCOMMLIBPATH)/liblabcomm.a |$(TESTFILES_DIR)
 
 # Main test program for the protocol tests.
+# Filter-out libraries since Make for some unknown reason adds our three own libraries.
 $(BUILD_DIR)/test/test_protocol_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_protocol_main test_labcomm_utils test_proto_chan test_proto_translc test_proto_protolc test_proto_errors proto_helper) $(BUILD_DIR)/$(GEN_DIR)/test.o
-	$(CC) $(LDFLAGS) $(LDFlAGS_TEST) $^ $(LDLIBS_TEST) -o $@ 
+	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) $(LDLIBS_TEST) -o $@ 
 
 # Main test program for the transport tests.
 $(BUILD_DIR)/test/test_transport_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_transport_main test_transport_udp_posix)
-	$(CC) $(LDFLAGS) $(LDFlAGS_TEST) $^ $(LDLIBS_TEST) -o $@ 
+	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) $(LDLIBS_TEST) -o $@ 
 
 # Main test program for the event queue tests.
 $(BUILD_DIR)/test/test_event_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_event_main) $(patsubst %,$(BUILD_DIR)/%.o,utils/firefly_event_queue)
-	$(CC) $(LDFLAGS) $(LDFlAGS_TEST) $^ $(LDLIBS_TEST) -o $@ 
+	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) $(LDLIBS_TEST) -o $@ 
 
 # Main test program for the ping program.
 $(BUILD_DIR)/test/pingpong/pingpong_main: $(patsubst %,$(BUILD_DIR)/test/pingpong/%.o,pingpong_main pingpong_pudp pong_pudp ping_pudp hack_lctypes) $(BUILD_DIR)/$(GEN_DIR)/pingpong.o
-	$(CC) $(LDFLAGS) $(LDFlAGS_TEST) $^ $(LDLIBS_TEST) -o $@ 
+	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) $(LDLIBS_TEST) -o $@ 
 
 ### }
 
@@ -452,13 +464,13 @@ $(TAGSFILE_EMACS):
 	ctags --recurse --tag-relative=yes -e -f $@
 
 # target: install - Install libraries and headers to your system (/usr/local/{lib,include}).
-install: $(LIBS) $$(shell find $$(INCLUDE_DIR) -type f -name '*.h') |$(INSTALL_INCLUDE_DIR)
+install: $(OUR_LIBS) $$(shell find $$(INCLUDE_DIR) -type f -name '*.h') |$(INSTALL_INCLUDE_DIR)
 	install -C $(filter %.a,$^) $(INSTALL_LIB_DIR)
 	cp -r $(wildcard $(INCLUDE_DIR)/*) $(INSTALL_INCLUDE_DIR)
 
 # target: uninstall - Undo that install done.
 uninstall:
-	$(RM) $(addprefix $(INSTALL_LIB_DIR)/,$(patsubst $(BUILD_DIR)/%,%,$(LIBS)))
+	$(RM) $(addprefix $(INSTALL_LIB_DIR)/,$(patsubst $(BUILD_DIR)/%,%,$(OUR_LIBS)))
 	$(RM) -r $(INSTALL_INCLUDE_DIR)
 
 # target: help - Display all targets.
@@ -467,7 +479,7 @@ help:
 
 # target: clean  - Clean most compiled or generated files.
 clean:
-	$(RM) $(LIBS)
+	$(RM) $(OUR_LIBS)
 	$(RM) $(FIREFLY_OBJS)
 	$(RM) $(TRANSPORT_UDP_POSIX_OBJS)
 	$(RM) $(TRANSPORT_UDP_LWIP_OBJS)
