@@ -412,7 +412,10 @@ doc-full-open: $(DOC_GEN_FULL_DIR)/html/index.html
 test: $(TEST_PROGS)
 	@for prog in $^; do \
 		echo "=========================>BEGIN TEST: $${prog}"; \
-		./$$prog || (echo "Test exited with failure status." && break); \
+		./$$prog; \
+		test "$$?" -ne 0 && \
+		echo "Program exited with failure status." && \
+		break; \
 		echo "=========================>END TEST: $${prog}"; \
 	done
 
