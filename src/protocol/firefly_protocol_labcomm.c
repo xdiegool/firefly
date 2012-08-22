@@ -3,8 +3,6 @@
 
 #include <errno.h>
 #include <stdlib.h>
-// TODO Some projects can not use stdio.h so we need to make this include conditional.
-#include <stdio.h>
 
 #include <labcomm.h>
 

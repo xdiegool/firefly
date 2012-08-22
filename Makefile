@@ -289,7 +289,7 @@ $(LABCOMMC):
 # target: $(LABCOMMLIBPATH/liblabconn.a) - Build static LabComm library.
 $(LABCOMMLIBPATH)/liblabcomm.a:
 	@echo "======Building LabComm======"
-	$(MAKE) -C $(LABCOMMLIBPATH) -e CC=$(CC) CFLAGS="$(CFLAGS) -D MEM_WRITER_ENCODED_BUFFER=1" -e LABCOMM_NO_EXPERIMENTAL=true liblabcomm.a
+	$(MAKE) -C $(LABCOMMLIBPATH) -e CC=$(CC) CFLAGS="$(filter-out -Werror -Wextra,$(CFLAGS)) -D MEM_WRITER_ENCODED_BUFFER=1" -e LABCOMM_NO_EXPERIMENTAL=true liblabcomm.a
 	@echo "======End building LabComm======"
 
 # Generate labcomm files. 
