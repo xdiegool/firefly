@@ -4,6 +4,12 @@
 #include <stdio.h>
 #include <stdarg.h>
 
+#ifdef ARM_CORTEXM3_CODESOURCERY
+	#include <ustdlib.h> // Needed for usnprintf.
+#endif
+
+#define MAX_ERR_LEN (1024)	/* Maximum length of error strings. */
+
 /**
  * @var firefly_error_strings
  * @brief Error strings.
@@ -56,4 +62,65 @@ void firefly_error(enum firefly_error error_id, size_t nbr_va_args, ...)
 
 		va_end(arg_pointer);
 	}
+}
+
+// TODO use this for errors.
+void labcomm_error_to_ff_error(enum labcomm_error error_id, size_t nbr_va_args,
+									...)
+{
+	char *err_msg = malloc(MAX_ERR_LEN);
+	if (err_msg == NULL) {
+		err_msg = "Error with an unknown error ID occured.";
+		firefly_error(FIREFLY_ERROR_LABCOMM, 1, err_msg);
+		return;
+	}
+
+	const char *lc_err_msg = labcomm_error_get_str(error_id);
+	if (err_msg == NULL) {
+		err_msg = "Error with an unknown error ID occured.";
+		firefly_error(FIREFLY_ERROR_LABCOMM, 1, err_msg);
+		return;
+	}
+
+	size_t chars_left = MAX_ERR_LEN;
+	int chars_written;
+	chars_written = snprintf(err_msg, chars_left, "%s\n", lc_err_msg);
+	if (chars_written == -1) {
+		exit(EXIT_FAILURE); // Error in error function. We're screwed.
+	} 
+	chars_left -= chars_written;
+
+	if (nbr_va_args > 0) {
+		va_list arg_pointer;
+		va_start(arg_pointer, nbr_va_args);
+
+		chars_written = snprintf(err_msg, chars_left, "%s\n",
+					"Extra info {");
+		if (chars_written == -1) {
+			// Error in error function. We're screwed.
+			exit(EXIT_FAILURE); 
+		} 
+		chars_left -= chars_written;
+
+		char *print_format = va_arg(arg_pointer, char *);
+		chars_written = vsnprintf(err_msg, chars_left, print_format, arg_pointer);
+		if (chars_written < 0) {
+			// Error in error function. We're screwed.
+			exit(EXIT_FAILURE); 
+		}
+		chars_left -= chars_written;
+
+		fprintf(stderr, "}\n");
+		chars_written = snprintf(err_msg, chars_left, "}\n");
+		if (chars_written == -1) {
+			// Error in error function. We're screwed.
+			exit(EXIT_FAILURE); 
+		} 
+		chars_left -= chars_written;
+
+		va_end(arg_pointer);
+	}
+
+	firefly_error(FIREFLY_ERROR_LABCOMM, 1, err_msg);
+	free(err_msg);
 }

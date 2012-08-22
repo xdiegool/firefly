@@ -7,6 +7,7 @@
 #define FIREFLY_ERRORS_H
 
 #include <stdlib.h>
+#include <labcomm.h>
 
 /**
  * @brief Error IDs
@@ -62,5 +63,15 @@ const char *firefly_error_get_str(enum firefly_error error_id);
  * @param ... Variable number of arguments.
  */
 void firefly_error(enum firefly_error error_id, size_t nbr_va_args, ...);
+
+/**
+ * @brief Error callback used in LabComm that forwards the error to the \e
+ * firefly_error handler that is in use.
+ * @param error_id The LabComm error that occured.
+ * @param nbr_va_args The number of va_args that are passed.
+ * @param ... Some va_args.
+ */
+void labcomm_error_to_ff_error(enum labcomm_error error_id, size_t nbr_va_args,
+									...);
 
 #endif

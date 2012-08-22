@@ -406,16 +406,6 @@ struct firefly_channel *remove_channel_from_connection(struct firefly_channel *c
 int next_channel_id(struct firefly_connection *conn);
 
 /**
- * @brief Error callback used in LabComm that forwards the error to the \e
- * firefly_error handler that is in use.
- * @param error_id The LabComm error that occured.
- * @param nbr_va_args The number of va_args that are passed.
- * @param ... Some va_args.
- */
-void labcomm_error_to_ff_error(enum labcomm_error error_id, size_t nbr_va_args,
-									...);
-
-/**
  * @brief A general LabComm reader used to feed a decoder with data from
  * memory.
  *

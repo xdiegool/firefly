@@ -2,6 +2,9 @@
 #include "firefly_transport_udp_lwip_private.h"
 
 #include <string.h>
+#ifdef ARM_CORTEXM3_CODESOURCERY
+	#include <ustdlib.h> // Needed for usnprintf.
+#endif
 
 #include <transport/firefly_transport.h>
 #include <utils/firefly_errors.h>

@@ -158,7 +158,8 @@ endif
 
 # Add options depending on target. Default is x86/x64.
 # Set with $make -e TARGET_ISA=<isa>
-# TODO test this. 
+# To make a complete arm compilation you will typically type:
+# $ make -e TARGET_ISA=arm_thumb -e FIREFLY_ERROR_USER_DEFINED=true build/lib{firefly,transport-udp-lwip}.a
 ifeq ($(TARGET_ISA), arm_thumb)
 	CC = $(COMPILER_DIR)/arm-none-eabi-gcc
 	CFLAGS += -Wfloat-equal -Werror-implicit-function-declaration \
@@ -356,7 +357,7 @@ $(TEST_OBJS): $$(patsubst $$(BUILD_DIR)/%.o,%.c,$$@) |$$(@D)
 $(TEST_PROGS): $$(patsubst %,$$(BUILD_DIR)/lib%.a,$$(LIB_FIREFLY_NAME) $$(LIB_TRANSPORT_UDP_POSIX_NAME)) $(LABCOMMLIBPATH)/liblabcomm.a |$(TESTFILES_DIR)
 
 # Main test program for the protocol tests.
-# Filter-out libraries since Make for some unknown reason adds our three own libraries.
+# Filter-out libraries since those are not "in-files" but the still depend on them so they can be used for linking.
 $(BUILD_DIR)/test/test_protocol_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_protocol_main test_labcomm_utils test_proto_chan test_proto_translc test_proto_protolc test_proto_errors proto_helper) $(BUILD_DIR)/$(GEN_DIR)/test.o
 	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) $(LDLIBS_TEST) -o $@ 
 
