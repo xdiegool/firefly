@@ -70,13 +70,14 @@ void labcomm_error_to_ff_error(enum labcomm_error error_id, size_t nbr_va_args,
 {
 	char *err_msg = malloc(MAX_ERR_LEN);
 	if (err_msg == NULL) {
-		err_msg = "Error with an unknown error ID occured.";
-		firefly_error(FIREFLY_ERROR_LABCOMM, 1, err_msg);
+		err_msg = "Failed to allocate memory for error message.";
+		firefly_error(FIREFLY_ERROR_ALLOC, 1, err_msg);
 		return;
 	}
 
 	const char *lc_err_msg = labcomm_error_get_str(error_id);
-	if (err_msg == NULL) {
+	if (lc_err_msg == NULL) {
+		free(err_msg);
 		err_msg = "Error with an unknown error ID occured.";
 		firefly_error(FIREFLY_ERROR_LABCOMM, 1, err_msg);
 		return;
@@ -103,7 +104,8 @@ void labcomm_error_to_ff_error(enum labcomm_error error_id, size_t nbr_va_args,
 		chars_left -= chars_written;
 
 		char *print_format = va_arg(arg_pointer, char *);
-		chars_written = vsnprintf(err_msg, chars_left, print_format, arg_pointer);
+		chars_written = vsnprintf(err_msg, chars_left, print_format,
+				arg_pointer);
 		if (chars_written < 0) {
 			// Error in error function. We're screwed.
 			exit(EXIT_FAILURE); 

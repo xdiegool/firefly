@@ -268,25 +268,25 @@ TEST_PROGS = $(shell find $(SRC_DIR)/test/{,pingpong/} -type f -name '*_main.c' 
 
 ## General targets. {
 
-# target: all - Build everything that can be build (except documentation).
+# target: all - Build everything that can be built (except documentation).
 all: $(OUR_LIBS) $(TEST_PROGS) $(TAGSFILE_VIM) $(TAGSFILE_EMACS)
 
-# target: $(BUILD_DIR) - Everything that is to be build depends on the build dir.
+# $(BUILD_DIR) - Everything that is to be build depends on the build dir.
 $(BUILD_DIR)/%: $(BUILD_DIR)
 
-# target: $(DIRS_TO_CREATE) - Create directories as needed.
+# $(DIRS_TO_CREATE) - Create directories as needed.
 $(DIRS_TO_CREATE): 
 	mkdir -p $@
 
 
 ### Labcomm targets {
-# target: $(LABCOMMC) - Construct the LabComm compiler.
+# $(LABCOMMC) - Construct the LabComm compiler.
 $(LABCOMMC):
 	@echo "======Building LabComm compiler======"
 	cd $(LABCOMMPATH)/compiler; ant jar
 	@echo "======End building LabComm compiler======"
 
-# target: $(LABCOMMLIBPATH/liblabconn.a) - Build static LabComm library.
+# $(LABCOMMLIBPATH/liblabconn.a) - Build static LabComm library.
 $(LABCOMMLIBPATH)/liblabcomm.a:
 	@echo "======Building LabComm======"
 	$(MAKE) -C $(LABCOMMLIBPATH) -e CC=$(CC) CFLAGS="$(filter-out -Werror -Wextra,$(CFLAGS)) -D MEM_WRITER_ENCODED_BUFFER=1" -e LABCOMM_NO_EXPERIMENTAL=true liblabcomm.a
@@ -359,7 +359,9 @@ $(TEST_PROGS): $$(patsubst %,$$(BUILD_DIR)/lib%.a,$$(LIB_FIREFLY_NAME) $$(LIB_TR
 # Main test program for the protocol tests.
 # Filter-out libraries since those are not "in-files" but the still depend on them so they can be used for linking.
 $(BUILD_DIR)/test/test_protocol_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_protocol_main test_labcomm_utils test_proto_chan test_proto_translc test_proto_protolc test_proto_errors proto_helper) $(BUILD_DIR)/$(GEN_DIR)/test.o
-	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) $(LDLIBS_TEST) -o $@ 
+	cp $(BUILD_DIR)/lib$(LIB_FIREFLY_NAME).a /tmp/lib$(LIB_FIREFLY_NAME)_wo_error.a
+	ar d /tmp/lib$(LIB_FIREFLY_NAME)_wo_error.a firefly_errors.o
+	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) -L/tmp/ $(filter-out %.a,$^) $(patsubst -l$(LIB_FIREFLY_NAME),-l$(LIB_FIREFLY_NAME)_wo_error,$(LDLIBS_TEST)) -o $@ 
 
 # Main test program for the transport tests.
 $(BUILD_DIR)/test/test_transport_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_transport_main test_transport_udp_posix)
@@ -444,7 +446,7 @@ ping: $(BUILD_DIR)/test/pingpong/pingpong_main
 pong: $(BUILD_DIR)/test/pingpong/pingpong_main
 	$< $@
 
-# target: %.d - Automatic prerequisities generation.
+# %.d - Automatic prerequisities generation.
 $(BUILD_DIR)/%.d: %.c $(GEN_FILES) |$$(@D)
 	@$(SHELL) -ec '$(CC) -M $(CFLAGS) $(INC_FIREFLY) $< \
 	| sed '\''s/\(.*\)\.o[ :]*/$(patsubst %.d,%.o,$(subst /,\/,$@)) : /g'\'' > $@; \
@@ -476,7 +478,7 @@ uninstall:
 
 # target: help - Display all targets.
 help:
-	@egrep "#\starget:" [Mm]akefile  | sed 's/\s-\s/\t\t\t/' | cut -d " " -f3- | sort -d
+	@egrep "#\starget:" [Mm]akefile | sed 's/\s-\s/\t\t\t/' | cut -d " " -f3- | sort -d
 
 # target: clean  - Clean most compiled or generated files.
 clean:

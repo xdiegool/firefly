@@ -41,6 +41,16 @@ void firefly_error(enum firefly_error error_id, size_t nbr_va_args, ...)
 	CU_ASSERT_EQUAL(expected_error, error_id);
 }
 
+// Override.
+void labcomm_error_to_ff_error(enum labcomm_error error_id, size_t nbr_va_args,
+									...)
+{
+	UNUSED_VAR(error_id);
+	UNUSED_VAR(nbr_va_args);
+	const char *lc_err_msg = labcomm_error_get_str(error_id);
+	firefly_error(FIREFLY_ERROR_LABCOMM, 1, lc_err_msg);
+}
+
 
 static void mk_lc_and_reg_sigs_free(struct firefly_connection *conn_open,
 					struct firefly_connection *conn_recv,
