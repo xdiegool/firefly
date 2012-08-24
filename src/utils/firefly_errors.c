@@ -1,11 +1,11 @@
 #include <utils/firefly_errors.h>
 
-// TODO Some projects can not use stdio.h so we need to make this include conditional.
-#include <stdio.h>
 #include <stdarg.h>
-
 #ifdef ARM_CORTEXM3_CODESOURCERY
-	#include <ustdlib.h> // Needed for usnprintf.
+	#include <ustdlib.h> // Needed for usnprintf and uvsprintf that replaces
+			     // the regular print functions.
+#else
+	#include <stdio.h>
 #endif
 
 #define MAX_ERR_LEN (1024)	/* Maximum length of error strings. */

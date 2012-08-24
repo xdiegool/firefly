@@ -168,9 +168,11 @@ ifeq ($(TARGET_ISA), arm_thumb)
 		  $(INC_TRANSPORT_UDP_LWIP) \
 		  -D sprintf=usprintf \
 		  -D snprintf=usnprintf \
+		  -D vsnprintf=uvsnprintf \
 		  -D printf=uipprintf \
-	    	  -D malloc=pvPortMalloc \
-	    	  -D free=vPortFree \
+		  -D malloc=pvPortMalloc \
+		  -D calloc=pvPortCalloc \
+		  -D free=vPortFree \
 		  -D ARM_CORTEXM3_CODESOURCERY \
 		  -D LABCOMM_NO_STDIO
 
