@@ -923,11 +923,8 @@ void test_recv_app_data()
 	firefly_event_queue_free(&eq);
 }
 
-/* TODO: break out? */
-/* big test */
-/* faux trans layer */
-/* TODO: try a pipe or smthng... */
 
+/* Big test using mock transport layer. */
 struct data_space {
 	unsigned char *data;
 	struct data_space *next;
@@ -961,7 +958,6 @@ static int n_packets_in_data_space(struct data_space *space)
 
 static struct data_space *space_from_conn[2];
 
-/* TODO: Use 'transport_conn_platspec'? */
 /* transport_write_f callback*/
 void trans_w(struct data_space **space,
 			 unsigned char *data,
@@ -1001,8 +997,6 @@ void trans_w_from_conn_1(unsigned char *data, size_t data_size,
 	trans_w(&space_from_conn[1], data, data_size, conn);
 }
 
-// TODO delete this debugging macros? are they needed?
-#define SUPER_DEBUG_LEVEL 0
 size_t read_connection_mock(struct firefly_connection *conns[], int conn_n)
 {
 	struct data_space **space;
@@ -1016,20 +1010,6 @@ size_t read_connection_mock(struct firefly_connection *conns[], int conn_n)
 		return 0;
 	}
 	*space = (*space)->next;
-#if SUPER_DEBUG_LEVEL >= 1
-	printf("\n\nread %zu bytes from somewhere!\n", read_pkg->data_size);
-#endif
-#if SUPER_DEBUG_LEVEL >= 2
-	printf("\n\nREAD DATA:\n\n");
-	for (int i = 0; i < read_pkg->data_size; i++) {
-		printf("%4d", read_pkg->data[i]);
-		if ((i+1) % 10)
-			printf(" ");
-		else
-			printf("\n");
-	}
-	printf("\n\nEND READ DATA\n\n");
-#endif
 	protocol_data_received(conns[conn_n], read_pkg->data,
 			read_pkg->data_size);
 	read_size = read_pkg->data_size;
@@ -1082,15 +1062,11 @@ struct firefly_connection *setup_conn(int conn_n,
 		writer = trans_w_from_conn_1;
 		break;
 	}
-#if testing_testing
-	tcon = firefly_connection_new(chan_was_opened, chan_was_closed,
-						  should_accept_chan, writer,
-						  eqs[conn_n], NULL);
- #else
+
 	tcon = firefly_connection_new_register(chan_was_opened, chan_was_closed,
 					   should_accept_chan, writer,
 					   eqs[conn_n], NULL, true);
-#endif
+
 	if (tcon == NULL) {
 		CU_FAIL("Could not create channel");
 	}
@@ -1101,59 +1077,10 @@ struct firefly_connection *setup_conn(int conn_n,
 					   	   err_cb);
 	labcomm_register_error_handler_decoder(tcon->transport_decoder,
 						   err_cb);
-#if testing_testing
 
-	/* The encoder should know the protocol */
-	/* The encoder registrations should show up as a "packet" in the data
-	 * space */
-	labcomm_encoder_register_firefly_protocol_data_sample(
-			tcon->transport_encoder);
-	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[conn_n]), 1);
-
-	labcomm_encoder_register_firefly_protocol_channel_request(
-			tcon->transport_encoder);
-	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[conn_n]), 2);
-
-	labcomm_encoder_register_firefly_protocol_channel_response(
-			tcon->transport_encoder);
-	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[conn_n]), 3);
-
-	labcomm_encoder_register_firefly_protocol_channel_ack(
-			tcon->transport_encoder);
-	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[conn_n]), 4);
-
-	labcomm_encoder_register_firefly_protocol_channel_close(
-			tcon->transport_encoder);
-	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[conn_n]), 5);
-
-	/* The decoder should know the protocol */
-	labcomm_decoder_register_firefly_protocol_data_sample(
-			tcon->transport_decoder, handle_data_sample, tcon);
-
-	labcomm_decoder_register_firefly_protocol_channel_request(
-			tcon->transport_decoder, handle_channel_request, tcon);
-
-	labcomm_decoder_register_firefly_protocol_channel_response(
-			tcon->transport_decoder, handle_channel_response, tcon);
-
-	labcomm_decoder_register_firefly_protocol_channel_ack(
-			tcon->transport_decoder, handle_channel_ack, tcon);
-
-	labcomm_decoder_register_firefly_protocol_channel_close(
-			tcon->transport_decoder, handle_channel_close, tcon);
-#endif
 	return tcon;
 }
 
-/*
- * TODO: (Not just with regards to this test.)
- *       Decide how to handle encoder registrations.
- *       Should thew be transmitted or should they
- *       be handled externally?
- *       If we choose to discard them, move *all*
- *       registrations away from the user.
- *       (And of course, this test.)
- */
 void test_transmit_app_data_over_mock_trans_layer()
 {
 	const int n_conn = 2;
@@ -1179,17 +1106,7 @@ void test_transmit_app_data_over_mock_trans_layer()
 		CU_ASSERT_EQUAL(firefly_event_queue_length(
 					connections[i]->event_queue), 0);
 	}
-#if testing_testing
-	/* Read signatures. No events should be spawned. */
-	for (int i = 0; i < n_conn; i++) {
-		int cnt = 0;
-		while ((read_connection_mock(connections, i)))
-			cnt ++;
-		CU_ASSERT_EQUAL(cnt, 5);
-		CU_ASSERT_EQUAL(firefly_event_queue_length(
-					connections[0]->event_queue), 0);
-	}
-#endif
+
 	/* Chan 0 wants to open a connection... */
 	/* TODO: Might want to check the callback too... */
 	firefly_channel_open(connections[0], NULL);
@@ -1341,16 +1258,7 @@ void test_transmit_app_data_over_mock_trans_layer()
 	CU_ASSERT_EQUAL(firefly_event_queue_length(connections[1]->event_queue),
 			0);
 	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[1]), 0);
-#if 0
-	printf("\n\nn ev in q0: %d\n",
-		   firefly_event_queue_length(connections[0]->event_queue));
-	printf("n data in space from 0: %d\n\n",
-		   n_packets_in_data_space(space_from_conn[0]));
-	printf("n ev in q1: %d\n",
-		   firefly_event_queue_length(connections[1]->event_queue));
-	printf("n data in space from 1: %d\n\n",
-		   n_packets_in_data_space(space_from_conn[1]));
-#endif
+
 	/* Execute to send. */
 	ev = firefly_event_pop(connections[0]->event_queue);
 	firefly_event_execute(ev);

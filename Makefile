@@ -247,7 +247,7 @@ TRANSPORT_UDP_LWIP_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(TRANSPORT_UDP_LWIP_SR
 ### Tests {
 TEST_SRC = $(shell find $(SRC_DIR)/test/ -type f -name '*.c' | sed 's/^$(SRC_DIR)\///')
 TEST_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(TEST_SRC))
-TEST_PROGS = $(shell find $(SRC_DIR)/test/{,pingpong/} -type f -name '*_main.c' | sed -e 's/^$(SRC_DIR)\//$(BUILD_DIR)\//' -e 's/\.c//')
+TEST_PROGS = $(shell find $(SRC_DIR)/test/ -type f -name '*_main.c' | sed -e 's/^$(SRC_DIR)\//$(BUILD_DIR)\//' -e 's/\.c//')
 
 ### }
 
