@@ -46,30 +46,36 @@ static void udp_lwip_recv_callback(void *recv_arg, struct udp_pcb *upcb,
 }
 
 struct firefly_transport_llp *firefly_transport_llp_udp_lwip_new(
-				char *local_ip_addr,
-				unsigned short local_port,
-				firefly_on_conn_recv_udp_lwip on_conn_recv)
+		char *local_ip_addr, unsigned short local_port,
+		firefly_on_conn_recv_udp_lwip on_conn_recv)
 {
 	struct transport_llp_udp_lwip *llp_udp =
 				malloc(sizeof(struct transport_llp_udp_lwip));
 	if (llp_udp == NULL) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 2,
-					  "Failed in %s().\n", __FUNCTION__);
+				"Failed in %s().\n", __FUNCTION__);
+		return NULL;
 	}
+	firefly_error(FIREFLY_ERROR_ALLOC, 1,
+			"Successfully allocated llp.\n");
 	llp_udp->upcb = udp_new();
 	if (llp_udp->upcb == NULL) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 2,
 				"Failed to allocate udp_pcb in"
 				" %s().\n", __FUNCTION__);
+		free(llp_udp);
+		return NULL;
 	}
 	struct ip_addr *ip_lwip = str_to_ip_addr(local_ip_addr);
 	if (ip_lwip == NULL) {
+		free(llp_udp);
 		return NULL;
 	}
 	err_t u_err = udp_bind(llp_udp->upcb, ip_lwip, local_port);
 	if (u_err == ERR_USE) {
 		firefly_error(FIREFLY_ERROR_LLP_BIND, 1,
 				"UDP port %u already bound!\n", local_port);
+		free(llp_udp);
 		free(ip_lwip);
 		return NULL;
 	}
@@ -126,7 +132,7 @@ void firefly_transport_connection_udp_lwip_free(
 	*conn = NULL;
 }
 
-struct firefly_connection *firefly_transport_connection_udp_posix_open(
+struct firefly_connection *firefly_transport_connection_udp_lwip_open(
 				firefly_channel_is_open_f on_channel_opened,
 				firefly_channel_closed_f on_channel_closed,
 				firefly_channel_accept_f on_channel_recv,

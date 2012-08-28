@@ -398,17 +398,6 @@ struct firefly_connection *find_connection_by_addr(struct sockaddr_in *ip_addr,
 	return NULL;
 }
 
-void add_connection_to_llp(struct firefly_connection *conn,
-		struct firefly_transport_llp *llp)
-{
-	struct llp_connection_list_node *tmp = llp->conn_list;
-	struct llp_connection_list_node *new_node =
-		malloc(sizeof(struct llp_connection_list_node));
-	new_node->conn = conn;
-	new_node->next = tmp;
-	llp->conn_list = new_node;
-}
-
 void firefly_transport_udp_posix_set_n_scaleback(
 			struct firefly_transport_llp *llp, unsigned int nbr)
 {

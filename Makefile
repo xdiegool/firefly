@@ -74,7 +74,7 @@ CC = $(shell hash clang 2>/dev/null && echo clang || echo cc)
 ERRFLAGS = -Wall -Wextra
 
 # Common flags to the compiler.
-CFLAGS = -std=c99 $(ERRFLAGS) $(INC_COMMON)
+CFLAGS = -std=c99 $(ERRFLAGS) $(INC_COMMON) -D DEBUG
 
 
 ### Includes {
@@ -144,7 +144,7 @@ DEBUGOPT = -g
 # Change with $make -e DEBUG=false
 ifeq ($(DEBUG), true)
 	# Disalbe optimizations when deubbing.
-	CFLAGS += $(DEBUGOPT) -O0
+	CFLAGS += $(DEBUGOPT) -Os
 	LDFLAGS += -g
 else
 	CFLAGS += -O$(OPTLVL)
@@ -237,7 +237,7 @@ TRANSPORT_UDP_POSIX_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(TRANSPORT_UDP_POSIX_
 
 ### Transport UPD LWIP {
 # Source files for lib$(LIB_TRANSPORT_UDP_LWIP_NAME).a
-TRANSPORT_UDP_LWIP_SRC = $(shell find $(SRC_DIR)/transport/ -type f -name '*udp_lwip*.c' -print | sed 's/^$(SRC_DIR)\///')
+TRANSPORT_UDP_LWIP_SRC = $(shell find $(SRC_DIR)/transport/ -type f \( -name '*udp_lwip*.c' -o -name "firefly_transport.c" \) -print | sed 's/^$(SRC_DIR)\///')
 
 # Object files from sources.
 TRANSPORT_UDP_LWIP_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(TRANSPORT_UDP_LWIP_SRC))

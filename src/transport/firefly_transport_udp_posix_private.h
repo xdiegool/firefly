@@ -89,15 +89,6 @@ void sockaddr_in_ipaddr(struct sockaddr_in *addr, char *ip_addr);
 unsigned short sockaddr_in_port(struct sockaddr_in *addr);
 
 /**
- * @brief Adds a connection to the connection list in \a llp.
- *
- * @param conn The connection to add.
- * @param llp The link layer port structure to add the connection to.
- */
-void add_connection_to_llp(struct firefly_connection *conn,
-		struct firefly_transport_llp *llp);
-
-/**
  * @brief Allocates and initializes a new connection with udp posix specific
  * data.
  *
