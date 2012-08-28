@@ -144,7 +144,7 @@ DEBUGOPT = -g
 # Change with $make -e DEBUG=false
 ifeq ($(DEBUG), true)
 	# Disalbe optimizations when deubbing.
-	CFLAGS += $(DEBUGOPT) -Os
+	CFLAGS += $(DEBUGOPT) -O0
 	LDFLAGS += -g
 else
 	CFLAGS += -O$(OPTLVL)
@@ -228,7 +228,7 @@ FIREFLY_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(FIREFLY_SRC))
 
 ### Transport UPD POSIX {
 # Source files for lib$(LIB_TRANSPORT_UDP_POSIX_NAME).a
-TRANSPORT_UDP_POSIX_SRC = $(shell find $(SRC_DIR)/transport/ -type f -name '*udp_posix*.c' -print | sed 's/^$(SRC_DIR)\///')
+TRANSPORT_UDP_POSIX_SRC = $(shell find $(SRC_DIR)/transport/ -type f \( -name '*udp_posix*.c' -o -name 'firefly_transport.c' \) -print | sed 's/^$(SRC_DIR)\///')
 
 # Object files from sources.
 TRANSPORT_UDP_POSIX_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(TRANSPORT_UDP_POSIX_SRC))
