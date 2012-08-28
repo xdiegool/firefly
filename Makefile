@@ -137,8 +137,13 @@ LDLIBS_TEST= -l$(LIB_FIREFLY_NAME) -l$(LIB_TRANSPORT_UDP_POSIX_NAME) -llabcomm -
 ### }
 
 ### Conditional flags {
-OPTLVL= 2
-DEBUG = true
+ifeq ($(TARGET_ISA), arm_thumb)
+	OPTLVL = s
+else
+	OPTLVL = 2
+endif
+//DEBUG = true
+DEBUG = false
 DEBUGOPT = -g
 
 # Change with $make -e DEBUG=false
