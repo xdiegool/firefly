@@ -79,6 +79,7 @@ struct firefly_connection *firefly_connection_new_register(
 	return conn;
 }
 
+// TODO do register better
 struct firefly_connection *firefly_connection_new(
 		firefly_channel_is_open_f on_channel_opened,
 		firefly_channel_closed_f on_channel_closed,
