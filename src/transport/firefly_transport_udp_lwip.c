@@ -8,6 +8,7 @@
 
 #include <transport/firefly_transport.h>
 #include <utils/firefly_errors.h>
+#include <lwip/ip_addr.h>
 #include <lwip/udp.h>
 
 #include "protocol/firefly_protocol_private.h"
@@ -56,8 +57,7 @@ struct firefly_transport_llp *firefly_transport_llp_udp_lwip_new(
 				"Failed in %s().\n", __FUNCTION__);
 		return NULL;
 	}
-	firefly_error(FIREFLY_ERROR_ALLOC, 1,
-			"Successfully allocated llp.\n");
+
 	llp_udp->upcb = udp_new();
 	if (llp_udp->upcb == NULL) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 2,
@@ -261,17 +261,17 @@ struct ip_addr *str_to_ip_addr(const char *ip_str)
 			pch = strtok(NULL, delim);
 		}
 		if (i != 3 && pch == NULL) {
-			firefly_error(FIREFLY_ERROR_IP_PARSE, 2,
+			firefly_error(FIREFLY_ERROR_IP_PARSE, 3,
 					"Failed to parse IP address \"%s\""
-					"in %s().\n", __FUNCTION__);
+					"in %s().\n", ip_str, __FUNCTION__);
 			return NULL;
 		}
 		char *endptr;
 		ip_parts[i] = strtol(pch, &endptr, 10);
 		if (endptr == pch || *endptr != '\0' || errno == ERANGE) {
-			firefly_error(FIREFLY_ERROR_IP_PARSE, 2,
+			firefly_error(FIREFLY_ERROR_IP_PARSE, 3,
 					"Failed to parse IP address \"%s\""
-					"in %s().\n", __FUNCTION__);
+					"in %s().\n", ip_str, __FUNCTION__);
 			return NULL;
 		}
 	}
@@ -289,20 +289,20 @@ struct ip_addr *str_to_ip_addr(const char *ip_str)
 
 char *ip_addr_to_str(struct ip_addr *ip_addr)
 {
-	char *ip_str = malloc(4*3 + 3 + 1); // Max length of IPv4 address string.
+	size_t ipv4_size = 4*3 + 3 + 1;
+	char *ip_str = malloc(ipv4_size); // Max length of IPv4 address string.
 	if (ip_str == NULL) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 2,
 				"Could no allocate ip_str in function %s.\n",
 				__FUNCTION__);
 		return NULL;
 	}
-	long unsigned int ip = ntohl((long unsigned int) ip_addr);
-	int nbr_printed;
-	nbr_printed = snprintf(ip_str, (3 + 1 + 1), "%i.", (unsigned char) (ip >> 24));
-	nbr_printed = snprintf(ip_str + nbr_printed, (3 + 1 + 1), "%i.",
-				(unsigned char) (ip >> 16));
-	snprintf(ip_str + nbr_printed, (3 + 1 + 1), "%i.", (unsigned char) (ip >> 8));
-	snprintf(ip_str, 3, "%i", (unsigned char) ip);
+
+	snprintf(ip_str, ipv4_size, "%d.%d.%d.%d",
+			ip4_addr1(ip_addr),
+			ip4_addr2(ip_addr),
+			ip4_addr3(ip_addr),
+			ip4_addr4(ip_addr));
 
 	return ip_str;
 }
