@@ -112,6 +112,10 @@ static void create_channel_closed_event(struct firefly_channel *chan)
 
 	struct firefly_event *ev = firefly_event_new(1,
 			firefly_channel_closed_event, chan);
+	if (ev == NULL) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 1,
+				"Could not allocate closed event.");
+	}
 	ret = chan->conn->event_queue->offer_event_cb(chan->conn->event_queue,
 							ev);
 	if (ret) {

@@ -25,6 +25,7 @@ static void udp_lwip_recv_callback(void *recv_arg, struct udp_pcb *upcb,
 	struct transport_llp_udp_lwip *llp_udp =
 		(struct transport_llp_udp_lwip *) llp->llp_platspec;
 
+	firefly_transport_udp_lwip_clean_up(llp);
 	// Find existing connection or create new.
 	struct firefly_connection *conn = find_connection_by_addr(
 			remote_ip_addr, llp);
@@ -44,6 +45,7 @@ static void udp_lwip_recv_callback(void *recv_arg, struct udp_pcb *upcb,
 	if (conn != NULL) { // Existing, not rejected and created conn.
 		protocol_data_received(conn, pbuf->payload, pbuf->len);
 	}
+	pbuf_free(pbuf);
 }
 
 struct firefly_transport_llp *firefly_transport_llp_udp_lwip_new(
@@ -162,6 +164,7 @@ struct firefly_connection *firefly_transport_connection_udp_lwip_open(
 
 	struct ip_addr *ip_lwip = str_to_ip_addr(remote_ip_addr);
 	if (ip_lwip == NULL) {
+		free(ip_lwip);
 		return NULL;
 	}
 	conn_udp->remote_ip_addr = ip_lwip;
@@ -222,6 +225,7 @@ void firefly_transport_udp_lwip_write(unsigned char *data, size_t data_size,
 
 	err_t err = udp_sendto(conn_udp->upcb, pbuf, conn_udp->remote_ip_addr,
 			conn_udp->remote_port);
+	pbuf_free(pbuf);
 	if (err != ERR_OK) {
 		firefly_error(FIREFLY_ERROR_TRANS_WRITE, 2,
 				"Failed in %s().\n", __FUNCTION__);
