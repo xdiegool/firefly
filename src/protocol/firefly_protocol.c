@@ -70,7 +70,7 @@ void firefly_channel_open(struct firefly_connection *conn,
 	}
 	feco->conn = conn;
 	feco->rejected_cb = on_chan_rejected;
-	struct firefly_event *ev = firefly_event_new(1,
+	struct firefly_event *ev = firefly_event_new(FIREFLY_PRIORITY_HIGH,
 					firefly_channel_open_event, feco);
 
 	ret = conn->event_queue->offer_event_cb(conn->event_queue, ev);
@@ -110,7 +110,7 @@ static void create_channel_closed_event(struct firefly_channel *chan)
 {
 	int ret;
 
-	struct firefly_event *ev = firefly_event_new(1,
+	struct firefly_event *ev = firefly_event_new(FIREFLY_PRIORITY_HIGH,
 			firefly_channel_closed_event, chan);
 	if (ev == NULL) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1,
@@ -136,7 +136,7 @@ void firefly_channel_close(struct firefly_channel *chan)
 	fecc->conn = chan->conn;
 	fecc->chan_close.dest_chan_id = chan->remote_id;
 	fecc->chan_close.source_chan_id = chan->local_id;
-	struct firefly_event *ev = firefly_event_new(1,
+	struct firefly_event *ev = firefly_event_new(FIREFLY_PRIORITY_HIGH,
 					firefly_channel_close_event, fecc);
 	int ret = chan->conn->event_queue->offer_event_cb(
 						chan->conn->event_queue, ev);
@@ -186,7 +186,7 @@ void handle_channel_request(firefly_protocol_channel_request *chan_req,
 	fecrr->conn = conn;
 	memcpy(&fecrr->chan_req, chan_req,
 				sizeof(firefly_protocol_channel_request));
-	struct firefly_event *ev = firefly_event_new(1,
+	struct firefly_event *ev = firefly_event_new(FIREFLY_PRIORITY_HIGH,
 			handle_channel_request_event, fecrr);
 
 	ret = conn->event_queue->offer_event_cb(conn->event_queue, ev);
@@ -254,7 +254,7 @@ void handle_channel_response(firefly_protocol_channel_response *chan_res,
 	fecrr->conn = conn;
 	memcpy(&fecrr->chan_res, chan_res,
 				sizeof(firefly_protocol_channel_response));
-	struct firefly_event *ev = firefly_event_new(1,
+	struct firefly_event *ev = firefly_event_new(FIREFLY_PRIORITY_HIGH,
 			handle_channel_response_event, fecrr);
 
 	ret = conn->event_queue->offer_event_cb(conn->event_queue, ev);
@@ -314,7 +314,7 @@ void handle_channel_ack(firefly_protocol_channel_ack *chan_ack, void *context)
 	fecar->conn = conn;
 	memcpy(&fecar->chan_ack, chan_ack,
 		sizeof(firefly_protocol_channel_ack));
-	struct firefly_event *ev = firefly_event_new(1,
+	struct firefly_event *ev = firefly_event_new(FIREFLY_PRIORITY_HIGH,
 			handle_channel_ack_event, fecar);
 
 	ret = conn->event_queue->offer_event_cb(conn->event_queue, ev);
@@ -373,7 +373,7 @@ void handle_data_sample(firefly_protocol_data_sample *data,
 	memcpy(fers->data.app_enc_data.a, data->app_enc_data.a,
 		data->app_enc_data.n_0);
 
-	struct firefly_event *ev = firefly_event_new(1,
+	struct firefly_event *ev = firefly_event_new(FIREFLY_PRIORITY_LOW,
 			handle_data_sample_event, fers);
 	int ret = conn->event_queue->offer_event_cb(conn->event_queue, ev);
 	if (ret) {

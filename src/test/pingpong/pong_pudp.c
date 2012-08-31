@@ -16,7 +16,7 @@
 static char *pong_test_names[] = {
 	"Open connection",
 	"Received channel",
-	"Open channel",
+	"Opened channel",
 	"Send data",
 	"Receive data",
 	"Close channel",
@@ -28,7 +28,7 @@ static struct pingpong_test pong_tests[PONG_NBR_TESTS];
 enum pong_test_id {
 	CONNECTION_OPEN,
 	CHAN_RECEIVE,
-	CHAN_OPEN,
+	CHAN_OPENED,
 	DATA_SEND,
 	DATA_RECEIVE,
 	CHAN_CLOSE,
@@ -84,7 +84,7 @@ void pong_chan_opened(struct firefly_channel *chan)
 
 	labcomm_decoder_register_pingpong_data(dec, pong_handle_pingpong_data, chan);
 	labcomm_encoder_register_pingpong_data(enc);
-	pong_pass_test(CHAN_OPEN);
+	pong_pass_test(CHAN_OPENED);
 }
 
 void pong_chan_closed(struct firefly_channel *chan)
@@ -135,7 +135,6 @@ void *send_data_and_close(void *args)
 	struct labcomm_encoder *enc = firefly_protocol_get_output_stream(chan);
 	labcomm_encode_pingpong_data(enc, &data);
 	pong_pass_test(DATA_SEND);
-	firefly_channel_close(chan);
 
 	return NULL;
 }
@@ -146,6 +145,7 @@ void *pong_main_thread(void *arg)
 	int res;
 	pthread_t event_thread;
 	pthread_t reader_thread;
+	struct thread_arg *ta = (struct thread_arg *) arg;
 
 	printf("Hello, Firefly from Pong!\n");
 	pong_init_tests();
@@ -171,6 +171,9 @@ void *pong_main_thread(void *arg)
 	if (res) {
 		fprintf(stderr, "ERROR: starting reader thread.\n");
 	}
+
+	// Signal to pingpong_main that pong is started so ping can start now.
+	pthread_cond_signal(&ta->t);
 
 	pthread_mutex_lock(&pong_done_lock);
 	while (!pong_done) {
