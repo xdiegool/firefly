@@ -1,0 +1,15 @@
+# Firefly introduction
+
+## WHAT IS FIREFLY?
+Firefly is a framework and protocol that is used to communicate serialized data
+between two nodes. It builds upon the Labcomm protocol, which is by design a one
+way protocol, and extends it to enable two way communication over different
+transport medium.
+
+The protocol specification is fairly simple by design to avoid any overhead when
+used in a setting with real time demands. There is a BNF-description of the
+protocol.
+// TODO Update BNF-file!
+
+There are reference implementations for three different application examples as
+well as two transport mediums (UDP and Ethernet).
