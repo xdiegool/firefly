@@ -132,7 +132,6 @@ void ping_handle_pingpong_data(pingpong_data *data, void *ctx)
 	if (*data == PONG_DATA) {
 		ping_pass_test(DATA_RECEIVE);
 	}
-	firefly_channel_close(chan);
 }
 
 void *ping_main_thread(void *arg)

@@ -1,6 +1,7 @@
 #include "test/pingpong/pong_pudp.h"
 
 #include <pthread.h>
+#include <unistd.h>
 
 #include <labcomm.h>
 #include <protocol/firefly_protocol.h>
@@ -135,6 +136,18 @@ void *send_data_and_close(void *args)
 	struct labcomm_encoder *enc = firefly_protocol_get_output_stream(chan);
 	labcomm_encode_pingpong_data(enc, &data);
 	pong_pass_test(DATA_SEND);
+
+	/* The protocol events takes precedence over the ones spawned above.
+	 * If we want to test in this fashion we will have to simulate
+	 * using the channel for arbitrary length of time. This will
+	 * give the system time to send the application data before closing
+	 * the channel. For this kind of short bursts a synchronous mode *might*
+	 * be a feature in the future. This, however, is not likely. Should the
+	 * application need to keep track of state above the protocol level,
+	 * *it* should probably do so.
+	 */
+	sleep(1);
+	firefly_channel_close(chan);
 
 	return NULL;
 }
