@@ -189,6 +189,13 @@ void test_recv_data()
 	struct firefly_connection *conn = firefly_connection_new(NULL, NULL,
 			NULL, NULL, NULL, conn_udp);
 
+	/*
+	 * The 'open' member of the platspec is uninitialized.
+	 * On 32 bit it worked out of pure luck. Not so much on
+	 * 64 bit.
+	 */
+	((struct protocol_connection_udp_posix *)conn->transport_conn_platspec)->open = true;
+
 	add_connection_to_llp(conn, llp);
 
 	firefly_transport_udp_posix_read(llp);
@@ -730,6 +737,12 @@ void test_read_mult_threads()
 	memcpy(conn_udp->remote_addr, &remote_addr, sizeof(remote_addr));
 	struct firefly_connection *conn = firefly_connection_new(NULL, NULL,
 			NULL, NULL, NULL, conn_udp);
+	/*
+	 * The 'open' member of the platspec is uninitialized.
+	 * On 32 bit it worked out of pure luck. Not so much on
+	 * 64 bit.
+	 */
+	((struct protocol_connection_udp_posix *)conn->transport_conn_platspec)->open = true;
 	add_connection_to_llp(conn, llp);
 
 	pthread_t reader_thread;

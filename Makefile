@@ -142,8 +142,8 @@ ifeq ($(TARGET_ISA), arm_thumb)
 else
 	OPTLVL = 2
 endif
-//DEBUG = true
-DEBUG = false
+DEBUG = true
+# DEBUG = false
 DEBUGOPT = -g
 
 # Change with $make -e DEBUG=false
