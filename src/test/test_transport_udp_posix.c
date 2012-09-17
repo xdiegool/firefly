@@ -25,6 +25,12 @@
 #include "protocol/firefly_protocol_private.h"
 #include "utils/cppmacros.h"
 
+/*#include "test/test_transport.h"*/
+extern unsigned char send_buf[16];
+extern bool data_received;
+extern size_t data_recv_size;
+extern unsigned char *data_recv_buf;
+
 int init_suit_udp_posix()
 {
 	return 0; // Success.
@@ -37,7 +43,6 @@ int clean_suit_udp_posix()
 
 static const unsigned short local_port = 55555;
 static unsigned short remote_port = 55556;
-static unsigned char send_buf[] = {0,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16};
 
 static unsigned char send_buf_med[] = {0,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,
 				  0,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16};
@@ -56,7 +61,7 @@ void reg_proto_sigs(struct labcomm_encoder *enc,
 	UNUSED_VAR(conn);
 }
 
-void setup_sockaddr(struct sockaddr_in *addr, unsigned short port)
+static void setup_sockaddr(struct sockaddr_in *addr, unsigned short port)
 {
 	addr->sin_family = AF_INET;
 	addr->sin_port = htons(port);
@@ -65,7 +70,7 @@ void setup_sockaddr(struct sockaddr_in *addr, unsigned short port)
 	}
 }
 
-int open_socket(struct sockaddr_in *addr)
+static int open_socket(struct sockaddr_in *addr)
 {
 	int remote_socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	if (remote_socket == -1) {
@@ -79,7 +84,7 @@ int open_socket(struct sockaddr_in *addr)
 	return remote_socket;
 }
 
-void recv_data(int remote_socket)
+static void recv_data(int remote_socket)
 {
 	unsigned char recv_buf[sizeof(send_buf)];
 	struct sockaddr_in remote_addr;
@@ -94,7 +99,7 @@ void recv_data(int remote_socket)
 
 }
 
-void send_data(struct sockaddr_in *remote_addr, unsigned short port,
+static void send_data(struct sockaddr_in *remote_addr, unsigned short port,
 		unsigned char *buf, size_t n)
 {
 	struct sockaddr_in *si_other = calloc(1, sizeof(struct sockaddr_in));
@@ -113,23 +118,6 @@ void send_data(struct sockaddr_in *remote_addr, unsigned short port,
 	}
 	close(remote_socket);
 	free(si_other);
-}
-
-static bool data_received = false;
-static size_t data_recv_size;
-static unsigned char *data_recv_buf;
-
-void protocol_data_received(struct firefly_connection *conn, unsigned char *data,
-							size_t size)
-{
-	UNUSED_VAR(conn);
-	if (!data_recv_buf) {
-		data_recv_buf = send_buf;
-		data_recv_size = sizeof(send_buf);
-	}
-	CU_ASSERT_EQUAL(data_recv_size, size);
-	CU_ASSERT_NSTRING_EQUAL(data, data_recv_buf, size);
-	data_received = true;
 }
 
 static bool good_conn_received = false;

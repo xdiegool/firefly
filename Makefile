@@ -95,6 +95,11 @@ INC_FIREFLY = $(addprefix -I, \
 INC_TRANSPORT_UDP_POSIX = $(addprefix -I, \
 		$(LABCOMMLIBPATH) \
 	      )
+#
+# Inluces for $(LIB_TRANSPORT_ETH_POSIX_NAME).
+INC_TRANSPORT_ETH_POSIX = $(addprefix -I, \
+		$(LABCOMMLIBPATH) \
+	      )
 
 # Inluces for $(LIB_TRANSPORT_UDP_LWIP_NAME).
 INC_TRANSPORT_UDP_LWIP = $(addprefix -I, \
@@ -132,7 +137,7 @@ LDFLAGS=
 LDFLAGS_TEST= -L$(BUILD_DIR) -L$(LABCOMMLIBPATH)
 
 # Libraries to link with test programs.
-LDLIBS_TEST= -l$(LIB_FIREFLY_NAME) -l$(LIB_TRANSPORT_UDP_POSIX_NAME) -llabcomm -lcunit -lpthread
+LDLIBS_TEST= -l$(LIB_FIREFLY_NAME) -l$(LIB_TRANSPORT_UDP_POSIX_NAME) -l$(LIB_TRANSPORT_ETH_POSIX_NAME) -llabcomm -lcunit -lpthread
 
 ### }
 
@@ -196,6 +201,7 @@ endif
 ### Our libraries {
 LIB_FIREFLY_NAME = firefly
 LIB_TRANSPORT_UDP_POSIX_NAME = transport-udp-posix
+LIB_TRANSPORT_ETH_POSIX_NAME = transport-eth-posix
 LIB_TRANSPORT_UDP_LWIP_NAME = transport-udp-lwip
 
 # Libraries to build.
@@ -237,6 +243,15 @@ TRANSPORT_UDP_POSIX_SRC = $(shell find $(SRC_DIR)/transport/ -type f \( -name '*
 
 # Object files from sources.
 TRANSPORT_UDP_POSIX_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(TRANSPORT_UDP_POSIX_SRC))
+
+### }
+
+### Transport ETH POSIX {
+# Source files for lib$(LIB_TRANSPORT_ETH_POSIX_NAME).a
+TRANSPORT_ETH_POSIX_SRC = $(shell find $(SRC_DIR)/transport/ -type f \( -name '*eth_posix*.c' -o -name 'firefly_transport.c' \) -print | sed 's/^$(SRC_DIR)\///')
+
+# Object files from sources.
+TRANSPORT_ETH_POSIX_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(TRANSPORT_ETH_POSIX_SRC))
 
 ### }
 
@@ -343,6 +358,18 @@ $(TRANSPORT_UDP_POSIX_OBJS): $$(patsubst $$(BUILD_DIR)/%.o,%.c,$$@) |$$(@D)
 
 ### }
 
+### Transport ETH POSIX targets {
+
+# target: build/lib$(LIB_TRANSPORT_ETH_POSIX_NAME).a  - Build static library for transport udp posix.
+$(BUILD_DIR)/lib$(LIB_TRANSPORT_ETH_POSIX_NAME).a: $(TRANSPORT_ETH_POSIX_OBJS)
+	ar -rc $@ $^
+
+# Compile UDP POSIX files.
+$(TRANSPORT_ETH_POSIX_OBJS): $$(patsubst $$(BUILD_DIR)/%.o,%.c,$$@) |$$(@D)
+	$(CC) -c $(CFLAGS) $(INC_TRANSPORT_ETH_POSIX) -o $@ $<
+
+### }
+
 ### Transport UDP LWIP targets {
 
 # target: build/lib$(LIB_TRANSPORT_UDP_LWIP_NAME).a  - Build static library for transport udp lwip.
@@ -361,7 +388,7 @@ $(TEST_OBJS): $$(patsubst $$(BUILD_DIR)/%.o,%.c,$$@) |$$(@D)
 	$(CC) -c $(CFLAGS) $(INC_TEST) -o $@ $<
 
 # The test programs all depends on the libraries it uses and the test files output directory.
-$(TEST_PROGS): $$(patsubst %,$$(BUILD_DIR)/lib%.a,$$(LIB_FIREFLY_NAME) $$(LIB_TRANSPORT_UDP_POSIX_NAME)) $(LABCOMMLIBPATH)/liblabcomm.a |$(TESTFILES_DIR)
+$(TEST_PROGS): $$(patsubst %,$$(BUILD_DIR)/lib%.a,$$(LIB_FIREFLY_NAME) $$(LIB_TRANSPORT_UDP_POSIX_NAME) $$(LIB_TRANSPORT_ETH_POSIX_NAME)) $(LABCOMMLIBPATH)/liblabcomm.a |$(TESTFILES_DIR)
 
 # Main test program for the protocol tests.
 # Filter-out libraries since those are not "in-files" but the still depend on them so they can be used for linking.
@@ -371,7 +398,7 @@ $(BUILD_DIR)/test/test_protocol_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_pr
 	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) -L/tmp/ $(filter-out %.a,$^) $(patsubst -l$(LIB_FIREFLY_NAME),-l$(LIB_FIREFLY_NAME)_wo_error,$(LDLIBS_TEST)) -o $@ 
 
 # Main test program for the transport tests.
-$(BUILD_DIR)/test/test_transport_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_transport_main test_transport_udp_posix)
+$(BUILD_DIR)/test/test_transport_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_transport_main test_transport test_transport_udp_posix test_transport_eth_posix)
 	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) $(LDLIBS_TEST) -o $@ 
 
 # Main test program for the event queue tests.
@@ -492,6 +519,7 @@ clean:
 	$(RM) $(OUR_LIBS)
 	$(RM) $(FIREFLY_OBJS)
 	$(RM) $(TRANSPORT_UDP_POSIX_OBJS)
+	$(RM) $(TRANSPORT_ETH_POSIX_OBJS)
 	$(RM) $(TRANSPORT_UDP_LWIP_OBJS)
 	$(RM) $(TEST_OBJS)
 	$(RM) $(TEST_PROGS)

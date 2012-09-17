@@ -2,10 +2,12 @@
 #include "CUnit/Console.h"
 
 #include "test/test_transport_udp_posix.h"
+#include "test/test_transport_eth_posix.h"
 
 int main()
 {
 	CU_pSuite trans_udp_posix = NULL;
+	CU_pSuite trans_eth_posix = NULL;
 
 	// Initialize CUnit test registry.
 	if (CUE_SUCCESS != CU_initialize_registry()) {
@@ -13,7 +15,8 @@ int main()
 	}
 
 	trans_udp_posix = CU_add_suite("udp_core", init_suit_udp_posix, clean_suit_udp_posix);
-	if (trans_udp_posix == NULL) {
+	trans_eth_posix = CU_add_suite("eth_core", init_suit_eth_posix, clean_suit_eth_posix);
+	if (trans_udp_posix == NULL || trans_eth_posix == NULL) {
 		CU_cleanup_registry();
 		return CU_get_error();
 	}
@@ -73,6 +76,15 @@ int main()
 				||
 		(CU_add_test(trans_udp_posix, "test_read_mult_threads",
 					 test_read_mult_threads) == NULL)
+	   ) {
+		CU_cleanup_registry();
+		return CU_get_error();
+	}
+
+	if (
+		(CU_add_test(trans_udp_posix, "test_eth_recv_connection",
+				test_eth_recv_connection) == NULL)
+			   /*||*/
 	   ) {
 		CU_cleanup_registry();
 		return CU_get_error();
