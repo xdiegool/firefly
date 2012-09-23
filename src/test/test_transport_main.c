@@ -82,9 +82,20 @@ int main()
 	}
 
 	if (
-		(CU_add_test(trans_udp_posix, "test_eth_recv_connection",
+		(CU_add_test(trans_eth_posix, "test_eth_recv_connection",
 				test_eth_recv_connection) == NULL)
-			   /*||*/
+			   ||
+		(CU_add_test(trans_eth_posix, "test_eth_recv_data",
+				test_eth_recv_data) == NULL)
+			   ||
+		(CU_add_test(trans_eth_posix, "test_eth_recv_conn_and_data",
+				test_eth_recv_conn_and_data) == NULL)
+			   ||
+		(CU_add_test(trans_eth_posix, "test_eth_recv_conn_keep",
+				test_eth_recv_conn_keep) == NULL)
+			   ||
+		(CU_add_test(trans_eth_posix, "test_eth_recv_conn_reject",
+				test_eth_recv_conn_reject) == NULL)
 	   ) {
 		CU_cleanup_registry();
 		return CU_get_error();

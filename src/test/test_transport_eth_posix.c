@@ -25,6 +25,7 @@
 #include <transport/firefly_transport.h>
 #include <transport/firefly_transport_eth_posix.h>
 #include "transport/firefly_transport_eth_posix_private.h"
+#include "utils/cppmacros.h"
 
 int init_suit_eth_posix()
 {
@@ -36,7 +37,11 @@ int clean_suit_eth_posix()
 	return 0; // Success.
 }
 
-static unsigned char send_buf[] = {0,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16};
+extern bool data_received;
+extern size_t data_recv_size;
+extern unsigned char *data_recv_buf;
+extern unsigned char send_buf[16];
+
 static char *remote_mac_addr = "00:00:00:00:00:00";
 static char *local_mac_addr = "00:00:00:00:00:00";
 static char *if_name = "lo";
@@ -127,16 +132,24 @@ static bool recv_conn_called = false;
 static struct firefly_connection *on_conn_recv(
 		struct firefly_transport_llp *llp, char *mac_address)
 {
-	printf("Expected mac_address: %s\n", remote_mac_addr);
-	printf("Got mac_address: %s\n", mac_address);
-	CU_ASSERT_NSTRING_EQUAL(mac_address, remote_mac_addr, 8);
+	UNUSED_VAR(llp);
+	CU_ASSERT_NSTRING_EQUAL(mac_address, remote_mac_addr, 18);
 	recv_conn_called = true;
 	return NULL;
 }
 
+static struct firefly_connection *on_conn_recv_keep(
+		struct firefly_transport_llp *llp, char *mac_address)
+{
+	UNUSED_VAR(llp);
+	CU_ASSERT_NSTRING_EQUAL(mac_address, remote_mac_addr, 18);
+	recv_conn_called = true;
+	return firefly_transport_connection_eth_posix_open(
+			NULL, NULL, NULL, NULL, mac_address, "lo", llp);
+}
+
 void test_eth_recv_connection()
 {
-	CU_FAIL("NOT IMPLEMENTED!");
 	struct firefly_transport_llp *llp = firefly_transport_llp_eth_posix_new(
 			"lo", on_conn_recv);
 	send_data();
@@ -144,5 +157,85 @@ void test_eth_recv_connection()
 	firefly_transport_eth_posix_read(llp);
 
 	CU_ASSERT_TRUE(recv_conn_called);
+	recv_conn_called = false;
+	firefly_transport_llp_eth_posix_free(&llp);
+}
+
+void test_eth_recv_data()
+{
+	struct firefly_transport_llp *llp = firefly_transport_llp_eth_posix_new(
+			"lo", on_conn_recv);
+	send_data();
+	struct firefly_connection *conn = firefly_transport_connection_eth_posix_open(
+			NULL, NULL, NULL, NULL, remote_mac_addr, "lo", llp);
+
+	firefly_transport_eth_posix_read(llp);
+
+	CU_ASSERT_TRUE(data_received);
+	data_received = false;
+	CU_ASSERT_FALSE(recv_conn_called);
+	recv_conn_called = false;
+	firefly_transport_llp_eth_posix_free(&llp);
+}
+
+/*void test_eth_find_conn_by_address()*/
+/*{*/
+
+/*}*/
+
+void test_eth_recv_conn_and_data()
+{
+	struct firefly_transport_llp *llp = firefly_transport_llp_eth_posix_new(
+			"lo", on_conn_recv_keep);
+	send_data();
+
+	firefly_transport_eth_posix_read(llp);
+
+	CU_ASSERT_TRUE(recv_conn_called);
+	recv_conn_called = false;
+	CU_ASSERT_TRUE(data_received);
+	data_received = false;
+	firefly_transport_llp_eth_posix_free(&llp);
+}
+
+void test_eth_recv_conn_keep()
+{
+	struct firefly_transport_llp *llp = firefly_transport_llp_eth_posix_new(
+			"lo", on_conn_recv_keep);
+	send_data();
+
+	firefly_transport_eth_posix_read(llp);
+	CU_ASSERT_TRUE(recv_conn_called);
+	CU_ASSERT_TRUE(data_received);
+
+	struct sockaddr_ll addr;
+	ether_aton_r(local_mac_addr, (void*)&addr.sll_addr);
+	addr.sll_halen    = 6;
+	struct firefly_connection *conn = find_connection(llp, &addr, connection_comp_addr);
+	CU_ASSERT_PTR_NOT_NULL(conn);
+
+	recv_conn_called = false;
+	data_received = false;
+	firefly_transport_llp_eth_posix_free(&llp);
+}
+
+void test_eth_recv_conn_reject()
+{
+	struct firefly_transport_llp *llp = firefly_transport_llp_eth_posix_new(
+			"lo", on_conn_recv);
+	send_data();
+
+	firefly_transport_eth_posix_read(llp);
+	CU_ASSERT_TRUE(recv_conn_called);
+	CU_ASSERT_FALSE(data_received);
+
+	struct sockaddr_ll addr;
+	ether_aton_r(local_mac_addr, (void*)&addr.sll_addr);
+	addr.sll_halen    = 6;
+	struct firefly_connection *conn = find_connection(llp, &addr, connection_comp_addr);
+	CU_ASSERT_PTR_NULL(conn);
+
+	recv_conn_called = false;
+	data_received = false;
 	firefly_transport_llp_eth_posix_free(&llp);
 }

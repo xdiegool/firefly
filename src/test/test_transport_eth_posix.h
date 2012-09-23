@@ -6,17 +6,18 @@ int init_suit_eth_posix();
 
 int clean_suit_eth_posix();
 
+//void test_eth_find_conn_by_address()
 void test_eth_recv_connection();
+void test_eth_recv_data();
+void test_eth_recv_conn_and_data();
+void test_eth_recv_conn_keep();
+void test_eth_recv_conn_reject();
 
 /*
 void test_find_conn_by_addr();
 void test_cleanup_simple();
 void test_cleanup_many_conn();
 void test_add_conn_to_llp();
-void test_recv_data();
-void test_recv_conn_and_data();
-void test_recv_conn_keep();
-void test_recv_conn_reject();
 void test_recv_conn_keep_two();
 void test_recv_conn_and_two_data();
 void test_null_pointer_as_callback();

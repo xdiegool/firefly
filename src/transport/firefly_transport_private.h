@@ -7,6 +7,10 @@
 #ifndef FIREFLY_TRANSPORT_PRIVATE_H
 #define FIREFLY_TRANSPORT_PRIVATE_H
 
+#define FIREFLY_CONNECTION_OPEN (1)
+#define FIREFLY_CONNECTION_CLOSED (0)
+
+
 /**
  * @brief A general data structure representing a link layer port on the
  * transport layer.

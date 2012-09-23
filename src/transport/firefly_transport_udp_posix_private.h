@@ -9,8 +9,7 @@
 #include <transport/firefly_transport.h>
 #include <signal.h>
 
-#define FIREFLY_CONNECTION_OPEN (1)
-#define FIREFLY_CONNECTION_CLOSED (0)
+#include "transport/firefly_transport_private.h"
 
 /**
  * @brief UDP specific link layer port data.
