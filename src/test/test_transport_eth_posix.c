@@ -128,6 +128,20 @@ static void send_data()
 	close(socket);
 }
 
+static void recv_data(int socket)
+{
+	unsigned char recv_buf[sizeof(send_buf)];
+	struct sockaddr_ll remote_addr;
+	socklen_t len = sizeof(struct sockaddr_ll);
+	int res = recvfrom(socket, recv_buf, sizeof(send_buf), 0,
+			(struct sockaddr *) &remote_addr, &len);
+	if (res == -1) {
+		CU_FAIL("Failed to receive data from socket.\n");
+	}
+	CU_ASSERT_EQUAL(sizeof(send_buf), res);
+	CU_ASSERT_NSTRING_EQUAL(recv_buf, send_buf, sizeof(send_buf));
+}
+
 static bool recv_conn_called = false;
 static struct firefly_connection *on_conn_recv(
 		struct firefly_transport_llp *llp, char *mac_address)
@@ -143,6 +157,7 @@ static struct firefly_connection *on_conn_recv_keep(
 {
 	UNUSED_VAR(llp);
 	CU_ASSERT_NSTRING_EQUAL(mac_address, remote_mac_addr, 18);
+	printf("Mac: %s\n", mac_address);
 	recv_conn_called = true;
 	return firefly_transport_connection_eth_posix_open(
 			NULL, NULL, NULL, NULL, mac_address, "lo", llp);
@@ -177,11 +192,6 @@ void test_eth_recv_data()
 	recv_conn_called = false;
 	firefly_transport_llp_eth_posix_free(&llp);
 }
-
-/*void test_eth_find_conn_by_address()*/
-/*{*/
-
-/*}*/
 
 void test_eth_recv_conn_and_data()
 {
@@ -239,3 +249,80 @@ void test_eth_recv_conn_reject()
 	data_received = false;
 	firefly_transport_llp_eth_posix_free(&llp);
 }
+
+void test_eth_recv_conn_and_two_data()
+{
+	struct firefly_transport_llp *llp = firefly_transport_llp_eth_posix_new(
+			"lo", on_conn_recv_keep);
+	send_data();
+
+	firefly_transport_eth_posix_read(llp);
+	CU_ASSERT_TRUE(recv_conn_called);
+	CU_ASSERT_TRUE(data_received);
+
+	struct sockaddr_ll addr;
+	ether_aton_r(local_mac_addr, (void*)&addr.sll_addr);
+	addr.sll_halen    = 6;
+	struct firefly_connection *conn = find_connection(llp, &addr, connection_comp_addr);
+	CU_ASSERT_PTR_NOT_NULL(conn);
+	recv_conn_called = false;
+	data_received = false;
+
+	send_data();
+
+	firefly_transport_eth_posix_read(llp);
+	CU_ASSERT_FALSE(recv_conn_called);
+	CU_ASSERT_TRUE(data_received);
+
+	recv_conn_called = false;
+	data_received = false;
+	firefly_transport_llp_eth_posix_free(&llp);
+}
+
+void test_eth_conn_open_and_send()
+{
+	struct firefly_transport_llp *llp = firefly_transport_llp_eth_posix_new(
+			"lo", on_conn_recv);
+	struct firefly_connection *conn = firefly_transport_connection_eth_posix_open(
+			NULL, NULL, NULL, NULL, remote_mac_addr, "lo", llp);
+
+	int socket = open_socket();
+
+	firefly_transport_eth_posix_write(send_buf, sizeof(send_buf), conn);
+
+	recv_data(socket);
+	close(socket);
+	firefly_transport_llp_eth_posix_free(&llp);
+}
+
+void test_eth_conn_open_and_recv()
+{
+	test_eth_recv_data();
+}
+
+void test_eth_conn_close_recv()
+{
+	struct firefly_transport_llp *llp = firefly_transport_llp_eth_posix_new(
+			"lo", on_conn_recv);
+	struct firefly_connection *conn = firefly_transport_connection_eth_posix_open(
+			NULL, NULL, NULL, NULL, remote_mac_addr, "lo", llp);
+	firefly_transport_connection_eth_posix_close(conn);
+	send_data();
+	firefly_transport_eth_posix_read(llp);
+
+	CU_ASSERT_FALSE(data_received);
+	CU_ASSERT_FALSE(recv_conn_called);
+
+	firefly_transport_llp_eth_posix_free(&llp);
+}
+
+// Test if other data in the NIC might cause some wierd problem.
+/*void test_eth_read()*/
+/*{*/
+	/*struct firefly_transport_llp *llp = firefly_transport_llp_eth_posix_new(*/
+			/*"lo", on_conn_recv_keep);*/
+
+	/*firefly_transport_eth_posix_read(llp);*/
+
+	/*firefly_transport_llp_eth_posix_free(&llp);*/
+/*}*/

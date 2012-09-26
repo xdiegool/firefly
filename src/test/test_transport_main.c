@@ -96,6 +96,18 @@ int main()
 			   ||
 		(CU_add_test(trans_eth_posix, "test_eth_recv_conn_reject",
 				test_eth_recv_conn_reject) == NULL)
+			   ||
+		(CU_add_test(trans_eth_posix, "test_eth_recv_conn_and_two_data",
+				test_eth_recv_conn_and_two_data) == NULL)
+			   ||
+		(CU_add_test(trans_eth_posix, "test_eth_conn_open_and_send",
+				test_eth_conn_open_and_send) == NULL)
+			   ||
+		(CU_add_test(trans_eth_posix, "test_eth_conn_open_and_recv",
+				test_eth_conn_open_and_recv) == NULL)
+			   /*||*/
+		/*(CU_add_test(trans_eth_posix, "test_eth_read",*/
+				/*test_eth_read) == NULL)*/
 	   ) {
 		CU_cleanup_registry();
 		return CU_get_error();

@@ -1,4 +1,3 @@
-
 #ifndef TEST_TRANSPORT_ETH_POSIX_H
 #define TEST_TRANSPORT_ETH_POSIX_H
 
@@ -12,17 +11,25 @@ void test_eth_recv_data();
 void test_eth_recv_conn_and_data();
 void test_eth_recv_conn_keep();
 void test_eth_recv_conn_reject();
+void test_eth_recv_conn_and_two_data();
+void test_eth_conn_open_and_send();
+void test_eth_conn_open_and_recv();
+
+// TODO test recv to two conn simultaneously
+// TODO test close connection
+// TODO test real ethernet
+
+void test_eth_read();
+
+// TODO figure out how to test this
+//void test_eth_recv_conn_keep_two();
 
 /*
 void test_find_conn_by_addr();
 void test_cleanup_simple();
 void test_cleanup_many_conn();
 void test_add_conn_to_llp();
-void test_recv_conn_keep_two();
-void test_recv_conn_and_two_data();
 void test_null_pointer_as_callback();
-void test_conn_open_and_send();
-void test_conn_open_and_recv();
 void test_open_and_recv_with_two_llp();
 void test_recv_big_connection();
 void test_reader_scale_back();

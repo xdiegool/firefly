@@ -102,7 +102,7 @@ void firefly_transport_llp_eth_posix_free(struct firefly_transport_llp **llp)
 	struct llp_connection_list_node *tmp = NULL;
 	while (head != NULL) {
 		tmp = head->next;
-		/*firefly_transport_connection_udp_posix_free_event(head->conn);*/
+		firefly_transport_connection_eth_posix_free_event(head->conn);
 		free(head);
 		head = tmp;
 	}
@@ -121,6 +121,23 @@ struct firefly_connection *firefly_transport_connection_eth_posix_new(
 void firefly_transport_connection_eth_posix_free(struct firefly_connection *conn)
 {
 	;
+}
+
+int firefly_transport_connection_eth_posix_free_event(void *event_arg)
+{
+	struct firefly_connection *conn;
+	struct protocol_connection_eth_posix *conn_eth;
+
+	conn = (struct firefly_connection *) event_arg;
+	conn_eth =
+		(struct protocol_connection_eth_posix *)
+		conn->transport_conn_platspec;
+
+	free(conn_eth->remote_addr);
+	free(conn_eth);
+	firefly_connection_free(&conn);
+
+	return 0;
 }
 
 struct firefly_connection *firefly_transport_connection_eth_posix_open(
@@ -196,7 +213,17 @@ void firefly_transport_connection_eth_posix_close(
 void firefly_transport_eth_posix_write(unsigned char *data, size_t data_size,
 		struct firefly_connection *conn)
 {
-
+	int err;
+	struct protocol_connection_eth_posix *conn_eth =
+		(struct protocol_connection_eth_posix *) conn->transport_conn_platspec;
+	err = sendto(conn_eth->socket, data, data_size, 0,
+			(struct sockaddr *)conn_eth->remote_addr,
+			sizeof(*conn_eth->remote_addr));
+	if (err == -1) {
+		firefly_error(FIREFLY_ERROR_SOCKET, 3,
+				"Failed in %s() on line %d.\nFailed to select.", __FUNCTION__,
+				__LINE__);
+	}
 }
 
 void recv_buf_resize(struct transport_llp_eth_posix *llp_eth, size_t new_size)
@@ -267,6 +294,7 @@ void firefly_transport_eth_posix_read(struct firefly_transport_llp *llp)
 		if (llp_eth->on_conn_recv != NULL) {
 			char mac_addr[18];
 			get_mac_addr(&from_addr, mac_addr);
+			// TODO got incorrect mac address here once, ever... two times.
 			conn = llp_eth->on_conn_recv(llp, mac_addr);
 		} else {
 			firefly_error(FIREFLY_ERROR_MISSING_CALLBACK, 4,

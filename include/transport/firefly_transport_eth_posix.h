@@ -15,6 +15,8 @@ struct firefly_transport_llp *firefly_transport_llp_eth_posix_new(
 
 void firefly_transport_llp_eth_posix_free(struct firefly_transport_llp **llp);
 
+int firefly_transport_connection_eth_posix_free_event(void *event_arg);
+
 struct firefly_connection *firefly_transport_connection_eth_posix_open(
 				firefly_channel_is_open_f on_channel_opened,
 				firefly_channel_closed_f on_channel_closed,
