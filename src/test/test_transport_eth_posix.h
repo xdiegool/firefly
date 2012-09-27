@@ -14,15 +14,13 @@ void test_eth_recv_conn_reject();
 void test_eth_recv_conn_and_two_data();
 void test_eth_conn_open_and_send();
 void test_eth_conn_open_and_recv();
+void test_eth_recv_conn_keep_two();
+void test_eth_recv_data_two_conn();
 
-// TODO test recv to two conn simultaneously
 // TODO test close connection
 // TODO test real ethernet
 
 void test_eth_read();
-
-// TODO figure out how to test this
-//void test_eth_recv_conn_keep_two();
 
 /*
 void test_find_conn_by_addr();

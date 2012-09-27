@@ -22,6 +22,8 @@ struct protocol_connection_eth_posix {
 
 void recv_buf_resize(struct transport_llp_eth_posix *llp_eth, size_t new_size);
 
+void get_mac_addr(struct sockaddr_ll *addr, char *mac_addr);
+
 int connection_comp_addr(struct firefly_connection *conn, void *context);
 
 typedef int (*cmp_conn_f)(struct firefly_connection *conn, void *context);

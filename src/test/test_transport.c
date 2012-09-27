@@ -13,6 +13,7 @@ unsigned char send_buf[] = {0,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16};
 bool data_received = false;
 size_t data_recv_size;
 unsigned char *data_recv_buf;
+struct firefly_connection *data_recv_expected_conn = NULL;
 
 void protocol_data_received(struct firefly_connection *conn, unsigned char *data,
 							size_t size)
@@ -24,5 +25,15 @@ void protocol_data_received(struct firefly_connection *conn, unsigned char *data
 	}
 	CU_ASSERT_EQUAL(data_recv_size, size);
 	CU_ASSERT_NSTRING_EQUAL(data, data_recv_buf, size);
+	if (memcmp(data, send_buf, sizeof(send_buf)) != 0) {
+		printf("Data:");
+		for (int i = 0; i < sizeof(send_buf); i++) {
+			printf(" %02x", data[i]);
+		}
+		printf("\n");
+	}
+	if (data_recv_expected_conn != NULL) {
+		CU_ASSERT_PTR_EQUAL(data_recv_expected_conn, conn);
+	}
 	data_received = true;
 }

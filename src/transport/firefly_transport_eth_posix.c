@@ -241,18 +241,6 @@ void recv_buf_resize(struct transport_llp_eth_posix *llp_eth, size_t new_size)
 	}
 }
 
-void get_mac_addr(struct sockaddr_ll *addr, char *mac_addr)
-{
-	char temp_addr[18];
-	unsigned int addr_vals[6];
-	ether_ntoa_r((void*)addr->sll_addr, temp_addr);
-	sscanf(temp_addr, "%x:%x:%x:%x:%x:%x", addr_vals+0, addr_vals+1,
-			addr_vals+2, addr_vals+3, addr_vals+4, addr_vals+5);
-	sprintf(mac_addr, "%02x:%02x:%02x:%02x:%02x:%02x", addr_vals[0],
-			addr_vals[1], addr_vals[2], addr_vals[3], addr_vals[4],
-			addr_vals[5]);
-}
-
 void firefly_transport_eth_posix_read(struct firefly_transport_llp *llp)
 {
 	struct sockaddr_ll from_addr;
@@ -308,7 +296,18 @@ void firefly_transport_eth_posix_read(struct firefly_transport_llp *llp)
 	if (conn != NULL) {
 		protocol_data_received(conn, llp_eth->recv_buf, pkg_len);
 	}
+}
 
+void get_mac_addr(struct sockaddr_ll *addr, char *mac_addr)
+{
+	char temp_addr[18];
+	unsigned int addr_vals[6];
+	ether_ntoa_r((void*)addr->sll_addr, temp_addr);
+	sscanf(temp_addr, "%x:%x:%x:%x:%x:%x", addr_vals+0, addr_vals+1,
+			addr_vals+2, addr_vals+3, addr_vals+4, addr_vals+5);
+	sprintf(mac_addr, "%02x:%02x:%02x:%02x:%02x:%02x", addr_vals[0],
+			addr_vals[1], addr_vals[2], addr_vals[3], addr_vals[4],
+			addr_vals[5]);
 }
 
 int connection_comp_addr(struct firefly_connection *conn, void *context)
