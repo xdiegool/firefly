@@ -5,11 +5,10 @@
 
 #include "test/test_transport_eth_posix.h"
 
-#include "CUnit/Basic.h"
-#include "CUnit/Console.h"
-
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include <stdbool.h>
 
 #include <sys/ioctl.h>
 #include <unistd.h>
@@ -22,9 +21,16 @@
 #include <linux/if.h>		// defines ifreq
 #include <linux/net.h>		// defines SOCK_DGRAM, AF_PACKET
 
+#include "CUnit/Basic.h"
+#include "CUnit/Console.h"
+
 #include <transport/firefly_transport.h>
 #include <transport/firefly_transport_eth_posix.h>
+#include <protocol/firefly_protocol.h>
+
+#include "transport/firefly_transport_private.h"
 #include "transport/firefly_transport_eth_posix_private.h"
+#include "protocol/firefly_protocol_private.h"
 #include "utils/cppmacros.h"
 
 #define ETH_DST_ADDR_START	(0)
@@ -418,3 +424,67 @@ void test_eth_conn_close_recv()
 
 	/*firefly_transport_llp_eth_posix_free(&llp);*/
 /*}*/
+
+int main()
+{
+	CU_pSuite trans_eth_posix = NULL;
+
+	// Initialize CUnit test registry.
+	if (CUE_SUCCESS != CU_initialize_registry()) {
+		return CU_get_error();
+	}
+
+	trans_eth_posix = CU_add_suite("eth_core", init_suit_eth_posix, clean_suit_eth_posix);
+	if (trans_eth_posix == NULL) {
+		CU_cleanup_registry();
+		return CU_get_error();
+	}
+
+	if (
+		(CU_add_test(trans_eth_posix, "test_eth_recv_connection",
+				test_eth_recv_connection) == NULL)
+			   ||
+		(CU_add_test(trans_eth_posix, "test_eth_recv_data",
+				test_eth_recv_data) == NULL)
+			   ||
+		(CU_add_test(trans_eth_posix, "test_eth_recv_conn_and_data",
+				test_eth_recv_conn_and_data) == NULL)
+			   ||
+		(CU_add_test(trans_eth_posix, "test_eth_recv_conn_keep",
+				test_eth_recv_conn_keep) == NULL)
+			   ||
+		(CU_add_test(trans_eth_posix, "test_eth_recv_conn_reject",
+				test_eth_recv_conn_reject) == NULL)
+			   ||
+		(CU_add_test(trans_eth_posix, "test_eth_recv_conn_and_two_data",
+				test_eth_recv_conn_and_two_data) == NULL)
+			   ||
+		(CU_add_test(trans_eth_posix, "test_eth_conn_open_and_send",
+				test_eth_conn_open_and_send) == NULL)
+			   ||
+		(CU_add_test(trans_eth_posix, "test_eth_conn_open_and_recv",
+				test_eth_conn_open_and_recv) == NULL)
+			   ||
+		(CU_add_test(trans_eth_posix, "test_eth_recv_conn_keep_two",
+				test_eth_recv_conn_keep_two) == NULL)
+			   ||
+		(CU_add_test(trans_eth_posix, "test_eth_recv_data_two_conn",
+				test_eth_recv_data_two_conn) == NULL)
+	   ) {
+		CU_cleanup_registry();
+		return CU_get_error();
+	}
+
+	// Set verbosity.
+	CU_basic_set_mode(CU_BRM_VERBOSE);
+	/*CU_console_run_tests();*/
+
+	// Run all test suites.
+	CU_basic_run_tests();
+
+
+	// Clean up.
+	CU_cleanup_registry();
+
+	return CU_get_error();
+}

@@ -20,14 +20,9 @@
 #include <sys/ioctl.h>		// defines SIOCGIFINDEX
 #include <unistd.h>			// defines close
 #include <netinet/ether.h>	// defines ETH_P_ALL, AF_PACKET
-/*#include <net/ethernet.h>*/
 #include <netpacket/packet.h>	// defines sockaddr_ll
 #include <arpa/inet.h>		// defines htons
-/*#include <sys/socket.h>*/
-/*#include <sys/types.h>*/
-
 #include <linux/if.h>		// defines ifreq, IFNAMSIZ
-/*#include <linux/net.h>		// defines SOCK_DGRAM, AF_PACKET*/
 
 #include <utils/firefly_errors.h>
 #include <transport/firefly_transport.h>

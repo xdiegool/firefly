@@ -137,7 +137,7 @@ LDFLAGS=
 LDFLAGS_TEST= -L$(BUILD_DIR) -L$(LABCOMMLIBPATH)
 
 # Libraries to link with test programs.
-LDLIBS_TEST= -l$(LIB_FIREFLY_NAME) -l$(LIB_TRANSPORT_UDP_POSIX_NAME) -l$(LIB_TRANSPORT_ETH_POSIX_NAME) -llabcomm -lcunit -lpthread
+LDLIBS_TEST= -l$(LIB_TRANSPORT_UDP_POSIX_NAME) -l$(LIB_TRANSPORT_ETH_POSIX_NAME) -l$(LIB_FIREFLY_NAME) -llabcomm -lcunit -lpthread
 
 ### }
 
@@ -398,8 +398,13 @@ $(BUILD_DIR)/test/test_protocol_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_pr
 	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) -L/tmp/ $(filter-out %.a,$^) $(patsubst -l$(LIB_FIREFLY_NAME),-l$(LIB_FIREFLY_NAME)_wo_error,$(LDLIBS_TEST)) -o $@ 
 
 # Main test program for the transport tests.
-$(BUILD_DIR)/test/test_transport_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_transport_main test_transport test_transport_udp_posix test_transport_eth_posix)
+$(BUILD_DIR)/test/test_transport_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_transport_main test_transport test_transport_udp_posix)
 	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) $(LDLIBS_TEST) -o $@ 
+
+# Main test program for the eth posix transport tests.
+# TODO fix --allow-mutliple-definition
+$(BUILD_DIR)/test/test_transport_eth_posix: $(patsubst %,$(BUILD_DIR)/test/%.o,test_transport test_transport_eth_posix)
+	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) -Wl,--allow-multiple-definition $(filter-out %.a,$^) $(LDLIBS_TEST) -o $@ 
 
 # Main test program for the event queue tests.
 $(BUILD_DIR)/test/test_event_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_event_main) $(patsubst %,$(BUILD_DIR)/%.o,utils/firefly_event_queue)

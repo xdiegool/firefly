@@ -2,6 +2,9 @@
 #ifndef FIREFLY_TRANSPORT_ETH_POSIX_PRIVATE_H
 #define FIREFLY_TRANSPORT_ETH_POSIX_PRIVATE_H
 
+
+#include <transport/firefly_transport.h>
+#include "transport/firefly_transport_private.h"
 #include <transport/firefly_transport_eth_posix.h>
 #include <signal.h>
 

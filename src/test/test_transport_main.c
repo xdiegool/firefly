@@ -7,7 +7,6 @@
 int main()
 {
 	CU_pSuite trans_udp_posix = NULL;
-	CU_pSuite trans_eth_posix = NULL;
 
 	// Initialize CUnit test registry.
 	if (CUE_SUCCESS != CU_initialize_registry()) {
@@ -15,56 +14,55 @@ int main()
 	}
 
 	trans_udp_posix = CU_add_suite("udp_core", init_suit_udp_posix, clean_suit_udp_posix);
-	trans_eth_posix = CU_add_suite("eth_core", init_suit_eth_posix, clean_suit_eth_posix);
-	if (trans_udp_posix == NULL || trans_eth_posix == NULL) {
+	if (trans_udp_posix == NULL) {
 		CU_cleanup_registry();
 		return CU_get_error();
 	}
 
-	// Transport UDP Posix tests.
+	 /*Transport UDP Posix tests.*/
 	if (
 		(CU_add_test(trans_udp_posix, "test_find_conn_by_addr",
 				test_find_conn_by_addr) == NULL)
-		       ||
+			   ||
 		(CU_add_test(trans_udp_posix, "test_cleanup_simple",
 				test_cleanup_simple) == NULL)
-		       ||
+			   ||
 		(CU_add_test(trans_udp_posix, "test_cleanup_many_conn",
 				test_cleanup_many_conn) == NULL)
-		       ||
+			   ||
 		(CU_add_test(trans_udp_posix, "test_add_conn_to_llp",
 				test_add_conn_to_llp) == NULL)
-		       ||
+			   ||
 		(CU_add_test(trans_udp_posix, "test_recv_connection",
 				test_recv_connection) == NULL)
-		       ||
+			   ||
 		(CU_add_test(trans_udp_posix, "test_recv_data",
 				test_recv_data) == NULL)
-		       ||
+			   ||
 		(CU_add_test(trans_udp_posix, "test_recv_conn_and_data",
 				test_recv_conn_and_data) == NULL)
-		       ||
+			   ||
 		(CU_add_test(trans_udp_posix, "test_recv_conn_keep",
 				test_recv_conn_keep) == NULL)
-		       ||
+			   ||
 		(CU_add_test(trans_udp_posix, "test_recv_conn_reject",
 				test_recv_conn_reject) == NULL)
-		       ||
+			   ||
 		(CU_add_test(trans_udp_posix, "test_recv_conn_keep_two",
 				test_recv_conn_keep_two) == NULL)
-		       ||
+			   ||
 		(CU_add_test(trans_udp_posix, "test_recv_conn_and_two_data",
 				test_recv_conn_and_two_data) == NULL)
-		       ||
+			   ||
 		(CU_add_test(trans_udp_posix, "test_null_pointer_as_callback",
 				test_null_pointer_as_callback) == NULL)
-		       ||
+			   ||
 		(CU_add_test(trans_udp_posix, "test_conn_open_and_send",
 				test_conn_open_and_send) == NULL)
-		       ||
+			   ||
 		(CU_add_test(trans_udp_posix, "test_conn_open_and_recv",
 				test_conn_open_and_recv) == NULL)
-		       ||
+			   ||
 		(CU_add_test(trans_udp_posix, "test_open_and_recv_with_two_llp",
 				test_open_and_recv_with_two_llp) == NULL)
 				||
@@ -76,41 +74,6 @@ int main()
 				||
 		(CU_add_test(trans_udp_posix, "test_read_mult_threads",
 					 test_read_mult_threads) == NULL)
-	   ) {
-		CU_cleanup_registry();
-		return CU_get_error();
-	}
-
-	if (
-		(CU_add_test(trans_eth_posix, "test_eth_recv_connection",
-				test_eth_recv_connection) == NULL)
-			   ||
-		(CU_add_test(trans_eth_posix, "test_eth_recv_data",
-				test_eth_recv_data) == NULL)
-			   ||
-		(CU_add_test(trans_eth_posix, "test_eth_recv_conn_and_data",
-				test_eth_recv_conn_and_data) == NULL)
-			   ||
-		(CU_add_test(trans_eth_posix, "test_eth_recv_conn_keep",
-				test_eth_recv_conn_keep) == NULL)
-			   ||
-		(CU_add_test(trans_eth_posix, "test_eth_recv_conn_reject",
-				test_eth_recv_conn_reject) == NULL)
-			   ||
-		(CU_add_test(trans_eth_posix, "test_eth_recv_conn_and_two_data",
-				test_eth_recv_conn_and_two_data) == NULL)
-			   ||
-		(CU_add_test(trans_eth_posix, "test_eth_conn_open_and_send",
-				test_eth_conn_open_and_send) == NULL)
-			   ||
-		(CU_add_test(trans_eth_posix, "test_eth_conn_open_and_recv",
-				test_eth_conn_open_and_recv) == NULL)
-			   ||
-		(CU_add_test(trans_eth_posix, "test_eth_recv_conn_keep_two",
-				test_eth_recv_conn_keep_two) == NULL)
-			   ||
-		(CU_add_test(trans_eth_posix, "test_eth_recv_data_two_conn",
-				test_eth_recv_data_two_conn) == NULL)
 	   ) {
 		CU_cleanup_registry();
 		return CU_get_error();

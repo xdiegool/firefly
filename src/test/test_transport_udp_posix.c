@@ -25,7 +25,6 @@
 #include "protocol/firefly_protocol_private.h"
 #include "utils/cppmacros.h"
 
-/*#include "test/test_transport.h"*/
 extern unsigned char send_buf[16];
 extern bool data_received;
 extern size_t data_recv_size;
