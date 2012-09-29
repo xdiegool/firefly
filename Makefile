@@ -403,7 +403,7 @@ $(BUILD_DIR)/test/test_transport_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_t
 
 # Main test program for the eth posix transport tests.
 # TODO fix --allow-mutliple-definition
-$(BUILD_DIR)/test/test_transport_eth_posix: $(patsubst %,$(BUILD_DIR)/test/%.o,test_transport test_transport_eth_posix)
+$(BUILD_DIR)/test/test_transport_eth_posix_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_transport test_transport_eth_posix_main test_transport_eth_posix)
 	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) -Wl,--allow-multiple-definition $(filter-out %.a,$^) $(LDLIBS_TEST) -o $@ 
 
 # Main test program for the event queue tests.

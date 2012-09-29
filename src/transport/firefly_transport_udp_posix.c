@@ -336,7 +336,7 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 
 	// Find existing connection or create new.
 	// Ignore connections marked as closed.
-	conn = find_connection_by_addr(&remote_addr, llp);
+	conn = find_connection(llp, &remote_addr, connection_eq_inaddr);
 	if (conn == NULL || !((struct protocol_connection_udp_posix *)
 				conn->transport_conn_platspec)->open) {
 		if (llp_udp->on_conn_recv != NULL) {
@@ -370,6 +370,11 @@ bool sockaddr_in_eq(struct sockaddr_in *one, struct sockaddr_in *other)
 
 }
 
+bool connection_eq_inaddr(struct firefly_connection *conn, void *context)
+{
+	return sockaddr_in_eq(((struct protocol_connection_udp_posix *) conn->transport_conn_platspec)->remote_addr, (struct sockaddr_in *) context);
+}
+
 void sockaddr_in_ipaddr(struct sockaddr_in *addr, char *ip_addr)
 {
 	inet_ntop(AF_INET, &addr->sin_addr.s_addr, ip_addr, INET_ADDRSTRLEN);
@@ -380,27 +385,10 @@ unsigned short sockaddr_in_port(struct sockaddr_in *addr)
 	return ntohs(addr->sin_port);
 }
 
-struct firefly_connection *find_connection_by_addr(struct sockaddr_in *ip_addr,
-		struct firefly_transport_llp *llp)
-{
-	struct llp_connection_list_node *head = llp->conn_list;
-	struct protocol_connection_udp_posix *conn_udp;
-
-	while (head != NULL) {
-		conn_udp = (struct protocol_connection_udp_posix *)
-			head->conn->transport_conn_platspec;
-		if (sockaddr_in_eq(conn_udp->remote_addr, ip_addr)) {
-			return head->conn;
-		} else {
-			head = head->next;
-		}
-	}
-	return NULL;
-}
-
 void firefly_transport_udp_posix_set_n_scaleback(
 			struct firefly_transport_llp *llp, unsigned int nbr)
 {
+
 	struct transport_llp_udp_posix *llp_udp =
 		((struct transport_llp_udp_posix *)llp->llp_platspec);
 	llp_udp->scale_back_nbr = nbr;

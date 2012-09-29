@@ -27,11 +27,6 @@ void recv_buf_resize(struct transport_llp_eth_posix *llp_eth, size_t new_size);
 
 void get_mac_addr(struct sockaddr_ll *addr, char *mac_addr);
 
-int connection_comp_addr(struct firefly_connection *conn, void *context);
-
-typedef int (*cmp_conn_f)(struct firefly_connection *conn, void *context);
-
-struct firefly_connection *find_connection(struct firefly_transport_llp *llp,
-		void *context, cmp_conn_f cmp_conn);
+bool connection_eq_addr(struct firefly_connection *conn, void *context);
 
 #endif

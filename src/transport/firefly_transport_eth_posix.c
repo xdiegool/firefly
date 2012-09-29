@@ -271,7 +271,7 @@ void firefly_transport_eth_posix_read(struct firefly_transport_llp *llp)
 		firefly_error(FIREFLY_ERROR_SOCKET, 3,
 				"Failed in %s.\n%s()\nCould not read from socket.", __FUNCTION__, err_buf);
 	}
-	struct firefly_connection *conn = find_connection(llp, &from_addr, connection_comp_addr);
+	struct firefly_connection *conn = find_connection(llp, &from_addr, connection_eq_addr);
 	if (conn == NULL || !((struct protocol_connection_eth_posix *)
 				conn->transport_conn_platspec)->open) {
 		if (llp_eth->on_conn_recv != NULL) {
@@ -305,36 +305,18 @@ void get_mac_addr(struct sockaddr_ll *addr, char *mac_addr)
 			addr_vals[5]);
 }
 
-int connection_comp_addr(struct firefly_connection *conn, void *context)
+bool connection_eq_addr(struct firefly_connection *conn, void *context)
 {
 	struct protocol_connection_eth_posix *conn_eth =
 		(struct protocol_connection_eth_posix *) conn->transport_conn_platspec;
 	struct sockaddr_ll *addr = (struct sockaddr_ll *) context;
 	int result;
 	if (addr->sll_halen == conn_eth->remote_addr->sll_halen) {
-		unsigned char *caddr = conn_eth->remote_addr->sll_addr;
-		unsigned char *aaddr = addr->sll_addr;
 		result = memcmp(conn_eth->remote_addr->sll_addr, addr->sll_addr,
 				addr->sll_halen);
 	} else {
 		result = 1;
 	}
-	return result;
+	return result == 0;
 }
 
-struct firefly_connection *find_connection(struct firefly_transport_llp *llp,
-		void *context, cmp_conn_f cmp_conn)
-{
-	struct llp_connection_list_node *head = llp->conn_list;
-	struct firefly_connection *conn;
-
-	while (head != NULL) {
-		conn = head->conn;
-		if (cmp_conn(conn, context) == 0) {
-			return head->conn;
-		} else {
-			head = head->next;
-		}
-	}
-	return NULL;
-}

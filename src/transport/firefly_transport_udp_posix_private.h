@@ -44,21 +44,15 @@ struct protocol_connection_udp_posix {
 };
 
 /**
- * @brief Finds the \c struct #firefly_connection with the specified address.
+ * @brief Compares the \c struct #firefly_connection with the specified address.
  *
- * Find the connection with the specified address associated with
- * the supplied \a llp. The connection with a matching address
- * is returned, if none is found \c NULL is returned.
- *
- * @param addr The address of the connection to find.
- * @param llp The link layer port to search for the #firefly_connection in.
- * @return The #firefly_connection with a matching address.
- * @retval NULL is returned if no connection with a matching address was found.
- * @retval struct #firefly_connection* is returned with the matching address if
- * it was found.
+ * @param conn The \c struct #firefly_connection to compare the address of.
+ * @param context The address of the connection to find.
+ * @retval true if the address supplied matches the addrss of
+ * the \c struct #firefly_connection.
  */
-struct firefly_connection *find_connection_by_addr(struct sockaddr_in *ip_addr,
-		struct firefly_transport_llp *llp);
+bool connection_eq_inaddr(struct firefly_connection *conn, void *context);
+
 
 /**
  * @brief Compares two \c struct sockaddr_in.

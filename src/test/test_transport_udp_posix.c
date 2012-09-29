@@ -251,8 +251,8 @@ void test_recv_conn_keep()
 
 	CU_ASSERT_TRUE(good_conn_received);
 	CU_ASSERT_TRUE(data_received);
-	struct firefly_connection *conn = find_connection_by_addr(&remote_addr,
-									llp);
+	struct firefly_connection *conn = find_connection(llp, &remote_addr,
+									connection_eq_inaddr);
 	CU_ASSERT_NOT_EQUAL(conn, NULL);
 
 	good_conn_received = false;
@@ -284,8 +284,8 @@ void test_recv_conn_keep_two()
 	// test first connection
 	CU_ASSERT_TRUE(good_conn_received);
 	CU_ASSERT_TRUE(data_received);
-	struct firefly_connection *conn = find_connection_by_addr(&remote_addr,
-									llp);
+	struct firefly_connection *conn = find_connection(llp, &remote_addr,
+									connection_eq_inaddr);
 	CU_ASSERT_NOT_EQUAL(conn, NULL);
 
 	good_conn_received = false;
@@ -299,7 +299,7 @@ void test_recv_conn_keep_two()
 	// test first connection
 	CU_ASSERT_TRUE(good_conn_received);
 	CU_ASSERT_TRUE(data_received);
-	conn = find_connection_by_addr(&remote_addr, llp);
+	conn = find_connection(llp, &remote_addr, connection_eq_inaddr);
 	CU_ASSERT_NOT_EQUAL(conn, NULL);
 
 	good_conn_received = false;
@@ -357,7 +357,7 @@ void test_find_conn_by_addr()
 							local_port, NULL);
 	struct sockaddr_in addr_1;
 	setup_sockaddr(&addr_1, 55550);
-	struct firefly_connection *conn = find_connection_by_addr(&addr_1, llp);
+	struct firefly_connection *conn = find_connection(llp, &addr_1, connection_eq_inaddr);
 	CU_ASSERT_PTR_NULL(conn);
 	// Add connection to conn_list
 	struct llp_connection_list_node *node_1 =
@@ -370,7 +370,7 @@ void test_find_conn_by_addr()
 	node_1->next = NULL;
 	llp->conn_list = node_1;
 	// Try to find conn after adding it
-	conn = find_connection_by_addr(&addr_1, llp);
+	conn = find_connection(llp, &addr_1, connection_eq_inaddr);
 	CU_ASSERT_PTR_NOT_NULL(conn);
 	CU_ASSERT_TRUE(sockaddr_in_eq(&addr_1,
 		((struct protocol_connection_udp_posix *)
@@ -388,7 +388,7 @@ void test_find_conn_by_addr()
 	node_2->conn = firefly_connection_new(NULL, NULL, NULL, NULL, NULL, conn_udp_2);
 	node_2->next = NULL;
 	node_1->next = node_2;
-	conn = find_connection_by_addr(&addr_2, llp);
+	conn = find_connection(llp, &addr_2, connection_eq_inaddr);
 	CU_ASSERT_PTR_NOT_NULL(conn);
 	CU_ASSERT_TRUE(sockaddr_in_eq(&addr_2,
 		((struct protocol_connection_udp_posix *)
@@ -415,11 +415,11 @@ void test_cleanup_simple()
 	// Test clean up does not remove non closed connections.
 	res = firefly_transport_udp_posix_clean_up(llp);
 	CU_ASSERT_EQUAL(0, res);
-	CU_ASSERT_PTR_NOT_NULL(find_connection_by_addr(&addr, llp));
+	CU_ASSERT_PTR_NOT_NULL(find_connection(llp, &addr, connection_eq_inaddr));
 	firefly_transport_connection_udp_posix_close(conn_1);
 	res = firefly_transport_udp_posix_clean_up(llp);
 	CU_ASSERT_EQUAL(1, res);
-	CU_ASSERT_PTR_NULL(find_connection_by_addr(&addr, llp));
+	CU_ASSERT_PTR_NULL(find_connection(llp, &addr, connection_eq_inaddr));
 	firefly_event_execute(firefly_event_pop(eq));
 	firefly_transport_llp_udp_posix_free(&llp);
 	firefly_event_queue_free(&eq);
@@ -458,28 +458,29 @@ void test_cleanup_many_conn()
 	// Test clean up does not remove non closed connections.
 	res = firefly_transport_udp_posix_clean_up(llp);
 	CU_ASSERT_EQUAL(0, res);
-	CU_ASSERT_PTR_NOT_NULL(find_connection_by_addr(&addr_1, llp));
-	CU_ASSERT_PTR_NOT_NULL(find_connection_by_addr(&addr_2, llp));
-	CU_ASSERT_PTR_NOT_NULL(find_connection_by_addr(&addr_3, llp));
-	CU_ASSERT_PTR_NOT_NULL(find_connection_by_addr(&addr_4, llp));
+	CU_ASSERT_PTR_NOT_NULL(find_connection(llp, &addr_1, connection_eq_inaddr));
+	CU_ASSERT_PTR_NOT_NULL(find_connection(llp, &addr_2, connection_eq_inaddr));
+	CU_ASSERT_PTR_NOT_NULL(find_connection(llp, &addr_3, connection_eq_inaddr));
+	CU_ASSERT_PTR_NOT_NULL(find_connection(llp, &addr_4, connection_eq_inaddr));
 
 	firefly_transport_connection_udp_posix_close(conn_1);
 	firefly_transport_connection_udp_posix_close(conn_3);
 	res = firefly_transport_udp_posix_clean_up(llp);
 	CU_ASSERT_EQUAL(2, res);
-	CU_ASSERT_PTR_NULL(find_connection_by_addr(&addr_1, llp));
-	CU_ASSERT_PTR_NOT_NULL(find_connection_by_addr(&addr_2, llp));
-	CU_ASSERT_PTR_NULL(find_connection_by_addr(&addr_3, llp));
-	CU_ASSERT_PTR_NOT_NULL(find_connection_by_addr(&addr_4, llp));
+	CU_ASSERT_PTR_NULL(find_connection(llp, &addr_1, connection_eq_inaddr));
+	CU_ASSERT_PTR_NOT_NULL(find_connection(llp, &addr_2, connection_eq_inaddr));
+	CU_ASSERT_PTR_NULL(find_connection(llp, &addr_3, connection_eq_inaddr));
+	CU_ASSERT_PTR_NOT_NULL(find_connection(llp, &addr_4, connection_eq_inaddr));
+
 
 	firefly_transport_connection_udp_posix_close(conn_2);
 	firefly_transport_connection_udp_posix_close(conn_4);
 	res = firefly_transport_udp_posix_clean_up(llp);
 	CU_ASSERT_EQUAL(2, res);
-	CU_ASSERT_PTR_NULL(find_connection_by_addr(&addr_1, llp));
-	CU_ASSERT_PTR_NULL(find_connection_by_addr(&addr_2, llp));
-	CU_ASSERT_PTR_NULL(find_connection_by_addr(&addr_3, llp));
-	CU_ASSERT_PTR_NULL(find_connection_by_addr(&addr_4, llp));
+	CU_ASSERT_PTR_NULL(find_connection(llp, &addr_1, connection_eq_inaddr));
+	CU_ASSERT_PTR_NULL(find_connection(llp, &addr_2, connection_eq_inaddr));
+	CU_ASSERT_PTR_NULL(find_connection(llp, &addr_3, connection_eq_inaddr));
+	CU_ASSERT_PTR_NULL(find_connection(llp, &addr_4, connection_eq_inaddr));
 	firefly_transport_llp_udp_posix_free(&llp);
 	firefly_event_execute(firefly_event_pop(eq));
 	firefly_event_execute(firefly_event_pop(eq));
