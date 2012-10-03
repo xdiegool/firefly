@@ -189,8 +189,6 @@ struct firefly_connection *firefly_transport_connection_eth_posix_open(
 	conn_eth->remote_addr->sll_halen    = 6;
 	conn_eth->remote_addr->sll_ifindex  = ifr.ifr_ifindex;
 
-	conn_eth->open = FIREFLY_CONNECTION_OPEN;
-
 	conn_eth->socket =
 		((struct transport_llp_eth_posix *)llp->llp_platspec)->socket;
 
@@ -272,8 +270,7 @@ void firefly_transport_eth_posix_read(struct firefly_transport_llp *llp)
 				"Failed in %s.\n%s()\nCould not read from socket.", __FUNCTION__, err_buf);
 	}
 	struct firefly_connection *conn = find_connection(llp, &from_addr, connection_eq_addr);
-	if (conn == NULL || !((struct protocol_connection_eth_posix *)
-				conn->transport_conn_platspec)->open) {
+	if (conn == NULL) {
 		if (llp_eth->on_conn_recv != NULL) {
 			char mac_addr[18];
 			get_mac_addr(&from_addr, mac_addr);

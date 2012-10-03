@@ -388,7 +388,6 @@ unsigned short sockaddr_in_port(struct sockaddr_in *addr)
 void firefly_transport_udp_posix_set_n_scaleback(
 			struct firefly_transport_llp *llp, unsigned int nbr)
 {
-
 	struct transport_llp_udp_posix *llp_udp =
 		((struct transport_llp_udp_posix *)llp->llp_platspec);
 	llp_udp->scale_back_nbr = nbr;

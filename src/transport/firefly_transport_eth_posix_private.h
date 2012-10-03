@@ -20,8 +20,17 @@ struct transport_llp_eth_posix {
 struct protocol_connection_eth_posix {
 	struct sockaddr_ll *remote_addr;
 	int socket;
-	sig_atomic_t open;
 };
+
+struct firefly_connection *firefly_transport_connection_eth_posix_new(
+		struct firefly_transport_llp *llp, char *mac_address);
+
+int firefly_transport_connection_eth_posix_free_event(void *event_arg);
+
+void firefly_transport_connection_eth_posix_free(struct firefly_connection *conn);
+
+void firefly_transport_eth_posix_write(unsigned char *data, size_t data_size,
+		struct firefly_connection *conn);
 
 void recv_buf_resize(struct transport_llp_eth_posix *llp_eth, size_t new_size);
 
