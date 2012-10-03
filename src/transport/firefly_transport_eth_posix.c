@@ -24,8 +24,11 @@
 #include <arpa/inet.h>		// defines htons
 #include <linux/if.h>		// defines ifreq, IFNAMSIZ
 
+#include <utils/firefly_event_queue.h>
 #include <utils/firefly_errors.h>
 #include <transport/firefly_transport.h>
+
+#include "utils/firefly_event_queue_private.h"
 #include "transport/firefly_transport_private.h"
 #include "protocol/firefly_protocol_private.h"
 
@@ -115,7 +118,10 @@ struct firefly_connection *firefly_transport_connection_eth_posix_new(
 
 void firefly_transport_connection_eth_posix_free(struct firefly_connection *conn)
 {
-	;
+	struct firefly_event *ev = firefly_event_new(1,
+			firefly_transport_connection_eth_posix_free_event,
+			conn);
+	conn->event_queue->offer_event_cb(conn->event_queue, ev);
 }
 
 int firefly_transport_connection_eth_posix_free_event(void *event_arg)
