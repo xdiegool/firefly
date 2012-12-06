@@ -1,0 +1,20 @@
+Connection close:
+* Should be implemented att protocol layer.
+* Should imply no new channels may be started.
+* should imply no data may be transmitted on any open channel.
+* All channels should be closed.
+* Only packets concerning closing channels may be transmitted.
+* Connection may only be free'd if connection is closed and no channels are
+	open.
+* Close connection is a funtion available to the application level.
+* Free connection might be considered a private funktion of possible. Consider
+	who knows when and how to free.
+* Consider two levels of free, one freeing everything except the connection
+	struct and the 'open' attribute, and the other freeing everthing. This would
+	try to prevent any segmentation fault due to events accessing the connection
+	after it beeing free. The events saftely check the open attribute but if it
+	is set to freed nothing else may be accessed. This would in turn imply more
+	overhead freeing resources and resources not beeing completely freed. How
+	else could events be safe? Removing all events accessing a certain
+	connection could be removed from the event queue as an alternative.
+
