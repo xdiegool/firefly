@@ -110,11 +110,11 @@ void firefly_transport_llp_eth_posix_free(struct firefly_transport_llp **llp)
 	*llp = NULL;
 }
 
-struct firefly_connection *firefly_transport_connection_eth_posix_new(
-		struct firefly_transport_llp *llp, char *mac_address)
-{
-	return NULL;
-}
+/*struct firefly_connection *firefly_transport_connection_eth_posix_new(*/
+		/*struct firefly_transport_llp *llp, char *mac_address)*/
+/*{*/
+	/*return NULL;*/
+/*}*/
 
 void firefly_transport_connection_eth_posix_free(struct firefly_connection *conn)
 {
@@ -206,7 +206,10 @@ struct firefly_connection *firefly_transport_connection_eth_posix_open(
 void firefly_transport_connection_eth_posix_close(
 		struct firefly_connection *conn)
 {
-	;
+	struct protocol_connection_eth_posix *conn_eth =
+		(struct protocol_connection_eth_posix *)
+			conn->transport_conn_platspec;
+	conn_eth->open = FIREFLY_CONNECTION_CLOSED;
 }
 
 void firefly_transport_eth_posix_write(unsigned char *data, size_t data_size,

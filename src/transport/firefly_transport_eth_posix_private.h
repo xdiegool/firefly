@@ -20,10 +20,12 @@ struct transport_llp_eth_posix {
 struct protocol_connection_eth_posix {
 	struct sockaddr_ll *remote_addr;
 	int socket;
+	sig_atomic_t open; /**< The flag indicating the opened state of a
+						 connection.*/
 };
 
-struct firefly_connection *firefly_transport_connection_eth_posix_new(
-		struct firefly_transport_llp *llp, char *mac_address);
+//struct firefly_connection *firefly_transport_connection_eth_posix_new(
+		//struct firefly_transport_llp *llp, char *mac_address);
 
 int firefly_transport_connection_eth_posix_free_event(void *event_arg);
 

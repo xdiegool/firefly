@@ -2,11 +2,11 @@
 
 #include <labcomm.h>
 #include <protocol/firefly_protocol.h>
-#include <transport/firefly_transport_udp_posix.h>
+#include <transport/firefly_transport_eth_posix.h>
 #include <utils/firefly_event_queue.h>
 #include <gen/pingpong.h>
 
-#include "test/pingpong/pingpong_pudp.h"
+#include "test/pingpong/pingpong_peth.h"
 #include "test/pingpong/pingpong.h"
 #include "test/pingpong/hack_lctypes.h"
 #include "utils/cppmacros.h"
@@ -78,7 +78,7 @@ void ping_chan_opened(struct firefly_channel *chan)
 
 void ping_chan_closed(struct firefly_channel *chan)
 {
-	firefly_transport_connection_udp_posix_close(
+	firefly_transport_connection_eth_posix_close(
 			firefly_channel_get_connection(chan));
 	pthread_mutex_lock(&ping_done_lock);
 	ping_done = true;
@@ -101,17 +101,16 @@ void ping_channel_rejected(struct firefly_connection *conn)
 }
 
 struct firefly_connection *ping_connection_received(
-		struct firefly_transport_llp *llp, const char *ip_addr, unsigned short port)
+		struct firefly_transport_llp *llp, char *mac_addr)
 {
 	printf("PING: Connection received.\n");
 	struct firefly_connection *conn = NULL;
 	/* If address is correct, open a connection. */
-	if (strncmp(ip_addr, PONG_ADDR, strlen(PONG_ADDR)) == 0 &&
-			port == PONG_PORT) {
+	if (strncmp(mac_addr, PONG_MAC_ADDR, strlen(PONG_MAC_ADDR)) == 0) {
 		printf("PING: Connection accepted.\n");
-		conn = firefly_transport_connection_udp_posix_open(
+		conn = firefly_transport_connection_eth_posix_open(
 				ping_chan_opened, ping_chan_closed, ping_chan_received, event_queue,
-				ip_addr, port, llp);
+				mac_addr, PING_IFACE, llp);
 		hack_register_protocol_types(conn);
 	}
 	return conn;
@@ -144,7 +143,7 @@ void *ping_main_thread(void *arg)
 	printf("Hello, Firefly from Ping!\n");
 	ping_init_tests();
 	struct firefly_transport_llp *llp =
-			firefly_transport_llp_udp_posix_new(PING_PORT, ping_connection_received);
+			firefly_transport_llp_eth_posix_new(PING_IFACE, ping_connection_received);
 
 	struct event_queue_signals eq_s;
 	res = pthread_mutex_init(&eq_s.eq_lock, NULL);
@@ -160,8 +159,8 @@ void *ping_main_thread(void *arg)
 	res = pthread_create(&event_thread, NULL, event_thread_main, event_queue);
 
 	struct firefly_connection *conn =
-			firefly_transport_connection_udp_posix_open(ping_chan_opened, ping_chan_closed,
-					ping_chan_received, event_queue, PONG_ADDR, PONG_PORT, llp);
+			firefly_transport_connection_eth_posix_open(ping_chan_opened, ping_chan_closed,
+					ping_chan_received, event_queue, PONG_MAC_ADDR, PING_IFACE, llp);
 	if (conn != NULL) {
 		ping_pass_test(CONNECTION_OPEN);
 	}
@@ -189,7 +188,7 @@ void *ping_main_thread(void *arg)
 	//firefly_transport_connection_udp_posix_free(&conn);
 
 	firefly_event_queue_free(&event_queue);
-	firefly_transport_llp_udp_posix_free(&llp);
+	firefly_transport_llp_eth_posix_free(&llp);
 
 	ping_pass_test(TEST_DONE);
 	pingpong_test_print_results(ping_tests, PING_NBR_TESTS, "Ping");

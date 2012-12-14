@@ -216,7 +216,7 @@ void test_eth_recv_data()
 	struct firefly_transport_llp *llp = firefly_transport_llp_eth_posix_new(
 			"lo", on_conn_recv);
 	send_data();
-	struct firefly_connection *conn = firefly_transport_connection_eth_posix_open(
+	firefly_transport_connection_eth_posix_open(
 			NULL, NULL, NULL, NULL, remote_mac_addr, "lo", llp);
 
 	firefly_transport_eth_posix_read(llp);

@@ -5,11 +5,11 @@
 
 #include <labcomm.h>
 #include <protocol/firefly_protocol.h>
-#include <transport/firefly_transport_udp_posix.h>
+#include <transport/firefly_transport_eth_posix.h>
 #include <utils/firefly_event_queue.h>
 #include <gen/pingpong.h>
 
-#include "test/pingpong/pingpong_pudp.h"
+#include "test/pingpong/pingpong_peth.h"
 #include "test/pingpong/pingpong.h"
 #include "test/pingpong/hack_lctypes.h"
 #include "utils/cppmacros.h"
@@ -61,20 +61,19 @@ void pong_handle_pingpong_data(pingpong_data *data, void *ctx);
 void *send_data_and_close(void *args);
 
 struct firefly_connection *pong_connection_received(
-		struct firefly_transport_llp *llp, const char *ip_addr, unsigned short port)
+		struct firefly_transport_llp *llp, char *mac_addr)
 {
 	struct firefly_connection *conn = NULL;
 	/* If address is correct, open a connection. */
-	if (strncmp(ip_addr, PING_ADDR, strlen(PING_ADDR)) == 0 &&
-			port == PING_PORT) {
-		conn = firefly_transport_connection_udp_posix_open(
+	if (strncmp(mac_addr, PING_MAC_ADDR, strlen(PING_MAC_ADDR)) == 0) {
+		conn = firefly_transport_connection_eth_posix_open(
 				pong_chan_opened, pong_chan_closed, pong_chan_received, event_queue,
-				ip_addr, port, llp);
+				mac_addr, PONG_IFACE, llp);
 		hack_register_protocol_types(conn);
 		pong_pass_test(CONNECTION_OPEN);
 	} else {
-		fprintf(stderr, "ERROR: Received unknown connection: %s:%hu\n",
-				ip_addr, port);
+		fprintf(stderr, "ERROR: Received unknown connection: %s\n",
+				mac_addr);
 	}
 	return conn;
 }
@@ -92,7 +91,7 @@ void pong_chan_opened(struct firefly_channel *chan)
 void pong_chan_closed(struct firefly_channel *chan)
 {
 	// TODO concurrency problem conn freed before chan
-	firefly_transport_connection_udp_posix_close(
+	firefly_transport_connection_eth_posix_close(
 			firefly_channel_get_connection(chan));
 	pthread_mutex_lock(&pong_done_lock);
 	pong_done = true;
@@ -179,7 +178,7 @@ void *pong_main_thread(void *arg)
 	}
 
 	struct firefly_transport_llp *llp =
-			firefly_transport_llp_udp_posix_new(PONG_PORT, pong_connection_received);
+			firefly_transport_llp_eth_posix_new(PONG_IFACE, pong_connection_received);
 
 	res = pthread_create(&reader_thread, NULL, reader_thread_main, llp);
 	if (res) {
@@ -202,7 +201,7 @@ void *pong_main_thread(void *arg)
 	pthread_join(event_thread, NULL);
 
 	firefly_event_queue_free(&event_queue);
-	firefly_transport_llp_udp_posix_free(&llp);
+	firefly_transport_llp_eth_posix_free(&llp);
 
 	pong_pass_test(TEST_DONE);
 	pingpong_test_print_results(pong_tests, PONG_NBR_TESTS, "Pong");
