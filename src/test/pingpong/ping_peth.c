@@ -90,8 +90,8 @@ void ping_chan_closed(struct firefly_channel *chan)
 bool ping_chan_received(struct firefly_channel *chan)
 {
 	UNUSED_VAR(chan);
-	printf("PING: Channel received\n");
-	return true;
+	printf("PING: Error: Channel received\n");
+	return false;
 }
 
 void ping_channel_rejected(struct firefly_connection *conn)
@@ -140,7 +140,7 @@ void *ping_main_thread(void *arg)
 	int res;
 	pthread_t reader_thread;
 
-	printf("Hello, Firefly from Ping!\n");
+	printf("Hello, Firefly Ethernet from Ping!\n");
 	ping_init_tests();
 	struct firefly_transport_llp *llp =
 			firefly_transport_llp_eth_posix_new(PING_IFACE, ping_connection_received);
@@ -160,7 +160,7 @@ void *ping_main_thread(void *arg)
 
 	struct firefly_connection *conn =
 			firefly_transport_connection_eth_posix_open(ping_chan_opened, ping_chan_closed,
-					ping_chan_received, event_queue, PONG_MAC_ADDR, PING_IFACE, llp);
+					ping_chan_received, event_queue, PONG_MAC_ADDR, PONG_IFACE, llp);
 	if (conn != NULL) {
 		ping_pass_test(CONNECTION_OPEN);
 	}

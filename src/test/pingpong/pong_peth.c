@@ -68,7 +68,7 @@ struct firefly_connection *pong_connection_received(
 	if (strncmp(mac_addr, PING_MAC_ADDR, strlen(PING_MAC_ADDR)) == 0) {
 		conn = firefly_transport_connection_eth_posix_open(
 				pong_chan_opened, pong_chan_closed, pong_chan_received, event_queue,
-				mac_addr, PONG_IFACE, llp);
+				mac_addr, PING_IFACE, llp);
 		hack_register_protocol_types(conn);
 		pong_pass_test(CONNECTION_OPEN);
 	} else {
@@ -160,7 +160,7 @@ void *pong_main_thread(void *arg)
 	pthread_t reader_thread;
 	struct thread_arg *ta = (struct thread_arg *) arg;
 
-	printf("Hello, Firefly from Pong!\n");
+	printf("Hello, Firefly Ethernet from Pong!\n");
 	pong_init_tests();
 	struct event_queue_signals eq_s;
 	res = pthread_mutex_init(&eq_s.eq_lock, NULL);
