@@ -10,7 +10,7 @@
 #define PING_PORT (55555)
 #define PING_ADDR ("127.0.0.1")
 #define PONG_IFACE ("eth0")
-#define PONG_MAC_ADDR ("00:00:00:00:00:00")
+#define PONG_MAC_ADDR ("00:26:18:2d:1c:8f")
 #define PONG_PORT (55556)
 #define PONG_ADDR ("127.0.0.1")
 
