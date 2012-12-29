@@ -2,6 +2,7 @@
 
 #include <pthread.h>
 #include <unistd.h>
+#include <sys/types.h>
 
 #include <labcomm.h>
 #include <protocol/firefly_protocol.h>
@@ -154,11 +155,18 @@ void *send_data_and_close(void *args)
 
 void *pong_main_thread(void *arg)
 {
+	struct thread_arg *ta = (struct thread_arg *) arg;
+	uid_t uid;
+	uid = geteuid();
+	if (uid != 0) {
+		fprintf(stderr, "Need root to run these tests\n");
+		pthread_cond_signal(&ta->t);
+		return NULL;
+	}
 	UNUSED_VAR(arg);
 	int res;
 	pthread_t event_thread;
 	pthread_t reader_thread;
-	struct thread_arg *ta = (struct thread_arg *) arg;
 
 	printf("Hello, Firefly Ethernet from Pong!\n");
 	pong_init_tests();

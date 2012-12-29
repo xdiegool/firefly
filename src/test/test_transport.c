@@ -27,7 +27,7 @@ void protocol_data_received(struct firefly_connection *conn, unsigned char *data
 	CU_ASSERT_NSTRING_EQUAL(data, data_recv_buf, size);
 	if (memcmp(data, send_buf, sizeof(send_buf)) != 0) {
 		printf("Data:");
-		for (int i = 0; i < sizeof(send_buf); i++) {
+		for (size_t i = 0; i < sizeof(send_buf); i++) {
 			printf(" %02x", data[i]);
 		}
 		printf("\n");

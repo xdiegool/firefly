@@ -129,7 +129,8 @@ void *send_data(void *args)
 
 void ping_handle_pingpong_data(pingpong_data *data, void *ctx)
 {
-	struct firefly_channel *chan = (struct firefly_channel *) ctx;
+	UNUSED_VAR(ctx);
+	/*struct firefly_channel *chan = (struct firefly_channel *) ctx;*/
 	if (*data == PONG_DATA) {
 		ping_pass_test(DATA_RECEIVE);
 	}

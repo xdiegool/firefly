@@ -1,4 +1,7 @@
 
+#include <stdio.h>
+#include <unistd.h>
+#include <sys/types.h>
 #include "CUnit/Basic.h"
 #include "CUnit/Console.h"
 
@@ -6,6 +9,12 @@
 
 int main()
 {
+	uid_t uid;
+	uid = geteuid();
+	if (uid != 0) {
+		fprintf(stderr, "Need root to run these tests\n");
+		return 0;
+	}
 	CU_pSuite trans_eth_posix = NULL;
 
 	// Initialize CUnit test registry.

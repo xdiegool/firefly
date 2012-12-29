@@ -351,52 +351,6 @@ void test_null_pointer_as_callback()
 	firefly_transport_llp_udp_posix_free(&llp);
 }
 
-void test_find_conn_by_addr()
-{
-	struct firefly_transport_llp *llp = firefly_transport_llp_udp_posix_new(
-							local_port, NULL);
-	struct sockaddr_in addr_1;
-	setup_sockaddr(&addr_1, 55550);
-	struct firefly_connection *conn = find_connection(llp, &addr_1, connection_eq_inaddr);
-	CU_ASSERT_PTR_NULL(conn);
-	// Add connection to conn_list
-	struct llp_connection_list_node *node_1 =
-		malloc(sizeof(struct llp_connection_list_node));
-	struct protocol_connection_udp_posix *conn_udp_1 =
-		malloc(sizeof(struct protocol_connection_udp_posix));
-	conn_udp_1->remote_addr = malloc(sizeof(struct sockaddr_in));
-	memcpy(conn_udp_1->remote_addr, &addr_1, sizeof(addr_1));
-	node_1->conn = firefly_connection_new(NULL, NULL, NULL, NULL, NULL, conn_udp_1);
-	node_1->next = NULL;
-	llp->conn_list = node_1;
-	// Try to find conn after adding it
-	conn = find_connection(llp, &addr_1, connection_eq_inaddr);
-	CU_ASSERT_PTR_NOT_NULL(conn);
-	CU_ASSERT_TRUE(sockaddr_in_eq(&addr_1,
-		((struct protocol_connection_udp_posix *)
-		conn->transport_conn_platspec)->remote_addr));
-
-	// Add a second connection after the first one and try to find it
-	struct sockaddr_in addr_2;
-	setup_sockaddr(&addr_2, 55551);
-	struct llp_connection_list_node *node_2 =
-		malloc(sizeof(struct llp_connection_list_node));
-	struct protocol_connection_udp_posix *conn_udp_2 =
-		malloc(sizeof(struct protocol_connection_udp_posix));
-	conn_udp_2->remote_addr = malloc(sizeof(struct sockaddr_in));
-	memcpy(conn_udp_2->remote_addr, &addr_2, sizeof(addr_2));
-	node_2->conn = firefly_connection_new(NULL, NULL, NULL, NULL, NULL, conn_udp_2);
-	node_2->next = NULL;
-	node_1->next = node_2;
-	conn = find_connection(llp, &addr_2, connection_eq_inaddr);
-	CU_ASSERT_PTR_NOT_NULL(conn);
-	CU_ASSERT_TRUE(sockaddr_in_eq(&addr_2,
-		((struct protocol_connection_udp_posix *)
-		conn->transport_conn_platspec)->remote_addr));
-
-	firefly_transport_llp_udp_posix_free(&llp);
-}
-
 void test_cleanup_simple()
 {
 	int res;
@@ -487,50 +441,6 @@ void test_cleanup_many_conn()
 	firefly_event_execute(firefly_event_pop(eq));
 	firefly_event_execute(firefly_event_pop(eq));
 	firefly_event_queue_free(&eq);
-}
-
-void test_add_conn_to_llp()
-{
-	struct firefly_transport_llp *llp = firefly_transport_llp_udp_posix_new(
-							local_port, NULL);
-	struct sockaddr_in addr_1;
-	setup_sockaddr(&addr_1, 55550);
-
-	struct protocol_connection_udp_posix *conn_udp_1 =
-		malloc(sizeof(struct protocol_connection_udp_posix));
-
-	conn_udp_1->remote_addr = malloc(sizeof(struct sockaddr_in));
-	memcpy(conn_udp_1->remote_addr, &addr_1, sizeof(addr_1));
-	struct firefly_connection *conn_1 = firefly_connection_new(NULL, NULL,
-							NULL, NULL, NULL,
-							conn_udp_1);
-	add_connection_to_llp(conn_1, llp);
-
-	CU_ASSERT_PTR_NOT_NULL(llp->conn_list);
-	CU_ASSERT_PTR_NOT_NULL(llp->conn_list->conn);
-	CU_ASSERT_PTR_EQUAL(llp->conn_list->conn, conn_1);
-	CU_ASSERT_PTR_NULL(llp->conn_list->next);
-
-	struct sockaddr_in addr_2;
-	setup_sockaddr(&addr_2, 55550);
-
-	struct protocol_connection_udp_posix *conn_udp_2 =
-		malloc(sizeof(struct protocol_connection_udp_posix));
-
-	conn_udp_2->remote_addr = malloc(sizeof(struct sockaddr_in));
-	memcpy(conn_udp_2->remote_addr, &addr_2, sizeof(addr_2));
-	struct firefly_connection *conn_2 = firefly_connection_new(NULL, NULL,
-															NULL, NULL, NULL,
-															conn_udp_2);
-	add_connection_to_llp(conn_2, llp);
-
-	CU_ASSERT_PTR_NOT_NULL(llp->conn_list);
-	CU_ASSERT_PTR_NOT_NULL(llp->conn_list->conn);
-	CU_ASSERT_PTR_EQUAL(llp->conn_list->conn, conn_2);
-	CU_ASSERT_PTR_NOT_NULL(llp->conn_list->next);
-	CU_ASSERT_PTR_EQUAL(llp->conn_list->next->conn, conn_1);
-
-	firefly_transport_llp_udp_posix_free(&llp);
 }
 
 void test_conn_open_and_send()

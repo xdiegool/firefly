@@ -2,11 +2,12 @@
 #include "CUnit/Console.h"
 
 #include "test/test_transport_udp_posix.h"
-#include "test/test_transport_eth_posix.h"
+#include "test/test_transport_gen.h"
 
 int main()
 {
 	CU_pSuite trans_udp_posix = NULL;
+	CU_pSuite trans_gen = NULL;
 
 	// Initialize CUnit test registry.
 	if (CUE_SUCCESS != CU_initialize_registry()) {
@@ -14,24 +15,31 @@ int main()
 	}
 
 	trans_udp_posix = CU_add_suite("udp_core", init_suit_udp_posix, clean_suit_udp_posix);
-	if (trans_udp_posix == NULL) {
+	trans_gen = CU_add_suite("general", init_suit_general, clean_suit_general);
+	if (trans_udp_posix == NULL || trans_gen == NULL) {
 		CU_cleanup_registry();
 		return CU_get_error();
 	}
 
 	 /*Transport UDP Posix tests.*/
 	if (
-		(CU_add_test(trans_udp_posix, "test_find_conn_by_addr",
+		(CU_add_test(trans_gen, "test_find_conn_by_addr",
 				test_find_conn_by_addr) == NULL)
 			   ||
+		(CU_add_test(trans_gen, "test_add_conn_to_llp",
+				test_add_conn_to_llp) == NULL)
+			   /*||*/
+	) {
+		CU_cleanup_registry();
+		return CU_get_error();
+	}
+
+	if (
 		(CU_add_test(trans_udp_posix, "test_cleanup_simple",
 				test_cleanup_simple) == NULL)
 			   ||
 		(CU_add_test(trans_udp_posix, "test_cleanup_many_conn",
 				test_cleanup_many_conn) == NULL)
-			   ||
-		(CU_add_test(trans_udp_posix, "test_add_conn_to_llp",
-				test_add_conn_to_llp) == NULL)
 			   ||
 		(CU_add_test(trans_udp_posix, "test_recv_connection",
 				test_recv_connection) == NULL)

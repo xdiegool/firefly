@@ -1,4 +1,6 @@
 #include <pthread.h>
+#include <unistd.h>
+#include <sys/types.h>
 
 #include <labcomm.h>
 #include <protocol/firefly_protocol.h>
@@ -128,7 +130,8 @@ void *send_data(void *args)
 
 void ping_handle_pingpong_data(pingpong_data *data, void *ctx)
 {
-	struct firefly_channel *chan = (struct firefly_channel *) ctx;
+	UNUSED_VAR(ctx);
+	/*struct firefly_channel *chan = (struct firefly_channel *) ctx;*/
 	if (*data == PONG_DATA) {
 		ping_pass_test(DATA_RECEIVE);
 	}
@@ -136,6 +139,12 @@ void ping_handle_pingpong_data(pingpong_data *data, void *ctx)
 
 void *ping_main_thread(void *arg)
 {
+	uid_t uid;
+	uid = geteuid();
+	if (uid != 0) {
+		fprintf(stderr, "Need root to run these tests\n");
+		return NULL;
+	}
 	UNUSED_VAR(arg);
 	int res;
 	pthread_t reader_thread;
