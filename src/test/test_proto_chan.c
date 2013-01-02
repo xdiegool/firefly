@@ -1065,7 +1065,7 @@ struct firefly_connection *setup_conn(int conn_n,
 
 	tcon = firefly_connection_new_register(chan_was_opened, chan_was_closed,
 					   should_accept_chan, writer,
-					   eqs[conn_n], NULL, true);
+					   eqs[conn_n], NULL, NULL, true);
 
 	if (tcon == NULL) {
 		CU_FAIL("Could not create channel");

@@ -61,8 +61,12 @@ void firefly_channel_open(struct firefly_connection *conn,
 {
 	struct firefly_event_chan_open *feco;
 	int ret;
-	/* create event. add to q. */
 
+	if (conn->open != FIREFLY_CONNECTION_OPEN) {
+		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
+					"Cannot open new channel on a closed connection.\n");
+		return;
+	}
 	feco = malloc(sizeof(struct firefly_event_chan_open));
 	if (feco == NULL) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1,

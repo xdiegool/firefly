@@ -30,8 +30,8 @@ int clean_suite_proto_errors()
 	return 0;
 }
 
-static bool was_in_error = false;
-static enum firefly_error expected_error;
+bool was_in_error = false;
+enum firefly_error expected_error;
 
 // Override.
 void firefly_error(enum firefly_error error_id, size_t nbr_va_args, ...)
