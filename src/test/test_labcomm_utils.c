@@ -89,3 +89,20 @@ void create_lc_files_name(lc_register_f reg, lc_encode_f enc, void *data,
 	close(tmpfd);
 	labcomm_encoder_free(fd_encoder);
 }
+
+struct encoded_packet *create_encoded_packet(lc_register_f reg, lc_encode_f enc,
+		void *data)
+{
+	struct encoded_packet *enc_pkt = malloc(sizeof(struct encoded_packet));
+	create_labcomm_files_general(reg, enc, data);
+	enc_pkt->ssize = read_file_to_mem(&enc_pkt->sign, SIG_FILE);
+	enc_pkt->dsize = read_file_to_mem(&enc_pkt->data, DATA_FILE);
+	return enc_pkt;
+}
+
+void encoded_packet_free(struct encoded_packet *ep)
+{
+	free(ep->data);
+	free(ep->sign);
+	free(ep);
+}
