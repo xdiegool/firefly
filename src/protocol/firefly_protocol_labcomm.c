@@ -234,8 +234,8 @@ int protocol_writer(labcomm_writer_t *w, labcomm_writer_action_t action)
 				fess->data.app_enc_data.a = a;
 				memcpy(fess->data.app_enc_data.a, writer_data->data,
 						writer_data->pos);
-				struct firefly_event *ev = firefly_event_new(1,
-						send_data_sample_event, fess);
+				struct firefly_event *ev = firefly_event_new(
+						FIREFLY_PRIORITY_HIGH, send_data_sample_event, fess);
 				chan->conn->event_queue->offer_event_cb(chan->conn->event_queue,
 						(struct firefly_event *) ev);
 				writer_data->pos = 0;

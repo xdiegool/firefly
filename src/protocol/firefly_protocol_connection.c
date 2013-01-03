@@ -104,7 +104,6 @@ struct firefly_connection *firefly_connection_new(
 
 void firefly_connection_close(struct firefly_connection *conn)
 {
-	conn->open = FIREFLY_CONNECTION_CLOSED;
 	struct firefly_event *ev = firefly_event_new(FIREFLY_PRIORITY_MEDIUM,
 			firefly_connection_close_event, conn);
 
@@ -118,6 +117,8 @@ void firefly_connection_close(struct firefly_connection *conn)
 int firefly_connection_close_event(void *event_arg)
 {
 	struct firefly_connection *conn = (struct firefly_connection *) event_arg;
+
+	conn->open = FIREFLY_CONNECTION_CLOSED;
 
 	struct channel_list_node *head = conn->chan_list;
 	bool empty = true;

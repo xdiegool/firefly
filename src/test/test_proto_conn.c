@@ -29,6 +29,13 @@ void free_plat_conn_test(struct firefly_connection *conn)
 	plat_freed = true;
 }
 
+static bool transport_sent = false;
+void transport_write_mock(unsigned char *data, size_t size,
+		struct firefly_connection *conn)
+{
+	transport_sent = true;
+}
+
 void test_conn_close_empty()
 {
 	char *dummy_data = malloc(5);
@@ -48,7 +55,6 @@ void test_conn_close_empty()
 
 	CU_ASSERT_EQUAL(conn->open, FIREFLY_CONNECTION_OPEN);
 	firefly_connection_close(conn);
-	CU_ASSERT_EQUAL(conn->open, FIREFLY_CONNECTION_CLOSED);
 
 	ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
@@ -58,11 +64,11 @@ void test_conn_close_empty()
 
 	firefly_event_queue_free(&eq);
 	plat_freed = false;
+	transport_sent = false;
 }
 
 void test_conn_close_open_chan()
 {
-
 	struct firefly_event_queue *eq = firefly_event_queue_new(
 			firefly_event_add, NULL);
 	if (eq == NULL) {
@@ -70,35 +76,7 @@ void test_conn_close_open_chan()
 	}
 	struct firefly_connection *conn = firefly_connection_new_register(
 			NULL, NULL, NULL,
-			NULL, eq, NULL, NULL, false);
-
-	firefly_connection_close(conn);
-	struct firefly_event *close_ev = firefly_event_pop(eq);
-	CU_ASSERT_PTR_NOT_NULL(close_ev);
-
-	expected_error = FIREFLY_ERROR_PROTO_STATE;
-	firefly_channel_open(conn, NULL);
-	CU_ASSERT_TRUE(was_in_error);
-	struct firefly_event *ev = firefly_event_pop(eq);
-	CU_ASSERT_PTR_NULL(ev);
-
-	firefly_event_execute(close_ev);
-
-	was_in_error = false;
-	firefly_event_queue_free(&eq);
-}
-
-void test_conn_close_send_data()
-{
-
-	struct firefly_event_queue *eq = firefly_event_queue_new(
-			firefly_event_add, NULL);
-	if (eq == NULL) {
-		CU_FAIL("Could not create queue.\n");
-	}
-	struct firefly_connection *conn = firefly_connection_new_register(
-			NULL, NULL, NULL,
-			NULL, eq, NULL, NULL, false);
+			transport_write_mock, eq, NULL, NULL, true);
 
 	struct firefly_channel *ch = firefly_channel_new(conn);
 	ch->remote_id = 0;
@@ -107,6 +85,60 @@ void test_conn_close_send_data()
 	firefly_connection_close(conn);
 	struct firefly_event *close_ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(close_ev);
+	firefly_event_execute(close_ev);
+
+	close_ev = firefly_event_pop(eq);
+	CU_ASSERT_PTR_NOT_NULL(close_ev);
+	firefly_event_execute(close_ev);
+
+	close_ev = firefly_event_pop(eq);
+	CU_ASSERT_PTR_NOT_NULL(close_ev);
+	firefly_event_execute(close_ev);
+
+	close_ev = firefly_event_pop(eq);
+
+	expected_error = FIREFLY_ERROR_PROTO_STATE;
+	firefly_channel_open(conn, NULL);
+	CU_ASSERT_TRUE(was_in_error);
+	struct firefly_event *ev = firefly_event_pop(eq);
+	CU_ASSERT_PTR_NULL(ev);
+
+	CU_ASSERT_PTR_NOT_NULL(close_ev);
+	firefly_event_execute(close_ev);
+
+	was_in_error = false;
+	transport_sent = false;
+	firefly_event_queue_free(&eq);
+}
+
+void test_conn_close_send_data()
+{
+	struct firefly_event_queue *eq = firefly_event_queue_new(
+			firefly_event_add, NULL);
+	if (eq == NULL) {
+		CU_FAIL("Could not create queue.\n");
+	}
+	struct firefly_connection *conn = firefly_connection_new_register(
+			NULL, NULL, NULL,
+			transport_write_mock, eq, NULL, NULL, true);
+
+	struct firefly_channel *ch = firefly_channel_new(conn);
+	ch->remote_id = 0;
+	add_channel_to_connection(ch, conn);
+
+	firefly_connection_close(conn);
+	struct firefly_event **close_ev;
+	close_ev = calloc(4, sizeof(struct firefly_event*));
+	close_ev[0] = firefly_event_pop(eq);
+	CU_ASSERT_PTR_NOT_NULL(close_ev[0]);
+	firefly_event_execute(close_ev[0]);
+
+	close_ev[1] = firefly_event_pop(eq);
+	CU_ASSERT_PTR_NOT_NULL(close_ev[1]);
+	close_ev[2] = firefly_event_pop(eq);
+	CU_ASSERT_PTR_NOT_NULL(close_ev[2]);
+	close_ev[3] = firefly_event_pop(eq);
+	CU_ASSERT_PTR_NOT_NULL(close_ev[3]);
 
 	expected_error = FIREFLY_ERROR_PROTO_STATE;
 	struct labcomm_encoder *ch_enc = firefly_protocol_get_output_stream(ch);
@@ -116,9 +148,92 @@ void test_conn_close_send_data()
 	struct firefly_event *ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NULL(ev);
 
-	firefly_channel_closed_event(ch);
-	firefly_event_execute(close_ev);
+	firefly_event_execute(close_ev[1]);
+	firefly_event_execute(close_ev[2]);
+	firefly_event_execute(close_ev[3]);
+	free(close_ev);
 
 	was_in_error = false;
+	transport_sent = false;
+	firefly_event_queue_free(&eq);
+}
+
+void test_conn_close_send_first()
+{
+	struct firefly_event_queue *eq = firefly_event_queue_new(
+			firefly_event_add, NULL);
+	if (eq == NULL) {
+		CU_FAIL("Could not create queue.\n");
+	}
+	struct firefly_connection *conn = firefly_connection_new_register(
+			NULL, NULL, NULL,
+			transport_write_mock, eq, NULL, NULL, true);
+
+	struct firefly_channel *ch = firefly_channel_new(conn);
+	ch->remote_id = 0;
+	add_channel_to_connection(ch, conn);
+	struct labcomm_encoder *ch_enc = firefly_protocol_get_output_stream(ch);
+	labcomm_encoder_register_test_test_var(ch_enc);
+	firefly_connection_close(conn);
+
+	struct firefly_event *send_ev = firefly_event_pop(eq);
+	CU_ASSERT_PTR_NOT_NULL(send_ev);
+	firefly_event_execute(send_ev);
+
+	CU_ASSERT_TRUE(transport_sent);
+	CU_ASSERT_FALSE(was_in_error);
+
+	struct firefly_event *close_ev = firefly_event_pop(eq);
+	CU_ASSERT_PTR_NOT_NULL(close_ev);
+	firefly_event_execute(close_ev);
+
+	close_ev = firefly_event_pop(eq);
+	CU_ASSERT_PTR_NOT_NULL(close_ev);
+	firefly_event_execute(close_ev);
+
+	close_ev = firefly_event_pop(eq);
+	CU_ASSERT_PTR_NOT_NULL(close_ev);
+	firefly_event_execute(close_ev);
+
+	close_ev = firefly_event_pop(eq);
+	CU_ASSERT_PTR_NOT_NULL(close_ev);
+	firefly_event_execute(close_ev);
+
+	transport_sent = false;
+	firefly_event_queue_free(&eq);
+}
+
+void test_conn_close_mult_chans()
+{
+	struct firefly_event_queue *eq = firefly_event_queue_new(
+			firefly_event_add, NULL);
+	if (eq == NULL) {
+		CU_FAIL("Could not create queue.\n");
+	}
+	struct firefly_connection *conn = firefly_connection_new_register(
+			NULL, NULL, NULL,
+			transport_write_mock, eq, NULL, NULL, true);
+
+	struct firefly_channel *ch = firefly_channel_new(conn);
+	ch->remote_id = 0;
+	add_channel_to_connection(ch, conn);
+
+	ch = firefly_channel_new(conn);
+	ch->remote_id = 1;
+	add_channel_to_connection(ch, conn);
+
+	ch = firefly_channel_new(conn);
+	ch->remote_id = 2;
+	add_channel_to_connection(ch, conn);
+
+	firefly_connection_close(conn);
+	struct firefly_event *close_ev;
+	for (int i = 0; i < 8; i++) {
+		close_ev = firefly_event_pop(eq);
+		CU_ASSERT_PTR_NOT_NULL(close_ev);
+		firefly_event_execute(close_ev);
+	}
+
+	transport_sent = false;
 	firefly_event_queue_free(&eq);
 }
