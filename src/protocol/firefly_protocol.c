@@ -167,13 +167,15 @@ int firefly_channel_close_event(void *event_arg)
 void protocol_data_received(struct firefly_connection *conn,
 		unsigned char *data, size_t size)
 {
-	conn->reader_data->data = data;
-	conn->reader_data->data_size = size;
-	conn->reader_data->pos = 0;
-	labcomm_decoder_decode_one(conn->transport_decoder);
-	conn->reader_data->data = NULL;
-	conn->reader_data->data_size = 0;
-	conn->reader_data->pos = 0;
+	if (conn->open == FIREFLY_CONNECTION_OPEN) {
+		conn->reader_data->data = data;
+		conn->reader_data->data_size = size;
+		conn->reader_data->pos = 0;
+		labcomm_decoder_decode_one(conn->transport_decoder);
+		conn->reader_data->data = NULL;
+		conn->reader_data->data_size = 0;
+		conn->reader_data->pos = 0;
+	}
 }
 
 void handle_channel_request(firefly_protocol_channel_request *chan_req,
@@ -206,6 +208,7 @@ int handle_channel_request_event(void *event_arg)
 	int res = 0;
 	struct firefly_event_chan_req_recv *fecrr =
 		(struct firefly_event_chan_req_recv *) event_arg;
+
 	int local_chan_id = fecrr->chan_req.dest_chan_id;
 	struct firefly_channel *chan = find_channel_by_local_id(fecrr->conn,
 			local_chan_id);

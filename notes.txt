@@ -18,3 +18,11 @@ Connection close:
 	else could events be safe? Removing all events accessing a certain
 	connection could be removed from the event queue as an alternative.
 
+TODO
+fix compatibility with new connection close on transport layers
+application layer shall call protocol layer to close connection.
+transport close connection should be private
+implement concurrency protection of connections when reader and closing (any
+other possible use of connection on transport layer aswell). This should be done
+with events, i think.
+

@@ -110,6 +110,12 @@ int main()
 			||
 			(CU_add_test(conn_suite, "test_conn_close_mult_chans",
 					test_conn_close_mult_chans) == NULL)
+			||
+			(CU_add_test(conn_suite, "test_conn_close_recv_any",
+					test_conn_close_recv_any) == NULL)
+			||
+			(CU_add_test(conn_suite, "test_conn_close_recv_chan_req_first",
+					test_conn_close_recv_chan_req_first) == NULL)
 		) {
 		CU_cleanup_registry();
 		return CU_get_error();

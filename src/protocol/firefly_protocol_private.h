@@ -140,8 +140,22 @@ struct firefly_connection *firefly_connection_new_register(
 		struct firefly_event_queue *event_queue, void *plat_spec,
 		transport_connection_free plat_spec_free, bool reg);
 
+/*
+ * The application must make sure the connection is no longer used after calling
+ * this function. It is not thread safe to continue to use a connection after it
+ * is closed. Hence the application must make use of the event queue,
+ * mutexes/locks or any other feature preventing concurrency.
+ */
 void firefly_connection_close(struct firefly_connection *conn);
 
+/**
+ *
+ * This function will call the trasnport connection free callback if provided.
+ * The transport layer is responsible for preventing future use of the
+ * connection and prevent any concurrent use from multiple threads using the
+ * transport layer. This means the transport layer must either make use of the
+ * event queue, use mutexes/locks or any other form of preventing concurrency.
+ */
 int firefly_connection_close_event(void *event_arg);
 
 /**
@@ -150,6 +164,8 @@ int firefly_connection_close_event(void *event_arg);
  * @param conn The connection to free.
  */
 void firefly_connection_free(struct firefly_connection **conn);
+
+int firefly_connection_free_event(void *event_arg);
 
 /**
  * @brief The function called by the transport layer upon received data.

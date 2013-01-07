@@ -14,6 +14,14 @@
  */
 struct firefly_connection;
 
+/*
+ * The application must make sure the connection is no longer used after calling
+ * this function. It is not thread safe to continue to use a connection after it
+ * is closed. Hence the application must make use of the event queue,
+ * mutexes/locks or any other feature preventing concurrency.
+ */
+void firefly_connection_close(struct firefly_connection *conn);
+
 /**
  * @brief An opaque structure representing a channel.
  */

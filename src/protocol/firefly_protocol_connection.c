@@ -72,14 +72,13 @@ struct firefly_connection *firefly_connection_new_register(
 	conn->transport_write = transport_write;
 	conn->transport_conn_platspec = plat_spec;
 	conn->transport_conn_platspec_free = plat_spec_free;
+	conn->open = FIREFLY_CONNECTION_OPEN;
 
 	if (reg) {
-	reg_proto_sigs(conn->transport_encoder,
-				   conn->transport_decoder,
-				   conn);
+		reg_proto_sigs(conn->transport_encoder,
+					   conn->transport_decoder,
+					   conn);
 	}
-
-	conn->open = FIREFLY_CONNECTION_OPEN;
 
 	return conn;
 }
@@ -128,10 +127,26 @@ int firefly_connection_close_event(void *event_arg)
 		head = head->next;
 	}
 	if (empty) {
-		firefly_connection_free(&conn);
+		if (conn->transport_conn_platspec_free != NULL) {
+			conn->transport_conn_platspec_free(conn);
+		}
+		struct firefly_event *ev = firefly_event_new(FIREFLY_PRIORITY_LOW,
+				firefly_connection_free_event, conn);
+		int ret = conn->event_queue->offer_event_cb(conn->event_queue, ev);
+		if (ret) {
+			firefly_error(FIREFLY_ERROR_ALLOC, 1,
+						  "could not add event to queue");
+		}
 	} else {
 		firefly_connection_close(conn);
 	}
+	return 0;
+}
+
+int firefly_connection_free_event(void *event_arg)
+{
+	struct firefly_connection *conn = (struct firefly_connection *) event_arg;
+	firefly_connection_free(&conn);
 	return 0;
 }
 
@@ -141,9 +156,6 @@ void firefly_connection_free(struct firefly_connection **conn)
 		firefly_channel_closed_event((*conn)->chan_list->chan);
 	}
 	free((*conn)->chan_list);
-	if ((*conn)->transport_conn_platspec_free != NULL) {
-		(*conn)->transport_conn_platspec_free(*conn);
-	}
 	if ((*conn)->transport_encoder != NULL) {
 		labcomm_encoder_free((*conn)->transport_encoder);
 	}
