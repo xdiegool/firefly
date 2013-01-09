@@ -9,6 +9,8 @@
 #include <transport/firefly_transport.h>
 #include <signal.h>
 
+#include <utils/firefly_event_queue.h>
+
 #include "transport/firefly_transport_private.h"
 
 /**
@@ -28,6 +30,7 @@ struct transport_llp_udp_posix {
 	firefly_on_conn_recv_pudp on_conn_recv; /**< The callback to be called
 							when a new connection is
 							detected. */
+	struct firefly_event_queue *event_queue;
 };
 
 /**
@@ -41,6 +44,7 @@ struct protocol_connection_udp_posix {
 	sig_atomic_t open; /**< The flag indicating the opened state of a
 						 connection. TRUE or FALSE from
 						 stdbool are used.*/
+	struct firefly_transport_llp *llp;
 };
 
 /**
@@ -81,6 +85,8 @@ void sockaddr_in_ipaddr(struct sockaddr_in *addr, char *ip_addr);
  */
 unsigned short sockaddr_in_port(struct sockaddr_in *addr);
 
+int firefly_transport_llp_udp_posix_free_event(void *event_arg);
+
 /**
  * @brief Allocates and initializes a new connection with udp posix specific
  * data.
@@ -100,7 +106,6 @@ struct firefly_connection *firefly_connection_udp_posix_new(
 					firefly_channel_is_open_f on_channel_opened,
 					firefly_channel_closed_f on_channel_closed,
 					firefly_channel_accept_f on_channel_recv,
-					struct firefly_event_queue *event_queue,
 					struct firefly_transport_llp *llp,
 					struct sockaddr_in *remote_addr);
 

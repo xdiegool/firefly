@@ -48,7 +48,8 @@ typedef struct firefly_connection *(*firefly_on_conn_recv_pudp)(
  */
 struct firefly_transport_llp *firefly_transport_llp_udp_posix_new(
 		unsigned short local_port,
-		firefly_on_conn_recv_pudp on_conn_recv);
+		firefly_on_conn_recv_pudp on_conn_recv,
+		struct firefly_event_queue *event_queue);
 
 /**
  * @brief Close the socket and free any resources associated with this
@@ -59,7 +60,7 @@ struct firefly_transport_llp *firefly_transport_llp_udp_posix_new(
  *
  * @param llp The firefly_transport_llp to free.
  */
-void firefly_transport_llp_udp_posix_free(struct firefly_transport_llp **llp);
+void firefly_transport_llp_udp_posix_free(struct firefly_transport_llp *llp);
 
 /**
  * @brief Opens a connection on the provided link layer port.
@@ -77,28 +78,9 @@ struct firefly_connection *firefly_transport_connection_udp_posix_open(
 				firefly_channel_is_open_f on_channel_opened,
 				firefly_channel_closed_f on_channel_closed,
 				firefly_channel_accept_f on_channel_recv,
-				struct firefly_event_queue *event_queue,
 				const char *remote_ip_addr,
 				unsigned short remote_port,
 				struct firefly_transport_llp *llp);
-
-/**
- * @brief Set the state of the connection to closed.
- *
- * @param conn The connection to set the sate on.
- */
-void firefly_transport_connection_udp_posix_close(
-		struct firefly_connection *conn);
-
-/**
- * @brief Free any closed conenctions on the given firefly_transport_llp.
- *
- * @param llp The llp to search for closed connections on.
- * @return The number of connections closed.
- * @retval Negative number on error.
- * @retval 0 if no connection was closed.
- */
-int firefly_transport_udp_posix_clean_up(struct firefly_transport_llp *llp);
 
 /**
  * @brief Read data from the connection and fire events.

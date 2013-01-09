@@ -33,11 +33,15 @@ struct llp_connection_list_node {
 };
 
 /**
- * @brief The event free'ing a firefly_connection and all it's channels.
+ * @brief Compare a connection to some value. This funktion is used by
+ * find_connection to find a connection.
  *
- * @param event_arg The firefly_connection to free.
+ * @param conn The connection to compare.
+ * @param context The data to compare the connection to.
+ * @retval true if the context is considered identifying the connection.
+ * @retval false otherwise.
  */
-int firefly_transport_connection_udp_posix_free_event(void *event_arg);
+typedef bool (*conn_eq_f)(struct firefly_connection *conn, void *context);
 
 /**
  * @brief Adds a connection to the connection list in \a llp.
@@ -48,16 +52,8 @@ int firefly_transport_connection_udp_posix_free_event(void *event_arg);
 void add_connection_to_llp(struct firefly_connection *conn,
 		struct firefly_transport_llp *llp);
 
-/**
- * @brief Compare a connection to some value. This funktion is used by
- * find_connection to find a connection.
- *
- * @param conn The connection to compare.
- * @param context The data to compare the connection to.
- * @retval true if the context is considered identifying the connection.
- * @retval false otherwise.
- */
-typedef bool (*conn_eq_f)(struct firefly_connection *conn, void *context);
+struct firefly_connection *remove_connection_from_llp(struct firefly_transport_llp *llp,
+		void *context, conn_eq_f conn_eq);
 
 /**
  * @brief Finds the first \c struct #firefly_connection for which the equals
@@ -77,4 +73,5 @@ typedef bool (*conn_eq_f)(struct firefly_connection *conn, void *context);
 struct firefly_connection *find_connection(struct firefly_transport_llp *llp,
 		void *context, conn_eq_f conn_eq);
 
+bool firefly_connection_eq_ptr(struct firefly_connection *conn, void *context);
 #endif

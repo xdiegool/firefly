@@ -400,7 +400,7 @@ $(BUILD_DIR)/test/test_protocol_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_pr
 
 # Main test program for the transport tests.
 $(BUILD_DIR)/test/test_transport_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_transport_main test_transport test_transport_gen test_transport_udp_posix)
-	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) $(LDLIBS_TEST) -o $@ 
+	$(CC) $(LDFLAGS) -Wl,--allow-multiple-definition $(LDFLAGS_TEST) $^ $(filter-out %$(LIB_FIREFLY_NAME).a, $(LDLIBS_TEST)) -o $@ 
 
 # Main test program for the eth posix transport tests.
 # TODO fix --allow-mutliple-definition

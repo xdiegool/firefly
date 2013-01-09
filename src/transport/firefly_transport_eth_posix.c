@@ -169,7 +169,7 @@ struct firefly_connection *firefly_transport_connection_eth_posix_open(
 	struct firefly_connection *conn = firefly_connection_new_register(
 			on_channel_opened, on_channel_closed, on_channel_recv,
 			firefly_transport_eth_posix_write, event_queue,
-			conn_eth, true);
+			conn_eth, firefly_transport_connection_eth_posix_free, true);
 	if (conn == NULL || conn_eth == NULL) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 3,
 				"Failed in %s() on line %d.\n", __FUNCTION__,

@@ -6,9 +6,6 @@ int init_suit_udp_posix();
 
 int clean_suit_udp_posix();
 
-void test_cleanup_simple();
-void test_cleanup_many_conn();
-
 void test_recv_connection();
 void test_recv_data();
 void test_recv_conn_and_data();

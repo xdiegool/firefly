@@ -28,19 +28,15 @@ int main()
 			   ||
 		(CU_add_test(trans_gen, "test_add_conn_to_llp",
 				test_add_conn_to_llp) == NULL)
-			   /*||*/
+			   ||
+		(CU_add_test(trans_gen, "test_remove_conn_by_addr",
+				test_remove_conn_by_addr) == NULL)
 	) {
 		CU_cleanup_registry();
 		return CU_get_error();
 	}
 
 	if (
-		(CU_add_test(trans_udp_posix, "test_cleanup_simple",
-				test_cleanup_simple) == NULL)
-			   ||
-		(CU_add_test(trans_udp_posix, "test_cleanup_many_conn",
-				test_cleanup_many_conn) == NULL)
-			   ||
 		(CU_add_test(trans_udp_posix, "test_recv_connection",
 				test_recv_connection) == NULL)
 			   ||
