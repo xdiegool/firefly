@@ -5,14 +5,15 @@
 
 #include <utils/firefly_event_queue.h>
 
-#define PING_IFACE ("eth0")
-#define PING_MAC_ADDR ("f0:de:f1:f3:09:85")
+#define PING_IFACE ("eth3")
+#define PING_MAC_ADDR ("08:00:27:12:d1:ec")
 #define PING_PORT (55555)
-#define PING_ADDR ("127.0.0.1")
-#define PONG_IFACE ("eth0")
-#define PONG_MAC_ADDR ("00:26:18:2d:1c:8f")
+#define PING_ADDR ("10.13.13.101")
+
+#define PONG_IFACE ("eth2")
+#define PONG_MAC_ADDR ("08:00:27:34:94:9e")
 #define PONG_PORT (55556)
-#define PONG_ADDR ("127.0.0.1")
+#define PONG_ADDR ("10.13.13.102")
 
 #define PONG_DATA (2222)
 #define PING_DATA (1111)
