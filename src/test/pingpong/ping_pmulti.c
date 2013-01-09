@@ -1,4 +1,7 @@
 #include <pthread.h>
+#include <unistd.h>
+#include <sys/types.h>
+
 #include <labcomm.h>
 #include <protocol/firefly_protocol.h>
 #include <transport/firefly_transport_udp_posix.h>
@@ -186,6 +189,7 @@ static void *eth_reader_thread_main(void *args)
 void *ping_main_thread(void *arg)
 {
 	UNUSED_VAR(arg);
+	uid_t uid;
 	pthread_t reader_thread;
 	pthread_t event_thread;
 	struct event_queue_signals eq_s;
@@ -193,6 +197,12 @@ void *ping_main_thread(void *arg)
 	struct firefly_connection *conn;
 	struct firefly_transport_llp *eth_llp;
 	struct firefly_transport_llp *llp;
+
+	uid = geteuid();
+	if (uid != 0) {
+		fprintf(stderr, "Need root to ping with raw ethernet.\n");
+		return NULL;
+	}
 
 	pthread_mutex_init(&eq_s.eq_lock, NULL);
 	pthread_cond_init(&eq_s.eq_cond, NULL);

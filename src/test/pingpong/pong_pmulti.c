@@ -1,5 +1,6 @@
 #include <pthread.h>
 #include <unistd.h>
+#include <sys/types.h>
 
 #include <labcomm.h>
 #include <protocol/firefly_protocol.h>
@@ -219,12 +220,19 @@ static void *eth_reader_thread_main(void *args)
 void *pong_main_thread(void *arg)
 {
 	UNUSED_VAR(arg);
+	uid_t uid;
 	pthread_t event_thread;
 	pthread_t reader_thread;
 	struct thread_arg *ta;
 	struct event_queue_signals eq_s;
 	struct firefly_transport_llp *eth_llp;
 	struct firefly_transport_llp *llp;
+
+	uid = geteuid();
+	if (uid != 0) {
+		fprintf(stderr, "Need root to pong with raw ethernet.\n");
+		return NULL;
+	}
 
 	printf("Multipong started.\n");
 	ta = (struct thread_arg *) arg;
