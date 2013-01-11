@@ -54,14 +54,11 @@ void firefly_event_free(struct firefly_event **ev)
 
 int firefly_event_add(struct firefly_event_queue *eq, struct firefly_event *ev)
 {
-	struct firefly_eq_node *n = eq->head;
-	if (n != NULL && n->event->prio < ev->prio) {
-		n = NULL;
-	}
+	struct firefly_eq_node **n = &eq->head;
 
-	while (n != NULL && n->next != NULL &&
-			n->event->prio >= ev->prio) {
-		n = n->next;
+	// Find the node to insert the event before, it may be NULL and eq->head
+	while (*n != NULL && (*n)->event->prio >= ev->prio) {
+		n = &(*n)->next;
 	}
 
 	struct firefly_eq_node *node = malloc(sizeof(struct firefly_eq_node));
@@ -72,13 +69,8 @@ int firefly_event_add(struct firefly_event_queue *eq, struct firefly_event *ev)
 	}
 	node->event = ev;
 
-	if (n != NULL) {
-		node->next = n->next;
-		n->next = node;
-	} else {
-		node->next = eq->head;
-		eq->head = node;
-	}
+	node->next = (*n);
+	*n = node;
 
 	return 0;
 }

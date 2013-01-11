@@ -199,6 +199,89 @@ void test_length()
 	firefly_event_queue_free(&q);
 }
 
+static int complex_event(void *event_arg)
+{
+	static int last_id = 0;
+	int id = *((int*) event_arg);
+	int expected_id = 0;
+	switch (last_id) {
+		case 0:
+			expected_id = 1;
+			break;
+		case 1:
+			expected_id = 2;
+			break;
+		case 2:
+			expected_id = 4;
+			break;
+		case 3:
+			expected_id = 7;
+			break;
+		case 4:
+			expected_id = 5;
+			break;
+		case 5:
+			expected_id = 6;
+			break;
+		case 6:
+			expected_id = 3;
+			break;
+		case 7:
+			expected_id = 0;
+			break;
+	}
+	CU_ASSERT_EQUAL(expected_id, id);
+	if (expected_id != id) {
+		printf("exp: %d, id: %d\n", expected_id, id);
+	}
+	last_id = id;
+	return 0;
+}
+
+void test_complex_priorities()
+{
+	struct firefly_event_queue *q =
+		firefly_event_queue_new(firefly_event_add, NULL);
+
+	int id_1 = 1;
+	struct firefly_event *ev_1 = firefly_event_new(FIREFLY_PRIORITY_LOW,
+			complex_event, &id_1);
+	int id_2 = 2;
+	struct firefly_event *ev_2 = firefly_event_new(FIREFLY_PRIORITY_MEDIUM,
+			complex_event, &id_2);
+	int id_3 = 3;
+	struct firefly_event *ev_3 = firefly_event_new(FIREFLY_PRIORITY_LOW,
+			complex_event, &id_3);
+	int id_4 = 4;
+	struct firefly_event *ev_4 = firefly_event_new(FIREFLY_PRIORITY_HIGH,
+			complex_event, &id_4);
+	int id_5 = 5;
+	struct firefly_event *ev_5 = firefly_event_new(FIREFLY_PRIORITY_HIGH,
+			complex_event, &id_5);
+	int id_6 = 6;
+	struct firefly_event *ev_6 = firefly_event_new(FIREFLY_PRIORITY_MEDIUM,
+			complex_event, &id_6);
+	int id_7 = 7;
+	struct firefly_event *ev_7 = firefly_event_new(FIREFLY_PRIORITY_LOW,
+			complex_event, &id_7);
+
+	q->offer_event_cb(q, ev_1);
+	firefly_event_execute(firefly_event_pop(q));
+	q->offer_event_cb(q, ev_2);
+	q->offer_event_cb(q, ev_3);
+	firefly_event_execute(firefly_event_pop(q));
+	q->offer_event_cb(q, ev_4);
+	q->offer_event_cb(q, ev_5);
+	q->offer_event_cb(q, ev_6);
+	firefly_event_execute(firefly_event_pop(q));
+	firefly_event_execute(firefly_event_pop(q));
+	firefly_event_execute(firefly_event_pop(q));
+	q->offer_event_cb(q, ev_7);
+	firefly_event_execute(firefly_event_pop(q));
+	firefly_event_execute(firefly_event_pop(q));
+	firefly_event_queue_free(&q);
+}
+
 int main()
 {
 	CU_pSuite event_suite = NULL;
@@ -234,6 +317,9 @@ int main()
 		||
 		(CU_add_test(event_suite, "test_length",
 					 test_length) == NULL)
+		||
+		(CU_add_test(event_suite, "test_complex_priorities",
+					 test_complex_priorities) == NULL)
 	   ) {
 		CU_cleanup_registry();
 		return CU_get_error();
