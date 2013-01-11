@@ -16,9 +16,13 @@ void test_recv_conn_and_two_data();
 void test_conn_open_and_send();
 void test_conn_open_and_recv();
 
+// test free llp
+void test_llp_free_empty();
+void test_llp_free_mult_conns();
+void test_llp_free_mult_conns_w_chans();
+
 void test_open_and_recv_with_two_llp();
 void test_recv_big_connection();
-void test_reader_scale_back();
 void test_null_pointer_as_callback();
 
 void test_read_mult_threads();

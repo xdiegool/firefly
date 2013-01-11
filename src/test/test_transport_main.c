@@ -73,11 +73,17 @@ int main()
 		(CU_add_test(trans_udp_posix, "test_recv_big_connection",
 					 test_recv_big_connection) == NULL)
 				||
-		(CU_add_test(trans_udp_posix, "test_reader_scale_back",
-					 test_reader_scale_back) == NULL)
-				||
 		(CU_add_test(trans_udp_posix, "test_read_mult_threads",
 					 test_read_mult_threads) == NULL)
+				||
+		(CU_add_test(trans_udp_posix, "test_llp_free_empty",
+					 test_llp_free_empty) == NULL)
+				||
+		(CU_add_test(trans_udp_posix, "test_llp_free_mult_conns",
+					 test_llp_free_mult_conns) == NULL)
+				||
+		(CU_add_test(trans_udp_posix, "test_llp_free_mult_conns_w_chans",
+					 test_llp_free_mult_conns_w_chans) == NULL)
 	   ) {
 		CU_cleanup_registry();
 		return CU_get_error();
