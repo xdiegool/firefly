@@ -34,7 +34,7 @@ static void execute_remaining_events(struct firefly_event_queue *eq)
 static void execute_events(struct firefly_event_queue *eq, size_t nbr_events)
 {
 	struct firefly_event *ev;
-	for (int i = 0; i < nbr_events; i++) {
+	for (size_t i = 0; i < nbr_events; i++) {
 		ev = firefly_event_pop(eq);
 		CU_ASSERT_PTR_NOT_NULL(ev);
 		firefly_event_execute(ev);
