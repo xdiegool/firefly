@@ -1,16 +1,16 @@
-#ifndef FIREFLY_TRANSPORT_ETH_LWIP_H
-#define FIREFLY_TRANSPORT_ETH_LWIP_H
+#ifndef FIREFLY_TRANSPORT_ETH_STELLARIS_H
+#define FIREFLY_TRANSPORT_ETH_STELLARIS_H
 
 #include <transport/firefly_transport.h>
 
 #include <lwip/pbuf.h>  // For struct pbuf.
 #include <lwip/netif.h> // For struct netif.
 
-struct transport_llp_eth_lwip;
+struct transport_llp_eth_stellaris;
 
-struct protocol_connection_eth_lwip;
+struct protocol_connection_eth_stellaris;
 
-typedef struct firefly_connection *(*firefly_on_conn_recv_eth_lwip)(
+typedef struct firefly_connection *(*firefly_on_conn_recv_eth_stellaris)(
 		struct firefly_transport_llp *llp, char *mac_address);
 
 /**
@@ -23,13 +23,13 @@ typedef struct firefly_connection *(*firefly_on_conn_recv_eth_lwip)(
  * @return A pointer to the created \c firefly_transport_llp.
  * @retval NULL Returns \c NULL upon failure.
  */
-struct firefly_transport_llp *firefly_transport_llp_eth_lwip_new(int iface_num,
-		firefly_on_conn_recv_eth_lwip on_conn_recv);
+struct firefly_transport_llp *firefly_transport_llp_eth_stellaris_new(int iface_num,
+		firefly_on_conn_recv_eth_stellaris on_conn_recv);
 
 /**
- * Callback used by LWIP to signal that a new Ethernet frame was received.
+ * Callback used by stellaris to signal that a new Ethernet frame was received.
  *
- * @warning Should not be altered! It's an ugly hack to make LWIP play nicely
+ * @warning Should not be altered! It's an ugly hack to make stellaris play nicely
  * with us...
  *
  * @param netif The network interface the freame was received on.
@@ -42,7 +42,7 @@ void firefly_recieve_ethernet(struct netif *netif, struct pbuf *pbuf);
  *
  * @param llp The \c firefly_transport_llp to free
  */
-void firefly_transport_llp_eth_lwip_free(struct firefly_transport_llp **llp);
+void firefly_transport_llp_eth_stellaris_free(struct firefly_transport_llp **llp);
 
 /**
  * Opens a new connection to the specified mac address with the specified
@@ -58,7 +58,7 @@ void firefly_transport_llp_eth_lwip_free(struct firefly_transport_llp **llp);
  * @return A pointer to the new \c firefly_connection that is opened.
  * @retval NULL Returns \c NULL upon failure.
  */
-struct firefly_connection *firefly_transport_connection_eth_lwip_open(
+struct firefly_connection *firefly_transport_connection_eth_stellaris_open(
 				firefly_channel_is_open_f on_channel_opened,
 				firefly_channel_closed_f on_channel_closed,
 				firefly_channel_accept_f on_channel_recv,
@@ -71,10 +71,10 @@ struct firefly_connection *firefly_transport_connection_eth_lwip_open(
  *
  * @param conn The connection to close.
  */
-void firefly_transport_connection_eth_lwip_close(struct firefly_connection *conn);
+void firefly_transport_connection_eth_stellaris_close(struct firefly_connection *conn);
 
 // TODO: Do we need this?
-void firefly_transport_eth_lwip_read(struct firefly_transport_llp *llp);
+void firefly_transport_eth_stellaris_read(struct firefly_transport_llp *llp);
 
 #endif
 

@@ -1,11 +1,11 @@
 /**
  * @file
- * @brief The public API of the transport Ethernet LWIP with specific structures
+ * @brief The public API of the transport Ethernet Stellaris with specific structures
  * and functions.
  */
 
-#include <transport/firefly_transport_eth_lwip.h>
-#include "transport/firefly_transport_eth_lwip_private.h"
+#include <transport/firefly_transport_eth_stellaris.h>
+#include "transport/firefly_transport_eth_stellaris_private.h"
 
 #include <utils/firefly_event_queue.h>
 #include <utils/firefly_errors.h>
@@ -23,25 +23,25 @@
 
 static struct firefly_transport_llp *llp = NULL;
 
-// NOTE: Expects that the LWIP TCP/IP stack is set up when called.
-struct firefly_transport_llp *firefly_transport_llp_eth_lwip_new(int iface_num,
-		firefly_on_conn_recv_eth_lwip on_conn_recv)
+// NOTE: Expects that the stellaris TCP/IP stack is set up when called.
+struct firefly_transport_llp *firefly_transport_llp_eth_stellaris_new(int iface_num,
+		firefly_on_conn_recv_eth_stellaris on_conn_recv)
 {
 	UNUSED_VAR(iface_num);
-	struct transport_llp_eth_lwip *llp_eth_lwip;
+	struct transport_llp_eth_stellaris *llp_eth_stellaris;
 
-	llp_eth_lwip->recv_buf = pbuf_alloc(PBUF_LINK,
+	llp_eth_stellaris->recv_buf = pbuf_alloc(PBUF_LINK,
 					    PBUF_DEFAULT_SIZE,
 					    PBUF_RAM);
 
-	llp_eth_lwip = malloc(sizeof(*llp_eth_lwip));
+	llp_eth_stellaris = malloc(sizeof(*llp_eth_stellaris));
 
-	llp_eth_lwip->on_conn_recv = on_conn_recv;
-	llp_eth_lwip->recv_buf = NULL;
-	llp_eth_lwip->recv_buf_size = 0;
+	llp_eth_stellaris->on_conn_recv = on_conn_recv;
+	llp_eth_stellaris->recv_buf = NULL;
+	llp_eth_stellaris->recv_buf_size = 0;
 
 	llp = malloc(sizeof(struct firefly_transport_llp));
-	llp->llp_platspec = llp_eth_lwip;
+	llp->llp_platspec = llp_eth_stellaris;
 	llp->conn_list = NULL;
 
 	return llp;
@@ -67,17 +67,17 @@ void firefly_recieve_ethernet(struct netif *netif, struct pbuf *pbuf)
 	udpPrintf("\nEOF\n");
 }
 
-void firefly_transport_llp_eth_lwip_free(struct firefly_transport_llp **llp)
+void firefly_transport_llp_eth_stellaris_free(struct firefly_transport_llp **llp)
 {
-	struct transport_llp_eth_lwip *llp_eth;
-	llp_eth = (struct transport_llp_eth_lwip *) (*llp)->llp_platspec;
+	struct transport_llp_eth_stellaris *llp_eth;
+	llp_eth = (struct transport_llp_eth_stellaris *) (*llp)->llp_platspec;
 	// close(llp_eth->socket);
 
 	struct llp_connection_list_node *head = (*llp)->conn_list;
 	struct llp_connection_list_node *tmp = NULL;
 	while (head != NULL) {
 		tmp = head->next;
-		firefly_transport_connection_eth_lwip_free_event(head->conn);
+		firefly_transport_connection_eth_stellaris_free_event(head->conn);
 		free(head);
 		head = tmp;
 	}
@@ -88,28 +88,28 @@ void firefly_transport_llp_eth_lwip_free(struct firefly_transport_llp **llp)
 	*llp = NULL;
 }
 
-/*struct firefly_connection *firefly_transport_connection_eth_lwip_new(*/
+/*struct firefly_connection *firefly_transport_connection_eth_stellaris_new(*/
 		/*struct firefly_transport_llp *llp, char *mac_address)*/
 /*{*/
 	/*return NULL;*/
 /*}*/
 
-void firefly_transport_connection_eth_lwip_free(struct firefly_connection *conn)
+void firefly_transport_connection_eth_stellaris_free(struct firefly_connection *conn)
 {
 	struct firefly_event *ev = firefly_event_new(1,
-			firefly_transport_connection_eth_lwip_free_event,
+			firefly_transport_connection_eth_stellaris_free_event,
 			conn);
 	conn->event_queue->offer_event_cb(conn->event_queue, ev);
 }
 
-int firefly_transport_connection_eth_lwip_free_event(void *event_arg)
+int firefly_transport_connection_eth_stellaris_free_event(void *event_arg)
 {
 	struct firefly_connection *conn;
-	struct protocol_connection_eth_lwip *conn_eth;
+	struct protocol_connection_eth_stellaris *conn_eth;
 
 	conn = (struct firefly_connection *) event_arg;
 	conn_eth =
-		(struct protocol_connection_eth_lwip *)
+		(struct protocol_connection_eth_stellaris *)
 		conn->transport_conn_platspec;
 
 	free(conn_eth->remote_addr);
@@ -119,7 +119,7 @@ int firefly_transport_connection_eth_lwip_free_event(void *event_arg)
 	return 0;
 }
 
-struct firefly_connection *firefly_transport_connection_eth_lwip_open(
+struct firefly_connection *firefly_transport_connection_eth_stellaris_open(
 				firefly_channel_is_open_f on_channel_opened,
 				firefly_channel_closed_f on_channel_closed,
 				firefly_channel_accept_f on_channel_recv,
@@ -137,7 +137,7 @@ struct firefly_connection *firefly_transport_connection_eth_lwip_open(
 	// int err;
 	// struct ifreq ifr;
 	// strncpy(ifr.ifr_name, if_name, IFNAMSIZ);
-	// err = ioctl(((struct transport_llp_eth_lwip *)llp->llp_platspec)->socket,
+	// err = ioctl(((struct transport_llp_eth_stellaris *)llp->llp_platspec)->socket,
 	// 		SIOCGIFINDEX, &ifr);
 	// if(err < 0){
 	// 		firefly_error(FIREFLY_ERROR_SOCKET, 3,
@@ -147,11 +147,11 @@ struct firefly_connection *firefly_transport_connection_eth_lwip_open(
 	// }
 
 	// /* Alloc connection structs */
-	// struct protocol_connection_eth_lwip *conn_eth;
-	// conn_eth = malloc(sizeof(struct protocol_connection_eth_lwip));
+	// struct protocol_connection_eth_stellaris *conn_eth;
+	// conn_eth = malloc(sizeof(struct protocol_connection_eth_stellaris));
 	// struct firefly_connection *conn = firefly_connection_new_register(
 	// 		on_channel_opened, on_channel_closed, on_channel_recv,
-	// 		firefly_transport_eth_lwip_write, event_queue,
+	// 		firefly_transport_eth_stellaris_write, event_queue,
 	// 		conn_eth, true);
 	// if (conn == NULL || conn_eth == NULL) {
 	// 	firefly_error(FIREFLY_ERROR_ALLOC, 3,
@@ -179,7 +179,7 @@ struct firefly_connection *firefly_transport_connection_eth_lwip_open(
 	// conn_eth->remote_addr->sll_ifindex  = ifr.ifr_ifindex;
 
 	// conn_eth->socket =
-	// 	((struct transport_llp_eth_lwip *)llp->llp_platspec)->socket;
+	// 	((struct transport_llp_eth_stellaris *)llp->llp_platspec)->socket;
 
 	// add_connection_to_llp(conn, llp);
 
@@ -187,20 +187,20 @@ struct firefly_connection *firefly_transport_connection_eth_lwip_open(
 	return NULL;
 }
 
-void firefly_transport_connection_eth_lwip_close(
+void firefly_transport_connection_eth_stellaris_close(
 		struct firefly_connection *conn)
 {
-	struct protocol_connection_eth_lwip *conn_eth =
-		(struct protocol_connection_eth_lwip *)
+	struct protocol_connection_eth_stellaris *conn_eth =
+		(struct protocol_connection_eth_stellaris *)
 			conn->transport_conn_platspec;
 	conn_eth->open = FIREFLY_CONNECTION_CLOSED;
 }
 
-void firefly_transport_eth_lwip_write(unsigned char *data, size_t data_size,
+void firefly_transport_eth_stellaris_write(unsigned char *data, size_t data_size,
 		struct firefly_connection *conn)
 {
-	struct protocol_connection_eth_lwip *conn_eth =
-		(struct protocol_connection_eth_lwip *) conn->transport_conn_platspec;
+	struct protocol_connection_eth_stellaris *conn_eth =
+		(struct protocol_connection_eth_stellaris *) conn->transport_conn_platspec;
 	UNUSED_VAR(conn_eth);
 	UNUSED_VAR(data);
 	UNUSED_VAR(data_size);
@@ -209,7 +209,7 @@ void firefly_transport_eth_lwip_write(unsigned char *data, size_t data_size,
 }
 
 // TODO: Do we need this?
-//void recv_buf_resize(struct transport_llp_eth_lwip *llp_eth, size_t new_size)
+//void recv_buf_resize(struct transport_llp_eth_stellaris *llp_eth, size_t new_size)
 //{
 //	if (new_size > llp_eth->recv_buf_size) {
 //		llp_eth->recv_buf = realloc(llp_eth->recv_buf, new_size);
@@ -224,7 +224,7 @@ void firefly_transport_eth_lwip_write(unsigned char *data, size_t data_size,
 //	}
 //}
 
-void firefly_transport_eth_lwip_read(struct firefly_transport_llp *llp)
+void firefly_transport_eth_stellaris_read(struct firefly_transport_llp *llp)
 {
 	UNUSED_VAR(llp);
 }
