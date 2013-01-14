@@ -119,7 +119,11 @@ INC_TRANSPORT_UDP_LWIP = $(addprefix -I, \
 		$(LWIP_INCLUDE_DIR) \
 		$(COMMOM_ADC) \
 		../ft-sense/lib/ \
+		../ft-sense/src/adc_freertos_lwip/src \
 		)
+
+# Inluces for $(LIB_TRANSPORT_ETH_LWIP_NAME).
+INC_TRANSPORT_ETH_LWIP = $(INC_TRANSPORT_UDP_LWIP)
 
 # Includes for test programs.
 INC_TEST = $(addprefix -I, \
@@ -203,6 +207,7 @@ LIB_FIREFLY_NAME = firefly
 LIB_TRANSPORT_UDP_POSIX_NAME = transport-udp-posix
 LIB_TRANSPORT_ETH_POSIX_NAME = transport-eth-posix
 LIB_TRANSPORT_UDP_LWIP_NAME = transport-udp-lwip
+LIB_TRANSPORT_ETH_LWIP_NAME = transport-eth-lwip
 
 # Libraries to build.
 OUR_LIBS=$(patsubst %,$(BUILD_DIR)/lib%.a,$(LIB_FIREFLY_NAME) $(LIB_TRANSPORT_UDP_POSIX_NAME) $(LIB_TRANSPORT_UDP_LWIP_NAME))
@@ -261,6 +266,15 @@ TRANSPORT_UDP_LWIP_SRC = $(shell find $(SRC_DIR)/transport/ -type f \( -name '*u
 
 # Object files from sources.
 TRANSPORT_UDP_LWIP_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(TRANSPORT_UDP_LWIP_SRC))
+
+### }
+
+### Transport ETH LWIP {
+# Source files for lib$(LIB_TRANSPORT_UDP_LWIP_NAME).a
+TRANSPORT_ETH_LWIP_SRC = $(shell find $(SRC_DIR)/transport/ -type f \( -name '*eth_lwip*.c' -o -name "firefly_transport.c" \) -print | sed 's/^$(SRC_DIR)\///')
+
+# Object files from sources.
+TRANSPORT_ETH_LWIP_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(TRANSPORT_ETH_LWIP_SRC))
 
 ### }
 
@@ -382,6 +396,18 @@ $(BUILD_DIR)/lib$(LIB_TRANSPORT_UDP_LWIP_NAME).a: $(TRANSPORT_UDP_LWIP_OBJS)
 $(TRANSPORT_UDP_LWIP_OBJS): $$(patsubst $$(BUILD_DIR)/%.o,%.c,$$@) |$$(@D)
 	$(CC) -c $(CFLAGS) $(INC_TRANSPORT_UDP_LWIP) -o $@ $<
 
+
+### }
+
+### Transport ETH LWIP targets {
+
+# target: build/lib$(LIB_TRANSPORT_ETH_LWIP_NAME).a  - Build static library for transport Ethernet lwip.
+$(BUILD_DIR)/lib$(LIB_TRANSPORT_ETH_LWIP_NAME).a: $(TRANSPORT_ETH_LWIP_OBJS)
+	ar -rc $@ $^
+
+# Compile ETH LWIP files.
+$(TRANSPORT_ETH_LWIP_OBJS): $$(patsubst $$(BUILD_DIR)/%.o,%.c,$$@) |$$(@D)
+	$(CC) -c $(CFLAGS) $(INC_TRANSPORT_ETH_LWIP) -o $@ $<
 
 ### }
 
