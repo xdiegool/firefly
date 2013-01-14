@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 #include <pthread.h>
 
@@ -37,11 +38,14 @@ int main(int argc, char **argv)
 	pthread_cond_t ct = PTHREAD_COND_INITIALIZER;
 	ta.m = cm;
 	ta.t = ct;
+	ta.started = false;
 
 	if (argc == 1) {
 		start_pong();
 		pthread_mutex_lock(&ta.m);
-		pthread_cond_wait(&ta.t, &ta.m);
+		while (!ta.started) {
+			pthread_cond_wait(&ta.t, &ta.m);
+		}
 		pthread_mutex_unlock(&ta.m);
 		start_ping();
 		pthread_join(ping_thread, NULL);

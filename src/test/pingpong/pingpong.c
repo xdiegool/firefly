@@ -58,16 +58,23 @@ void *event_thread_main(void *args)
 		(struct event_queue_signals *)
 		firefly_event_queue_get_context(eq);
 	struct firefly_event *ev = NULL;
+	int event_left = 0;
+	bool finish = eq_s->event_exec_finish;
 
 	// TODO consider another expression besides '1'
-	while (1) {
+	while (!finish || event_left > 0) {
 		pthread_mutex_lock(&eq_s->eq_lock);
-		while (firefly_event_queue_length(eq) < 1) {
+		event_left = firefly_event_queue_length(eq);
+		while (event_left < 1 && !finish) {
 			pthread_cond_wait(&eq_s->eq_cond, &eq_s->eq_lock);
+			finish = eq_s->event_exec_finish;
+			event_left = firefly_event_queue_length(eq);
 		}
 		ev = firefly_event_pop(eq);
 		pthread_mutex_unlock(&eq_s->eq_lock);
-		firefly_event_execute(ev);
+		if (ev != NULL) {
+			firefly_event_execute(ev);
+		}
 	}
 	return NULL;
 }
