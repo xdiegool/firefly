@@ -16,56 +16,107 @@
 #include "transport/firefly_transport_private.h"
 #include "protocol/firefly_protocol_private.h"
 
-#include "udp_printf.h"
-
-#define ERROR_STR_MAX_LEN      (256)
-#define PBUF_DEFAULT_SIZE      (10)
+#include <driverlib/ethernet.h>
 
 static struct firefly_transport_llp *llp = NULL;
 
-// NOTE: Expects that the stellaris TCP/IP stack is set up when called.
-struct firefly_transport_llp *firefly_transport_llp_eth_stellaris_new(int iface_num,
+union ethframe *build_ethernet_frame(struct transport_eth_addr src,
+		struct transport_eth_addr dest, unsigned char *data,
+		size_t data_len)
+{
+	if (data_len > STELLARIS_ETH_MAX_DATA_LEN) {
+		 firefly_error(FIREFLY_ERROR_ALLOC, 3,
+				 "Too much data for ethernet frame! In %s() on"
+				 "line %d.\n", __func__, __LINE__);
+		 return NULL;
+	}
+
+	union ethframe *frame = calloc(1, sizeof(union ethframe));
+	if (frame == NULL) {
+		 firefly_error(FIREFLY_ERROR_ALLOC, 3,
+				 "Failed while allocating eth_frame in %s() on"
+				 "line %d.\n", __func__, __LINE__);
+		 return NULL;
+	}
+
+	memcpy(&(frame->field.header.dest), &dest, ETH_ADDR_LEN);
+	memcpy(&(frame->field.header.src), &src, ETH_ADDR_LEN);
+	frame->field.header.proto = htons(FIREFLY_ETH_PROTOCOL);
+	memcpy(frame->field.data, data, data_len);
+
+	return frame;
+}
+
+int send_ethernet_frame(struct firefly_transport_llp* llp,
+		union ethframe *frame, long data_len) {
+	struct transport_llp_eth_stellaris *llp_stellaris =
+		(struct transport_llp_eth_stellaris *) llp->llp_platspec;
+	long res = EthernetPacketPut(llp_stellaris->ethernet_base,
+			frame->buffer, data_len + ETH_HEADER_LEN);
+	if (res == data_len + ETH_HEADER_LEN) {
+		firefly_error(FIREFLY_ERROR_SOCKET, 1, "SUCCESS!!!!!!!!\n");
+	} else {
+		firefly_error(FIREFLY_ERROR_SOCKET, 1, "FAAAAAIL-WHALE!!!!!!!!\n");
+	}
+
+	return 0;
+}
+
+static union ethframe *f;
+static size_t data_len;
+
+void sendstuff() {
+	send_ethernet_frame(llp, f, data_len);
+}
+
+// NOTE: Expects the Stellaris Ethernet controller to be fully up before called.
+struct firefly_transport_llp *firefly_transport_llp_eth_stellaris_new(
+		int ethernet_base,
 		firefly_on_conn_recv_eth_stellaris on_conn_recv)
 {
-	UNUSED_VAR(iface_num);
-	struct transport_llp_eth_stellaris *llp_eth_stellaris;
+	struct transport_llp_eth_stellaris *llp_eth_stellaris =
+		malloc(sizeof(*llp_eth_stellaris));
 
-	llp_eth_stellaris->recv_buf = pbuf_alloc(PBUF_LINK,
-					    PBUF_DEFAULT_SIZE,
-					    PBUF_RAM);
-
-	llp_eth_stellaris = malloc(sizeof(*llp_eth_stellaris));
-
-	llp_eth_stellaris->on_conn_recv = on_conn_recv;
-	llp_eth_stellaris->recv_buf = NULL;
-	llp_eth_stellaris->recv_buf_size = 0;
+	llp_eth_stellaris->ethernet_base = ethernet_base;
+	// TODO: Put this back if we need it.
+	/*llp_eth_stellaris->recv_buf      = malloc(STELLARIS_ETH_MAX_DATA_LEN);*/
+	/*llp_eth_stellaris->recv_buf_size = STELLARIS_ETH_MAX_DATA_LEN;*/
+	llp_eth_stellaris->on_conn_recv  = on_conn_recv;
 
 	llp = malloc(sizeof(struct firefly_transport_llp));
 	llp->llp_platspec = llp_eth_stellaris;
-	llp->conn_list = NULL;
+	llp->conn_list    = NULL;
+
+	// TODO: Test data, remove later.
+	unsigned char data[]           = "test";
+	data_len                       = sizeof(data);
+	struct transport_eth_addr src  = {  { 0x00,0x42,0x42,0x42,0x42,0x10 } };
+	struct transport_eth_addr dest = {  { 0x00,0x26,0x2d,0xf9,0x5b,0xb8 } };
+	f = build_ethernet_frame(src, dest, data, data_len);
 
 	return llp;
 }
 
 // TODO: Implement correctly!
-void firefly_recieve_ethernet(struct netif *netif, struct pbuf *pbuf)
-{
-	struct ethhdr *eth_header;
-	UNUSED_VAR(netif);
+/*void firefly_recieve_ethernet(struct netif *netif, struct pbuf *pbuf)*/
+/*{*/
+	/*[>struct ethhdr *eth_header;<]*/
+	/*UNUSED_VAR(netif);*/
+	/*UNUSED_VAR(pbuf);*/
 
-	eth_header = (struct ethhdr*) pbuf->payload;
+	/*[>eth_header = (struct ethhdr*) pbuf->payload;<]*/
 
-	for (size_t i = 0; i < pbuf->len - 2; ++i) {
-		if (i != 0 && (i % 16) == 0) {
-			udpPrintf("\n");
-		} else if (i != 0 && (i % 8) == 0) {
-			udpPrintf("  ");
-		}
-		unsigned int value = (unsigned int) ((unsigned char *) pbuf->payload)[i + 2];
-		udpPrintf("%2x ", value);
-	}
-	udpPrintf("\nEOF\n");
-}
+	/*[>for (size_t i = 0; i < pbuf->len - 2; ++i) {<]*/
+		/*[>if (i != 0 && (i % 16) == 0) {<]*/
+			/*[>[>udpPrintf("\n");<]<]*/
+		/*[>} else if (i != 0 && (i % 8) == 0) {<]*/
+			/*[>[>udpPrintf("  ");<]<]*/
+		/*[>}<]*/
+		/*[>unsigned int value = (unsigned int) ((unsigned char *) pbuf->payload)[i + 2];<]*/
+		/*[>[>udpPrintf("%2x ", value);<]<]*/
+	/*[>}<]*/
+	/*[>udpPrintf("\nEOF\n");<]*/
+/*}*/
 
 void firefly_transport_llp_eth_stellaris_free(struct firefly_transport_llp **llp)
 {
@@ -82,7 +133,7 @@ void firefly_transport_llp_eth_stellaris_free(struct firefly_transport_llp **llp
 		head = tmp;
 	}
 
-	pbuf_free(llp_eth->recv_buf);
+	free(llp_eth->recv_buf);
 	free(llp_eth);
 	free(*llp);
 	*llp = NULL;
@@ -112,7 +163,7 @@ int firefly_transport_connection_eth_stellaris_free_event(void *event_arg)
 		(struct protocol_connection_eth_stellaris *)
 		conn->transport_conn_platspec;
 
-	free(conn_eth->remote_addr);
+	/*free(conn_eth->remote_addr);*/
 	free(conn_eth);
 	firefly_connection_free(&conn);
 

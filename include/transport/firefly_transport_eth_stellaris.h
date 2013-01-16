@@ -6,12 +6,33 @@
 #include <lwip/pbuf.h>  // For struct pbuf.
 #include <lwip/netif.h> // For struct netif.
 
+#define ETH_ADDR_LEN (6)
+
+/**
+ * A struct representing an Ethernet address.
+ */
+struct transport_eth_addr {
+	unsigned char addr[ETH_ADDR_LEN];
+};
+
+/**
+ * An opaque struct representing an Ethernet header.
+ */
+struct ethhdr;
+
+/**
+ * An opaque struct representing an Ethernet frame.
+ */
+union ethframe;
+
 struct transport_llp_eth_stellaris;
 
 struct protocol_connection_eth_stellaris;
 
+void sendstuff();
+
 typedef struct firefly_connection *(*firefly_on_conn_recv_eth_stellaris)(
-		struct firefly_transport_llp *llp, char *mac_address);
+		struct firefly_transport_llp *llp, unsigned char *mac_address);
 
 /**
  * @brief Allocates and initializes a new \c firefly_transport_llp on an
@@ -23,7 +44,8 @@ typedef struct firefly_connection *(*firefly_on_conn_recv_eth_stellaris)(
  * @return A pointer to the created \c firefly_transport_llp.
  * @retval NULL Returns \c NULL upon failure.
  */
-struct firefly_transport_llp *firefly_transport_llp_eth_stellaris_new(int iface_num,
+struct firefly_transport_llp *firefly_transport_llp_eth_stellaris_new(
+		int iface_num,
 		firefly_on_conn_recv_eth_stellaris on_conn_recv);
 
 /**
@@ -35,7 +57,7 @@ struct firefly_transport_llp *firefly_transport_llp_eth_stellaris_new(int iface_
  * @param netif The network interface the freame was received on.
  * @param pbuf The data that was received.
  */
-void firefly_recieve_ethernet(struct netif *netif, struct pbuf *pbuf);
+//void firefly_recieve_ethernet(struct netif *netif, struct pbuf *pbuf);
 
 /**
  * Frees a \c firefly_transport_llp and its members.
