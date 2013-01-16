@@ -6,15 +6,6 @@
 #include <lwip/pbuf.h>  // For struct pbuf.
 #include <lwip/netif.h> // For struct netif.
 
-#define ETH_ADDR_LEN (6)
-
-/**
- * A struct representing an Ethernet address.
- */
-struct transport_eth_addr {
-	unsigned char addr[ETH_ADDR_LEN];
-};
-
 /**
  * An opaque struct representing an Ethernet header.
  */
@@ -38,14 +29,12 @@ typedef struct firefly_connection *(*firefly_on_conn_recv_eth_stellaris)(
  * @brief Allocates and initializes a new \c firefly_transport_llp on an
  * Ethernet interface.
  *
- * @param iface_num The number of the interface to listen to.
  * @param on_conn_recv The callback to call when a new connection is received.
  *
  * @return A pointer to the created \c firefly_transport_llp.
  * @retval NULL Returns \c NULL upon failure.
  */
 struct firefly_transport_llp *firefly_transport_llp_eth_stellaris_new(
-		int iface_num,
 		firefly_on_conn_recv_eth_stellaris on_conn_recv);
 
 /**
@@ -95,7 +84,6 @@ struct firefly_connection *firefly_transport_connection_eth_stellaris_open(
  */
 void firefly_transport_connection_eth_stellaris_close(struct firefly_connection *conn);
 
-// TODO: Do we need this?
 void firefly_transport_eth_stellaris_read(struct firefly_transport_llp *llp);
 
 #endif

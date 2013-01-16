@@ -8,15 +8,15 @@
 
 #include <signal.h>
 
-
 #define FIREFLY_ETH_PROTOCOL	0x1337
 #define STELLARIS_ETH_MAX_DATA_LEN (800)
 #define ETH_HEADER_LEN (14)
 #define STELLARIS_ETH_MAX_FRAME_LEN (814)
+#define ETH_ADDR_LEN (6)
 
 struct ethhdr {
-	struct transport_eth_addr dest;
-	struct transport_eth_addr src;
+	unsigned char dest[ETH_ADDR_LEN];
+	unsigned char src[ETH_ADDR_LEN];
 	unsigned short proto;
 };
 
@@ -29,15 +29,13 @@ union ethframe {
 };
 
 struct transport_llp_eth_stellaris {
-	unsigned long ethernet_base; // TODO: Should this be in connection?
-	struct transport_eth_addr src_addr;
-	unsigned char *recv_buf;
-	size_t recv_buf_size;
+	unsigned char src_addr[ETH_ADDR_LEN];
+	union ethframe recv_buf;
 	firefly_on_conn_recv_eth_stellaris on_conn_recv;
 };
 
 struct protocol_connection_eth_stellaris {
-	struct transport_eth_addr remote_addr;
+	unsigned char remote_addr[ETH_ADDR_LEN];
 	sig_atomic_t open; /**< The flag indicating the opened state of a
 						 connection.*/
 };
@@ -53,8 +51,8 @@ struct protocol_connection_eth_stellaris {
  * @return The constructed ethernet frame.
  * @retval struct eth_frame or \c NULL on failure.
  */
-union ethframe *build_ethernet_frame(struct transport_eth_addr src,
-		struct transport_eth_addr dest, unsigned char *data,
+union ethframe *build_ethernet_frame(unsigned char *src,
+		unsigned char *dest, unsigned char *data,
 		size_t data_len);
 
 /**
@@ -67,8 +65,7 @@ union ethframe *build_ethernet_frame(struct transport_eth_addr src,
  * @return An \c int representing the success.
  * @retval 0 on success, -1 on failure.
  */
-int send_ethernet_frame(struct firefly_transport_llp* llp,
-		union ethframe *frame, long data_len);
+int send_ethernet_frame(union ethframe *frame, long data_len);
 
 //struct firefly_connection *firefly_transport_connection_eth_stellaris_new(
 		//struct firefly_transport_llp *llp, char *mac_address);
