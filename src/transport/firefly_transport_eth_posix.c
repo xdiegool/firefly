@@ -36,7 +36,8 @@
 
 struct firefly_transport_llp *firefly_transport_llp_eth_posix_new(
 		const char *iface_name,
-		firefly_on_conn_recv_eth_posix on_conn_recv)
+		firefly_on_conn_recv_eth_posix on_conn_recv,
+		struct firefly_event_queue *event_queue)
 {
 	int err;
 	struct ifreq ifr;
@@ -82,70 +83,69 @@ struct firefly_transport_llp *firefly_transport_llp_eth_posix_new(
 					  "Failed in %s().\n", __FUNCTION__);
 	}
 
+	llp_eth->event_queue = event_queue;
 	llp_eth->on_conn_recv = on_conn_recv;
-	llp_eth->recv_buf = NULL;
-	llp_eth->recv_buf_size = 0;
 	llp = malloc(sizeof(struct firefly_transport_llp));
 	llp->llp_platspec = llp_eth;
 	llp->conn_list = NULL;
 	return llp;
 }
 
-void firefly_transport_llp_eth_posix_free(struct firefly_transport_llp **llp)
+void firefly_transport_llp_eth_posix_free(struct firefly_transport_llp *llp)
 {
+	struct firefly_event *ev = firefly_event_new(FIREFLY_PRIORITY_LOW,
+			firefly_transport_llp_eth_posix_free_event, llp);
 	struct transport_llp_eth_posix *llp_eth;
-	llp_eth = (struct transport_llp_eth_posix *) (*llp)->llp_platspec;
-	close(llp_eth->socket);
-	struct llp_connection_list_node *head = (*llp)->conn_list;
-	struct llp_connection_list_node *tmp = NULL;
-	while (head != NULL) {
-		tmp = head->next;
-		firefly_transport_connection_eth_posix_free_event(head->conn);
-		free(head);
-		head = tmp;
+	llp_eth = (struct transport_llp_eth_posix *) llp->llp_platspec;
+	int ret = llp_eth->event_queue->offer_event_cb(llp_eth->event_queue, ev);
+	if (ret) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 1,
+					  "could not add event to queue");
 	}
-	free(llp_eth->recv_buf);
-	free(llp_eth);
-	free(*llp);
-	*llp = NULL;
 }
 
-/*struct firefly_connection *firefly_transport_connection_eth_posix_new(*/
-		/*struct firefly_transport_llp *llp, char *mac_address)*/
-/*{*/
-	/*return NULL;*/
-/*}*/
+int firefly_transport_llp_eth_posix_free_event(void *event_arg)
+{
+	struct firefly_transport_llp *llp =
+		(struct firefly_transport_llp *) event_arg;
+	struct transport_llp_eth_posix *llp_eth;
+	llp_eth = (struct transport_llp_eth_posix *) llp->llp_platspec;
+
+	bool empty = true;
+	// Close all connections.
+	struct llp_connection_list_node *head = llp->conn_list;
+	while (head != NULL) {
+		empty = false;
+		firefly_connection_close(head->conn);
+		head = head->next;
+	}
+	if (empty) {
+		close(llp_eth->socket);
+		free(llp_eth);
+		free(llp);
+	} else {
+		firefly_transport_llp_eth_posix_free(llp);
+	}
+	return 0;
+}
 
 void firefly_transport_connection_eth_posix_free(struct firefly_connection *conn)
 {
-	struct firefly_event *ev = firefly_event_new(1,
-			firefly_transport_connection_eth_posix_free_event,
-			conn);
-	conn->event_queue->offer_event_cb(conn->event_queue, ev);
-}
-
-int firefly_transport_connection_eth_posix_free_event(void *event_arg)
-{
-	struct firefly_connection *conn;
 	struct protocol_connection_eth_posix *conn_eth;
-
-	conn = (struct firefly_connection *) event_arg;
 	conn_eth =
 		(struct protocol_connection_eth_posix *)
 		conn->transport_conn_platspec;
 
+	remove_connection_from_llp(conn_eth->llp, conn,
+			firefly_connection_eq_ptr);
 	free(conn_eth->remote_addr);
 	free(conn_eth);
-	firefly_connection_free(&conn);
-
-	return 0;
 }
 
 struct firefly_connection *firefly_transport_connection_eth_posix_open(
 				firefly_channel_is_open_f on_channel_opened,
 				firefly_channel_closed_f on_channel_closed,
 				firefly_channel_accept_f on_channel_recv,
-				struct firefly_event_queue *event_queue,
 				char *mac_address,
 				char *if_name,
 				struct firefly_transport_llp *llp)
@@ -168,7 +168,8 @@ struct firefly_connection *firefly_transport_connection_eth_posix_open(
 	conn_eth = malloc(sizeof(struct protocol_connection_eth_posix));
 	struct firefly_connection *conn = firefly_connection_new_register(
 			on_channel_opened, on_channel_closed, on_channel_recv,
-			firefly_transport_eth_posix_write, event_queue,
+			firefly_transport_eth_posix_write,
+			((struct transport_llp_eth_posix *)llp->llp_platspec)->event_queue,
 			conn_eth, firefly_transport_connection_eth_posix_free, true);
 	if (conn == NULL || conn_eth == NULL) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 3,
@@ -198,18 +199,11 @@ struct firefly_connection *firefly_transport_connection_eth_posix_open(
 	conn_eth->socket =
 		((struct transport_llp_eth_posix *)llp->llp_platspec)->socket;
 
+	conn_eth->llp = llp;
+
 	add_connection_to_llp(conn, llp);
 
 	return conn;
-}
-
-void firefly_transport_connection_eth_posix_close(
-		struct firefly_connection *conn)
-{
-	struct protocol_connection_eth_posix *conn_eth =
-		(struct protocol_connection_eth_posix *)
-			conn->transport_conn_platspec;
-	conn_eth->open = FIREFLY_CONNECTION_CLOSED;
 }
 
 void firefly_transport_eth_posix_write(unsigned char *data, size_t data_size,
@@ -228,26 +222,28 @@ void firefly_transport_eth_posix_write(unsigned char *data, size_t data_size,
 	}
 }
 
-void recv_buf_resize(struct transport_llp_eth_posix *llp_eth, size_t new_size)
-{
-	if (new_size > llp_eth->recv_buf_size) {
-		llp_eth->recv_buf = realloc(llp_eth->recv_buf, new_size);
-		if (llp_eth->recv_buf == NULL) {
-			llp_eth->recv_buf_size = 0;
-			firefly_error(FIREFLY_ERROR_ALLOC, 3,
-					"Failed in %s() on line %d.\n", __FUNCTION__,
-					__LINE__);
-		} else {
-			llp_eth->recv_buf_size = new_size;
-		}
-	}
-}
-
 void firefly_transport_eth_posix_read(struct firefly_transport_llp *llp)
 {
-	struct sockaddr_ll from_addr;
+	struct firefly_event_llp_read_eth_posix *ev_arg =
+		malloc(sizeof(struct firefly_event_llp_read_eth_posix));
+	if (ev_arg == NULL) {
+			firefly_error(FIREFLY_ERROR_ALLOC, 3,
+					"Failed in %s() on line %d.\n",
+					__FUNCTION__, __LINE__);
+	}
+	ev_arg->addr = malloc(sizeof(struct sockaddr_ll));
+	if (ev_arg->addr == NULL) {
+			firefly_error(FIREFLY_ERROR_ALLOC, 3,
+					"Failed in %s() on line %d.\n",
+					__FUNCTION__, __LINE__);
+	}
+	ev_arg->len = 0;
+	ev_arg->data = NULL;
+	ev_arg->llp = llp;
+
 	int res;
-	struct transport_llp_eth_posix *llp_eth = (struct transport_llp_eth_posix *) llp->llp_platspec;
+	struct transport_llp_eth_posix *llp_eth =
+		(struct transport_llp_eth_posix *) llp->llp_platspec;
 	fd_set fs;
 	FD_ZERO(&fs);
 	FD_SET(llp_eth->socket, &fs);
@@ -257,34 +253,53 @@ void firefly_transport_eth_posix_read(struct firefly_transport_llp *llp)
 				"Failed in %s() on line %d.\nFailed to select.", __FUNCTION__,
 				__LINE__);
 	}
-	
 	// Read data from socket, = 0 is crucial due to ioctl only sets the
 	// first 32 bits of pkg_len
-	size_t pkg_len = 0;
-	res = ioctl(llp_eth->socket, FIONREAD, &pkg_len);
+	res = ioctl(llp_eth->socket, FIONREAD, &ev_arg->len);
 	if (res == -1) {
 		firefly_error(FIREFLY_ERROR_SOCKET, 3,
 				"Failed in %s() on line %d.\nCould not get next packet size.", __FUNCTION__,
 				__LINE__);
-		pkg_len = 0;
+		ev_arg->len = 0;
 	}
-	recv_buf_resize(llp_eth, pkg_len); /* Scaleback and such. */
-	socklen_t len = sizeof(struct sockaddr_ll);
-	res = recvfrom(llp_eth->socket, llp_eth->recv_buf, llp_eth->recv_buf_size, 0,//MSG_WAITALL,
-			(struct sockaddr *) &from_addr, &len);
+
+	ev_arg->data = malloc(ev_arg->len);
+	if (ev_arg->data == NULL) {
+			firefly_error(FIREFLY_ERROR_ALLOC, 3,
+					"Failed in %s() on line %d.\n",
+					__FUNCTION__, __LINE__);
+	}
+
+	socklen_t addr_len = sizeof(struct sockaddr_ll);
+	res = recvfrom(llp_eth->socket, ev_arg->data, ev_arg->len, 0,
+			(struct sockaddr *) ev_arg->addr, &addr_len);
 	if (res == -1) {
 		char err_buf[ERROR_STR_MAX_LEN];
 		strerror_r(errno, err_buf, ERROR_STR_MAX_LEN);
 		firefly_error(FIREFLY_ERROR_SOCKET, 3,
 				"Failed in %s.\n%s()\nCould not read from socket.", __FUNCTION__, err_buf);
 	}
-	struct firefly_connection *conn = find_connection(llp, &from_addr, connection_eq_addr);
+
+	struct firefly_event *ev = firefly_event_new(FIREFLY_PRIORITY_HIGH,
+			firefly_transport_eth_posix_read_event, ev_arg);
+	llp_eth->event_queue->offer_event_cb(llp_eth->event_queue, ev);
+}
+
+int firefly_transport_eth_posix_read_event(void *event_args)
+{
+	struct firefly_event_llp_read_eth_posix *ev_a =
+		(struct firefly_event_llp_read_eth_posix *) event_args;
+	struct transport_llp_eth_posix *llp_eth =
+		(struct transport_llp_eth_posix *) ev_a->llp->llp_platspec;
+
+	struct firefly_connection *conn = find_connection(ev_a->llp, ev_a->addr,
+			connection_eq_addr);
 	if (conn == NULL) {
 		if (llp_eth->on_conn_recv != NULL) {
 			char mac_addr[18];
-			get_mac_addr(&from_addr, mac_addr);
+			get_mac_addr(ev_a->addr, mac_addr);
 			// TODO got incorrect mac address here once, ever... two times.
-			conn = llp_eth->on_conn_recv(llp, mac_addr);
+			conn = llp_eth->on_conn_recv(ev_a->llp, mac_addr);
 		} else {
 			firefly_error(FIREFLY_ERROR_MISSING_CALLBACK, 4,
 				      "Cannot accept incoming connection.\n"
@@ -295,8 +310,12 @@ void firefly_transport_eth_posix_read(struct firefly_transport_llp *llp)
 	}
 	// Existing or newly created conn. Passing data to procol layer.
 	if (conn != NULL) {
-		protocol_data_received(conn, llp_eth->recv_buf, pkg_len);
+		protocol_data_received(conn, ev_a->data, ev_a->len);
 	}
+	free(ev_a->data);
+	free(ev_a->addr);
+	free(ev_a);
+	return 0;
 }
 
 void get_mac_addr(struct sockaddr_ll *addr, char *mac_addr)

@@ -17,20 +17,14 @@ void test_eth_conn_open_and_send();
 void test_eth_conn_open_and_recv();
 void test_eth_recv_data_two_conn();
 
-// TODO test close connection
-
 void test_eth_read();
 
-/*
-void test_find_conn_by_addr();
-void test_cleanup_simple();
-void test_cleanup_many_conn();
-void test_add_conn_to_llp();
-void test_null_pointer_as_callback();
-void test_open_and_recv_with_two_llp();
-void test_recv_big_connection();
-void test_reader_scale_back();
+// test free llp
+void test_eth_llp_free_empty();
+void test_eth_llp_free_mult_conns();
+void test_eth_llp_free_mult_conns_w_chans();
 
+/*
 void test_read_mult_threads();
 */
 
