@@ -1,5 +1,5 @@
 
-Add another loopback interface to run pingpong. I suspect it currently fails due
-to ping and pong are listening on the same interface they are sending on.
-I did not solve anything though
 Try limiting the pingpong suite to first open channel and then continue.
+
+fix event driven connection open, at least add connection to llp
+ - Make add conn to llp an event with highest priority

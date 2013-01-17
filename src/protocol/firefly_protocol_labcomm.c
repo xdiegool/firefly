@@ -186,48 +186,60 @@ int protocol_writer(labcomm_writer_t *w, labcomm_writer_action_t action)
 		w->pos = 0;
 	} break;
 	case labcomm_writer_continue: {
-		int res = copy_to_writer_data(writer_data, w->data, w->pos);
-		if (res == -1) {
-			w->on_error(LABCOMM_ERROR_MEMORY, 1,
-				"Protocol writer could not save encoded data from "
-								"labcomm\n");
-			result = -ENOMEM;
+		if (chan->conn->open != FIREFLY_CONNECTION_OPEN) {
+			firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
+					"Cannot send data on a closed connection.\n");
+			result = -EINVAL;
 		} else {
-			w->pos = 0;
-			result = 0;
+			int res = copy_to_writer_data(writer_data, w->data, w->pos);
+			if (res == -1) {
+				w->on_error(LABCOMM_ERROR_MEMORY, 1,
+					"Protocol writer could not save encoded data from "
+									"labcomm\n");
+				result = -ENOMEM;
+			} else {
+				w->pos = 0;
+				result = 0;
+			}
 		}
 	} break;
 	case labcomm_writer_end: {
-		int res = copy_to_writer_data(writer_data, w->data, w->pos);
-		if (res == -1) {
-			w->on_error(LABCOMM_ERROR_MEMORY, 1,
-				"Protocol writer could not save encoded data from "
-								"labcomm\n");
-			result = -ENOMEM;
+		if (chan->conn->open != FIREFLY_CONNECTION_OPEN) {
+			firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
+					"Cannot send data on a closed connection.\n");
+			result = -EINVAL;
 		} else {
-			w->pos = 0;
-			result = 0;
-			// create protocol packet and encode it
-			struct firefly_event_send_sample *fess =
-				malloc(sizeof(struct firefly_event_send_sample));
-			unsigned char *a = malloc(writer_data->pos);
-			if (fess == NULL || a == NULL) {
-				firefly_error(FIREFLY_ERROR_ALLOC, 1,
-						"Protocol writer could not allocate send event\n");
+			int res = copy_to_writer_data(writer_data, w->data, w->pos);
+			if (res == -1) {
+				w->on_error(LABCOMM_ERROR_MEMORY, 1,
+					"Protocol writer could not save encoded data from "
+									"labcomm\n");
+				result = -ENOMEM;
+			} else {
+				w->pos = 0;
+				result = 0;
+				// create protocol packet and encode it
+				struct firefly_event_send_sample *fess =
+					malloc(sizeof(struct firefly_event_send_sample));
+				unsigned char *a = malloc(writer_data->pos);
+				if (fess == NULL || a == NULL) {
+					firefly_error(FIREFLY_ERROR_ALLOC, 1,
+							"Protocol writer could not allocate send event\n");
+				}
+				fess->conn = chan->conn;
+				fess->data.dest_chan_id = chan->remote_id;
+				fess->data.src_chan_id = chan->local_id;
+				fess->data.important = true;
+				fess->data.app_enc_data.n_0 = writer_data->pos;
+				fess->data.app_enc_data.a = a;
+				memcpy(fess->data.app_enc_data.a, writer_data->data,
+						writer_data->pos);
+				struct firefly_event *ev = firefly_event_new(
+						FIREFLY_PRIORITY_HIGH, send_data_sample_event, fess);
+				chan->conn->event_queue->offer_event_cb(chan->conn->event_queue,
+						(struct firefly_event *) ev);
+				writer_data->pos = 0;
 			}
-			fess->conn = chan->conn;
-			fess->data.dest_chan_id = chan->remote_id;
-			fess->data.src_chan_id = chan->local_id;
-			fess->data.important = true;
-			fess->data.app_enc_data.n_0 = writer_data->pos;
-			fess->data.app_enc_data.a = a;
-			memcpy(fess->data.app_enc_data.a, writer_data->data,
-					writer_data->pos);
-			struct firefly_event *ev = firefly_event_new(1,
-					send_data_sample_event, fess);
-			chan->conn->event_queue->offer_event_cb(chan->conn->event_queue,
-					(struct firefly_event *) ev);
-			writer_data->pos = 0;
 		}
 	} break;
 	case labcomm_writer_available: {

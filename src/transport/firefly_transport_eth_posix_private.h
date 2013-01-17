@@ -12,29 +12,31 @@
 
 struct transport_llp_eth_posix {
 	int socket;
-	unsigned char *recv_buf;
-	size_t recv_buf_size;
+	struct firefly_event_queue *event_queue;
 	firefly_on_conn_recv_eth_posix on_conn_recv;
 };
 
 struct protocol_connection_eth_posix {
 	struct sockaddr_ll *remote_addr;
+	struct firefly_transport_llp *llp;
 	int socket;
-	sig_atomic_t open; /**< The flag indicating the opened state of a
-						 connection.*/
 };
 
-//struct firefly_connection *firefly_transport_connection_eth_posix_new(
-		//struct firefly_transport_llp *llp, char *mac_address);
+struct firefly_event_llp_read_eth_posix {
+	struct firefly_transport_llp *llp;
+	struct sockaddr_ll *addr;
+	unsigned char *data;
+	size_t len;
+};
 
-int firefly_transport_connection_eth_posix_free_event(void *event_arg);
+int firefly_transport_eth_posix_read_event(void *event_arg);
+
+int firefly_transport_llp_eth_posix_free_event(void *event_arg);
 
 void firefly_transport_connection_eth_posix_free(struct firefly_connection *conn);
 
 void firefly_transport_eth_posix_write(unsigned char *data, size_t data_size,
 		struct firefly_connection *conn);
-
-void recv_buf_resize(struct transport_llp_eth_posix *llp_eth, size_t new_size);
 
 void get_mac_addr(struct sockaddr_ll *addr, char *mac_addr);
 

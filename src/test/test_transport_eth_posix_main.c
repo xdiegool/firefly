@@ -58,6 +58,15 @@ int main()
 			   ||
 		(CU_add_test(trans_eth_posix, "test_eth_recv_data_two_conn",
 				test_eth_recv_data_two_conn) == NULL)
+			   ||
+		(CU_add_test(trans_eth_posix, "test_eth_llp_free_empty",
+				test_eth_llp_free_empty) == NULL)
+			   ||
+		(CU_add_test(trans_eth_posix, "test_eth_llp_free_mult_conns",
+				test_eth_llp_free_mult_conns) == NULL)
+			   ||
+		(CU_add_test(trans_eth_posix, "test_eth_llp_free_mult_conns_w_chans",
+				test_eth_llp_free_mult_conns_w_chans) == NULL)
 	   ) {
 		CU_cleanup_registry();
 		return CU_get_error();

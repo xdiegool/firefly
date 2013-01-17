@@ -11,4 +11,5 @@ int init_suit_general();
 int clean_suit_general();
 
 void test_add_conn_to_llp();
+void test_remove_conn_by_addr();
 void test_find_conn_by_addr();

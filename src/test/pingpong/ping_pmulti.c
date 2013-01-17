@@ -10,7 +10,6 @@
 #include <gen/pingpong.h>
 
 #include "test/pingpong/pingpong.h"
-#include "test/pingpong/hack_lctypes.h"
 #include "utils/cppmacros.h"
 
 #define PING_NBR_TESTS (4)
@@ -80,7 +79,7 @@ void ping_chan_opened(struct firefly_channel *chan)
 
 void ping_chan_closed(struct firefly_channel *chan)
 {
-	firefly_transport_connection_udp_posix_close(firefly_channel_get_connection(chan));
+	firefly_connection_close(firefly_channel_get_connection(chan));
 	pthread_mutex_lock(&ping_done_lock);
 	switch (current_test_phase) {
 	case PHASE_ETH:	eth_ping_done = true; break;
@@ -103,8 +102,8 @@ void ping_channel_rejected(struct firefly_connection *conn)
 	fprintf(stderr, "ERROR: Channel was rejected.\n");
 }
 
-struct firefly_connection *ping_eth_connection_received(struct firefly_transport_llp *llp,
-						    char *mac_addr)
+struct firefly_connection *ping_eth_connection_received(
+		struct firefly_transport_llp *llp, char *mac_addr)
 {
 	printf("PING: Connection received.\n");
 	struct firefly_connection *conn = NULL;
@@ -112,20 +111,19 @@ struct firefly_connection *ping_eth_connection_received(struct firefly_transport
 	if (strncmp(mac_addr, PONG_MAC_ADDR, strlen(PONG_MAC_ADDR)) == 0) {
 		printf("PING: Connection accepted.\n");
 		conn = firefly_transport_connection_eth_posix_open(ping_chan_opened,
-								   ping_chan_closed,
-								   ping_chan_received,
-								   event_queue,
-								   mac_addr,
-								   PING_IFACE,
-								   llp);
-		hack_register_protocol_types(conn);
+								ping_chan_closed,
+								ping_chan_received,
+								mac_addr,
+								PING_IFACE,
+								llp);
 	}
 	return conn;
 }
 
-struct firefly_connection *ping_udp_connection_received(struct firefly_transport_llp *llp,
-						    const char *ip_addr,
-						    unsigned short port)
+struct firefly_connection *ping_udp_connection_received(
+						struct firefly_transport_llp *llp,
+						const char *ip_addr,
+						unsigned short port)
 {
 	printf("PING: Udp connection received.\n");
 	struct firefly_connection *conn = NULL;
@@ -134,9 +132,8 @@ struct firefly_connection *ping_udp_connection_received(struct firefly_transport
 			port == PONG_PORT) {
 		printf("PING: Connection accepted.\n");
 		conn = firefly_transport_connection_udp_posix_open(
-				ping_chan_opened, ping_chan_closed, ping_chan_received, event_queue,
+				ping_chan_opened, ping_chan_closed, ping_chan_received,
 				ip_addr, port, llp);
-		hack_register_protocol_types(conn);
 	}
 	return conn;
 }
@@ -206,14 +203,16 @@ void *ping_main_thread(void *arg)
 
 	pthread_mutex_init(&eq_s.eq_lock, NULL);
 	pthread_cond_init(&eq_s.eq_cond, NULL);
+	eq_s.event_exec_finish = false;
 	event_queue = firefly_event_queue_new(event_add_mutex, &eq_s);
+
 	pthread_create(&event_thread, NULL, event_thread_main, event_queue);
 	ping_init_tests();
 
 	/* eth. ping */
 	current_test_phase = PHASE_ETH;
 
-	eth_llp = firefly_transport_llp_eth_posix_new(PING_IFACE, NULL);
+	eth_llp = firefly_transport_llp_eth_posix_new(PING_IFACE, NULL, event_queue);
 	if (eth_llp)
 		printf("LLP open\n");
 	else
@@ -221,13 +220,11 @@ void *ping_main_thread(void *arg)
 	eth_conn = firefly_transport_connection_eth_posix_open(ping_chan_opened,
 							       ping_chan_closed,
 							       ping_chan_received,
-							       event_queue,
 							       PONG_MAC_ADDR,
 							       PING_IFACE,
 							       eth_llp);
 	printf("Connection %sopen\n", (eth_conn) ? " " : "NOT ");
 
-	hack_register_protocol_types(eth_conn);
 	firefly_channel_open(eth_conn, ping_channel_rejected);
 
 	pthread_create(&reader_thread, NULL, eth_reader_thread_main, eth_llp);
@@ -240,24 +237,22 @@ void *ping_main_thread(void *arg)
 	pthread_cancel(reader_thread);
 	pthread_join(reader_thread, NULL);
 	/* printf("Freeing %p\n", &eth_llp); */
-	firefly_transport_llp_eth_posix_free(&eth_llp);
+	firefly_transport_llp_eth_posix_free(eth_llp);
 	printf("Ethernet phase done!\n");
 
 	/* udp ping */
 	current_test_phase = PHASE_UDP;
 
 	llp = firefly_transport_llp_udp_posix_new(PING_PORT,
-						  ping_udp_connection_received);
+						  ping_udp_connection_received, event_queue);
 
 	conn = firefly_transport_connection_udp_posix_open(ping_chan_opened,
 							   ping_chan_closed,
 							   ping_chan_received,
-							   event_queue,
 							   PONG_ADDR,
 							   PONG_PORT,
 							   llp);
 	printf("Connection %sopen\n", (conn) ? "" : "NOT ");
-	hack_register_protocol_types(conn);
 	firefly_channel_open(conn, ping_channel_rejected);
 	pthread_create(&reader_thread, NULL, udp_reader_thread_main, llp);
 
@@ -267,13 +262,16 @@ void *ping_main_thread(void *arg)
 	pthread_mutex_unlock(&ping_done_lock);
 
 	pthread_cancel(reader_thread);
-	pthread_cancel(event_thread);
 
 	pthread_join(reader_thread, NULL);
-	pthread_join(event_thread, NULL);
 
+	firefly_transport_llp_udp_posix_free(llp);
+	pthread_mutex_lock(&eq_s.eq_lock);
+	eq_s.event_exec_finish = true;
+	pthread_cond_signal(&eq_s.eq_cond);
+	pthread_mutex_unlock(&eq_s.eq_lock);
+	pthread_join(event_thread, NULL);
 	firefly_event_queue_free(&event_queue);
-	firefly_transport_llp_udp_posix_free(&llp);
 
 	pingpong_test_print_results(ping_tests, PING_NBR_TESTS, "Ping");
 

@@ -31,6 +31,7 @@
 struct event_queue_signals {
 	pthread_mutex_t eq_lock;
 	pthread_cond_t eq_cond;
+	bool event_exec_finish;
 };
 
 struct pingpong_test {

@@ -25,30 +25,6 @@
 extern struct labcomm_decoder *test_dec;
 extern labcomm_mem_reader_context_t *test_dec_ctx;
 
-struct encoded_packet {
-	unsigned char *sign;
-	unsigned char *data;
-	size_t ssize;
-	size_t dsize;
-};
-
-struct encoded_packet *create_encoded_packet(lc_register_f reg, lc_encode_f enc,
-		void *data)
-{
-	struct encoded_packet *enc_pkt = malloc(sizeof(struct encoded_packet));
-	create_labcomm_files_general(reg, enc, data);
-	enc_pkt->ssize = read_file_to_mem(&enc_pkt->sign, SIG_FILE);
-	enc_pkt->dsize = read_file_to_mem(&enc_pkt->data, DATA_FILE);
-	return enc_pkt;
-}
-
-void encoded_packet_free(struct encoded_packet *ep)
-{
-	free(ep->data);
-	free(ep->sign);
-	free(ep);
-}
-
 void setup_test_decoder_new()
 {
 	test_dec_ctx = malloc(sizeof(labcomm_mem_reader_context_t));
@@ -1065,7 +1041,7 @@ struct firefly_connection *setup_conn(int conn_n,
 
 	tcon = firefly_connection_new_register(chan_was_opened, chan_was_closed,
 					   should_accept_chan, writer,
-					   eqs[conn_n], NULL, true);
+					   eqs[conn_n], NULL, NULL, true);
 
 	if (tcon == NULL) {
 		CU_FAIL("Could not create channel");

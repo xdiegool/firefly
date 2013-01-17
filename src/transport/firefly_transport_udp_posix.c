@@ -30,7 +30,8 @@
 #define SCALE_BACK_NBR_DEFAULT (32)
 
 struct firefly_transport_llp *firefly_transport_llp_udp_posix_new(
-	unsigned short local_udp_port, firefly_on_conn_recv_pudp on_conn_recv)
+	unsigned short local_udp_port, firefly_on_conn_recv_pudp on_conn_recv,
+	struct firefly_event_queue *event_queue)
 {
 	struct transport_llp_udp_posix *llp_udp;
 
@@ -61,11 +62,8 @@ struct firefly_transport_llp *firefly_transport_llp_udp_posix_new(
 		firefly_error(FIREFLY_ERROR_LLP_BIND, 3,
 				"Failed in %s().\n%s\n", __FUNCTION__, err_buf);
 	}
-	llp_udp->scale_back_nbr  = SCALE_BACK_NBR_DEFAULT;
-	llp_udp->recv_buf_size   = 0;
-	llp_udp->scale_back_size = 0;
-	llp_udp->recv_buf        = NULL;
 	llp_udp->on_conn_recv = on_conn_recv;
+	llp_udp->event_queue = event_queue;
 
 	struct firefly_transport_llp *llp = malloc(sizeof(
 						struct firefly_transport_llp));
@@ -80,33 +78,50 @@ struct firefly_transport_llp *firefly_transport_llp_udp_posix_new(
 	return llp;
 }
 
-void firefly_transport_llp_udp_posix_free(struct firefly_transport_llp **llp)
+void firefly_transport_llp_udp_posix_free(struct firefly_transport_llp *llp)
 {
+	struct firefly_event *ev = firefly_event_new(FIREFLY_PRIORITY_LOW,
+			firefly_transport_llp_udp_posix_free_event, llp);
 	struct transport_llp_udp_posix *llp_udp =
-		(struct transport_llp_udp_posix *) (*llp)->llp_platspec;
-	close(llp_udp->local_udp_socket);
+		(struct transport_llp_udp_posix *) llp->llp_platspec;
 
-	// Delete all connections.
-	struct llp_connection_list_node *head = (*llp)->conn_list;
-	struct llp_connection_list_node *tmp = NULL;
-	while (head != NULL) {
-		tmp = head->next;
-		firefly_transport_connection_udp_posix_free_event(head->conn);
-		free(head);
-		head = tmp;
+	int ret = llp_udp->event_queue->offer_event_cb(llp_udp->event_queue, ev);
+	if (ret) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 1,
+					  "could not add event to queue");
 	}
-	free(llp_udp->local_addr);
-	free(llp_udp->recv_buf);
-	free(llp_udp);
-	free((*llp));
-	*llp = NULL;
+}
+
+int firefly_transport_llp_udp_posix_free_event(void *event_arg)
+{
+	struct firefly_transport_llp *llp =
+		(struct firefly_transport_llp *) event_arg;
+	struct transport_llp_udp_posix *llp_udp =
+		(struct transport_llp_udp_posix *) llp->llp_platspec;
+
+	bool empty = true;
+	// Close all connections.
+	struct llp_connection_list_node *head = llp->conn_list;
+	while (head != NULL) {
+		empty = false;
+		firefly_connection_close(head->conn);
+		head = head->next;
+	}
+	if (empty) {
+		close(llp_udp->local_udp_socket);
+		free(llp_udp->local_addr);
+		free(llp_udp);
+		free(llp);
+	} else {
+		firefly_transport_llp_udp_posix_free(llp);
+	}
+	return 0;
 }
 
 struct firefly_connection *firefly_connection_udp_posix_new(
 		firefly_channel_is_open_f on_channel_opened,
 		firefly_channel_closed_f on_channel_closed,
 		firefly_channel_accept_f on_channel_recv,
-		struct firefly_event_queue *event_queue,
 		struct firefly_transport_llp *llp,
 		struct sockaddr_in *remote_addr)
 {
@@ -119,8 +134,8 @@ struct firefly_connection *firefly_connection_udp_posix_new(
 
 	conn = firefly_connection_new_register(on_channel_opened,
 			on_channel_closed, on_channel_recv,
-			firefly_transport_udp_posix_write, event_queue,
-			conn_udp, true);
+			firefly_transport_udp_posix_write, llp_udp->event_queue,
+			conn_udp, firefly_transport_connection_udp_posix_free, true);
 
 	if (conn == NULL || conn_udp == NULL) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 3,
@@ -133,7 +148,7 @@ struct firefly_connection *firefly_connection_udp_posix_new(
 
 	conn_udp->remote_addr = remote_addr;
 	conn_udp->socket = llp_udp->local_udp_socket;
-	conn_udp->open = FIREFLY_CONNECTION_OPEN;
+	conn_udp->llp = llp;
 
 	return conn;
 }
@@ -141,34 +156,20 @@ struct firefly_connection *firefly_connection_udp_posix_new(
 void firefly_transport_connection_udp_posix_free(
 		struct firefly_connection *conn)
 {
-	struct firefly_event *ev = firefly_event_new(1,
-			firefly_transport_connection_udp_posix_free_event,
-			conn);
-	conn->event_queue->offer_event_cb(conn->event_queue, ev);
-}
-
-int firefly_transport_connection_udp_posix_free_event(void *event_arg)
-{
-	struct firefly_connection *conn;
 	struct protocol_connection_udp_posix *conn_udp;
-
-	conn = (struct firefly_connection *) event_arg;
 	conn_udp =
-		(struct protocol_connection_udp_posix *)
-		conn->transport_conn_platspec;
+		(struct protocol_connection_udp_posix *) conn->transport_conn_platspec;
 
+	remove_connection_from_llp(conn_udp->llp, conn,
+			firefly_connection_eq_ptr);
 	free(conn_udp->remote_addr);
 	free(conn_udp);
-	firefly_connection_free(&conn);
-
-	return 0;
 }
 
 struct firefly_connection *firefly_transport_connection_udp_posix_open(
 		firefly_channel_is_open_f on_channel_opened,
 		firefly_channel_closed_f on_channel_closed,
 		firefly_channel_accept_f on_channel_recv,
-		struct firefly_event_queue *event_queue,
 		const char *remote_ip_addr,
 		unsigned short remote_port,
 		struct firefly_transport_llp *llp)
@@ -195,50 +196,14 @@ struct firefly_connection *firefly_transport_connection_udp_posix_open(
 		return NULL;
 	}
 
-	conn = firefly_connection_udp_posix_new( on_channel_opened,
-			on_channel_closed, on_channel_recv, event_queue, llp,
-			remote_addr);
+	conn = firefly_connection_udp_posix_new(on_channel_opened,
+			on_channel_closed, on_channel_recv, llp, remote_addr);
 
 	if (conn != NULL) {
 		add_connection_to_llp(conn, llp);
 	}
 
 	return conn;
-}
-
-void firefly_transport_connection_udp_posix_close(
-		struct firefly_connection *conn)
-{
-	struct protocol_connection_udp_posix *conn_udp =
-		(struct protocol_connection_udp_posix *)
-			conn->transport_conn_platspec;
-	conn_udp->open = FIREFLY_CONNECTION_CLOSED;
-}
-
-// TODO refactor out this so it can be used by all transport implementations.
-// Then call firefly_transport_connection_close and call a free callback?
-int firefly_transport_udp_posix_clean_up(struct firefly_transport_llp *llp)
-{
-	int nbr_closed = 0;
-	struct llp_connection_list_node **head = &llp->conn_list;
-	struct protocol_connection_udp_posix *conn_udp;
-
-	while (*head != NULL) {
-		conn_udp = (struct protocol_connection_udp_posix *)
-			(*head)->conn->transport_conn_platspec;
-		if (!conn_udp->open) {
-			firefly_transport_connection_udp_posix_free(
-					(*head)->conn);
-			struct llp_connection_list_node *tmp = *head;
-			*head = (*head)->next;
-			free(tmp);
-			nbr_closed++;
-		} else {
-			head = &(*head)->next;
-		}
-	}
-
-	return nbr_closed;
 }
 
 void firefly_transport_udp_posix_write(unsigned char *data, size_t data_size,
@@ -256,51 +221,10 @@ void firefly_transport_udp_posix_write(unsigned char *data, size_t data_size,
 	}
 }
 
-static void recv_buf_resize(struct transport_llp_udp_posix *llp_udp,
-						size_t pkg_len)
-{
-	if (llp_udp->recv_buf == NULL || pkg_len > llp_udp->recv_buf_size) {
-		unsigned char *tmp;
-
-		tmp = realloc(llp_udp->recv_buf, pkg_len); // If buf is NULL,
-								// be malloc.
-		if (tmp == NULL) {
-			firefly_error(FIREFLY_ERROR_ALLOC, 3,
-					"Failed in %s() on line %d.\n",
-					__FUNCTION__, __LINE__);
-		} else {
-			llp_udp->recv_buf = tmp;
-			llp_udp->recv_buf_size = pkg_len;
-			llp_udp->scale_back_size = 0;
-		}
-		llp_udp->nbr_smaller = 0;
-	} else if (llp_udp->nbr_smaller >= llp_udp->scale_back_nbr) {
-		unsigned char *tmp;
-
-		tmp = realloc(llp_udp->recv_buf, llp_udp->scale_back_size);
-		if (tmp == NULL) {
-			firefly_error(FIREFLY_ERROR_ALLOC, 3,
-					"Failed in %s() on line %d.\n",
-					__FUNCTION__, __LINE__);
-		} else {
-			llp_udp->recv_buf = tmp;
-			llp_udp->recv_buf_size = llp_udp->scale_back_size;
-			llp_udp->scale_back_size = 0;
-		}
-		llp_udp->nbr_smaller = 0;
-	} else {
-		llp_udp->nbr_smaller++;
-		if (pkg_len > llp_udp->scale_back_size)
-			llp_udp->scale_back_size = pkg_len;
-	}
-}
-
 void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 {
-	struct sockaddr_in remote_addr;
 	struct transport_llp_udp_posix *llp_udp =
 		(struct transport_llp_udp_posix *) llp->llp_platspec;
-	struct firefly_connection *conn;
 	int res;
 
 	fd_set fs;
@@ -323,10 +247,21 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 				__LINE__);
 		pkg_len = 0;
 	}
-	recv_buf_resize(llp_udp, pkg_len); /* Scaleback and such. */
 	socklen_t len = sizeof(struct sockaddr_in);
-	res = recvfrom(llp_udp->local_udp_socket, llp_udp->recv_buf, pkg_len, 0,
-			(struct sockaddr *) &remote_addr, &len);
+	struct sockaddr_in *remote_addr = malloc(len);
+	if (remote_addr == NULL) {
+			firefly_error(FIREFLY_ERROR_ALLOC, 3,
+					"Failed in %s() on line %d.\n",
+					__FUNCTION__, __LINE__);
+	}
+	unsigned char *data = malloc(pkg_len);
+	if (data == NULL) {
+			firefly_error(FIREFLY_ERROR_ALLOC, 3,
+					"Failed in %s() on line %d.\n",
+					__FUNCTION__, __LINE__);
+	}
+	res = recvfrom(llp_udp->local_udp_socket, data, pkg_len, 0,
+			(struct sockaddr *) remote_addr, &len);
 	if (res == -1) {
 		char err_buf[ERROR_STR_MAX_LEN];
 		strerror_r(errno, err_buf, ERROR_STR_MAX_LEN);
@@ -334,16 +269,39 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 				"Failed in %s.\n%s()\n", __FUNCTION__, err_buf);
 	}
 
+	struct firefly_event_llp_read_udp_posix *ev_arg =
+		malloc(sizeof(struct firefly_event_llp_read_udp_posix));
+	if (ev_arg == NULL) {
+			firefly_error(FIREFLY_ERROR_ALLOC, 3,
+					"Failed in %s() on line %d.\n",
+					__FUNCTION__, __LINE__);
+	}
+	ev_arg->llp = llp;
+	ev_arg->addr = remote_addr;
+	ev_arg->data = data;
+	ev_arg->len = pkg_len;
+
+	struct firefly_event *ev = firefly_event_new(FIREFLY_PRIORITY_HIGH,
+			firefly_transport_udp_posix_read_event, ev_arg);
+	llp_udp->event_queue->offer_event_cb(llp_udp->event_queue, ev);
+}
+
+int firefly_transport_udp_posix_read_event(void *event_arg)
+{
+	struct firefly_event_llp_read_udp_posix *ev_arg =
+		(struct firefly_event_llp_read_udp_posix *) event_arg;
+	struct transport_llp_udp_posix *llp_udp =
+		(struct transport_llp_udp_posix *) ev_arg->llp->llp_platspec;
+
 	// Find existing connection or create new.
-	// Ignore connections marked as closed.
-	conn = find_connection(llp, &remote_addr, connection_eq_inaddr);
-	if (conn == NULL || !((struct protocol_connection_udp_posix *)
-				conn->transport_conn_platspec)->open) {
+	struct firefly_connection *conn;
+	conn = find_connection(ev_arg->llp, ev_arg->addr, connection_eq_inaddr);
+	if (conn == NULL) {
 		if (llp_udp->on_conn_recv != NULL) {
 			char ip_addr[INET_ADDRSTRLEN];
-			sockaddr_in_ipaddr(&remote_addr, ip_addr);
-			conn = llp_udp->on_conn_recv(llp, ip_addr,
-					sockaddr_in_port(&remote_addr));
+			sockaddr_in_ipaddr(ev_arg->addr, ip_addr);
+			conn = llp_udp->on_conn_recv(ev_arg->llp, ip_addr,
+					sockaddr_in_port(ev_arg->addr));
 		} else {
 			firefly_error(FIREFLY_ERROR_MISSING_CALLBACK, 4,
 				      "Cannot accept incoming connection "
@@ -357,8 +315,13 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 
 	// Existing or newly created conn. Passing data to procol layer.
 	if (conn != NULL) {
-		protocol_data_received(conn, llp_udp->recv_buf, pkg_len);
+		protocol_data_received(conn, ev_arg->data, ev_arg->len);
 	}
+
+	free(ev_arg->data);
+	free(ev_arg->addr);
+	free(ev_arg);
+	return 0;
 }
 
 bool sockaddr_in_eq(struct sockaddr_in *one, struct sockaddr_in *other)
@@ -383,12 +346,4 @@ void sockaddr_in_ipaddr(struct sockaddr_in *addr, char *ip_addr)
 unsigned short sockaddr_in_port(struct sockaddr_in *addr)
 {
 	return ntohs(addr->sin_port);
-}
-
-void firefly_transport_udp_posix_set_n_scaleback(
-			struct firefly_transport_llp *llp, unsigned int nbr)
-{
-	struct transport_llp_udp_posix *llp_udp =
-		((struct transport_llp_udp_posix *)llp->llp_platspec);
-	llp_udp->scale_back_nbr = nbr;
 }

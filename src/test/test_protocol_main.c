@@ -9,6 +9,7 @@
 #include "test/test_proto_translc.h"
 #include "test/test_proto_protolc.h"
 #include "test/test_proto_chan.h"
+#include "test/test_proto_conn.h"
 #include "test/test_proto_errors.h"
 #include "test/test_transport_udp_posix.h"
 
@@ -17,6 +18,7 @@ int main()
 	CU_pSuite translc_suite = NULL;
 	CU_pSuite protolc_suite = NULL;
 	CU_pSuite chan_suite = NULL;
+	CU_pSuite conn_suite = NULL;
 	CU_pSuite errors_suite = NULL;
 
 	// Initialize CUnit test registry.
@@ -40,6 +42,12 @@ int main()
 	chan_suite = CU_add_suite("chan_suite", init_suit_proto_chan,
 					clean_suit_proto_chan);
 	if (chan_suite == NULL) {
+		CU_cleanup_registry();
+		return CU_get_error();
+	}
+	conn_suite = CU_add_suite("conn_suite", init_suit_proto_conn,
+					clean_suit_proto_conn);
+	if (conn_suite == NULL) {
 		CU_cleanup_registry();
 		return CU_get_error();
 	}
@@ -81,6 +89,33 @@ int main()
 			||
 			(CU_add_test(protolc_suite, "test_proto_reader",
 					test_proto_reader) == NULL)
+		) {
+		CU_cleanup_registry();
+		return CU_get_error();
+	}
+
+	// Connection tests.
+	if (
+			(CU_add_test(conn_suite, "test_conn_close_empty",
+					test_conn_close_empty) == NULL)
+			||
+			(CU_add_test(conn_suite, "test_conn_close_open_chan",
+					test_conn_close_open_chan) == NULL)
+			||
+			(CU_add_test(conn_suite, "test_conn_close_send_data",
+					test_conn_close_send_data) == NULL)
+			||
+			(CU_add_test(conn_suite, "test_conn_close_send_first",
+					test_conn_close_send_first) == NULL)
+			||
+			(CU_add_test(conn_suite, "test_conn_close_mult_chans",
+					test_conn_close_mult_chans) == NULL)
+			||
+			(CU_add_test(conn_suite, "test_conn_close_recv_any",
+					test_conn_close_recv_any) == NULL)
+			||
+			(CU_add_test(conn_suite, "test_conn_close_recv_chan_req_first",
+					test_conn_close_recv_chan_req_first) == NULL)
 		) {
 		CU_cleanup_registry();
 		return CU_get_error();

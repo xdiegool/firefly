@@ -28,7 +28,7 @@ struct firefly_connection *setup_test_conn_new(firefly_channel_is_open_f ch_op,
 {
 	struct firefly_connection *conn =
 		firefly_connection_new(ch_op, ch_cl, ch_acc,
-				transport_write_test_decoder, eq, NULL);
+				transport_write_test_decoder, eq, NULL, NULL);
 	if (conn == NULL) {
 		CU_FAIL("Could not create connection.\n");
 	}

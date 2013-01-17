@@ -8,7 +8,6 @@
 
 #include "test/pingpong/pingpong_pudp.h"
 #include "test/pingpong/pingpong.h"
-#include "test/pingpong/hack_lctypes.h"
 #include "utils/cppmacros.h"
 
 #define PING_NBR_TESTS (6)
@@ -78,7 +77,7 @@ void ping_chan_opened(struct firefly_channel *chan)
 
 void ping_chan_closed(struct firefly_channel *chan)
 {
-	firefly_transport_connection_udp_posix_close(
+	firefly_connection_close(
 			firefly_channel_get_connection(chan));
 	pthread_mutex_lock(&ping_done_lock);
 	ping_done = true;
@@ -110,9 +109,8 @@ struct firefly_connection *ping_connection_received(
 			port == PONG_PORT) {
 		printf("PING: Connection accepted.\n");
 		conn = firefly_transport_connection_udp_posix_open(
-				ping_chan_opened, ping_chan_closed, ping_chan_received, event_queue,
+				ping_chan_opened, ping_chan_closed, ping_chan_received,
 				ip_addr, port, llp);
-		hack_register_protocol_types(conn);
 	}
 	return conn;
 }
@@ -141,11 +139,10 @@ void *ping_main_thread(void *arg)
 	UNUSED_VAR(arg);
 	int res;
 	pthread_t reader_thread;
+	pthread_t event_thread;
 
 	printf("Hello, Firefly from Ping!\n");
 	ping_init_tests();
-	struct firefly_transport_llp *llp =
-			firefly_transport_llp_udp_posix_new(PING_PORT, ping_connection_received);
 
 	struct event_queue_signals eq_s;
 	res = pthread_mutex_init(&eq_s.eq_lock, NULL);
@@ -156,17 +153,25 @@ void *ping_main_thread(void *arg)
 	if (res) {
 		fprintf(stderr, "ERROR: init cond variable.\n");
 	}
+	eq_s.event_exec_finish = false;
 	event_queue = firefly_event_queue_new(event_add_mutex, &eq_s);
-	pthread_t event_thread;
 	res = pthread_create(&event_thread, NULL, event_thread_main, event_queue);
+	if (res) {
+		fprintf(stderr, "ERROR: starting event thread.\n");
+	}
+
+	struct firefly_transport_llp *llp =
+			firefly_transport_llp_udp_posix_new(PING_PORT,
+					ping_connection_received, event_queue);
+
 
 	struct firefly_connection *conn =
-			firefly_transport_connection_udp_posix_open(ping_chan_opened, ping_chan_closed,
-					ping_chan_received, event_queue, PONG_ADDR, PONG_PORT, llp);
+			firefly_transport_connection_udp_posix_open(ping_chan_opened,
+					ping_chan_closed, ping_chan_received,
+					PONG_ADDR, PONG_PORT, llp);
 	if (conn != NULL) {
 		ping_pass_test(CONNECTION_OPEN);
 	}
-	hack_register_protocol_types(conn);
 
 	firefly_channel_open(conn, ping_channel_rejected);
 
@@ -182,15 +187,16 @@ void *ping_main_thread(void *arg)
 	pthread_mutex_unlock(&ping_done_lock);
 
 	pthread_cancel(reader_thread);
-	pthread_cancel(event_thread);
-
 	pthread_join(reader_thread, NULL);
+
+	firefly_transport_llp_udp_posix_free(llp);
+	pthread_mutex_lock(&eq_s.eq_lock);
+	eq_s.event_exec_finish = true;
+	pthread_cond_signal(&eq_s.eq_cond);
+	pthread_mutex_unlock(&eq_s.eq_lock);
+
 	pthread_join(event_thread, NULL);
-
-	//firefly_transport_connection_udp_posix_free(&conn);
-
 	firefly_event_queue_free(&event_queue);
-	firefly_transport_llp_udp_posix_free(&llp);
 
 	ping_pass_test(TEST_DONE);
 	pingpong_test_print_results(ping_tests, PING_NBR_TESTS, "Ping");

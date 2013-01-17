@@ -107,6 +107,7 @@ void test_proto_writer()
 	conn.reader_data = NULL;
 	conn.transport_write = proto_check_writer;
 	conn.event_queue = eq;
+	conn.open = FIREFLY_CONNECTION_OPEN;
 
 	struct labcomm_encoder *transport_encoder = labcomm_encoder_new(
 				ff_transport_writer, &conn);

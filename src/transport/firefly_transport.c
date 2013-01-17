@@ -19,6 +19,27 @@ void add_connection_to_llp(struct firefly_connection *conn,
 	llp->conn_list = new_node;
 }
 
+struct firefly_connection *remove_connection_from_llp(
+		struct firefly_transport_llp *llp,
+		void *context, conn_eq_f conn_eq)
+{
+	struct firefly_connection *ret = NULL;
+	struct llp_connection_list_node **head = &llp->conn_list;
+	/*printf("head: %p\n", head);*/
+	while (head != NULL && (*head) != NULL) {
+		if (conn_eq((*head)->conn, context)) {
+			ret = (*head)->conn;
+			struct llp_connection_list_node *tmp = (*head)->next;
+			free(*head);
+			*head = tmp;
+			head = NULL;
+		} else {
+			*head = (*head)->next;
+		}
+	}
+	return ret;
+}
+
 struct firefly_connection *find_connection(struct firefly_transport_llp *llp,
 		void *context, conn_eq_f conn_eq)
 {
@@ -34,4 +55,9 @@ struct firefly_connection *find_connection(struct firefly_transport_llp *llp,
 		}
 	}
 	return NULL;
+}
+
+bool firefly_connection_eq_ptr(struct firefly_connection *conn, void *context)
+{
+	return conn == context;
 }

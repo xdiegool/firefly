@@ -61,8 +61,12 @@ void firefly_channel_open(struct firefly_connection *conn,
 {
 	struct firefly_event_chan_open *feco;
 	int ret;
-	/* create event. add to q. */
 
+	if (conn->open != FIREFLY_CONNECTION_OPEN) {
+		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
+					"Cannot open new channel on a closed connection.\n");
+		return;
+	}
 	feco = malloc(sizeof(struct firefly_event_chan_open));
 	if (feco == NULL) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1,
@@ -163,13 +167,15 @@ int firefly_channel_close_event(void *event_arg)
 void protocol_data_received(struct firefly_connection *conn,
 		unsigned char *data, size_t size)
 {
-	conn->reader_data->data = data;
-	conn->reader_data->data_size = size;
-	conn->reader_data->pos = 0;
-	labcomm_decoder_decode_one(conn->transport_decoder);
-	conn->reader_data->data = NULL;
-	conn->reader_data->data_size = 0;
-	conn->reader_data->pos = 0;
+	if (conn->open == FIREFLY_CONNECTION_OPEN) {
+		conn->reader_data->data = data;
+		conn->reader_data->data_size = size;
+		conn->reader_data->pos = 0;
+		labcomm_decoder_decode_one(conn->transport_decoder);
+		conn->reader_data->data = NULL;
+		conn->reader_data->data_size = 0;
+		conn->reader_data->pos = 0;
+	}
 }
 
 void handle_channel_request(firefly_protocol_channel_request *chan_req,
@@ -202,6 +208,7 @@ int handle_channel_request_event(void *event_arg)
 	int res = 0;
 	struct firefly_event_chan_req_recv *fecrr =
 		(struct firefly_event_chan_req_recv *) event_arg;
+
 	int local_chan_id = fecrr->chan_req.dest_chan_id;
 	struct firefly_channel *chan = find_channel_by_local_id(fecrr->conn,
 			local_chan_id);

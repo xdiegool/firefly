@@ -2,12 +2,14 @@
 #define PONG_PETH_H
 
 #include <pthread.h>
+#include <stdbool.h>
 
 #define PONG_NBR_TESTS (7)
 
 struct thread_arg {
 	pthread_mutex_t m;
 	pthread_cond_t t;
+	bool started;
 };
 
 /**

@@ -394,14 +394,14 @@ $(TEST_PROGS): $$(patsubst %,$$(BUILD_DIR)/lib%.a,$$(LIB_FIREFLY_NAME) $$(LIB_TR
 
 # Main test program for the protocol tests.
 # Filter-out libraries since those are not "in-files" but the still depend on them so they can be used for linking.
-$(BUILD_DIR)/test/test_protocol_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_protocol_main test_labcomm_utils test_proto_chan test_proto_translc test_proto_protolc test_proto_errors proto_helper) $(BUILD_DIR)/$(GEN_DIR)/test.o
+$(BUILD_DIR)/test/test_protocol_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_protocol_main test_labcomm_utils test_proto_chan test_proto_conn test_proto_translc test_proto_protolc test_proto_errors proto_helper) $(BUILD_DIR)/$(GEN_DIR)/test.o
 	cp $(BUILD_DIR)/lib$(LIB_FIREFLY_NAME).a /tmp/lib$(LIB_FIREFLY_NAME)_wo_error.a
 	ar d /tmp/lib$(LIB_FIREFLY_NAME)_wo_error.a firefly_errors.o
 	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) -L/tmp/ $(filter-out %.a,$^) $(patsubst -l$(LIB_FIREFLY_NAME),-l$(LIB_FIREFLY_NAME)_wo_error,$(LDLIBS_TEST)) -o $@ 
 
 # Main test program for the transport tests.
 $(BUILD_DIR)/test/test_transport_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_transport_main test_transport test_transport_gen test_transport_udp_posix)
-	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) $(LDLIBS_TEST) -o $@ 
+	$(CC) $(LDFLAGS) -Wl,--allow-multiple-definition $(LDFLAGS_TEST) $^ $(filter-out %$(LIB_FIREFLY_NAME).a, $(LDLIBS_TEST)) -o $@ 
 
 # Main test program for the eth posix transport tests.
 # TODO fix --allow-mutliple-definition

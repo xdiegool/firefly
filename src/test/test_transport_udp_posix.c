@@ -15,6 +15,8 @@
 #include <netinet/in.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <sys/select.h>
 #include <unistd.h>
 
 #include <protocol/firefly_protocol.h>
@@ -43,21 +45,30 @@ int clean_suit_udp_posix()
 static const unsigned short local_port = 55555;
 static unsigned short remote_port = 55556;
 
-static unsigned char send_buf_med[] = {0,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,
-				  0,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16};
-
 static unsigned char send_buf_big[] = {0,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,
 				   0,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,
 				   0,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,
 				   0,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16};
 
-void reg_proto_sigs(struct labcomm_encoder *enc,
-					struct labcomm_decoder *dec,
-					struct firefly_connection *conn)
-{ 
-	UNUSED_VAR(enc);
-	UNUSED_VAR(dec);
-	UNUSED_VAR(conn);
+
+static void execute_remaining_events(struct firefly_event_queue *eq)
+{
+	struct firefly_event *ev;
+	while (firefly_event_queue_length(eq) > 0) {
+		ev = firefly_event_pop(eq);
+		CU_ASSERT_PTR_NOT_NULL(ev);
+		firefly_event_execute(ev);
+	}
+}
+
+static void execute_events(struct firefly_event_queue *eq, size_t nbr_events)
+{
+	struct firefly_event *ev;
+	for (size_t i = 0; i < nbr_events; i++) {
+		ev = firefly_event_pop(eq);
+		CU_ASSERT_PTR_NOT_NULL(ev);
+		firefly_event_execute(ev);
+	}
 }
 
 static void setup_sockaddr(struct sockaddr_in *addr, unsigned short port)
@@ -128,7 +139,7 @@ struct firefly_connection *recv_conn_recv_conn(
 	CU_ASSERT_EQUAL(port, remote_port);
 	good_conn_received = true;
 	struct firefly_connection *conn =
-			firefly_transport_connection_udp_posix_open(NULL, NULL, NULL, NULL,
+			firefly_transport_connection_udp_posix_open(NULL, NULL, NULL,
 					ip_addr, port, llp);
 	return conn;
 }
@@ -136,8 +147,10 @@ struct firefly_connection *recv_conn_recv_conn(
 /* Test receiving a new connection.*/
 void test_recv_connection()
 {
+	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
+			NULL);
 	struct firefly_transport_llp *llp = firefly_transport_llp_udp_posix_new(
-						local_port, recv_conn_recv_conn);
+						local_port, recv_conn_recv_conn, eq);
 	struct sockaddr_in remote_addr;
 
 	// send data
@@ -145,10 +158,13 @@ void test_recv_connection()
 
 	// Set up a connection over local loopback.
 	firefly_transport_udp_posix_read(llp);
+	execute_events(eq, 1);
 	CU_ASSERT_TRUE(good_conn_received);
 	data_received = false;
 	good_conn_received = false;
-	firefly_transport_llp_udp_posix_free(&llp);
+	firefly_transport_llp_udp_posix_free(llp);
+	execute_remaining_events(eq);
+	firefly_event_queue_free(&eq);
 }
 
 struct firefly_connection *recv_data_recv_conn(
@@ -163,8 +179,10 @@ struct firefly_connection *recv_data_recv_conn(
 
 void test_recv_data()
 {
+	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
+			NULL);
 	struct firefly_transport_llp *llp = firefly_transport_llp_udp_posix_new(
-					local_port, recv_data_recv_conn);
+					local_port, recv_data_recv_conn, eq);
 	struct sockaddr_in remote_addr;
 	send_data(&remote_addr, remote_port, send_buf, sizeof(send_buf));
 
@@ -173,29 +191,28 @@ void test_recv_data()
 
 	conn_udp->remote_addr = malloc(sizeof(struct sockaddr_in));
 	memcpy(conn_udp->remote_addr, &remote_addr, sizeof(remote_addr));
+	conn_udp->llp = llp;
 	struct firefly_connection *conn = firefly_connection_new(NULL, NULL,
-			NULL, NULL, NULL, conn_udp);
-
-	/*
-	 * The 'open' member of the platspec is uninitialized.
-	 * On 32 bit it worked out of pure luck. Not so much on
-	 * 64 bit.
-	 */
-	((struct protocol_connection_udp_posix *)conn->transport_conn_platspec)->open = true;
+			NULL, NULL, eq, conn_udp, firefly_transport_connection_udp_posix_free);
 
 	add_connection_to_llp(conn, llp);
 
 	firefly_transport_udp_posix_read(llp);
+	execute_events(eq, 1);
 	CU_ASSERT_TRUE(data_received);
 	data_received = false;
 	good_conn_received = false;
-	firefly_transport_llp_udp_posix_free(&llp);
+	firefly_transport_llp_udp_posix_free(llp);
+	execute_remaining_events(eq);
+	firefly_event_queue_free(&eq);
 }
 
 void test_recv_conn_and_data()
 {
+	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
+			NULL);
 	struct firefly_transport_llp *llp = firefly_transport_llp_udp_posix_new(
-					local_port, recv_conn_recv_conn);
+					local_port, recv_conn_recv_conn, eq);
 	struct sockaddr_in remote_addr;
 
 	// send data
@@ -203,18 +220,23 @@ void test_recv_conn_and_data()
 
 	// Set up a connection over local loopback.
 	firefly_transport_udp_posix_read(llp);
+	execute_events(eq, 1);
 
 	CU_ASSERT_TRUE(good_conn_received);
 	CU_ASSERT_TRUE(data_received);
 	good_conn_received = false;
 	data_received = false;
-	firefly_transport_llp_udp_posix_free(&llp);
+	firefly_transport_llp_udp_posix_free(llp);
+	execute_remaining_events(eq);
+	firefly_event_queue_free(&eq);
 }
 
 void test_recv_conn_and_two_data()
 {
+	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
+			NULL);
 	struct firefly_transport_llp *llp = firefly_transport_llp_udp_posix_new(
-					local_port, recv_conn_recv_conn);
+					local_port, recv_conn_recv_conn, eq);
 	struct sockaddr_in remote_addr;
 
 	// send data
@@ -222,6 +244,7 @@ void test_recv_conn_and_two_data()
 
 	// Set up a connection over local loopback.
 	firefly_transport_udp_posix_read(llp);
+	execute_events(eq, 1);
 
 	CU_ASSERT_TRUE(good_conn_received);
 	CU_ASSERT_TRUE(data_received);
@@ -230,34 +253,42 @@ void test_recv_conn_and_two_data()
 
 	send_data(&remote_addr, remote_port, send_buf, sizeof(send_buf));
 	firefly_transport_udp_posix_read(llp);
+	execute_events(eq, 1);
 
 	CU_ASSERT_FALSE(good_conn_received);
 	CU_ASSERT_TRUE(data_received);
 	good_conn_received = false;
 	data_received = false;
-	firefly_transport_llp_udp_posix_free(&llp);
+	firefly_transport_llp_udp_posix_free(llp);
+	execute_remaining_events(eq);
+	firefly_event_queue_free(&eq);
 }
 
 void test_recv_conn_keep()
 {
+	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
+			NULL);
 	struct firefly_transport_llp *llp = firefly_transport_llp_udp_posix_new(
-					local_port, recv_conn_recv_conn);
+					local_port, recv_conn_recv_conn, eq);
 	// send data
 	struct sockaddr_in remote_addr;
 	send_data(&remote_addr, remote_port, send_buf, sizeof(send_buf));
 
 	// Set up a connection over local loopback.
 	firefly_transport_udp_posix_read(llp);
+	execute_events(eq, 1);
 
 	CU_ASSERT_TRUE(good_conn_received);
 	CU_ASSERT_TRUE(data_received);
 	struct firefly_connection *conn = find_connection(llp, &remote_addr,
 									connection_eq_inaddr);
-	CU_ASSERT_NOT_EQUAL(conn, NULL);
+	CU_ASSERT_PTR_NOT_NULL(conn);
 
 	good_conn_received = false;
 	data_received = false;
-	firefly_transport_llp_udp_posix_free(&llp);
+	firefly_transport_llp_udp_posix_free(llp);
+	execute_remaining_events(eq);
+	firefly_event_queue_free(&eq);
 }
 
 struct firefly_connection *recv_conn_keep_two(
@@ -265,21 +296,24 @@ struct firefly_connection *recv_conn_keep_two(
 {
 	good_conn_received = true;
 	struct firefly_connection *conn =
-			firefly_transport_connection_udp_posix_open(NULL, NULL, NULL, NULL,
+			firefly_transport_connection_udp_posix_open(NULL, NULL, NULL,
 					ip_addr, port, llp);
 	return conn;
 }
 
 void test_recv_conn_keep_two()
 {
+	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
+			NULL);
 	struct firefly_transport_llp *llp = firefly_transport_llp_udp_posix_new(
-						local_port, recv_conn_keep_two);
+						local_port, recv_conn_keep_two, eq);
 	// send data
 	struct sockaddr_in remote_addr;
 	send_data(&remote_addr, remote_port, send_buf, sizeof(send_buf));
 
 	// Set up a connection over local loopback.
 	firefly_transport_udp_posix_read(llp);
+	execute_events(eq, 1);
 
 	// test first connection
 	CU_ASSERT_TRUE(good_conn_received);
@@ -295,6 +329,7 @@ void test_recv_conn_keep_two()
 
 	// Set up a connection over local loopback.
 	firefly_transport_udp_posix_read(llp);
+	execute_events(eq, 1);
 
 	// test first connection
 	CU_ASSERT_TRUE(good_conn_received);
@@ -304,7 +339,9 @@ void test_recv_conn_keep_two()
 
 	good_conn_received = false;
 	data_received = false;
-	firefly_transport_llp_udp_posix_free(&llp);
+	firefly_transport_llp_udp_posix_free(llp);
+	execute_remaining_events(eq);
+	firefly_event_queue_free(&eq);
 }
 
 struct firefly_connection *recv_conn_reject_recv_conn(
@@ -319,136 +356,56 @@ struct firefly_connection *recv_conn_reject_recv_conn(
 
 void test_recv_conn_reject()
 {
+	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
+			NULL);
 	struct firefly_transport_llp *llp = firefly_transport_llp_udp_posix_new(
-					local_port, recv_conn_reject_recv_conn);
+					local_port, recv_conn_reject_recv_conn, eq);
 	// send data
 	struct sockaddr_in remote_addr;
 	send_data(&remote_addr, remote_port, send_buf, sizeof(send_buf));
 
 	// Set up a connection over local loopback.
 	firefly_transport_udp_posix_read(llp);
+	execute_events(eq, 1);
 
 	CU_ASSERT_TRUE(good_conn_received);
 	CU_ASSERT_FALSE(data_received);
 
 	CU_ASSERT_EQUAL(llp->conn_list, NULL);
-	firefly_transport_llp_udp_posix_free(&llp);
+	firefly_transport_llp_udp_posix_free(llp);
+	execute_remaining_events(eq);
+	firefly_event_queue_free(&eq);
 }
 
 // NOTE: This test is supposed to segfault if it fails as that is the only way
 // to test it.
 void test_null_pointer_as_callback()
 {
+	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
+			NULL);
 	struct firefly_transport_llp *llp = firefly_transport_llp_udp_posix_new(
-							local_port, NULL);
+							local_port, NULL, eq);
 	struct sockaddr_in remote_addr;
 	send_data(&remote_addr, remote_port, send_buf, sizeof(send_buf));
 
 	firefly_transport_udp_posix_read(llp);
+	execute_events(eq, 1);
 
 	CU_PASS("Passed null pointer as callback\n");
 
-	firefly_transport_llp_udp_posix_free(&llp);
-}
-
-void test_cleanup_simple()
-{
-	int res;
-	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
-			NULL);
-	struct firefly_transport_llp *llp = firefly_transport_llp_udp_posix_new(
-							local_port, NULL);
-	// Test no segfault or simillar error
-	res = firefly_transport_udp_posix_clean_up(llp);
-	CU_ASSERT_EQUAL(0, res);
-	struct firefly_connection *conn_1 =
-		firefly_transport_connection_udp_posix_open(NULL, NULL, NULL, eq,
-				"127.0.0.1", 55550, llp);
-	struct sockaddr_in addr;
-	setup_sockaddr(&addr, 55550);
-	// Test clean up does not remove non closed connections.
-	res = firefly_transport_udp_posix_clean_up(llp);
-	CU_ASSERT_EQUAL(0, res);
-	CU_ASSERT_PTR_NOT_NULL(find_connection(llp, &addr, connection_eq_inaddr));
-	firefly_transport_connection_udp_posix_close(conn_1);
-	res = firefly_transport_udp_posix_clean_up(llp);
-	CU_ASSERT_EQUAL(1, res);
-	CU_ASSERT_PTR_NULL(find_connection(llp, &addr, connection_eq_inaddr));
-	firefly_event_execute(firefly_event_pop(eq));
-	firefly_transport_llp_udp_posix_free(&llp);
-	firefly_event_queue_free(&eq);
-}
-
-void test_cleanup_many_conn()
-{
-	int res;
-	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
-			NULL);
-	struct firefly_transport_llp *llp = firefly_transport_llp_udp_posix_new(
-							local_port, NULL);
-	// Test no segfault or simillar error
-	res = firefly_transport_udp_posix_clean_up(llp);
-	CU_ASSERT_EQUAL(0, res);
-	struct firefly_connection *conn_1 =
-		firefly_transport_connection_udp_posix_open(NULL, NULL, NULL,
-						eq, "127.0.0.1", 55551, llp);
-	struct sockaddr_in addr_1;
-	setup_sockaddr(&addr_1, 55551);
-	struct firefly_connection *conn_2 =
-		firefly_transport_connection_udp_posix_open(NULL, NULL, NULL,
-						eq, "127.0.0.1", 55552, llp);
-	struct sockaddr_in addr_2;
-	setup_sockaddr(&addr_2, 55552);
-	struct firefly_connection *conn_3 =
-		firefly_transport_connection_udp_posix_open(NULL, NULL, NULL,
-						eq, "127.0.0.1", 55553, llp);
-	struct sockaddr_in addr_3;
-	setup_sockaddr(&addr_3, 55553);
-	struct firefly_connection *conn_4 =
-		firefly_transport_connection_udp_posix_open(NULL, NULL, NULL,
-						eq, "127.0.0.1", 55554, llp);
-	struct sockaddr_in addr_4;
-	setup_sockaddr(&addr_4, 55554);
-	// Test clean up does not remove non closed connections.
-	res = firefly_transport_udp_posix_clean_up(llp);
-	CU_ASSERT_EQUAL(0, res);
-	CU_ASSERT_PTR_NOT_NULL(find_connection(llp, &addr_1, connection_eq_inaddr));
-	CU_ASSERT_PTR_NOT_NULL(find_connection(llp, &addr_2, connection_eq_inaddr));
-	CU_ASSERT_PTR_NOT_NULL(find_connection(llp, &addr_3, connection_eq_inaddr));
-	CU_ASSERT_PTR_NOT_NULL(find_connection(llp, &addr_4, connection_eq_inaddr));
-
-	firefly_transport_connection_udp_posix_close(conn_1);
-	firefly_transport_connection_udp_posix_close(conn_3);
-	res = firefly_transport_udp_posix_clean_up(llp);
-	CU_ASSERT_EQUAL(2, res);
-	CU_ASSERT_PTR_NULL(find_connection(llp, &addr_1, connection_eq_inaddr));
-	CU_ASSERT_PTR_NOT_NULL(find_connection(llp, &addr_2, connection_eq_inaddr));
-	CU_ASSERT_PTR_NULL(find_connection(llp, &addr_3, connection_eq_inaddr));
-	CU_ASSERT_PTR_NOT_NULL(find_connection(llp, &addr_4, connection_eq_inaddr));
-
-
-	firefly_transport_connection_udp_posix_close(conn_2);
-	firefly_transport_connection_udp_posix_close(conn_4);
-	res = firefly_transport_udp_posix_clean_up(llp);
-	CU_ASSERT_EQUAL(2, res);
-	CU_ASSERT_PTR_NULL(find_connection(llp, &addr_1, connection_eq_inaddr));
-	CU_ASSERT_PTR_NULL(find_connection(llp, &addr_2, connection_eq_inaddr));
-	CU_ASSERT_PTR_NULL(find_connection(llp, &addr_3, connection_eq_inaddr));
-	CU_ASSERT_PTR_NULL(find_connection(llp, &addr_4, connection_eq_inaddr));
-	firefly_transport_llp_udp_posix_free(&llp);
-	firefly_event_execute(firefly_event_pop(eq));
-	firefly_event_execute(firefly_event_pop(eq));
-	firefly_event_execute(firefly_event_pop(eq));
-	firefly_event_execute(firefly_event_pop(eq));
+	firefly_transport_llp_udp_posix_free(llp);
+	execute_remaining_events(eq);
 	firefly_event_queue_free(&eq);
 }
 
 void test_conn_open_and_send()
 {
+	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
+			NULL);
 	struct firefly_transport_llp *llp = firefly_transport_llp_udp_posix_new(
-							local_port, NULL);
+							local_port, NULL, eq);
 	struct firefly_connection *conn = 
-		firefly_transport_connection_udp_posix_open(NULL, NULL, NULL, NULL,
+		firefly_transport_connection_udp_posix_open(NULL, NULL, NULL,
 				"127.0.0.1", 55550, llp);
 	CU_ASSERT_PTR_NOT_NULL_FATAL(conn);
 
@@ -461,16 +418,20 @@ void test_conn_open_and_send()
 	recv_data(recv_soc);
 
 	close(recv_soc);
-	firefly_transport_llp_udp_posix_free(&llp);
+	firefly_transport_llp_udp_posix_free(llp);
+	execute_remaining_events(eq);
+	firefly_event_queue_free(&eq);
 }
 
 void test_conn_open_and_recv()
 {
+	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
+			NULL);
 	struct firefly_transport_llp *llp = firefly_transport_llp_udp_posix_new(
-					local_port, recv_data_recv_conn);
+					local_port, recv_data_recv_conn, eq);
 
 	struct firefly_connection *conn =
-		firefly_transport_connection_udp_posix_open(NULL, NULL, NULL, NULL,
+		firefly_transport_connection_udp_posix_open(NULL, NULL, NULL,
 				"127.0.0.1", 55550, llp);
 	CU_ASSERT_PTR_NOT_NULL_FATAL(conn);
 
@@ -478,11 +439,14 @@ void test_conn_open_and_recv()
 	send_data(&send_addr, 55550, send_buf, sizeof(send_buf));
 
 	firefly_transport_udp_posix_read(llp);
+	execute_events(eq, 1);
 
 	CU_ASSERT_TRUE(data_received);
 
 	data_received = false;
-	firefly_transport_llp_udp_posix_free(&llp);
+	firefly_transport_llp_udp_posix_free(llp);
+	execute_remaining_events(eq);
+	firefly_event_queue_free(&eq);
 }
 
 static struct firefly_connection *conn_recv = NULL;
@@ -492,22 +456,24 @@ struct firefly_connection *open_and_recv_conn_recv_conn(
 {
 	good_conn_received = true;
 	conn_recv = firefly_transport_connection_udp_posix_open(NULL, NULL, NULL,
-			NULL, ip_addr, port, llp);
+			ip_addr, port, llp);
 	return conn_recv;
 }
 
 void test_open_and_recv_with_two_llp()
 {
+	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
+			NULL);
 	struct firefly_transport_llp *llp_recv = 
 		firefly_transport_llp_udp_posix_new(local_port,
-				open_and_recv_conn_recv_conn);
+				open_and_recv_conn_recv_conn, eq);
 
 	struct firefly_transport_llp *llp_send =
 		firefly_transport_llp_udp_posix_new(remote_port,
-					recv_data_recv_conn);
+					recv_data_recv_conn, eq);
 
 	struct firefly_connection *conn_send = 
-		firefly_transport_connection_udp_posix_open(NULL, NULL, NULL, NULL,
+		firefly_transport_connection_udp_posix_open(NULL, NULL, NULL,
 				"127.0.0.1", local_port, llp_send);
 	CU_ASSERT_PTR_NOT_NULL(conn_send);
 
@@ -515,6 +481,7 @@ void test_open_and_recv_with_two_llp()
 						conn_send);
 
 	firefly_transport_udp_posix_read(llp_recv);
+	execute_events(eq, 1);
 
 	CU_ASSERT_PTR_NOT_NULL(conn_recv);
 	CU_ASSERT_TRUE(good_conn_received);
@@ -526,18 +493,23 @@ void test_open_and_recv_with_two_llp()
 						conn_recv);
 
 	firefly_transport_udp_posix_read(llp_send);
+	execute_events(eq, 1);
 	CU_ASSERT_TRUE(data_received);
 
 	data_received = false;
-	firefly_transport_llp_udp_posix_free(&llp_recv);
-	firefly_transport_llp_udp_posix_free(&llp_send);
+	firefly_transport_llp_udp_posix_free(llp_recv);
+	firefly_transport_llp_udp_posix_free(llp_send);
+	execute_remaining_events(eq);
+	firefly_event_queue_free(&eq);
 }
 
 void test_recv_big_connection()
 {
+	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
+			NULL);
 	struct firefly_transport_llp *llp =
 		firefly_transport_llp_udp_posix_new(local_port,
-							recv_conn_recv_conn);
+							recv_conn_recv_conn, eq);
 	struct sockaddr_in remote_addr;
 	send_data(&remote_addr, remote_port, send_buf, sizeof(send_buf));
 
@@ -547,6 +519,7 @@ void test_recv_big_connection()
 	data_recv_buf = send_buf;
 
 	firefly_transport_udp_posix_read(llp);
+	execute_events(eq, 1);
 	CU_ASSERT_TRUE(good_conn_received);
 	CU_ASSERT_TRUE(data_received);
 
@@ -559,73 +532,35 @@ void test_recv_big_connection()
 	data_recv_buf = send_buf_big;
 
 	firefly_transport_udp_posix_read(llp);
+	execute_events(eq, 1);
 	CU_ASSERT_TRUE(data_received);
 
 	data_received = false;
 	/* good_conn_received = false; */
-	firefly_transport_llp_udp_posix_free(&llp);
-}
-
-void test_reader_scale_back()
-{
-	struct sockaddr_in remote_addr;
-	struct firefly_transport_llp *llp;
-	const unsigned int sbn = 8;
-
-	data_recv_size = sizeof(send_buf_big); /* test realted global */
-	data_recv_buf = send_buf_big;			   /* ditto */
-
-	llp = firefly_transport_llp_udp_posix_new(local_port,
-							recv_conn_recv_conn);
-	firefly_transport_udp_posix_set_n_scaleback(llp, sbn);
-
-	send_data(&remote_addr, remote_port,
-			  send_buf_big, sizeof(send_buf_big));
-	firefly_transport_udp_posix_read(llp);
-	CU_ASSERT_TRUE(good_conn_received);
-	CU_ASSERT_TRUE(data_received);
-	good_conn_received = false;
-	data_received = false;
-
-	for (size_t i = 0; i <= sbn; i++) {
-		unsigned char *buf;
-		unsigned int s;
-		if (i != 3) {
-			buf = send_buf;
-			s = sizeof(send_buf);
-			data_recv_size = sizeof(send_buf);
-		} else {
-			buf = send_buf_med;
-			s = sizeof(send_buf_med);
-			data_recv_size = sizeof(send_buf_med);
-		}
-		send_data(&remote_addr, remote_port, buf, s);
-		data_recv_buf = buf;
-		firefly_transport_udp_posix_read(llp);
-		CU_ASSERT_TRUE(data_received);
-		data_received = false;
-	}
-	struct transport_llp_udp_posix *udp_llp =
-		(struct transport_llp_udp_posix *)llp->llp_platspec;
-
-	CU_ASSERT_EQUAL(udp_llp->recv_buf_size, sizeof(send_buf_med));
-	firefly_transport_llp_udp_posix_free(&llp);
-	data_received = false;
-	good_conn_received = false;
+	firefly_transport_llp_udp_posix_free(llp);
+	execute_remaining_events(eq);
+	firefly_event_queue_free(&eq);
+	data_recv_size = sizeof(send_buf);
+	data_recv_buf = send_buf;
 }
 
 void *reader_thread_main(void *args)
 {
 	struct firefly_transport_llp *llp = (struct firefly_transport_llp *) args;
 	firefly_transport_udp_posix_read(llp);
+	struct transport_llp_udp_posix *llp_udp =
+		(struct transport_llp_udp_posix *) llp->llp_platspec;
+	execute_events(llp_udp->event_queue, 1);
 
 	return NULL;
 }
 
 void test_read_mult_threads()
 {
+	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
+			NULL);
 	struct firefly_transport_llp *llp = firefly_transport_llp_udp_posix_new(
-					local_port, recv_data_recv_conn);
+					local_port, recv_data_recv_conn, eq);
 
 	struct sockaddr_in remote_addr;
 	setup_sockaddr(&remote_addr, remote_port);
@@ -633,14 +568,10 @@ void test_read_mult_threads()
 		malloc(sizeof(struct protocol_connection_udp_posix));
 	conn_udp->remote_addr = malloc(sizeof(struct sockaddr_in));
 	memcpy(conn_udp->remote_addr, &remote_addr, sizeof(remote_addr));
+	conn_udp->llp = llp;
 	struct firefly_connection *conn = firefly_connection_new(NULL, NULL,
-			NULL, NULL, NULL, conn_udp);
-	/*
-	 * The 'open' member of the platspec is uninitialized.
-	 * On 32 bit it worked out of pure luck. Not so much on
-	 * 64 bit.
-	 */
-	((struct protocol_connection_udp_posix *)conn->transport_conn_platspec)->open = true;
+			NULL, NULL, eq, conn_udp,
+			firefly_transport_connection_udp_posix_free);
 	add_connection_to_llp(conn, llp);
 
 	pthread_t reader_thread;
@@ -653,6 +584,155 @@ void test_read_mult_threads()
 	CU_ASSERT_TRUE(data_received);
 	data_received = false;
 	good_conn_received = false;
-	firefly_transport_llp_udp_posix_free(&llp);
+	firefly_transport_llp_udp_posix_free(llp);
+	execute_remaining_events(eq);
+	firefly_event_queue_free(&eq);
+}
 
+void test_llp_free_empty()
+{
+	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
+			NULL);
+	struct firefly_transport_llp *llp = firefly_transport_llp_udp_posix_new(
+					local_port, recv_data_recv_conn, eq);
+
+	firefly_transport_llp_udp_posix_free(llp);
+	execute_events(eq, 1);
+	firefly_event_queue_free(&eq);
+}
+
+void test_llp_free_mult_conns()
+{
+	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
+			NULL);
+	struct firefly_transport_llp *llp = firefly_transport_llp_udp_posix_new(
+					local_port, recv_data_recv_conn, eq);
+	struct firefly_connection *conn;
+
+	conn = firefly_connection_udp_posix_new(NULL, NULL, NULL, llp, NULL);
+	add_connection_to_llp(conn, llp);
+
+	conn = firefly_connection_udp_posix_new(NULL, NULL, NULL, llp, NULL);
+	add_connection_to_llp(conn, llp);
+
+	conn = firefly_connection_udp_posix_new(NULL, NULL, NULL, llp, NULL);
+	add_connection_to_llp(conn, llp);
+
+	firefly_transport_llp_udp_posix_free(llp);
+	execute_events(eq, 8);
+	firefly_event_queue_free(&eq);
+}
+
+static bool data_sent = false;
+static void recv_socket_chan_close(int socket)
+{
+	int res;
+	size_t pkg_len = 0;
+	res = ioctl(socket, FIONREAD, &pkg_len);
+	if (res == -1) {
+		printf("Could not read recv data size\n");
+		return;
+	}
+	if (pkg_len <= 0) {
+		printf("Expected to receive data but did not.\n");
+		return;
+	}
+	unsigned char *recv_buf = malloc(pkg_len);
+	struct sockaddr_in remote_addr;
+	socklen_t len = sizeof(struct sockaddr_in);
+	res = recvfrom(socket, recv_buf, pkg_len, 0,
+			(struct sockaddr *) &remote_addr, &len);
+	free(recv_buf);
+	if (res == -1) {
+		CU_FAIL("Failed to receive data from socket.\n");
+		return;
+	}
+	data_sent = true;
+}
+
+void test_llp_free_mult_conns_w_chans()
+{
+	// test correct number of events and channel close packets sent in the
+	// correct order.
+	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
+			NULL);
+	struct firefly_transport_llp *llp = firefly_transport_llp_udp_posix_new(
+					local_port, NULL, eq);
+	struct firefly_connection *conn;
+	struct firefly_channel *ch;
+
+	conn = firefly_transport_connection_udp_posix_open(NULL, NULL, NULL,
+			"127.0.0.1", 55550, llp);
+
+	ch = firefly_channel_new(conn);
+	ch->remote_id = 0;
+	add_channel_to_connection(ch, conn);
+
+	ch = firefly_channel_new(conn);
+	ch->remote_id = 1;
+	add_channel_to_connection(ch, conn);
+
+	conn = firefly_transport_connection_udp_posix_open(NULL, NULL, NULL,
+			"127.0.0.1", 55550, llp);
+
+	ch = firefly_channel_new(conn);
+	ch->remote_id = 2;
+	add_channel_to_connection(ch, conn);
+
+	conn = firefly_transport_connection_udp_posix_open(NULL, NULL, NULL,
+			"127.0.0.1", 55550, llp);
+
+	ch = firefly_channel_new(conn);
+	ch->remote_id = 3;
+	add_channel_to_connection(ch, conn);
+
+	struct sockaddr_in addr;
+	setup_sockaddr(&addr, 55550);
+	int socket = open_socket(&addr);
+	firefly_transport_llp_udp_posix_free(llp);
+	// llp free
+	execute_events(eq, 1);
+
+	// connection close
+	execute_events(eq, 1);
+	// channel close
+	execute_events(eq, 1);
+	recv_socket_chan_close(socket);
+	CU_ASSERT_TRUE(data_sent);
+	data_sent = false;
+	// channel free
+	execute_events(eq, 1);
+
+	// connection close
+	execute_events(eq, 1);
+	// channel close
+	execute_events(eq, 1);
+	recv_socket_chan_close(socket);
+	CU_ASSERT_TRUE(data_sent);
+	data_sent = false;
+	// channel free
+	execute_events(eq, 1);
+
+	// connection close
+	execute_events(eq, 1);
+	// channel close
+	execute_events(eq, 1);
+	recv_socket_chan_close(socket);
+	CU_ASSERT_TRUE(data_sent);
+	data_sent = false;
+	// channel free
+	execute_events(eq, 1);
+	// channel close
+	execute_events(eq, 1);
+	recv_socket_chan_close(socket);
+	CU_ASSERT_TRUE(data_sent);
+	data_sent = false;
+	// channel free
+	execute_events(eq, 1);
+
+	// 3 conn close, 3 conn free, llp free
+	execute_events(eq, 7);
+	close(socket);
+	firefly_event_queue_free(&eq);
+	data_sent = false;
 }

@@ -9,6 +9,8 @@
 #include <transport/firefly_transport.h>
 #include <signal.h>
 
+#include <utils/firefly_event_queue.h>
+
 #include "transport/firefly_transport_private.h"
 
 /**
@@ -16,18 +18,11 @@
  */
 struct transport_llp_udp_posix {
 	int local_udp_socket; /**< The file descriptor of the UDP socket */
-	struct sockaddr_in *local_addr; /**< The address the socket is bound to. 
-	*/
-	/* buffer related stuff */
-	size_t scale_back_nbr;	/**< The number of pkgs before scaleback */
-	size_t nbr_smaller; 	/**< The number of smaller pkgs received */
-	size_t scale_back_size;	/**< The next largest pkg seen among the n last 
-				  pkgs */
-	size_t recv_buf_size;	/**< Current buffer size */
-	unsigned char *recv_buf;	/**< Pointer t the recv buffer  */
+	struct sockaddr_in *local_addr; /**< The address the socket is bound to. */
 	firefly_on_conn_recv_pudp on_conn_recv; /**< The callback to be called
 							when a new connection is
 							detected. */
+	struct firefly_event_queue *event_queue;
 };
 
 /**
@@ -38,10 +33,17 @@ struct protocol_connection_udp_posix {
 						this connection */
 	int socket; /**< The socket file descriptor associated with this
 				connection. */
-	sig_atomic_t open; /**< The flag indicating the opened state of a
-						 connection. TRUE or FALSE from
-						 stdbool are used.*/
+	struct firefly_transport_llp *llp;
 };
+
+struct firefly_event_llp_read_udp_posix {
+	struct firefly_transport_llp *llp;
+	struct sockaddr_in *addr;
+	unsigned char *data;
+	size_t len;
+};
+
+int firefly_transport_udp_posix_read_event(void *event_arg);
 
 /**
  * @brief Compares the \c struct #firefly_connection with the specified address.
@@ -81,6 +83,8 @@ void sockaddr_in_ipaddr(struct sockaddr_in *addr, char *ip_addr);
  */
 unsigned short sockaddr_in_port(struct sockaddr_in *addr);
 
+int firefly_transport_llp_udp_posix_free_event(void *event_arg);
+
 /**
  * @brief Allocates and initializes a new connection with udp posix specific
  * data.
@@ -100,7 +104,6 @@ struct firefly_connection *firefly_connection_udp_posix_new(
 					firefly_channel_is_open_f on_channel_opened,
 					firefly_channel_closed_f on_channel_closed,
 					firefly_channel_accept_f on_channel_recv,
-					struct firefly_event_queue *event_queue,
 					struct firefly_transport_llp *llp,
 					struct sockaddr_in *remote_addr);
 

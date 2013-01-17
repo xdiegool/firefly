@@ -2,6 +2,7 @@
 #define FIREFLY_PROTOCOL_PRIVATE_H
 
 #include <labcomm.h>
+#include <signal.h>
 
 #include <protocol/firefly_protocol.h>
 #include <gen/firefly_protocol.h>
@@ -10,6 +11,8 @@
 
 #define CHANNEL_ID_NOT_SET (-1)
 #define BUFFER_SIZE 128
+#define FIREFLY_CONNECTION_CLOSED	(0)
+#define FIREFLY_CONNECTION_OPEN	(1)
 
 void reg_proto_sigs(struct labcomm_encoder *enc,
 					struct labcomm_decoder *dec,
@@ -25,6 +28,8 @@ void reg_proto_sigs(struct labcomm_encoder *enc,
  */
 typedef void (* transport_write_f)(unsigned char *data, size_t data_size,
 					struct firefly_connection *conn);
+
+typedef void (*transport_connection_free)(struct firefly_connection *conn);
 
 /**
  * @brief Structure describing a buffer where transport data is stored.
@@ -50,6 +55,9 @@ struct channel_list_node {
 struct firefly_connection {
 	void *transport_conn_platspec; /**< Pointer to transport specific
 						connection data. */
+	transport_connection_free transport_conn_platspec_free;
+	sig_atomic_t open; /**< The flag indicating the opened state of a
+						 connection. */
 	struct ff_transport_data *writer_data; /**< Where the writer data is
 								saved. */
 	struct ff_transport_data *reader_data; /**< Where the reader data is
@@ -121,7 +129,8 @@ struct firefly_connection *firefly_connection_new(
 		firefly_channel_closed_f on_channel_closed,
 		firefly_channel_accept_f on_channel_recv,
 		transport_write_f transport_write,
-		struct firefly_event_queue *event_queue, void *plat_spec);
+		struct firefly_event_queue *event_queue, void *plat_spec,
+		transport_connection_free plat_spec_free);
 
 struct firefly_connection *firefly_connection_new_register(
 		firefly_channel_is_open_f on_channel_opened,
@@ -129,8 +138,25 @@ struct firefly_connection *firefly_connection_new_register(
 		firefly_channel_accept_f on_channel_recv,
 		transport_write_f transport_write,
 		struct firefly_event_queue *event_queue, void *plat_spec,
-		bool reg);
+		transport_connection_free plat_spec_free, bool reg);
 
+/*
+ * The application must make sure the connection is no longer used after calling
+ * this function. It is not thread safe to continue to use a connection after it
+ * is closed. Hence the application must make use of the event queue,
+ * mutexes/locks or any other feature preventing concurrency.
+ */
+void firefly_connection_close(struct firefly_connection *conn);
+
+/**
+ *
+ * This function will call the trasnport connection free callback if provided.
+ * The transport layer is responsible for preventing future use of the
+ * connection and prevent any concurrent use from multiple threads using the
+ * transport layer. This means the transport layer must either make use of the
+ * event queue, use mutexes/locks or any other form of preventing concurrency.
+ */
+int firefly_connection_close_event(void *event_arg);
 
 /**
  * @brief Frees a connection.
@@ -138,6 +164,8 @@ struct firefly_connection *firefly_connection_new_register(
  * @param conn The connection to free.
  */
 void firefly_connection_free(struct firefly_connection **conn);
+
+int firefly_connection_free_event(void *event_arg);
 
 /**
  * @brief The function called by the transport layer upon received data.

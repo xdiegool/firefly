@@ -4,6 +4,7 @@
 struct thread_arg {
 	pthread_mutex_t m;
 	pthread_cond_t t;
+	bool started;
 };
 
 /**

@@ -11,7 +11,6 @@
 
 #include "test/pingpong/pingpong_pudp.h"
 #include "test/pingpong/pingpong.h"
-#include "test/pingpong/hack_lctypes.h"
 #include "utils/cppmacros.h"
 
 
@@ -68,9 +67,8 @@ struct firefly_connection *pong_connection_received(
 	if (strncmp(ip_addr, PING_ADDR, strlen(PING_ADDR)) == 0 &&
 			port == PING_PORT) {
 		conn = firefly_transport_connection_udp_posix_open(
-				pong_chan_opened, pong_chan_closed, pong_chan_received, event_queue,
+				pong_chan_opened, pong_chan_closed, pong_chan_received,
 				ip_addr, port, llp);
-		hack_register_protocol_types(conn);
 		pong_pass_test(CONNECTION_OPEN);
 	} else {
 		fprintf(stderr, "ERROR: Received unknown connection: %s:%hu\n",
@@ -91,8 +89,7 @@ void pong_chan_opened(struct firefly_channel *chan)
 
 void pong_chan_closed(struct firefly_channel *chan)
 {
-	// TODO concurrency problem conn freed before chan
-	firefly_transport_connection_udp_posix_close(
+	firefly_connection_close(
 			firefly_channel_get_connection(chan));
 	pthread_mutex_lock(&pong_done_lock);
 	pong_done = true;
@@ -155,7 +152,6 @@ void *send_data_and_close(void *args)
 
 void *pong_main_thread(void *arg)
 {
-	UNUSED_VAR(arg);
 	int res;
 	pthread_t event_thread;
 	pthread_t reader_thread;
@@ -163,6 +159,7 @@ void *pong_main_thread(void *arg)
 
 	printf("Hello, Firefly from Pong!\n");
 	pong_init_tests();
+
 	struct event_queue_signals eq_s;
 	res = pthread_mutex_init(&eq_s.eq_lock, NULL);
 	if (res) {
@@ -172,6 +169,7 @@ void *pong_main_thread(void *arg)
 	if (res) {
 		fprintf(stderr, "ERROR: init cond variable.\n");
 	}
+	eq_s.event_exec_finish = false;
 	event_queue = firefly_event_queue_new(event_add_mutex, &eq_s);
 	res = pthread_create(&event_thread, NULL, event_thread_main, event_queue);
 	if (res) {
@@ -179,7 +177,8 @@ void *pong_main_thread(void *arg)
 	}
 
 	struct firefly_transport_llp *llp =
-			firefly_transport_llp_udp_posix_new(PONG_PORT, pong_connection_received);
+			firefly_transport_llp_udp_posix_new(PONG_PORT,
+					pong_connection_received, event_queue);
 
 	res = pthread_create(&reader_thread, NULL, reader_thread_main, llp);
 	if (res) {
@@ -187,7 +186,10 @@ void *pong_main_thread(void *arg)
 	}
 
 	// Signal to pingpong_main that pong is started so ping can start now.
+	pthread_mutex_lock(&ta->m);
+	ta->started = true;
 	pthread_cond_signal(&ta->t);
+	pthread_mutex_unlock(&ta->m);
 
 	pthread_mutex_lock(&pong_done_lock);
 	while (!pong_done) {
@@ -196,13 +198,17 @@ void *pong_main_thread(void *arg)
 	pthread_mutex_unlock(&pong_done_lock);
 
 	pthread_cancel(reader_thread);
-	pthread_cancel(event_thread);
-
 	pthread_join(reader_thread, NULL);
-	pthread_join(event_thread, NULL);
 
+	firefly_transport_llp_udp_posix_free(llp);
+
+	pthread_mutex_lock(&eq_s.eq_lock);
+	eq_s.event_exec_finish = true;
+	pthread_cond_signal(&eq_s.eq_cond);
+	pthread_mutex_unlock(&eq_s.eq_lock);
+
+	pthread_join(event_thread, NULL);
 	firefly_event_queue_free(&event_queue);
-	firefly_transport_llp_udp_posix_free(&llp);
 
 	pong_pass_test(TEST_DONE);
 	pingpong_test_print_results(pong_tests, PONG_NBR_TESTS, "Pong");
