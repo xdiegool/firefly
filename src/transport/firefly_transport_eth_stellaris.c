@@ -150,6 +150,7 @@ struct firefly_connection *firefly_transport_connection_eth_stellaris_open(
 		return NULL;
 	}
 
+	conn_eth->open = FIREFLY_CONNECTION_OPEN;
 	memcpy(conn_eth->remote_addr, mac_address, ETH_ADDR_LEN);
 
 	add_connection_to_llp(conn, llp);
