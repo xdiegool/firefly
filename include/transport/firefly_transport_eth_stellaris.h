@@ -3,9 +3,6 @@
 
 #include <transport/firefly_transport.h>
 
-#include <lwip/pbuf.h>  // For struct pbuf.
-#include <lwip/netif.h> // For struct netif.
-
 /**
  * An opaque struct representing an Ethernet header.
  */
@@ -38,17 +35,6 @@ struct firefly_transport_llp *firefly_transport_llp_eth_stellaris_new(
 		firefly_on_conn_recv_eth_stellaris on_conn_recv);
 
 /**
- * Callback used by stellaris to signal that a new Ethernet frame was received.
- *
- * @warning Should not be altered! It's an ugly hack to make stellaris play nicely
- * with us...
- *
- * @param netif The network interface the freame was received on.
- * @param pbuf The data that was received.
- */
-//void firefly_recieve_ethernet(struct netif *netif, struct pbuf *pbuf);
-
-/**
  * Frees a \c firefly_transport_llp and its members.
  *
  * @param llp The \c firefly_transport_llp to free
@@ -74,7 +60,7 @@ struct firefly_connection *firefly_transport_connection_eth_stellaris_open(
 				firefly_channel_closed_f on_channel_closed,
 				firefly_channel_accept_f on_channel_recv,
 				struct firefly_event_queue *event_queue,
-				char *mac_address,
+				unsigned char *mac_address,
 				struct firefly_transport_llp *llp);
 
 /**
