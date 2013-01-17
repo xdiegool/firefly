@@ -224,6 +224,19 @@ void firefly_transport_eth_posix_write(unsigned char *data, size_t data_size,
 
 void firefly_transport_eth_posix_read(struct firefly_transport_llp *llp)
 {
+	int res;
+	struct transport_llp_eth_posix *llp_eth =
+		(struct transport_llp_eth_posix *) llp->llp_platspec;
+	fd_set fs;
+	FD_ZERO(&fs);
+	FD_SET(llp_eth->socket, &fs);
+	res = select(llp_eth->socket + 1, &fs, NULL, NULL, NULL);
+	if (res == -1) {
+		firefly_error(FIREFLY_ERROR_SOCKET, 3,
+				"Failed in %s() on line %d.\nFailed to select.", __FUNCTION__,
+				__LINE__);
+	}
+
 	struct firefly_event_llp_read_eth_posix *ev_arg =
 		malloc(sizeof(struct firefly_event_llp_read_eth_posix));
 	if (ev_arg == NULL) {
@@ -241,18 +254,6 @@ void firefly_transport_eth_posix_read(struct firefly_transport_llp *llp)
 	ev_arg->data = NULL;
 	ev_arg->llp = llp;
 
-	int res;
-	struct transport_llp_eth_posix *llp_eth =
-		(struct transport_llp_eth_posix *) llp->llp_platspec;
-	fd_set fs;
-	FD_ZERO(&fs);
-	FD_SET(llp_eth->socket, &fs);
-	res = select(llp_eth->socket + 1, &fs, NULL, NULL, NULL);
-	if (res == -1) {
-		firefly_error(FIREFLY_ERROR_SOCKET, 3,
-				"Failed in %s() on line %d.\nFailed to select.", __FUNCTION__,
-				__LINE__);
-	}
 	// Read data from socket, = 0 is crucial due to ioctl only sets the
 	// first 32 bits of pkg_len
 	res = ioctl(llp_eth->socket, FIONREAD, &ev_arg->len);
