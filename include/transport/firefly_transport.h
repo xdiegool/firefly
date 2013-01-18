@@ -7,6 +7,7 @@
 #define FIREFLY_TRANSPORT_H
 
 #include <protocol/firefly_protocol.h>
+#include <protocol/firefly_protocol_private.h>
 #include <stdbool.h>
 
 /**
@@ -14,5 +15,11 @@
  * transport layer.
  */
 struct firefly_transport_llp;
+
+/**
+ * @breif Should normally not be used except when testing *only* transport layers.
+ */
+void replace_protocol_data_received_cb(struct firefly_transport_llp *llp,
+		protocol_data_received_f protocol_data_received_cb);
 
 #endif

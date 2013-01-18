@@ -74,6 +74,7 @@ struct firefly_transport_llp *firefly_transport_llp_udp_posix_new(
 
 	llp->llp_platspec = llp_udp;
 	llp->conn_list = NULL;
+	llp->protocol_data_received_cb = protocol_data_received;
 
 	return llp;
 }
@@ -315,7 +316,7 @@ int firefly_transport_udp_posix_read_event(void *event_arg)
 
 	// Existing or newly created conn. Passing data to procol layer.
 	if (conn != NULL) {
-		protocol_data_received(conn, ev_arg->data, ev_arg->len);
+		ev_arg->llp->protocol_data_received_cb(conn, ev_arg->data, ev_arg->len);
 	}
 
 	free(ev_arg->data);

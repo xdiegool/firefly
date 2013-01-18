@@ -68,7 +68,7 @@ int firefly_transport_udp_lwip_read_event(void *event_arg)
 		free(ip_str);
 	}
 	if (conn != NULL) { // Existing, not rejected and created conn.
-		protocol_data_received(conn, ev_a->p->payload, ev_a->p->len);
+		ev_a->llp->protocol_data_received_cb(conn, ev_a->p->payload, ev_a->p->len);
 	}
 	pbuf_free(ev_a->p);
 	free(ev_a);

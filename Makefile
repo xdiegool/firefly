@@ -105,7 +105,7 @@ INC_TRANSPORT_ETH_POSIX = $(addprefix -I, \
 INC_TRANSPORT_UDP_LWIP = $(addprefix -I, \
 		$(LABCOMMLIBPATH) \
 		$(RTOS_SOURCE_DIR)/include \
-       		$(LWIP_SOURCE_DIR)/src/include/ipv4 \
+		$(LWIP_SOURCE_DIR)/src/include/ipv4 \
 		$(LWIP_SOURCE_DIR)/src/include \
 		$(LWIP_SOURCE_DIR)/contrib/port/FreeRTOS/LM3S \
 		$(COMMOM_INCLUDE) \
@@ -397,20 +397,19 @@ $(TEST_PROGS): $$(patsubst %,$$(BUILD_DIR)/lib%.a,$$(LIB_FIREFLY_NAME) $$(LIB_TR
 $(BUILD_DIR)/test/test_protocol_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_protocol_main test_labcomm_utils test_proto_chan test_proto_conn test_proto_translc test_proto_protolc test_proto_errors proto_helper) $(BUILD_DIR)/$(GEN_DIR)/test.o
 	cp $(BUILD_DIR)/lib$(LIB_FIREFLY_NAME).a /tmp/lib$(LIB_FIREFLY_NAME)_wo_error.a
 	ar d /tmp/lib$(LIB_FIREFLY_NAME)_wo_error.a firefly_errors.o
-	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) -L/tmp/ $(filter-out %.a,$^) $(patsubst -l$(LIB_FIREFLY_NAME),-l$(LIB_FIREFLY_NAME)_wo_error,$(LDLIBS_TEST)) -o $@ 
+	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) -L/tmp/ $(filter-out %.a,$^) $(patsubst -l$(LIB_FIREFLY_NAME),-l$(LIB_FIREFLY_NAME)_wo_error,$(LDLIBS_TEST)) -o $@
 
 # Main test program for the transport tests.
 $(BUILD_DIR)/test/test_transport_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_transport_main test_transport test_transport_gen test_transport_udp_posix)
-	$(CC) $(LDFLAGS) -Wl,--allow-multiple-definition $(LDFLAGS_TEST) $^ $(filter-out %$(LIB_FIREFLY_NAME).a, $(LDLIBS_TEST)) -o $@ 
+	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $^ $(filter-out %$(LIB_FIREFLY_NAME).a, $(LDLIBS_TEST)) -o $@
 
 # Main test program for the eth posix transport tests.
-# TODO fix --allow-mutliple-definition
 $(BUILD_DIR)/test/test_transport_eth_posix_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_transport test_transport_eth_posix_main test_transport_eth_posix)
-	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) -Wl,--allow-multiple-definition $(filter-out %.a,$^) $(LDLIBS_TEST) -o $@ 
+	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) $(LDLIBS_TEST) -o $@
 
 # Main test program for the event queue tests.
 $(BUILD_DIR)/test/test_event_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_event_main) $(patsubst %,$(BUILD_DIR)/%.o,utils/firefly_event_queue)
-	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) $(LDLIBS_TEST) -o $@ 
+	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) $(LDLIBS_TEST) -o $@
 
 # Main test program for the pingpong udp program.
 $(BUILD_DIR)/test/pingpong/pingpong_main: $(patsubst %,$(BUILD_DIR)/test/pingpong/%.o,pingpong_main pingpong_pudp pingpong pong_pudp ping_pudp hack_lctypes) $(BUILD_DIR)/$(GEN_DIR)/pingpong.o

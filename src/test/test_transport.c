@@ -7,6 +7,7 @@
 #include "CUnit/Basic.h"
 
 #include <protocol/firefly_protocol.h>
+#include "test_transport.h"
 
 unsigned char send_buf[] = {0,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16};
 
@@ -15,8 +16,9 @@ size_t data_recv_size;
 unsigned char *data_recv_buf;
 struct firefly_connection *data_recv_expected_conn = NULL;
 
-void protocol_data_received(struct firefly_connection *conn, unsigned char *data,
-							size_t size)
+void protocol_data_received_repl(struct firefly_connection *conn,
+								 unsigned char *data,
+								 size_t size)
 {
 	UNUSED_VAR(conn);
 	if (!data_recv_buf) {

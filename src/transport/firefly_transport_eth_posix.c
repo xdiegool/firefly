@@ -88,6 +88,8 @@ struct firefly_transport_llp *firefly_transport_llp_eth_posix_new(
 	llp = malloc(sizeof(struct firefly_transport_llp));
 	llp->llp_platspec = llp_eth;
 	llp->conn_list = NULL;
+	llp->protocol_data_received_cb = protocol_data_received;
+
 	return llp;
 }
 
@@ -311,7 +313,7 @@ int firefly_transport_eth_posix_read_event(void *event_args)
 	}
 	// Existing or newly created conn. Passing data to procol layer.
 	if (conn != NULL) {
-		protocol_data_received(conn, ev_a->data, ev_a->len);
+		ev_a->llp->protocol_data_received_cb(conn, ev_a->data, ev_a->len);
 	}
 	free(ev_a->data);
 	free(ev_a->addr);

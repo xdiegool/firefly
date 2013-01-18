@@ -61,3 +61,9 @@ bool firefly_connection_eq_ptr(struct firefly_connection *conn, void *context)
 {
 	return conn == context;
 }
+
+void replace_protocol_data_received_cb(struct firefly_transport_llp *llp,
+		protocol_data_received_f protocol_data_received_cb)
+{
+	llp->protocol_data_received_cb = protocol_data_received_cb;
+}

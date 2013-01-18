@@ -8,6 +8,7 @@
 #define FIREFLY_TRANSPORT_PRIVATE_H
 
 #include <stdbool.h>
+#include <protocol/firefly_protocol_private.h>
 
 #define FIREFLY_CONNECTION_OPEN (1)
 #define FIREFLY_CONNECTION_CLOSED (0)
@@ -22,6 +23,7 @@ struct firefly_transport_llp {
 							connections. */
 	void *llp_platspec; /**< Platform, and transport method, specific data.
 				*/
+	protocol_data_received_f protocol_data_received_cb; /** The function which passes data received by the transport layer. Replacable for testability. */
 };
 
 /**

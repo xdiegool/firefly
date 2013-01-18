@@ -33,6 +33,7 @@
 #include "transport/firefly_transport_eth_posix_private.h"
 #include "protocol/firefly_protocol_private.h"
 #include "utils/cppmacros.h"
+#include "test_transport.h"
 
 #define ETH_DST_ADDR_START	(0)
 #define ETH_SRC_ADDR_START	(6)
@@ -188,10 +189,11 @@ static struct firefly_connection *on_conn_recv(
 		struct firefly_transport_llp *llp, char *mac_address)
 {
 	UNUSED_VAR(llp);
-	CU_ASSERT_NSTRING_EQUAL(mac_address, remote_mac_addr, 18);
 	if (memcmp(mac_address, remote_mac_addr, 18) != 0) {
-		printf("Mac: %s\n", mac_address);
+		printf("\nAct. mac: %s\n", mac_address);
+		printf("Exp. mac: %s\n", remote_mac_addr);
 	}
+	CU_ASSERT_NSTRING_EQUAL(mac_address, remote_mac_addr, 18);
 	recv_conn_called = true;
 	return NULL;
 }
@@ -224,6 +226,10 @@ void test_eth_recv_connection()
 			NULL);
 	struct firefly_transport_llp *llp = firefly_transport_llp_eth_posix_new(
 			"lo", on_conn_recv, eq);
+
+	/* Replace the ordinary data recv. callback. */
+	replace_protocol_data_received_cb(llp, protocol_data_received_repl);
+
 	send_data();
 
 	firefly_transport_eth_posix_read(llp);
@@ -242,6 +248,10 @@ void test_eth_recv_data()
 			NULL);
 	struct firefly_transport_llp *llp = firefly_transport_llp_eth_posix_new(
 			"lo", on_conn_recv, eq);
+
+	/* Replace the ordinary data recv. callback. */
+	replace_protocol_data_received_cb(llp, protocol_data_received_repl);
+
 	send_data();
 	firefly_transport_connection_eth_posix_open(
 			NULL, NULL, NULL, remote_mac_addr, "lo", llp);
@@ -264,6 +274,10 @@ void test_eth_recv_conn_and_data()
 			NULL);
 	struct firefly_transport_llp *llp = firefly_transport_llp_eth_posix_new(
 			"lo", on_conn_recv_keep, eq);
+
+	/* Replace the ordinary data recv. callback. */
+	replace_protocol_data_received_cb(llp, protocol_data_received_repl);
+
 	send_data();
 
 	firefly_transport_eth_posix_read(llp);
@@ -284,6 +298,10 @@ void test_eth_recv_conn_keep()
 			NULL);
 	struct firefly_transport_llp *llp = firefly_transport_llp_eth_posix_new(
 			"lo", on_conn_recv_keep, eq);
+
+	/* Replace the ordinary data recv. callback. */
+	replace_protocol_data_received_cb(llp, protocol_data_received_repl);
+
 	send_data();
 
 	firefly_transport_eth_posix_read(llp);
@@ -336,6 +354,10 @@ void test_eth_recv_conn_and_two_data()
 			NULL);
 	struct firefly_transport_llp *llp = firefly_transport_llp_eth_posix_new(
 			"lo", on_conn_recv_keep, eq);
+
+	/* Replace the ordinary data recv. callback. */
+	replace_protocol_data_received_cb(llp, protocol_data_received_repl);
+
 	send_data();
 
 	firefly_transport_eth_posix_read(llp);
@@ -397,6 +419,9 @@ void test_eth_recv_conn_keep_two()
 	struct firefly_transport_llp *llp = firefly_transport_llp_eth_posix_new(
 			"lo", on_conn_recv_keep_two, eq);
 
+	/* Replace the ordinary data recv. callback. */
+	replace_protocol_data_received_cb(llp, protocol_data_received_repl);
+
 	send_data_w_addr(remote_mac_addr);
 	firefly_transport_eth_posix_read(llp);
 	execute_events(eq, 1);
@@ -439,6 +464,10 @@ void test_eth_recv_data_two_conn()
 			NULL);
 	struct firefly_transport_llp *llp = firefly_transport_llp_eth_posix_new(
 			"lo", on_conn_recv_keep_two, eq);
+
+	/* Replace the ordinary data recv. callback. */
+	replace_protocol_data_received_cb(llp, protocol_data_received_repl);
+
 	struct firefly_connection *conn_1 = firefly_transport_connection_eth_posix_open(
 			NULL, NULL, NULL, remote_mac_addr, "lo", llp);
 	struct firefly_connection *conn_2 = firefly_transport_connection_eth_posix_open(

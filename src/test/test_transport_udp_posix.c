@@ -26,6 +26,7 @@
 #include "transport/firefly_transport_udp_posix_private.h"
 #include "protocol/firefly_protocol_private.h"
 #include "utils/cppmacros.h"
+#include "test_transport.h"
 
 extern unsigned char send_buf[16];
 extern bool data_received;
@@ -153,6 +154,9 @@ void test_recv_connection()
 						local_port, recv_conn_recv_conn, eq);
 	struct sockaddr_in remote_addr;
 
+	/* Replace the ordinary data recv. callback. */
+	replace_protocol_data_received_cb(llp, protocol_data_received_repl);
+
 	// send data
 	send_data(&remote_addr, remote_port, send_buf, sizeof(send_buf));
 
@@ -189,6 +193,9 @@ void test_recv_data()
 	struct protocol_connection_udp_posix *conn_udp =
 		malloc(sizeof(struct protocol_connection_udp_posix));
 
+	/* Replace the ordinary data recv. callback. */
+	replace_protocol_data_received_cb(llp, protocol_data_received_repl);
+
 	conn_udp->remote_addr = malloc(sizeof(struct sockaddr_in));
 	memcpy(conn_udp->remote_addr, &remote_addr, sizeof(remote_addr));
 	conn_udp->llp = llp;
@@ -215,6 +222,9 @@ void test_recv_conn_and_data()
 					local_port, recv_conn_recv_conn, eq);
 	struct sockaddr_in remote_addr;
 
+	/* Replace the ordinary data recv. callback. */
+	replace_protocol_data_received_cb(llp, protocol_data_received_repl);
+
 	// send data
 	send_data(&remote_addr, remote_port, send_buf, sizeof(send_buf));
 
@@ -238,6 +248,9 @@ void test_recv_conn_and_two_data()
 	struct firefly_transport_llp *llp = firefly_transport_llp_udp_posix_new(
 					local_port, recv_conn_recv_conn, eq);
 	struct sockaddr_in remote_addr;
+
+	/* Replace the ordinary data recv. callback. */
+	replace_protocol_data_received_cb(llp, protocol_data_received_repl);
 
 	// send data
 	send_data(&remote_addr, remote_port, send_buf, sizeof(send_buf));
@@ -270,7 +283,11 @@ void test_recv_conn_keep()
 			NULL);
 	struct firefly_transport_llp *llp = firefly_transport_llp_udp_posix_new(
 					local_port, recv_conn_recv_conn, eq);
-	// send data
+
+	/* Replace the ordinary data recv. callback. */
+	replace_protocol_data_received_cb(llp, protocol_data_received_repl);
+
+// send data
 	struct sockaddr_in remote_addr;
 	send_data(&remote_addr, remote_port, send_buf, sizeof(send_buf));
 
@@ -307,6 +324,10 @@ void test_recv_conn_keep_two()
 			NULL);
 	struct firefly_transport_llp *llp = firefly_transport_llp_udp_posix_new(
 						local_port, recv_conn_keep_two, eq);
+
+	/* Replace the ordinary data recv. callback. */
+	replace_protocol_data_received_cb(llp, protocol_data_received_repl);
+
 	// send data
 	struct sockaddr_in remote_addr;
 	send_data(&remote_addr, remote_port, send_buf, sizeof(send_buf));
@@ -430,6 +451,9 @@ void test_conn_open_and_recv()
 	struct firefly_transport_llp *llp = firefly_transport_llp_udp_posix_new(
 					local_port, recv_data_recv_conn, eq);
 
+	/* Replace the ordinary data recv. callback. */
+	replace_protocol_data_received_cb(llp, protocol_data_received_repl);
+
 	struct firefly_connection *conn =
 		firefly_transport_connection_udp_posix_open(NULL, NULL, NULL,
 				"127.0.0.1", 55550, llp);
@@ -468,9 +492,15 @@ void test_open_and_recv_with_two_llp()
 		firefly_transport_llp_udp_posix_new(local_port,
 				open_and_recv_conn_recv_conn, eq);
 
+	/* Replace the ordinary data recv. callback. */
+	replace_protocol_data_received_cb(llp_recv, protocol_data_received_repl);
+
 	struct firefly_transport_llp *llp_send =
 		firefly_transport_llp_udp_posix_new(remote_port,
 					recv_data_recv_conn, eq);
+
+	/* Replace the ordinary data recv. callback. */
+	replace_protocol_data_received_cb(llp_send, protocol_data_received_repl);
 
 	struct firefly_connection *conn_send = 
 		firefly_transport_connection_udp_posix_open(NULL, NULL, NULL,
@@ -510,6 +540,10 @@ void test_recv_big_connection()
 	struct firefly_transport_llp *llp =
 		firefly_transport_llp_udp_posix_new(local_port,
 							recv_conn_recv_conn, eq);
+
+	/* Replace the ordinary data recv. callback. */
+	replace_protocol_data_received_cb(llp, protocol_data_received_repl);
+
 	struct sockaddr_in remote_addr;
 	send_data(&remote_addr, remote_port, send_buf, sizeof(send_buf));
 
@@ -561,6 +595,9 @@ void test_read_mult_threads()
 			NULL);
 	struct firefly_transport_llp *llp = firefly_transport_llp_udp_posix_new(
 					local_port, recv_data_recv_conn, eq);
+
+	/* Replace the ordinary data recv. callback. */
+	replace_protocol_data_received_cb(llp, protocol_data_received_repl);
 
 	struct sockaddr_in remote_addr;
 	setup_sockaddr(&remote_addr, remote_port);
