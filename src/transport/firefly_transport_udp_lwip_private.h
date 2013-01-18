@@ -10,6 +10,8 @@
 #include <signal.h>
 #include <lwip/udp.h>
 
+#include <utils/firefly_event_queue.h>
+
 #define FIREFLY_CONNECTION_OPEN (1)
 #define FIREFLY_CONNECTION_CLOSED (0)
 
@@ -25,6 +27,7 @@ struct transport_llp_udp_lwip {
 	firefly_on_conn_recv_udp_lwip on_conn_recv; /**< The callback to be called
 							when a new connection is
 							detected. */
+	struct firefly_event_queue *event_queue;
 };
 
 /**
@@ -37,26 +40,22 @@ struct protocol_connection_udp_lwip {
 	struct ip_addr *remote_ip_addr; /**< The address to the remote node of
 						this connection */
 	u16_t remote_port; /**< The source port of this connection. */
-	sig_atomic_t open;	/**< Flags the state of the connection. */
+	struct firefly_transport_llp *llp;
 };
 
-/**
- * @brief Finds the \c struct #firefly_connection with the specified address.
- *
- * Find the connection with the specified address associated with
- * the supplied \a llp. The connection with a matching address
- * is returned, if none is found \c NULL is returned.
- *
- * @param ip_addr The address of the connection to find.
- * @param llp The link layer port to search for the #firefly_connection in.
- * @return The #firefly_connection with a matching address.
- * @retval NULL is returned if no connection with a matching address was found.
- * @retval struct #firefly_connection* is returned with the matching address if
- * it was found.
- */
-struct firefly_connection *find_connection_by_addr(struct ip_addr *ip_addr,
-		struct firefly_transport_llp *llp);
+struct firefly_event_llp_read_udp_posix {
+	struct firefly_transport_llp *llp;
+	struct ip_addr *ip_addr;
+	struct pbuf *p;
+	u16_t port;
+};
 
+int firefly_transport_udp_lwip_read_event(void *event_arg);
+
+int firefly_transport_llp_udp_lwip_free_event(void *event_arg);
+
+bool transport_udp_lwip_conn_eq_ipaddr(struct firefly_connection *conn,
+		void *context);
 
 /**
  * @brief Converts a string representation of an IPv4 address of the format
