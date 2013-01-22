@@ -31,10 +31,9 @@ NS_UTILS_DIR = $(BUILD_DIR)/utils
 NS_TRANSPORT_DIR = $(BUILD_DIR)/transport
 NS_TEST_DIR = $(BUILD_DIR)/test
 NS_TESTPINGPONG_DIR = $(NS_TEST_DIR)/pingpong
-NS_TESTFTSENSE_DIR = $(NS_TEST_DIR)/ft-sense
 
 # All volatile directories that are to be created.
-DIRS_TO_CREATE= $(BUILD_DIR) $(LIB_DIR) $(DOC_GEN_DIR) $(DOC_GEN_FULL_DIR) $(DOC_GEN_API_DIR) $(GEN_DIR) $(TESTFILES_DIR) $(INSTALL_INCLUDE_DIR) $(NS_GEN_DIR) $(NS_PROTOCOL_DIR) $(NS_UTILS_DIR) $(NS_TRANSPORT_DIR) $(NS_TEST_DIR) $(NS_TESTPINGPONG_DIR) $(NS_TESTFTSENSE_DIR)
+DIRS_TO_CREATE= $(BUILD_DIR) $(LIB_DIR) $(DOC_GEN_DIR) $(DOC_GEN_FULL_DIR) $(DOC_GEN_API_DIR) $(GEN_DIR) $(TESTFILES_DIR) $(INSTALL_INCLUDE_DIR) $(NS_GEN_DIR) $(NS_PROTOCOL_DIR) $(NS_UTILS_DIR) $(NS_TRANSPORT_DIR) $(NS_TEST_DIR) $(NS_TESTPINGPONG_DIR)
 
 # LabComm
 LIBPATH = ../lib
@@ -119,8 +118,8 @@ INC_TRANSPORT_UDP_LWIP = $(addprefix -I, \
 		$(LWIP_PORT_DIR) \
 		$(LWIP_INCLUDE_DIR) \
 		$(COMMOM_ADC) \
-		../ft-sense/lib/ \
-		../ft-sense/src/adc_freertos_lwip/src \
+		$(FT_SENSE_DIR)/lib/ \
+		$(FT_SENSE_DIR)/src/adc_freertos_lwip/src \
 		)
 
 # Inluces for $(LIB_TRANSPORT_ETH_STELLARIS_NAME).
@@ -424,13 +423,6 @@ $(TEST_PROGS): $$(patsubst %,$$(BUILD_DIR)/lib%.a,$$(LIB_FIREFLY_NAME) $$(LIB_TR
 $(BUILD_DIR)/test/test_protocol_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_protocol_main test_labcomm_utils test_proto_chan test_proto_conn test_proto_translc test_proto_protolc test_proto_errors proto_helper) $(BUILD_DIR)/$(GEN_DIR)/test.o
 	cp $(BUILD_DIR)/lib$(LIB_FIREFLY_NAME).a /tmp/lib$(LIB_FIREFLY_NAME)_wo_error.a
 	ar d /tmp/lib$(LIB_FIREFLY_NAME)_wo_error.a firefly_errors.o
-	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) -L/tmp/ $(filter-out %.a,$^) $(patsubst -l$(LIB_FIREFLY_NAME),-l$(LIB_FIREFLY_NAME)_wo_error,$(LDLIBS_TEST)) -o $@
-
-# FT-sense client.
-$(BUILD_DIR)/test/ft-sense/client: $(BUILD_DIR)/$(GEN_DIR)/ft_sample.o $(patsubst %,$(BUILD_DIR)/test/ft-sense/%.o,client) $(BUILD_DIR)/lib$(LIB_TRANSPORT_ETH_POSIX_NAME).a $(BUILD_DIR)/libfirefly.a $(LABCOMMLIBPATH)/liblabcomm.a
-	$(CC) $(LDFLAGS) $(filter-out %.a,$^) -lrt $(LDLIBS) -lpthread build/libfirefly.a $(BUILD_DIR)/lib$(LIB_TRANSPORT_ETH_POSIX_NAME).a $(LABCOMMLIBPATH)/liblabcomm.a -o $@
-
-
 
 # Main test program for the transport tests.
 $(BUILD_DIR)/test/test_transport_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_transport_main test_transport test_transport_gen test_transport_udp_posix)
