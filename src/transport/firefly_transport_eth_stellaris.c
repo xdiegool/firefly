@@ -140,16 +140,6 @@ void firefly_transport_connection_eth_stellaris_free(
 	conn->event_queue->offer_event_cb(conn->event_queue, ev);
 }
 
-int firefly_transport_connection_eth_stellaris_free_event(void *event_arg)
-{
-	struct firefly_connection *conn;
-	conn = (struct firefly_connection *) event_arg;
-
-	firefly_transport_connection_eth_stellaris_free_cb(conn);
-	firefly_connection_free(&conn);
-	return 0;
-}
-
 void firefly_transport_connection_eth_stellaris_free_cb(
 		struct firefly_connection *conn)
 {
@@ -159,6 +149,16 @@ void firefly_transport_connection_eth_stellaris_free_cb(
 			conn->transport_conn_platspec;
 	// Remove conn from llp
 	free(conn_eth);
+}
+
+int firefly_transport_connection_eth_stellaris_free_event(void *event_arg)
+{
+	struct firefly_connection *conn;
+	conn = (struct firefly_connection *) event_arg;
+
+	firefly_transport_connection_eth_stellaris_free_cb(conn);
+	firefly_connection_free(&conn);
+	return 0;
 }
 
 struct firefly_connection *firefly_transport_connection_eth_stellaris_open(
