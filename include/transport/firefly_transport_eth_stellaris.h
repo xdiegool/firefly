@@ -54,13 +54,6 @@ struct firefly_connection *firefly_transport_connection_eth_stellaris_open(
 				unsigned char *mac_address,
 				struct firefly_transport_llp *llp);
 
-/**
- * Closes the provided connection.
- *
- * @param conn The connection to close.
- */
-void firefly_transport_connection_eth_stellaris_close(struct firefly_connection *conn);
-
 void firefly_transport_eth_stellaris_read(struct firefly_transport_llp *llp);
 
 #endif

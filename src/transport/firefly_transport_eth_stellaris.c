@@ -143,17 +143,22 @@ void firefly_transport_connection_eth_stellaris_free(
 int firefly_transport_connection_eth_stellaris_free_event(void *event_arg)
 {
 	struct firefly_connection *conn;
-	struct protocol_connection_eth_stellaris *conn_eth;
-
 	conn = (struct firefly_connection *) event_arg;
+
+	firefly_transport_connection_eth_stellaris_free_cb(conn);
+	firefly_connection_free(&conn);
+	return 0;
+}
+
+void firefly_transport_connection_eth_stellaris_free_cb(
+		struct firefly_connection *conn)
+{
+	struct protocol_connection_eth_stellaris *conn_eth;
 	conn_eth =
 		(struct protocol_connection_eth_stellaris *)
 			conn->transport_conn_platspec;
-
+	// Remove conn from llp
 	free(conn_eth);
-	firefly_connection_free(&conn);
-
-	return 0;
 }
 
 struct firefly_connection *firefly_transport_connection_eth_stellaris_open(
@@ -184,22 +189,12 @@ struct firefly_connection *firefly_transport_connection_eth_stellaris_open(
 		return NULL;
 	}
 
-	conn_eth->open = FIREFLY_CONNECTION_OPEN;
 	memcpy(conn_eth->remote_addr, mac_address, ETH_ADDR_LEN);
 	memcpy(conn_eth->src_addr, llp_eth->src_addr, ETH_ADDR_LEN);
 
 	add_connection_to_llp(conn, llp);
 
 	return conn;
-}
-
-void firefly_transport_connection_eth_stellaris_close(
-		struct firefly_connection *conn)
-{
-	struct protocol_connection_eth_stellaris *conn_eth =
-		(struct protocol_connection_eth_stellaris *)
-			conn->transport_conn_platspec;
-	conn_eth->open = FIREFLY_CONNECTION_CLOSED;
 }
 
 void firefly_transport_eth_stellaris_write(unsigned char *data, size_t data_size,
@@ -290,8 +285,7 @@ void firefly_transport_eth_stellaris_read(struct firefly_transport_llp *llp)
 	// Find existing connection or create new.
 	conn = find_connection(llp, llp_eth->recv_buf + ETH_SRC_OFFSET,
 			connection_eq_remmac);
-	if (conn == NULL || !((struct protocol_connection_eth_stellaris *)
-				conn->transport_conn_platspec)->open)
+	if (conn == NULL)
 	{
 		if (llp_eth->on_conn_recv != NULL) {
 			conn = llp_eth->on_conn_recv(llp,

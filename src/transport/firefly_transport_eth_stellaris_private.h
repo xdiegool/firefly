@@ -28,8 +28,6 @@ struct transport_llp_eth_stellaris {
 struct protocol_connection_eth_stellaris {
 	unsigned char src_addr[ETH_ADDR_LEN];
 	unsigned char remote_addr[ETH_ADDR_LEN];
-	sig_atomic_t open; /**< The flag indicating the opened state of a
-						 connection.*/
 };
 
 short get_ethernet_proto(unsigned char *frame) {
