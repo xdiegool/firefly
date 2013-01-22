@@ -3,16 +3,6 @@
 
 #include <transport/firefly_transport.h>
 
-/**
- * An opaque struct representing an Ethernet header.
- */
-struct ethhdr;
-
-/**
- * An opaque struct representing an Ethernet frame.
- */
-union ethframe;
-
 struct transport_llp_eth_stellaris;
 
 struct protocol_connection_eth_stellaris;
@@ -32,6 +22,7 @@ typedef struct firefly_connection *(*firefly_on_conn_recv_eth_stellaris)(
  * @retval NULL Returns \c NULL upon failure.
  */
 struct firefly_transport_llp *firefly_transport_llp_eth_stellaris_new(
+		unsigned char *src_addr,
 		firefly_on_conn_recv_eth_stellaris on_conn_recv);
 
 /**

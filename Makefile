@@ -31,9 +31,10 @@ NS_UTILS_DIR = $(BUILD_DIR)/utils
 NS_TRANSPORT_DIR = $(BUILD_DIR)/transport
 NS_TEST_DIR = $(BUILD_DIR)/test
 NS_TESTPINGPONG_DIR = $(NS_TEST_DIR)/pingpong
+NS_TESTFTSENSE_DIR = $(NS_TEST_DIR)/ft-sense
 
 # All volatile directories that are to be created.
-DIRS_TO_CREATE= $(BUILD_DIR) $(LIB_DIR) $(DOC_GEN_DIR) $(DOC_GEN_FULL_DIR) $(DOC_GEN_API_DIR) $(GEN_DIR) $(TESTFILES_DIR) $(INSTALL_INCLUDE_DIR) $(NS_GEN_DIR) $(NS_PROTOCOL_DIR) $(NS_UTILS_DIR) $(NS_TRANSPORT_DIR) $(NS_TEST_DIR) $(NS_TESTPINGPONG_DIR)
+DIRS_TO_CREATE= $(BUILD_DIR) $(LIB_DIR) $(DOC_GEN_DIR) $(DOC_GEN_FULL_DIR) $(DOC_GEN_API_DIR) $(GEN_DIR) $(TESTFILES_DIR) $(INSTALL_INCLUDE_DIR) $(NS_GEN_DIR) $(NS_PROTOCOL_DIR) $(NS_UTILS_DIR) $(NS_TRANSPORT_DIR) $(NS_TEST_DIR) $(NS_TESTPINGPONG_DIR) $(NS_TESTFTSENSE_DIR)
 
 # LabComm
 LIBPATH = ../lib
@@ -188,8 +189,8 @@ ifeq ($(TARGET_ISA), arm_thumb)
 		  -D calloc=pvPortCalloc \
 		  -D free=vPortFree \
 		  -D ARM_CORTEXM3_CODESOURCERY \
-		  -D LABCOMM_NO_STDIO
-
+		  -D LABCOMM_NO_STDIO \
+		  -D GCC_ARMCM3=1
 endif
 
 # Clang does not support noexecstack it seems.
@@ -424,6 +425,12 @@ $(BUILD_DIR)/test/test_protocol_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_pr
 	cp $(BUILD_DIR)/lib$(LIB_FIREFLY_NAME).a /tmp/lib$(LIB_FIREFLY_NAME)_wo_error.a
 	ar d /tmp/lib$(LIB_FIREFLY_NAME)_wo_error.a firefly_errors.o
 	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) -L/tmp/ $(filter-out %.a,$^) $(patsubst -l$(LIB_FIREFLY_NAME),-l$(LIB_FIREFLY_NAME)_wo_error,$(LDLIBS_TEST)) -o $@
+
+# FT-sense client.
+$(BUILD_DIR)/test/ft-sense/client: $(BUILD_DIR)/$(GEN_DIR)/ft_sample.o $(patsubst %,$(BUILD_DIR)/test/ft-sense/%.o,client) $(BUILD_DIR)/lib$(LIB_TRANSPORT_ETH_POSIX_NAME).a $(BUILD_DIR)/libfirefly.a $(LABCOMMLIBPATH)/liblabcomm.a
+	$(CC) $(LDFLAGS) $(filter-out %.a,$^) -lrt $(LDLIBS) -lpthread build/libfirefly.a $(BUILD_DIR)/lib$(LIB_TRANSPORT_ETH_POSIX_NAME).a $(LABCOMMLIBPATH)/liblabcomm.a -o $@
+
+
 
 # Main test program for the transport tests.
 $(BUILD_DIR)/test/test_transport_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_transport_main test_transport test_transport_gen test_transport_udp_posix)
