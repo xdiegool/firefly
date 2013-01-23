@@ -283,46 +283,97 @@ void firefly_transport_eth_stellaris_read(struct firefly_transport_llp *llp)
 		return;
 	}
 
+	// TODO: Uncomment these 3 rows to add event.
+	/*struct firefly_event *ev = firefly_event_new(FIREFLY_PRIORITY_HIGH,*/
+			/*firefly_transport_eth_stellaris_read_event, llp);*/
+	/*llp_eth->event_queue->offer_event_cb(llp_eth->event_queue, ev);*/
+
+	// TODO: Remove these rows
 	// Find existing connection or create new.
-	conn = find_connection(llp, llp_eth->recv_buf + ETH_SRC_OFFSET,
-			connection_eq_remmac);
-	if (conn == NULL)
-	{
-		if (llp_eth->on_conn_recv != NULL) {
-			conn = llp_eth->on_conn_recv(llp,
-					llp_eth->recv_buf + ETH_SRC_OFFSET);
-		} else {
-			char addr[18];
+	/*conn = find_connection(llp, llp_eth->recv_buf + ETH_SRC_OFFSET,*/
+			/*connection_eq_remmac);*/
+	/*if (conn == NULL)*/
+	/*{*/
+		/*if (llp_eth->on_conn_recv != NULL) {*/
+			/*conn = llp_eth->on_conn_recv(llp,*/
+					/*llp_eth->recv_buf + ETH_SRC_OFFSET);*/
+		/*} else {*/
+			/*char addr[18];*/
 
-			sprint_mac(addr, llp_eth->recv_buf + ETH_SRC_OFFSET);
-			firefly_error(FIREFLY_ERROR_MISSING_CALLBACK, 4,
-					"Cannot accept supposed connection from"
-					" mac: %s.\n (in %s() at %s:%d)", addr,
-					__func__, __FILE__, __LINE__);
-		}
-	}
+			/*sprint_mac(addr, llp_eth->recv_buf + ETH_SRC_OFFSET);*/
+			/*firefly_error(FIREFLY_ERROR_MISSING_CALLBACK, 4,*/
+					/*"Cannot accept supposed connection from"*/
+					/*" mac: %s.\n (in %s() at %s:%d)", addr,*/
+					/*__func__, __FILE__, __LINE__);*/
+		/*}*/
+	/*}*/
 
-	// Existing or newly created conn. Passing data to procol layer.
-	if (conn != NULL) {
-		protocol_data_received(conn, llp_eth->recv_buf + ETH_DATA_OFFSET,
-				len - ETH_HEADER_LEN);
-	}
+	/*// Existing or newly created conn. Passing data to procol layer.*/
+	/*if (conn != NULL) {*/
+		/*protocol_data_received(conn, llp_eth->recv_buf + ETH_DATA_OFFSET,*/
+				/*len - ETH_HEADER_LEN);*/
+	/*}*/
 
-#if DEBUG
-	{
-		char buf[18];
+/*#if DEBUG*/
+	/*{*/
+		/*char buf[18];*/
 
-		sprint_mac(buf, llp_eth->recv_buf + ETH_DST_OFFSET);
-		firefly_error(FIREFLY_ERROR_USER_DEF, 2, "Recv'd %d B data of "
-				"type 0x%x to %s\n", len,
-				get_ethernet_proto(llp_eth->recv_buf),
-				buf);
-	}
-#endif
+		/*sprint_mac(buf, llp_eth->recv_buf + ETH_DST_OFFSET);*/
+		/*firefly_error(FIREFLY_ERROR_USER_DEF, 2, "Recv'd %d B data of "*/
+				/*"type 0x%x to %s\n", len,*/
+				/*get_ethernet_proto(llp_eth->recv_buf),*/
+				/*buf);*/
+	/*}*/
+/*#endif*/
 }
 
-int firefly_transport_eth_stellaris_read_event(void *event_arg)
+// TODO: See if this is correctly implemented!
+int firefly_transport_eth_stellaris_read_event(void *event_args)
 {
-	// TODO fix read event
+	UNUSED_VAR(event_args);
+	/*struct firefly_transport_llp *llp =*/
+		/*(struct firefly_transport_llp *) event_args;*/
+	/*struct transport_llp_eth_stellaris *llp_eth =*/
+		/*(struct transport_llp_eth_stellaris *) llp->llp_platspec;*/
+	/*struct firefly_connection *conn;*/
 
+	/*// Find existing connection or create new.*/
+	/*conn = find_connection(llp, llp_eth->recv_buf + ETH_SRC_OFFSET,*/
+			/*connection_eq_remmac);*/
+	/*if (conn == NULL)*/
+	/*{*/
+		/*if (llp_eth->on_conn_recv != NULL) {*/
+			/*conn = llp_eth->on_conn_recv(llp,*/
+					/*llp_eth->recv_buf + ETH_SRC_OFFSET);*/
+		/*} else {*/
+			/*char addr[18];*/
+
+			/*sprint_mac(addr, llp_eth->recv_buf + ETH_SRC_OFFSET);*/
+			/*firefly_error(FIREFLY_ERROR_MISSING_CALLBACK, 4,*/
+					/*"Cannot accept supposed connection from"*/
+					/*" mac: %s.\n (in %s() at %s:%d)", addr,*/
+					/*__func__, __FILE__, __LINE__);*/
+		/*}*/
+	/*}*/
+
+	/*// Existing or newly created conn. Passing data to procol layer.*/
+	/*if (conn != NULL) {*/
+		/*llp->protocol_data_received_cb(conn,*/
+				/*llp_eth->recv_buf + ETH_DATA_OFFSET,*/
+				/*len - ETH_HEADER_LEN);*/
+	/*}*/
+
+/*#if DEBUG*/
+	/*{*/
+		/*char buf[18];*/
+
+		/*sprint_mac(buf, llp_eth->recv_buf + ETH_DST_OFFSET);*/
+		/*firefly_error(FIREFLY_ERROR_USER_DEF, 2, "Recv'd %d B data of "*/
+				/*"type 0x%x to %s\n", len,*/
+				/*get_ethernet_proto(llp_eth->recv_buf),*/
+				/*buf);*/
+	/*}*/
+/*#endif*/
+	return 0;
 }
+
