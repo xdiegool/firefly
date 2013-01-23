@@ -262,6 +262,7 @@ void firefly_transport_eth_stellaris_read(struct firefly_transport_llp *llp)
 	llp_eth = (struct transport_llp_eth_stellaris *) llp->llp_platspec;
 
 	while (!EthernetPacketAvail(ETH_BASE)) {
+		// delay 0 == rescheduling of threads
 		vTaskDelay(0);
 	}
 	len = EthernetPacketGet(ETH_BASE, llp_eth->recv_buf,
@@ -318,4 +319,10 @@ void firefly_transport_eth_stellaris_read(struct firefly_transport_llp *llp)
 				buf);
 	}
 #endif
+}
+
+int firefly_transport_eth_stellaris_read_event(void *event_arg)
+{
+	// TODO fix read event
+
 }
