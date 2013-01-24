@@ -23,6 +23,7 @@ typedef struct firefly_connection *(*firefly_on_conn_recv_eth_stellaris)(
  */
 struct firefly_transport_llp *firefly_transport_llp_eth_stellaris_new(
 		unsigned char *src_addr,
+		struct firefly_event_queue *event_queue,
 		firefly_on_conn_recv_eth_stellaris on_conn_recv);
 
 /**

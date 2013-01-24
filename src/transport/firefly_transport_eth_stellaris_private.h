@@ -5,6 +5,7 @@
 #include <transport/firefly_transport.h>
 #include "transport/firefly_transport_private.h"
 #include <transport/firefly_transport_eth_stellaris.h>
+#include <utils/firefly_event_queue.h>
 
 #include <signal.h>
 
@@ -21,13 +22,19 @@
 
 struct transport_llp_eth_stellaris {
 	unsigned char src_addr[ETH_ADDR_LEN];
-	unsigned char *recv_buf;
 	firefly_on_conn_recv_eth_stellaris on_conn_recv;
+	struct firefly_event_queue *event_queue;
 };
 
 struct protocol_connection_eth_stellaris {
 	unsigned char src_addr[ETH_ADDR_LEN];
 	unsigned char remote_addr[ETH_ADDR_LEN];
+};
+
+struct firefly_event_llp_read_eth_stellaris {
+	struct firefly_transport_llp *llp;
+	unsigned char *eth_packet;
+	long len;
 };
 
 short get_ethernet_proto(unsigned char *frame) {
@@ -63,6 +70,8 @@ unsigned char *build_ethernet_frame(unsigned char *src, unsigned char *dest,
  * @retval 0 on success, -1 on failure.
  */
 int send_ethernet_frame(unsigned char *frame, long frame_len);
+
+int firefly_transport_eth_stellaris_read_event(void *event_args);
 
 int firefly_transport_connection_eth_stellaris_free_event(void *event_arg);
 

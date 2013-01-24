@@ -70,6 +70,7 @@ int send_ethernet_frame(unsigned char *frame, long frame_len)
 // NOTE: Expects the Stellaris Ethernet controller to be fully up before called.
 struct firefly_transport_llp *firefly_transport_llp_eth_stellaris_new(
 		unsigned char *src_addr,
+		struct firefly_event_queue *event_queue,
 		firefly_on_conn_recv_eth_stellaris on_conn_recv)
 {
 	struct firefly_transport_llp *llp;
@@ -83,16 +84,8 @@ struct firefly_transport_llp *firefly_transport_llp_eth_stellaris_new(
 		return NULL;
 	}
 	llp_eth_stellaris->on_conn_recv = on_conn_recv;
-	llp_eth_stellaris->recv_buf     = malloc(STELLARIS_ETH_MAX_FRAME_LEN);
+	llp_eth_stellaris->event_queue = event_queue;
 	memcpy(llp_eth_stellaris->src_addr, src_addr, ETH_ADDR_LEN);
-
-	if (llp_eth_stellaris->recv_buf == NULL) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 3,
-				"Failed in %s() on line %d.\n", __FUNCTION__,
-				__LINE__);
-		free(llp_eth_stellaris);
-		return NULL;
-	}
 
 	llp               = malloc(sizeof(struct firefly_transport_llp));
 	if (llp == NULL) {
@@ -100,7 +93,6 @@ struct firefly_transport_llp *firefly_transport_llp_eth_stellaris_new(
 				"Failed in %s() on line %d.\n", __FUNCTION__,
 				__LINE__);
 		free(llp_eth_stellaris);
-		free(llp_eth_stellaris->recv_buf);
 		return NULL;
 	}
 	llp->llp_platspec = llp_eth_stellaris;
@@ -256,16 +248,22 @@ bool connection_eq_remmac(struct firefly_connection *conn, void *context)
 void firefly_transport_eth_stellaris_read(struct firefly_transport_llp *llp)
 {
 	struct transport_llp_eth_stellaris *llp_eth;
+	unsigned char *eth_packet;
 	long len;
-	struct firefly_connection *conn;
+	eth_packet = malloc(STELLARIS_ETH_MAX_FRAME_LEN);
+	if (eth_packet == NULL) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 3,
+			 "Could not alloc buffer! In %s() on"
+			 "line %d.\n", __func__, __LINE__);
 
-	llp_eth = (struct transport_llp_eth_stellaris *) llp->llp_platspec;
+		return;
+	}
 
 	while (!EthernetPacketAvail(ETH_BASE)) {
 		// delay 0 == rescheduling of threads
 		vTaskDelay(0);
 	}
-	len = EthernetPacketGet(ETH_BASE, llp_eth->recv_buf,
+	len = EthernetPacketGet(ETH_BASE, eth_packet,
 			STELLARIS_ETH_MAX_FRAME_LEN);
 
 	if (len < 0) {
@@ -277,91 +275,69 @@ void firefly_transport_eth_stellaris_read(struct firefly_transport_llp *llp)
 	}
 
 	// Ignore anything that's not our protocol.
-	short proto = get_ethernet_proto(llp_eth->recv_buf);
+	short proto = get_ethernet_proto(eth_packet);
 	if (proto != FIREFLY_ETH_PROTOCOL) {
+		free(eth_packet);
 		firefly_error(FIREFLY_ERROR_USER_DEF, 1, "Not Firefly data.\n");
 		return;
 	}
 
-	// TODO: Uncomment these 3 rows to add event.
-	/*struct firefly_event *ev = firefly_event_new(FIREFLY_PRIORITY_HIGH,*/
-			/*firefly_transport_eth_stellaris_read_event, llp);*/
-	/*llp_eth->event_queue->offer_event_cb(llp_eth->event_queue, ev);*/
+	struct firefly_event_llp_read_eth_stellaris *ev_a =
+		malloc(sizeof(struct firefly_event_llp_read_eth_stellaris));
+	if (ev_a == NULL) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 3,
+			 "Could not alloc event struct! In %s() on"
+			 "line %d.\n", __func__, __LINE__);
+		return;
+	}
+	ev_a->llp = llp;
+	ev_a->len = len;
+	ev_a->eth_packet = eth_packet;
 
-	// TODO: Remove these rows
-	// Find existing connection or create new.
-	/*conn = find_connection(llp, llp_eth->recv_buf + ETH_SRC_OFFSET,*/
-			/*connection_eq_remmac);*/
-	/*if (conn == NULL)*/
-	/*{*/
-		/*if (llp_eth->on_conn_recv != NULL) {*/
-			/*conn = llp_eth->on_conn_recv(llp,*/
-					/*llp_eth->recv_buf + ETH_SRC_OFFSET);*/
-		/*} else {*/
-			/*char addr[18];*/
+	llp_eth = (struct transport_llp_eth_stellaris *) llp->llp_platspec;
 
-			/*sprint_mac(addr, llp_eth->recv_buf + ETH_SRC_OFFSET);*/
-			/*firefly_error(FIREFLY_ERROR_MISSING_CALLBACK, 4,*/
-					/*"Cannot accept supposed connection from"*/
-					/*" mac: %s.\n (in %s() at %s:%d)", addr,*/
-					/*__func__, __FILE__, __LINE__);*/
-		/*}*/
-	/*}*/
+	struct firefly_event *ev = firefly_event_new(FIREFLY_PRIORITY_HIGH,
+			firefly_transport_eth_stellaris_read_event, ev_a);
+	llp_eth->event_queue->offer_event_cb(llp_eth->event_queue, ev);
 
-	/*// Existing or newly created conn. Passing data to procol layer.*/
-	/*if (conn != NULL) {*/
-		/*protocol_data_received(conn, llp_eth->recv_buf + ETH_DATA_OFFSET,*/
-				/*len - ETH_HEADER_LEN);*/
-	/*}*/
-
-/*#if DEBUG*/
-	/*{*/
-		/*char buf[18];*/
-
-		/*sprint_mac(buf, llp_eth->recv_buf + ETH_DST_OFFSET);*/
-		/*firefly_error(FIREFLY_ERROR_USER_DEF, 2, "Recv'd %d B data of "*/
-				/*"type 0x%x to %s\n", len,*/
-				/*get_ethernet_proto(llp_eth->recv_buf),*/
-				/*buf);*/
-	/*}*/
-/*#endif*/
 }
 
-// TODO: See if this is correctly implemented!
 int firefly_transport_eth_stellaris_read_event(void *event_args)
 {
 	UNUSED_VAR(event_args);
-	/*struct firefly_transport_llp *llp =*/
-		/*(struct firefly_transport_llp *) event_args;*/
-	/*struct transport_llp_eth_stellaris *llp_eth =*/
-		/*(struct transport_llp_eth_stellaris *) llp->llp_platspec;*/
-	/*struct firefly_connection *conn;*/
+	struct firefly_event_llp_read_eth_stellaris *ev_a =
+		(struct firefly_event_llp_read_eth_stellaris *) event_args;
+	struct firefly_transport_llp *llp = ev_a->llp;
+	struct transport_llp_eth_stellaris *llp_eth =
+		(struct transport_llp_eth_stellaris *) llp->llp_platspec;
+	struct firefly_connection *conn;
 
-	/*// Find existing connection or create new.*/
-	/*conn = find_connection(llp, llp_eth->recv_buf + ETH_SRC_OFFSET,*/
-			/*connection_eq_remmac);*/
-	/*if (conn == NULL)*/
-	/*{*/
-		/*if (llp_eth->on_conn_recv != NULL) {*/
-			/*conn = llp_eth->on_conn_recv(llp,*/
-					/*llp_eth->recv_buf + ETH_SRC_OFFSET);*/
-		/*} else {*/
-			/*char addr[18];*/
+	// Find existing connection or create new.
+	conn = find_connection(llp, ev_a->eth_packet + ETH_SRC_OFFSET,
+			connection_eq_remmac);
+	if (conn == NULL)
+	{
+		if (llp_eth->on_conn_recv != NULL) {
+			conn = llp_eth->on_conn_recv(llp,
+					ev_a->eth_packet + ETH_SRC_OFFSET);
+		} else {
+			char addr[18];
+			sprint_mac(addr, ev_a->eth_packet + ETH_SRC_OFFSET);
+			firefly_error(FIREFLY_ERROR_MISSING_CALLBACK, 4,
+					"Cannot accept supposed connection from"
+					" mac: %s.\n (in %s() at %s:%d)", addr,
+					__func__, __FILE__, __LINE__);
+		}
+	}
 
-			/*sprint_mac(addr, llp_eth->recv_buf + ETH_SRC_OFFSET);*/
-			/*firefly_error(FIREFLY_ERROR_MISSING_CALLBACK, 4,*/
-					/*"Cannot accept supposed connection from"*/
-					/*" mac: %s.\n (in %s() at %s:%d)", addr,*/
-					/*__func__, __FILE__, __LINE__);*/
-		/*}*/
-	/*}*/
-
-	/*// Existing or newly created conn. Passing data to procol layer.*/
-	/*if (conn != NULL) {*/
-		/*llp->protocol_data_received_cb(conn,*/
-				/*llp_eth->recv_buf + ETH_DATA_OFFSET,*/
-				/*len - ETH_HEADER_LEN);*/
-	/*}*/
+	// Existing or newly created conn. Passing data to procol layer.
+	if (conn != NULL) {
+		protocol_data_received(conn,
+				ev_a->eth_packet + ETH_DATA_OFFSET,
+				ev_a->len - ETH_HEADER_LEN);
+	}
+	free(ev_a->eth_packet);
+	free(ev_a);
 
 /*#if DEBUG*/
 	/*{*/
