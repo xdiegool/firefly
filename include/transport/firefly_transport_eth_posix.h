@@ -3,6 +3,7 @@
 #define FIREFLY_TRANSPORT_ETH_POSIX_H
 
 #include <transport/firefly_transport.h>
+#include <sys/time.h>
 
 struct transport_llp_eth_posix;
 
@@ -26,6 +27,7 @@ struct firefly_connection *firefly_transport_connection_eth_posix_open(
 				char *if_name,
 				struct firefly_transport_llp *llp);
 
-void firefly_transport_eth_posix_read(struct firefly_transport_llp *llp);
+void firefly_transport_eth_posix_read(struct firefly_transport_llp *llp,
+		struct timeval *tv);
 
 #endif

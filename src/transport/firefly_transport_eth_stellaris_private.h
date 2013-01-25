@@ -27,8 +27,8 @@ struct transport_llp_eth_stellaris {
 };
 
 struct protocol_connection_eth_stellaris {
-	unsigned char src_addr[ETH_ADDR_LEN];
 	unsigned char remote_addr[ETH_ADDR_LEN];
+	struct firefly_transport_llp *llp;
 };
 
 struct firefly_event_llp_read_eth_stellaris {
@@ -37,13 +37,14 @@ struct firefly_event_llp_read_eth_stellaris {
 	long len;
 };
 
-short get_ethernet_proto(unsigned char *frame) {
-	short proto = 0;
-	proto = frame[ETH_PROTO_OFFSET] << 8;
-	proto |= frame[ETH_PROTO_OFFSET + 1];
-
-	return proto;
-}
+/**
+ * Helper function to get the protocol from an ethernet frame.
+ *
+ * @param frame The Ethernet frame to extract the protocol field from.
+ *
+ * @return The protocol.
+ */
+short get_ethernet_proto(unsigned char *frame);
 
 /**
  * Helper function to build ethernet frames.
@@ -73,7 +74,7 @@ int send_ethernet_frame(unsigned char *frame, long frame_len);
 
 int firefly_transport_eth_stellaris_read_event(void *event_args);
 
-int firefly_transport_connection_eth_stellaris_free_event(void *event_arg);
+int firefly_transport_llp_eth_stellaris_free_event(void *event_arg);
 
 void firefly_transport_connection_eth_stellaris_free(
 		struct firefly_connection *conn);

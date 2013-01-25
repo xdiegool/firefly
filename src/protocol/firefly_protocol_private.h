@@ -32,8 +32,8 @@ typedef void (* transport_write_f)(unsigned char *data, size_t data_size,
 typedef void (*transport_connection_free)(struct firefly_connection *conn);
 
 typedef void (* protocol_data_received_f)(struct firefly_connection *conn,
-										  unsigned char *data,
-										  size_t size);
+					  unsigned char *data,
+					  size_t size);
 
 /**
  * @brief Structure describing a buffer where transport data is stored.

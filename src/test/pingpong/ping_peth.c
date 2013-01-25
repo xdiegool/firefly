@@ -146,6 +146,7 @@ void *ping_main_thread(void *arg)
 	UNUSED_VAR(arg);
 	int res;
 	struct event_queue_signals eq_s;
+	struct reader_thread_args rtarg;
 	pthread_t reader_thread;
 	pthread_t event_thread;
 
@@ -180,7 +181,14 @@ void *ping_main_thread(void *arg)
 
 	firefly_channel_open(conn, ping_channel_rejected);
 
-	res = pthread_create(&reader_thread, NULL, reader_thread_main, llp);
+	res = pthread_mutex_init(&rtarg.lock, NULL);
+	if (res) {
+		fprintf(stderr, "ERROR: init mutex.\n");
+	}
+	rtarg.finish = false;
+	rtarg.llp = llp;
+
+	res = pthread_create(&reader_thread, NULL, reader_thread_main, &rtarg);
 	if (res) {
 		fprintf(stderr, "ERROR: starting reader thread.\n");
 	}
@@ -191,8 +199,9 @@ void *ping_main_thread(void *arg)
 	}
 	pthread_mutex_unlock(&ping_done_lock);
 
-
-	pthread_cancel(reader_thread);
+	pthread_mutex_lock(&rtarg.lock);
+	rtarg.finish = true;
+	pthread_mutex_unlock(&rtarg.lock);
 	pthread_join(reader_thread, NULL);
 
 	firefly_transport_llp_eth_posix_free(llp);

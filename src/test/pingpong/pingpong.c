@@ -52,19 +52,21 @@ int event_add_mutex(struct firefly_event_queue *eq, struct firefly_event *ev)
 
 void *event_thread_main(void *args)
 {
-	struct firefly_event_queue *eq = (struct firefly_event_queue *) args;
-	// TODO eq
+	struct firefly_event_queue *eq =
+		(struct firefly_event_queue *) args;
 	struct event_queue_signals *eq_s =
 		(struct event_queue_signals *)
 		firefly_event_queue_get_context(eq);
 	struct firefly_event *ev = NULL;
 	int event_left = 0;
+	pthread_mutex_lock(&eq_s->eq_lock);
 	bool finish = eq_s->event_exec_finish;
+	pthread_mutex_unlock(&eq_s->eq_lock);
 
-	// TODO consider another expression besides '1'
 	while (!finish || event_left > 0) {
 		pthread_mutex_lock(&eq_s->eq_lock);
 		event_left = firefly_event_queue_length(eq);
+		finish = eq_s->event_exec_finish;
 		while (event_left < 1 && !finish) {
 			pthread_cond_wait(&eq_s->eq_cond, &eq_s->eq_lock);
 			finish = eq_s->event_exec_finish;

@@ -166,6 +166,7 @@ void *pong_main_thread(void *arg)
 	UNUSED_VAR(arg);
 	int res;
 	pthread_t event_thread;
+	struct reader_thread_args rtarg;
 	pthread_t reader_thread;
 
 	printf("Hello, Firefly Ethernet from Pong!\n");
@@ -191,7 +192,14 @@ void *pong_main_thread(void *arg)
 			firefly_transport_llp_eth_posix_new(PONG_IFACE,
 					pong_connection_received, event_queue);
 
-	res = pthread_create(&reader_thread, NULL, reader_thread_main, llp);
+	res = pthread_mutex_init(&rtarg.lock, NULL);
+	if (res) {
+		fprintf(stderr, "ERROR: init mutex.\n");
+	}
+	rtarg.finish = false;
+	rtarg.llp = llp;
+
+	res = pthread_create(&reader_thread, NULL, reader_thread_main, &rtarg);
 	if (res) {
 		fprintf(stderr, "ERROR: starting reader thread.\n");
 	}
@@ -208,7 +216,9 @@ void *pong_main_thread(void *arg)
 	}
 	pthread_mutex_unlock(&pong_done_lock);
 
-	pthread_cancel(reader_thread);
+	pthread_mutex_lock(&rtarg.lock);
+	rtarg.finish = true;
+	pthread_mutex_unlock(&rtarg.lock);
 	pthread_join(reader_thread, NULL);
 
 	firefly_transport_llp_eth_posix_free(llp);

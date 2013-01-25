@@ -232,7 +232,7 @@ void test_eth_recv_connection()
 
 	send_data();
 
-	firefly_transport_eth_posix_read(llp);
+	firefly_transport_eth_posix_read(llp, NULL);
 	execute_events(eq, 1);
 
 	CU_ASSERT_TRUE(recv_conn_called);
@@ -256,7 +256,7 @@ void test_eth_recv_data()
 	firefly_transport_connection_eth_posix_open(
 			NULL, NULL, NULL, remote_mac_addr, "lo", llp);
 
-	firefly_transport_eth_posix_read(llp);
+	firefly_transport_eth_posix_read(llp, NULL);
 	execute_events(eq, 1);
 
 	CU_ASSERT_TRUE(data_received);
@@ -280,7 +280,7 @@ void test_eth_recv_conn_and_data()
 
 	send_data();
 
-	firefly_transport_eth_posix_read(llp);
+	firefly_transport_eth_posix_read(llp, NULL);
 	execute_events(eq, 1);
 
 	CU_ASSERT_TRUE(recv_conn_called);
@@ -304,7 +304,7 @@ void test_eth_recv_conn_keep()
 
 	send_data();
 
-	firefly_transport_eth_posix_read(llp);
+	firefly_transport_eth_posix_read(llp, NULL);
 	execute_events(eq, 1);
 	CU_ASSERT_TRUE(recv_conn_called);
 	CU_ASSERT_TRUE(data_received);
@@ -330,7 +330,7 @@ void test_eth_recv_conn_reject()
 			"lo", on_conn_recv, eq);
 	send_data();
 
-	firefly_transport_eth_posix_read(llp);
+	firefly_transport_eth_posix_read(llp, NULL);
 	execute_events(eq, 1);
 	CU_ASSERT_TRUE(recv_conn_called);
 	CU_ASSERT_FALSE(data_received);
@@ -360,7 +360,7 @@ void test_eth_recv_conn_and_two_data()
 
 	send_data();
 
-	firefly_transport_eth_posix_read(llp);
+	firefly_transport_eth_posix_read(llp, NULL);
 	execute_events(eq, 1);
 	CU_ASSERT_TRUE(recv_conn_called);
 	CU_ASSERT_TRUE(data_received);
@@ -375,7 +375,7 @@ void test_eth_recv_conn_and_two_data()
 
 	send_data();
 
-	firefly_transport_eth_posix_read(llp);
+	firefly_transport_eth_posix_read(llp, NULL);
 	execute_events(eq, 1);
 	CU_ASSERT_FALSE(recv_conn_called);
 	CU_ASSERT_TRUE(data_received);
@@ -423,7 +423,7 @@ void test_eth_recv_conn_keep_two()
 	replace_protocol_data_received_cb(llp, protocol_data_received_repl);
 
 	send_data_w_addr(remote_mac_addr);
-	firefly_transport_eth_posix_read(llp);
+	firefly_transport_eth_posix_read(llp, NULL);
 	execute_events(eq, 1);
 	CU_ASSERT_TRUE(recv_conn_called);
 	CU_ASSERT_TRUE(data_received);
@@ -438,7 +438,7 @@ void test_eth_recv_conn_keep_two()
 	data_received = false;
 
 	send_data_w_addr(remote_mac_addr_alt);
-	firefly_transport_eth_posix_read(llp);
+	firefly_transport_eth_posix_read(llp, NULL);
 	execute_events(eq, 1);
 	CU_ASSERT_TRUE(recv_conn_called);
 	CU_ASSERT_TRUE(data_received);
@@ -475,14 +475,14 @@ void test_eth_recv_data_two_conn()
 
 	data_recv_expected_conn = conn_1;
 	send_data_w_addr(remote_mac_addr);
-	firefly_transport_eth_posix_read(llp);
+	firefly_transport_eth_posix_read(llp, NULL);
 	execute_events(eq, 1);
 	CU_ASSERT_FALSE(recv_conn_called);
 	CU_ASSERT_TRUE(data_received);
 
 	data_recv_expected_conn = conn_2;
 	send_data_w_addr(remote_mac_addr_alt);
-	firefly_transport_eth_posix_read(llp);
+	firefly_transport_eth_posix_read(llp, NULL);
 	execute_events(eq, 1);
 	CU_ASSERT_FALSE(recv_conn_called);
 	CU_ASSERT_TRUE(data_received);
@@ -505,7 +505,7 @@ void test_eth_conn_close_recv()
 			NULL, NULL, NULL, remote_mac_addr, "lo", llp);
 	firefly_connection_close(conn);
 	send_data();
-	firefly_transport_eth_posix_read(llp);
+	firefly_transport_eth_posix_read(llp, NULL);
 	execute_events(eq, 1);
 
 	CU_ASSERT_FALSE(data_received);

@@ -224,7 +224,8 @@ void firefly_transport_eth_posix_write(unsigned char *data, size_t data_size,
 	}
 }
 
-void firefly_transport_eth_posix_read(struct firefly_transport_llp *llp)
+void firefly_transport_eth_posix_read(struct firefly_transport_llp *llp,
+		struct timeval *tv)
 {
 	int res;
 	struct transport_llp_eth_posix *llp_eth =
@@ -232,11 +233,15 @@ void firefly_transport_eth_posix_read(struct firefly_transport_llp *llp)
 	fd_set fs;
 	FD_ZERO(&fs);
 	FD_SET(llp_eth->socket, &fs);
-	res = select(llp_eth->socket + 1, &fs, NULL, NULL, NULL);
+	res = select(llp_eth->socket + 1, &fs, NULL, NULL, tv);
+	if (res == 0) {
+		return;
+	}
 	if (res == -1) {
 		firefly_error(FIREFLY_ERROR_SOCKET, 3,
 				"Failed in %s() on line %d.\nFailed to select.", __FUNCTION__,
 				__LINE__);
+		return;
 	}
 
 	struct firefly_event_llp_read_eth_posix *ev_arg =

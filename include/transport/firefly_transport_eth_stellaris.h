@@ -31,7 +31,7 @@ struct firefly_transport_llp *firefly_transport_llp_eth_stellaris_new(
  *
  * @param llp The \c firefly_transport_llp to free
  */
-void firefly_transport_llp_eth_stellaris_free(struct firefly_transport_llp **llp);
+void firefly_transport_llp_eth_stellaris_free(struct firefly_transport_llp *llp);
 
 /**
  * Opens a new connection to the specified mac address with the specified
@@ -40,7 +40,6 @@ void firefly_transport_llp_eth_stellaris_free(struct firefly_transport_llp **llp
  * @param on_channel_opened The callback to call once a channel is opened.
  * @param on_channel_closed The callback to call once a channel is closed.
  * @param on_channel_recv The callback to call once a channel is received.
- * @param event_queue The \c firefly_event_queue to be used for this connection.
  * @param mac_address The MAC address to open a connection to.
  * @param llp The \c firefly_transport_llp to open a connection on.
  *
@@ -51,7 +50,6 @@ struct firefly_connection *firefly_transport_connection_eth_stellaris_open(
 				firefly_channel_is_open_f on_channel_opened,
 				firefly_channel_closed_f on_channel_closed,
 				firefly_channel_accept_f on_channel_recv,
-				struct firefly_event_queue *event_queue,
 				unsigned char *mac_address,
 				struct firefly_transport_llp *llp);
 
