@@ -256,7 +256,6 @@ void chan_recv_handle_res(firefly_protocol_channel_response *res, void *ctx)
 
 void test_chan_recv_accept()
 {
-	struct encoded_packet *ep;
 	struct firefly_event_queue *eq = firefly_event_queue_new(
 			firefly_event_add, NULL);
 	if (eq == NULL) {
@@ -267,7 +266,13 @@ void test_chan_recv_accept()
 		setup_test_conn_new(chan_opened_mock, NULL,
 				chan_recv_accept_chan, eq);
 
-	// Init decoder to test data that is sent
+	// Init encoder and decoder to test data that is sent
+	unsigned char buf[128];
+	labcomm_mem_writer_context_t *test_enc_ctx =
+		labcomm_mem_writer_context_t_new(0, 128, buf);
+	struct labcomm_encoder *test_enc =
+		labcomm_encoder_new(labcomm_mem_writer, test_enc_ctx);
+	labcomm_register_error_handler_encoder(test_enc, handle_labcomm_error);
 	setup_test_decoder_new();
 	labcomm_decoder_register_firefly_protocol_channel_response(test_dec,
 			chan_recv_handle_res, conn);
@@ -279,18 +284,20 @@ void test_chan_recv_accept()
 			conn->transport_decoder, handle_channel_ack, conn);
 	labcomm_encoder_register_firefly_protocol_channel_response(
 						conn->transport_encoder);
+	labcomm_encoder_register_firefly_protocol_channel_request(test_enc);
+	protocol_data_received(conn, test_enc_ctx->buf, test_enc_ctx->write_pos);
+	test_enc_ctx->write_pos = 0;
+	labcomm_encoder_register_firefly_protocol_channel_ack(test_enc);
+	protocol_data_received(conn, test_enc_ctx->buf, test_enc_ctx->write_pos);
+	test_enc_ctx->write_pos = 0;
 	// Create channel request.
 	firefly_protocol_channel_request chan_req;
 	chan_req.source_chan_id = REMOTE_CHAN_ID;
 	chan_req.dest_chan_id = CHANNEL_ID_NOT_SET;
-	ep = create_encoded_packet(
-		labcomm_encoder_register_firefly_protocol_channel_request,
-		(lc_encode_f) labcomm_encode_firefly_protocol_channel_request,
-		&chan_req);
 	// Give channel request data to protocol layer.
-	protocol_data_received(conn, ep->sign, ep->ssize);
-	protocol_data_received(conn, ep->data, ep->dsize);
-	encoded_packet_free(ep);
+	labcomm_encode_firefly_protocol_channel_request(test_enc, &chan_req);
+	protocol_data_received(conn, test_enc_ctx->buf, test_enc_ctx->write_pos);
+	test_enc_ctx->write_pos = 0;
 
 	struct firefly_event *ev = firefly_event_pop(eq);
 	firefly_event_execute(ev);
@@ -307,18 +314,10 @@ void test_chan_recv_accept()
 	ack.dest_chan_id = conn->chan_list->chan->local_id;
 	ack.source_chan_id = conn->chan_list->chan->remote_id;
 	ack.ack = true;
-	ep = create_encoded_packet(
-		labcomm_encoder_register_firefly_protocol_channel_ack,
-		(lc_encode_f) labcomm_encode_firefly_protocol_channel_ack,
-		&ack);
-	// Fixe type ID due to multiple types on proto_decoder
-	ep->data[3] = 0x81;
-	ep->sign[7] = 0x81;
-
 	// Recieving end and got an ack
-	protocol_data_received(conn, ep->sign, ep->ssize);
-	protocol_data_received(conn, ep->data, ep->dsize);
-	encoded_packet_free(ep);
+	labcomm_encode_firefly_protocol_channel_ack(test_enc, &ack);
+	protocol_data_received(conn, test_enc_ctx->buf, test_enc_ctx->write_pos);
+	test_enc_ctx->write_pos = 0;
 	ev = firefly_event_pop(eq);
 	firefly_event_execute(ev);
 
@@ -326,6 +325,8 @@ void test_chan_recv_accept()
 
 	chan_opened_called = false;
 	teardown_test_decoder_free();
+	labcomm_encoder_free(test_enc);
+	labcomm_mem_writer_context_t_free(&test_enc_ctx);
 	firefly_connection_free(&conn);
 	firefly_event_queue_free(&eq);
 }

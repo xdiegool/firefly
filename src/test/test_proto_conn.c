@@ -3,6 +3,7 @@
 #include "CUnit/Basic.h"
 #include <gen/test.h>
 #include <gen/firefly_protocol.h>
+#include <labcomm_mem_writer.h>
 
 #include <stdbool.h>
 
@@ -300,27 +301,34 @@ void test_conn_close_recv_chan_req_first()
 
 	/* First add close connection event */
 	firefly_connection_close(conn);
+	unsigned char buf[128];
+	labcomm_mem_writer_context_t *test_enc_ctx =
+		labcomm_mem_writer_context_t_new(0, 128, buf);
+	struct labcomm_encoder *test_enc =
+		labcomm_encoder_new(labcomm_mem_writer, test_enc_ctx);
+	labcomm_register_error_handler_encoder(test_enc, handle_labcomm_error);
+	labcomm_encoder_register_firefly_protocol_data_sample(test_enc);
+	protocol_data_received(conn, test_enc_ctx->buf, test_enc_ctx->write_pos);
+	test_enc_ctx->write_pos = 0;
+	labcomm_encoder_register_firefly_protocol_channel_request(test_enc);
+	protocol_data_received(conn, test_enc_ctx->buf, test_enc_ctx->write_pos);
+	test_enc_ctx->write_pos = 0;
 
 	/* Without executing the event receive a channel request */
 	firefly_protocol_channel_request chan_req;
 	chan_req.source_chan_id = 0;
 	chan_req.dest_chan_id = CHANNEL_ID_NOT_SET;
-	struct encoded_packet *ep;
-	ep = create_encoded_packet(
-		labcomm_encoder_register_firefly_protocol_channel_request,
-		(lc_encode_f) labcomm_encode_firefly_protocol_channel_request,
-		&chan_req);
-	ep->data[3] = 0x81;
-	ep->sign[7] = 0x81;
-	protocol_data_received(conn, ep->sign, ep->ssize);
-	protocol_data_received(conn, ep->data, ep->dsize);
-	encoded_packet_free(ep);
+	labcomm_encode_firefly_protocol_channel_request(test_enc, &chan_req);
+	protocol_data_received(conn, test_enc_ctx->buf, test_enc_ctx->write_pos);
+	test_enc_ctx->write_pos = 0;
 
 	/* Execute all events */
 	execute_remaining_events(eq);
 	CU_ASSERT_FALSE(was_in_error);
 	CU_ASSERT_TRUE(chan_accept_called);
 
+	labcomm_encoder_free(test_enc);
+	labcomm_mem_writer_context_t_free(&test_enc_ctx);
 	chan_accept_called = false;
 	was_in_error = false;
 	firefly_event_queue_free(&eq);
