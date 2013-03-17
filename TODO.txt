@@ -7,3 +7,22 @@ fix event driven connection open, at least add connection to llp
  - Make add conn to llp an event with highest priority
 
 Fix timeout in UDP.
+
+Fix reliability of signatures:
+ - Suggestion, force user to specify the types when opening the channel and
+   disallow adding new types after channel is opened. This may be done by
+   setting a callback that is called when the types can be registered. The
+   purpose of this is to make use of the handshake to request and accept
+   labcomm types. Each node will during setup send its signatures. When a
+   signature is recieved and verified by the application an ack packet is sent
+   for that specific signature. When a node has sent an ack packet for each
+   received signature and recieved an ack packet for each transmitted
+   signature the channel is considered open and ready.
+   The application verifies a signature by making sure the labcomm decoder will
+   not generate an error when reading the signature. This is achived by either
+   adding the type before the signature is read or by implementing the unknown
+   datatype callback and registering the type there.
+   Typical usage: 1. define a callback which takes the channel as input, the
+   function should use the labcomm api to register each type. 2. Open channel
+   and specify the callback. 3. The protocol will call the callback when it is
+   ready to send the signatures.
