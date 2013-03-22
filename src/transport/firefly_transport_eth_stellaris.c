@@ -24,7 +24,6 @@
 #include <driverlib/ethernet.h>
 #include <driverlib/inc/hw_memmap.h>
 
-void sprint_mac(char *buf, unsigned char *addr);
 
 short get_ethernet_proto(unsigned char *frame) {
 	short proto = 0;
@@ -32,6 +31,21 @@ short get_ethernet_proto(unsigned char *frame) {
 	proto |= frame[ETH_PROTO_OFFSET + 1];
 
 	return proto;
+}
+
+void sprint_mac(char *buf, unsigned char *addr)
+{
+	int strp = 0;
+
+	for (int i = 0; i < ETH_ADDR_LEN; i++) {
+		char hex[] = {'0','1','2','3','4','5','6','7',
+					  '8','9','A','B','C','D','E','F'};
+
+		buf[strp++] = hex[(addr[i] & 0xF0) >> 4];
+		buf[strp++] = hex[(addr[i] & 0x0F)];
+		buf[strp++] = ':';
+	}
+	buf[strp - 1] = '\0'; // Replace last colon with terminator.
 }
 
 unsigned char *build_ethernet_frame(unsigned char *src, unsigned char *dest,
@@ -84,7 +98,7 @@ struct firefly_transport_llp *firefly_transport_llp_eth_stellaris_new(
 	struct firefly_transport_llp *llp;
 	struct transport_llp_eth_stellaris *llp_eth_stellaris;
 
-	llp_eth_stellaris               = malloc(sizeof(*llp_eth_stellaris));
+	llp_eth_stellaris = malloc(sizeof(*llp_eth_stellaris));
 	if (llp_eth_stellaris == NULL) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 3,
 				"Failed in %s() on line %d.\n", __FUNCTION__,
@@ -92,10 +106,10 @@ struct firefly_transport_llp *firefly_transport_llp_eth_stellaris_new(
 		return NULL;
 	}
 	llp_eth_stellaris->on_conn_recv = on_conn_recv;
-	llp_eth_stellaris->event_queue = event_queue;
+	llp_eth_stellaris->event_queue  = event_queue;
 	memcpy(llp_eth_stellaris->src_addr, src_addr, ETH_ADDR_LEN);
 
-	llp               = malloc(sizeof(struct firefly_transport_llp));
+	llp = malloc(sizeof(struct firefly_transport_llp));
 	if (llp == NULL) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 3,
 				"Failed in %s() on line %d.\n", __FUNCTION__,
@@ -144,6 +158,7 @@ int firefly_transport_llp_eth_stellaris_free_event(void *event_arg)
 	} else {
 		firefly_transport_llp_eth_stellaris_free(llp);
 	}
+
 	return 0;
 }
 
@@ -225,21 +240,6 @@ void firefly_transport_eth_stellaris_write(unsigned char *data, size_t data_size
 	}
 }
 
-void sprint_mac(char *buf, unsigned char *addr)
-{
-	int strp = 0;
-
-	for (int i = 0; i < ETH_ADDR_LEN; i++) {
-		char hex[] = {'0','1','2','3','4','5','6','7',
-					  '8','9','A','B','C','D','E','F'};
-
-		buf[strp++] = hex[(addr[i] & 0xF0) >> 4];
-		buf[strp++] = hex[(addr[i] & 0x0F)];
-		buf[strp++] = ':';
-	}
-	buf[strp - 1] = '\0';		/* Replace last colon with terminator. */
-}
-
 bool connection_eq_remmac(struct firefly_connection *conn, void *context)
 {
 	struct protocol_connection_eth_stellaris *conn_eth;
@@ -260,6 +260,8 @@ void firefly_transport_eth_stellaris_read(struct firefly_transport_llp *llp)
 	struct transport_llp_eth_stellaris *llp_eth;
 	unsigned char *eth_packet;
 	long len;
+	// Unfortunately there's no way to find the size of the next packet so
+	// we have to allocate as much as possible...
 	eth_packet = malloc(STELLARIS_ETH_MAX_FRAME_LEN);
 	if (eth_packet == NULL) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 3,
@@ -270,7 +272,7 @@ void firefly_transport_eth_stellaris_read(struct firefly_transport_llp *llp)
 	}
 
 	while (!EthernetPacketAvail(ETH_BASE)) {
-		// delay 0 == rescheduling of threads
+		// 0 means rescheduling of threads, needed to avoid deadlocks.
 		vTaskDelay(0);
 	}
 	len = EthernetPacketGet(ETH_BASE, eth_packet,
@@ -314,7 +316,6 @@ void firefly_transport_eth_stellaris_read(struct firefly_transport_llp *llp)
 
 int firefly_transport_eth_stellaris_read_event(void *event_args)
 {
-	UNUSED_VAR(event_args);
 	struct firefly_event_llp_read_eth_stellaris *ev_a =
 		(struct firefly_event_llp_read_eth_stellaris *) event_args;
 	struct firefly_transport_llp *llp = ev_a->llp;
@@ -340,7 +341,7 @@ int firefly_transport_eth_stellaris_read_event(void *event_args)
 		}
 	}
 
-	// Existing or newly created conn. Passing data to procol layer.
+	// Existing or newly created conn. Passing data to protocol layer.
 	if (conn != NULL) {
 		protocol_data_received(conn,
 				ev_a->eth_packet + ETH_DATA_OFFSET,
@@ -349,17 +350,6 @@ int firefly_transport_eth_stellaris_read_event(void *event_args)
 	free(ev_a->eth_packet);
 	free(ev_a);
 
-/*#if DEBUG*/
-	/*{*/
-		/*char buf[18];*/
-
-		/*sprint_mac(buf, llp_eth->recv_buf + ETH_DST_OFFSET);*/
-		/*firefly_error(FIREFLY_ERROR_USER_DEF, 2, "Recv'd %d B data of "*/
-				/*"type 0x%x to %s\n", len,*/
-				/*get_ethernet_proto(llp_eth->recv_buf),*/
-				/*buf);*/
-	/*}*/
-/*#endif*/
 	return 0;
 }
 
