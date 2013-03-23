@@ -172,11 +172,11 @@ struct firefly_connection *firefly_transport_connection_eth_stellaris_open(
 	struct protocol_connection_eth_stellaris *conn_eth =
 		malloc(sizeof(struct protocol_connection_eth_stellaris));
 
-	struct firefly_connection *conn = firefly_connection_new_register(
+	struct firefly_connection *conn = firefly_connection_new(
 			on_channel_opened, on_channel_closed, on_channel_recv,
 			firefly_transport_eth_stellaris_write, llp_eth->event_queue,
 			conn_eth,
-			firefly_transport_connection_eth_stellaris_free, true);
+			firefly_transport_connection_eth_stellaris_free);
 	if (conn == NULL || conn_eth == NULL) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 3,
 				"Failed in %s() on line %d.\n", __FUNCTION__,

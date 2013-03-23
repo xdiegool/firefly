@@ -197,11 +197,11 @@ struct firefly_connection *firefly_transport_connection_udp_lwip_open(
 		(struct transport_llp_udp_lwip *) llp->llp_platspec;
 	conn_udp->upcb = llp_lwip->upcb;
 
-	struct firefly_connection *conn = firefly_connection_new_register(
+	struct firefly_connection *conn = firefly_connection_new(
 			on_channel_opened, on_channel_closed,
 			on_channel_recv, firefly_transport_udp_lwip_write,
 			llp_lwip->event_queue, conn_udp,
-			firefly_transport_connection_udp_lwip_free, true);
+			firefly_transport_connection_udp_lwip_free);
 	if (conn == NULL || conn_udp == NULL) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 3,
 				"Failed in %s() on line %d.\n", __FUNCTION__,

@@ -89,64 +89,6 @@ static void mk_lc_and_reg_sigs(struct firefly_connection **conn_open,
 	*conn_recv = setup_test_conn_new(chan_opened_mock, NULL,
 					chan_open_recv_accept_recv, *eq);
 	(*conn_recv)->transport_write = chan_open_recv_write_recv;
-
-	// register decoders
-	labcomm_decoder_register_firefly_protocol_channel_response(
-						(*conn_open)->transport_decoder,
-						handle_channel_response,
-		   				*conn_open);
-	labcomm_decoder_register_firefly_protocol_channel_request(
-						(*conn_recv)->transport_decoder,
-						handle_channel_request,
-						*conn_recv);
-	labcomm_decoder_register_firefly_protocol_channel_ack(
-						(*conn_recv)->transport_decoder,
-						handle_channel_ack,
-						*conn_recv);
-	labcomm_decoder_register_firefly_protocol_data_sample(
-						(*conn_recv)->transport_decoder,
-						handle_data_sample,
-						*conn_recv);
-
-	labcomm_decoder_register_firefly_protocol_channel_close(
-						(*conn_recv)->transport_decoder,
-						handle_channel_close,
-						*conn_recv);
-
-	// Register encoders. Signatures will be sent to each connection
-	labcomm_encoder_register_firefly_protocol_channel_ack(
-						(*conn_open)->transport_encoder);
-	protocol_data_received(*conn_recv, conn_open_write.data,
-					conn_open_write.size);
-	free_tmp_data(&conn_open_write);
-
-	labcomm_encoder_register_firefly_protocol_channel_request(
-					(*conn_open)->transport_encoder);
-
-	protocol_data_received(*conn_recv, conn_open_write.data,
-			conn_open_write.size);
-
-	free_tmp_data(&conn_open_write);
-
-	labcomm_encoder_register_firefly_protocol_channel_response(
-					(*conn_recv)->transport_encoder);
-	protocol_data_received(*conn_open, conn_recv_write.data,
-					   conn_recv_write.size);
-	free_tmp_data(&conn_recv_write);
-
-	labcomm_encoder_register_firefly_protocol_data_sample(
-					(*conn_open)->transport_encoder);
-	protocol_data_received(*conn_recv, conn_open_write.data,
-					   conn_open_write.size);
-	free_tmp_data(&conn_open_write);
-
-	labcomm_encoder_register_firefly_protocol_channel_close(
-					(*conn_open)->transport_encoder);
-	protocol_data_received(*conn_recv, conn_open_write.data,
-					   conn_open_write.size);
-	free_tmp_data(&conn_open_write);
-
-
 }
 
 void test_unexpected_ack()

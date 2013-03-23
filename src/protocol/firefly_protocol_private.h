@@ -136,14 +136,6 @@ struct firefly_connection *firefly_connection_new(
 		struct firefly_event_queue *event_queue, void *plat_spec,
 		transport_connection_free plat_spec_free);
 
-struct firefly_connection *firefly_connection_new_register(
-		firefly_channel_is_open_f on_channel_opened,
-		firefly_channel_closed_f on_channel_closed,
-		firefly_channel_accept_f on_channel_recv,
-		transport_write_f transport_write,
-		struct firefly_event_queue *event_queue, void *plat_spec,
-		transport_connection_free plat_spec_free, bool reg);
-
 /*
  * The application must make sure the connection is no longer used after calling
  * this function. It is not thread safe to continue to use a connection after it

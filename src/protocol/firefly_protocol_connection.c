@@ -9,13 +9,13 @@
 #include "protocol/firefly_protocol_private.h"
 #include "utils/firefly_event_queue_private.h"
 
-struct firefly_connection *firefly_connection_new_register(
+struct firefly_connection *firefly_connection_new(
 		firefly_channel_is_open_f on_channel_opened,
 		firefly_channel_closed_f on_channel_closed,
 		firefly_channel_accept_f on_channel_recv,
 		transport_write_f transport_write,
-		struct firefly_event_queue *event_queue, void *plat_spec,
-		transport_connection_free plat_spec_free, bool reg)
+		struct firefly_event_queue *event_queue,
+		void *plat_spec, transport_connection_free plat_spec_free)
 {
 	struct firefly_connection *conn =
 		malloc(sizeof(struct firefly_connection));
@@ -74,31 +74,11 @@ struct firefly_connection *firefly_connection_new_register(
 	conn->transport_conn_platspec_free = plat_spec_free;
 	conn->open = FIREFLY_CONNECTION_OPEN;
 
-	if (reg) {
-		reg_proto_sigs(conn->transport_encoder,
-					   conn->transport_decoder,
-					   conn);
-	}
+	reg_proto_sigs(conn->transport_encoder,
+				   conn->transport_decoder,
+				   conn);
 
 	return conn;
-}
-
-// TODO do register better
-struct firefly_connection *firefly_connection_new(
-		firefly_channel_is_open_f on_channel_opened,
-		firefly_channel_closed_f on_channel_closed,
-		firefly_channel_accept_f on_channel_recv,
-		transport_write_f transport_write,
-		struct firefly_event_queue *event_queue,
-		void *plat_spec, transport_connection_free plat_spec_free)
-{
-	return firefly_connection_new_register(on_channel_opened,
-										   on_channel_closed,
-										   on_channel_recv,
-										   transport_write,
-										   event_queue,
-										   plat_spec, plat_spec_free,
-										   false);
 }
 
 void firefly_connection_close(struct firefly_connection *conn)

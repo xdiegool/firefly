@@ -168,11 +168,11 @@ struct firefly_connection *firefly_transport_connection_eth_posix_open(
 	/* Alloc connection structs */
 	struct protocol_connection_eth_posix *conn_eth;
 	conn_eth = malloc(sizeof(struct protocol_connection_eth_posix));
-	struct firefly_connection *conn = firefly_connection_new_register(
+	struct firefly_connection *conn = firefly_connection_new(
 			on_channel_opened, on_channel_closed, on_channel_recv,
 			firefly_transport_eth_posix_write,
 			((struct transport_llp_eth_posix *)llp->llp_platspec)->event_queue,
-			conn_eth, firefly_transport_connection_eth_posix_free, true);
+			conn_eth, firefly_transport_connection_eth_posix_free);
 	if (conn == NULL || conn_eth == NULL) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 3,
 				"Failed in %s() on line %d.\n", __FUNCTION__,

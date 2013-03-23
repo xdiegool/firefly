@@ -133,10 +133,10 @@ struct firefly_connection *firefly_connection_udp_posix_new(
 	llp_udp = (struct transport_llp_udp_posix *) llp->llp_platspec;
 	conn_udp = malloc(sizeof(struct protocol_connection_udp_posix));
 
-	conn = firefly_connection_new_register(on_channel_opened,
+	conn = firefly_connection_new(on_channel_opened,
 			on_channel_closed, on_channel_recv,
 			firefly_transport_udp_posix_write, llp_udp->event_queue,
-			conn_udp, firefly_transport_connection_udp_posix_free, true);
+			conn_udp, firefly_transport_connection_udp_posix_free);
 
 	if (conn == NULL || conn_udp == NULL) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 3,
