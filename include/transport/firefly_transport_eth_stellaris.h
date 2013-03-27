@@ -13,7 +13,7 @@ typedef struct firefly_connection *(*firefly_on_conn_recv_eth_stellaris)(
 		struct firefly_transport_llp *llp, unsigned char *mac_address);
 
 /**
- * @brief Allocates and initializes a new \c firefly_transport_llp on an
+ * @brief Allocates and initializes a new \c firefly_transport_llp on the
  * Ethernet interface.
  *
  * @param on_conn_recv The callback to call when a new connection is received.
