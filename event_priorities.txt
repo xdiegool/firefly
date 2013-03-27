@@ -1,0 +1,20 @@
+
+Description of priorities
+higher_prio_event -> lower_prio_event
+
+man_conn
+man_chan
+man_llp
+read
+send_app
+handle_prot
+send_prot
+handle_app
+close_chan
+close_conn
+free_chan
+free_conn
+free_llp
+
+send_app -> close_chan
+close_chan -> handle_app
