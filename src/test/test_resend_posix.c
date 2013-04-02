@@ -55,6 +55,23 @@ void test_add_simple()
 	firefly_resend_queue_free(rq);
 }
 
+void test_remove_empty()
+{
+	struct timespec at;
+	at.tv_sec = 1;
+	at.tv_nsec = 2;
+	struct resend_queue *rq = firefly_resend_queue_new();
+
+	CU_ASSERT_PTR_NULL(rq->first);
+	CU_ASSERT_PTR_NULL(rq->last);
+	unsigned char id = 1;
+	firefly_resend_remove(rq, id);
+	CU_ASSERT_PTR_NULL(rq->first);
+	CU_ASSERT_PTR_NULL(rq->last);
+
+	firefly_resend_queue_free(rq);
+}
+
 /* Depends on test_add_simple
  */
 void test_remove_simple()
@@ -132,6 +149,9 @@ void test_remove_many()
 	CU_ASSERT_PTR_NOT_NULL(rq->first);
 	CU_ASSERT_PTR_NOT_NULL(rq->last);
 	firefly_resend_remove(rq, id_2);
+	CU_ASSERT_PTR_NOT_NULL(rq->first);
+	CU_ASSERT_PTR_NOT_NULL(rq->last);
+	CU_ASSERT_PTR_EQUAL(rq->first, rq->last);
 	firefly_resend_remove(rq, id_3);
 	CU_ASSERT_PTR_NULL(rq->first);
 	CU_ASSERT_PTR_NULL(rq->last);
@@ -162,6 +182,12 @@ int main()
 			   ||
 		(CU_add_test(resend_posix, "test_add_many",
 				test_add_many) == NULL)
+			   ||
+		(CU_add_test(resend_posix, "test_remove_many",
+				test_remove_many) == NULL)
+			   ||
+		(CU_add_test(resend_posix, "test_remove_empty",
+				test_remove_empty) == NULL)
 	) {
 		CU_cleanup_registry();
 		return CU_get_error();
