@@ -39,7 +39,8 @@ void firefly_resend_queue_free(struct resend_queue *rq)
 }
 
 unsigned char firefly_resend_add(struct resend_queue *rq,
-		unsigned char *data, size_t size, struct timespec at)
+		unsigned char *data, size_t size, struct timespec at,
+		struct firefly_connection *conn)
 {
 	struct resend_elem *re = malloc(sizeof(struct resend_elem));
 	if (re == NULL) {

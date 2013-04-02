@@ -38,7 +38,7 @@ void test_add_simple()
 	CU_ASSERT_PTR_NULL(rq->first);
 	CU_ASSERT_PTR_NULL(rq->last);
 
-	unsigned char id = firefly_resend_add(rq, data_test_new(), DATA_SIZE, at);
+	unsigned char id = firefly_resend_add(rq, data_test_new(), DATA_SIZE, at, NULL);
 	CU_ASSERT_TRUE(id != 0);
 	CU_ASSERT_PTR_NOT_NULL(rq->first);
 	CU_ASSERT_PTR_NOT_NULL(rq->last);
@@ -81,7 +81,7 @@ void test_remove_simple()
 	at.tv_nsec = 2;
 	struct resend_queue *rq = firefly_resend_queue_new();
 
-	unsigned char id = firefly_resend_add(rq, data_test_new(), DATA_SIZE, at);
+	unsigned char id = firefly_resend_add(rq, data_test_new(), DATA_SIZE, at, NULL);
 	firefly_resend_remove(rq, id);
 	CU_ASSERT_PTR_NULL(rq->first);
 	CU_ASSERT_PTR_NULL(rq->last);
@@ -104,7 +104,7 @@ void test_add_many()
 	at_3.tv_nsec = 2;
 	struct resend_queue *rq = firefly_resend_queue_new();
 
-	unsigned char id_1 = firefly_resend_add(rq, data_test_new(), DATA_SIZE, at_1);
+	unsigned char id_1 = firefly_resend_add(rq, data_test_new(), DATA_SIZE, at_1, NULL);
 	CU_ASSERT_TRUE(id_1 != 0);
 	CU_ASSERT_PTR_EQUAL(rq->first, rq->last);
 	CU_ASSERT_NOT_EQUAL(id_1, rq->next_id);
@@ -112,7 +112,7 @@ void test_add_many()
 	CU_ASSERT_EQUAL(re->id, id_1);
 	CU_ASSERT_PTR_NULL(re->prev);
 
-	unsigned char id_2 = firefly_resend_add(rq, data_test_new(), DATA_SIZE, at_2);
+	unsigned char id_2 = firefly_resend_add(rq, data_test_new(), DATA_SIZE, at_2, NULL);
 	CU_ASSERT_TRUE(id_2 != 0);
 	CU_ASSERT_NOT_EQUAL(id_1, id_2);
 	CU_ASSERT_NOT_EQUAL(id_2, rq->next_id);
@@ -121,7 +121,7 @@ void test_add_many()
 	re = rq->first;
 	CU_ASSERT_PTR_NULL(re->prev);
 
-	unsigned char id_3 = firefly_resend_add(rq, data_test_new(), DATA_SIZE, at_3);
+	unsigned char id_3 = firefly_resend_add(rq, data_test_new(), DATA_SIZE, at_3, NULL);
 	CU_ASSERT_TRUE(id_3 != 0);
 	CU_ASSERT_NOT_EQUAL(id_1, id_3);
 	CU_ASSERT_NOT_EQUAL(id_2, id_3);
@@ -142,9 +142,9 @@ void test_remove_many()
 	at.tv_nsec = 2;
 	struct resend_queue *rq = firefly_resend_queue_new();
 
-	unsigned char id_1 = firefly_resend_add(rq, data_test_new(), DATA_SIZE, at);
-	unsigned char id_2 = firefly_resend_add(rq, data_test_new(), DATA_SIZE, at);
-	unsigned char id_3 = firefly_resend_add(rq, data_test_new(), DATA_SIZE, at);
+	unsigned char id_1 = firefly_resend_add(rq, data_test_new(), DATA_SIZE, at, NULL);
+	unsigned char id_2 = firefly_resend_add(rq, data_test_new(), DATA_SIZE, at, NULL);
+	unsigned char id_3 = firefly_resend_add(rq, data_test_new(), DATA_SIZE, at, NULL);
 	firefly_resend_remove(rq, id_1);
 	CU_ASSERT_PTR_NOT_NULL(rq->first);
 	CU_ASSERT_PTR_NOT_NULL(rq->last);
@@ -168,9 +168,9 @@ void test_remove_not_ordered()
 	at.tv_nsec = 2;
 	struct resend_queue *rq = firefly_resend_queue_new();
 
-	unsigned char id_1 = firefly_resend_add(rq, data_test_new(), DATA_SIZE, at);
-	unsigned char id_2 = firefly_resend_add(rq, data_test_new(), DATA_SIZE, at);
-	unsigned char id_3 = firefly_resend_add(rq, data_test_new(), DATA_SIZE, at);
+	unsigned char id_1 = firefly_resend_add(rq, data_test_new(), DATA_SIZE, at, NULL);
+	unsigned char id_2 = firefly_resend_add(rq, data_test_new(), DATA_SIZE, at, NULL);
+	unsigned char id_3 = firefly_resend_add(rq, data_test_new(), DATA_SIZE, at, NULL);
 	firefly_resend_remove(rq, id_2);
 	CU_ASSERT_PTR_NOT_NULL(rq->first);
 	CU_ASSERT_PTR_NOT_NULL(rq->last);

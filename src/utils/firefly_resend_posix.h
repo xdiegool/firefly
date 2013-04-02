@@ -1,11 +1,14 @@
 #ifndef FIREFLY_TRANSPORT_RESEND_QUEUE_H
 #define FIREFLY_TRANSPORT_RESEND_QUEUE_H
 
+#include <protocol/firefly_protocol.h>
+
 struct resend_elem {
 	unsigned char *data;
 	size_t size;
 	unsigned char id;
 	struct timespec resend_at;
+	struct firefly_connection *conn;
 	struct resend_elem *prev;
 };
 
@@ -25,7 +28,8 @@ void firefly_resend_queue_free(struct resend_queue *rq);
  * @return The id assigned to the created resend block.
  */
 unsigned char firefly_resend_add(struct resend_queue *rq,
-		unsigned char *data, size_t size, struct timespec at);
+		unsigned char *data, size_t size, struct timespec at,
+		struct firefly_connection *conn);
 
 void firefly_resend_remove(struct resend_queue *rq, unsigned char id);
 
