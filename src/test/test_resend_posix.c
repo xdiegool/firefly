@@ -159,6 +159,32 @@ void test_remove_many()
 	firefly_resend_queue_free(rq);
 }
 
+/* Depends on test_add_simple
+ */
+void test_remove_not_ordered()
+{
+	struct timespec at;
+	at.tv_sec = 1;
+	at.tv_nsec = 2;
+	struct resend_queue *rq = firefly_resend_queue_new();
+
+	unsigned char id_1 = firefly_resend_add(rq, data_test_new(), DATA_SIZE, at);
+	unsigned char id_2 = firefly_resend_add(rq, data_test_new(), DATA_SIZE, at);
+	unsigned char id_3 = firefly_resend_add(rq, data_test_new(), DATA_SIZE, at);
+	firefly_resend_remove(rq, id_2);
+	CU_ASSERT_PTR_NOT_NULL(rq->first);
+	CU_ASSERT_PTR_NOT_NULL(rq->last);
+	firefly_resend_remove(rq, id_1);
+	CU_ASSERT_PTR_NOT_NULL(rq->first);
+	CU_ASSERT_PTR_NOT_NULL(rq->last);
+	CU_ASSERT_PTR_EQUAL(rq->first, rq->last);
+	firefly_resend_remove(rq, id_3);
+	CU_ASSERT_PTR_NULL(rq->first);
+	CU_ASSERT_PTR_NULL(rq->last);
+
+	firefly_resend_queue_free(rq);
+}
+
 int main()
 {
 	CU_pSuite resend_posix = NULL;
@@ -188,6 +214,9 @@ int main()
 			   ||
 		(CU_add_test(resend_posix, "test_remove_empty",
 				test_remove_empty) == NULL)
+			   ||
+		(CU_add_test(resend_posix, "test_remove_not_ordered",
+				test_remove_not_ordered) == NULL)
 	) {
 		CU_cleanup_registry();
 		return CU_get_error();
