@@ -1,4 +1,6 @@
 #include <pthread.h>
+
+#include <stdio.h>
 #include <stdlib.h>
 #include "utils/firefly_resend_posix.h"
 
@@ -67,14 +69,15 @@ void firefly_resend_remove(struct resend_queue *rq, unsigned char id)
 {
 	pthread_mutex_lock(&rq->lock);
 	struct resend_elem **re = &rq->last;
-	while (*re != NULL) {
+	while ((*re) != NULL) {
 		if ((*re)->id == id) {
 			struct resend_elem *tmp = *re;
 			*re = (*re)->prev; 
 			free(tmp->data);
 			free(tmp);
+		} else {
+			re = &(*re)->prev;
 		}
-		re = &(*re)->prev;
 	}
 	if (rq->last == NULL) {
 		rq->first = NULL;
