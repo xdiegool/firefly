@@ -91,11 +91,16 @@ INC_FIREFLY = $(addprefix -I, \
 		$(LABCOMMLIBPATH) \
 		)
 
+# Inluces common to all transport libs
+INC_TRANSPORT_COMMON = $(addprefix -I, \
+		$(LABCOMMLIBPATH) \
+	      )
+
 # Inluces for $(LIB_TRANSPORT_UDP_POSIX_NAME).
 INC_TRANSPORT_UDP_POSIX = $(addprefix -I, \
 		$(LABCOMMLIBPATH) \
 	      )
-#
+
 # Inluces for $(LIB_TRANSPORT_ETH_POSIX_NAME).
 INC_TRANSPORT_ETH_POSIX = $(addprefix -I, \
 		$(LABCOMMLIBPATH) \
@@ -210,7 +215,7 @@ LIB_TRANSPORT_UDP_LWIP_NAME = transport-udp-lwip
 LIB_TRANSPORT_ETH_STELLARIS_NAME = transport-eth-stellaris
 
 # Libraries to build.
-OUR_LIBS=$(patsubst %,$(BUILD_DIR)/lib%.a,$(LIB_FIREFLY_NAME) $(LIB_TRANSPORT_UDP_POSIX_NAME) $(LIB_TRANSPORT_UDP_LWIP_NAME))
+OUR_LIBS=$(patsubst %,$(BUILD_DIR)/lib%.a,$(LIB_FIREFLY_NAME) $(LIB_TRANSPORT_UDP_POSIX_NAME) $(LIB_TRANSPORT_UDP_LWIP_NAME) $(LIB_TRANSPORT_ETH_POSIX_NAME))
 
 # Automatically generated prerequisities files.
 DFILES= $(patsubst %.o,%.d,$(filter-out $(BUILD_DIR)/$(GEN_DIR)/firefly_protocol.o,$(FIREFLY_OBJS)) $(TEST_OBJS) $(GEN_OBJS))
@@ -242,9 +247,18 @@ FIREFLY_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(FIREFLY_SRC))
 
 ### }
 
+### Transport common {
+# Source files common to all transport libs
+TRANSPORT_COMMON_SRC = $(SRC_DIR)/transport/firefly_transport.c
+
+# Object files from sources.
+TRANSPORT_COMMON_OBJS= $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(TRANSPORT_COMMON_SRC))
+
+### }
+
 ### Transport UPD POSIX {
 # Source files for lib$(LIB_TRANSPORT_UDP_POSIX_NAME).a
-TRANSPORT_UDP_POSIX_SRC = $(shell find $(SRC_DIR)/transport/ -type f \( -name '*udp_posix*.c' -o -name 'firefly_transport.c' \) -print | sed 's/^$(SRC_DIR)\///')
+TRANSPORT_UDP_POSIX_SRC = $(shell find $(SRC_DIR)/transport/ -type f \( -name '*udp_posix*.c' \) -print | sed 's/^$(SRC_DIR)\///')
 
 # Object files from sources.
 TRANSPORT_UDP_POSIX_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(TRANSPORT_UDP_POSIX_SRC))
@@ -253,7 +267,7 @@ TRANSPORT_UDP_POSIX_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(TRANSPORT_UDP_POSIX_
 
 ### Transport ETH POSIX {
 # Source files for lib$(LIB_TRANSPORT_ETH_POSIX_NAME).a
-TRANSPORT_ETH_POSIX_SRC = $(shell find $(SRC_DIR)/transport/ -type f \( -name '*eth_posix*.c' -o -name 'firefly_transport.c' \) -print | sed 's/^$(SRC_DIR)\///')
+TRANSPORT_ETH_POSIX_SRC = $(shell find $(SRC_DIR)/transport/ -type f \( -name '*eth_posix*.c' \) -print | sed 's/^$(SRC_DIR)\///')
 
 # Object files from sources.
 TRANSPORT_ETH_POSIX_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(TRANSPORT_ETH_POSIX_SRC))
@@ -262,7 +276,7 @@ TRANSPORT_ETH_POSIX_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(TRANSPORT_ETH_POSIX_
 
 ### Transport UPD LWIP {
 # Source files for lib$(LIB_TRANSPORT_UDP_LWIP_NAME).a
-TRANSPORT_UDP_LWIP_SRC = $(shell find $(SRC_DIR)/transport/ -type f \( -name '*udp_lwip*.c' -o -name "firefly_transport.c" \) -print | sed 's/^$(SRC_DIR)\///')
+TRANSPORT_UDP_LWIP_SRC = $(shell find $(SRC_DIR)/transport/ -type f \( -name '*udp_lwip*.c' \) -print | sed 's/^$(SRC_DIR)\///')
 
 # Object files from sources.
 TRANSPORT_UDP_LWIP_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(TRANSPORT_UDP_LWIP_SRC))
@@ -270,8 +284,8 @@ TRANSPORT_UDP_LWIP_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(TRANSPORT_UDP_LWIP_SR
 ### }
 
 ### Transport ETH STELLARIS {
-# Source files for lib$(LIB_TRANSPORT_UDP_STELLARIS_NAME).a
-TRANSPORT_ETH_STELLARIS_SRC = $(shell find $(SRC_DIR)/transport/ -type f \( -name '*eth_stellaris*.c' -o -name "firefly_transport.c" \) -print | sed 's/^$(SRC_DIR)\///')
+# Source files for lib$(LIB_TRANSPORT_ETH_STELLARIS_NAME).a
+TRANSPORT_ETH_STELLARIS_SRC = $(shell find $(SRC_DIR)/transport/ -type f \( -name '*eth_stellaris*.c' \) -print | sed 's/^$(SRC_DIR)\///')
 
 # Object files from sources.
 TRANSPORT_ETH_STELLARIS_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(TRANSPORT_ETH_STELLARIS_SRC))
@@ -282,8 +296,8 @@ TRANSPORT_ETH_STELLARIS_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(TRANSPORT_ETH_ST
 TEST_SRC = $(shell find $(SRC_DIR)/test/ -type f -name '*.c' | sed 's/^$(SRC_DIR)\///')
 TEST_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(TEST_SRC))
 TEST_PROGS = $(shell find $(SRC_DIR)/test/ -type f -name '*_main.c' | sed -e 's/^$(SRC_DIR)\//$(BUILD_DIR)\//' -e 's/\.c//')
-# TEST_PROGS += $(BUILD_DIR)/test/pingpong/pingpong_eth_main
-# TEST_PROGS += $(BUILD_DIR)/test/pingpong/pingpong_multi_main
+TEST_PROGS_REQ_ROOT = $(BUILD_DIR)/test/pingpong/pingpong_eth_main $(BUILD_DIR)/test/pingpong/pingpong_multi_main
+TEST_PROGS += $(TEST_PROGS_REQ_ROOT)
 
 ### }
 
@@ -359,13 +373,20 @@ $(BUILD_DIR)/protocol/%.o: protocol/%.c |$$(@D)
 $(BUILD_DIR)/utils/%.o: utils/%.c |$$(@D)
 	$(CC) -c $(CFLAGS) $(INC_FIREFLY) -o $@ $<
 
+### }
+
+### Transport common targets {
+
+# Compile source files
+$(TRANSPORT_COMMON_OBJS): $$(patsubst $$(BUILD_DIR)/%.o,%.c,$$@) |$$(@D)
+	$(CC) -c $(CFLAGS) $(INC_TRANSPORT_COMMON) -o $@ $<
 
 ### }
 
 ### Transport UDP POSIX targets {
 
 # target: build/lib$(LIB_TRANSPORT_UDP_POSIX_NAME).a  - Build static library for transport udp posix.
-$(BUILD_DIR)/lib$(LIB_TRANSPORT_UDP_POSIX_NAME).a: $(TRANSPORT_UDP_POSIX_OBJS)
+$(BUILD_DIR)/lib$(LIB_TRANSPORT_UDP_POSIX_NAME).a: $(TRANSPORT_UDP_POSIX_OBJS) $(TRANSPORT_COMMON_OBJS)
 	ar -rc $@ $^
 
 # Compile UDP POSIX files.
@@ -377,7 +398,7 @@ $(TRANSPORT_UDP_POSIX_OBJS): $$(patsubst $$(BUILD_DIR)/%.o,%.c,$$@) |$$(@D)
 ### Transport ETH POSIX targets {
 
 # target: build/lib$(LIB_TRANSPORT_ETH_POSIX_NAME).a  - Build static library for transport udp posix.
-$(BUILD_DIR)/lib$(LIB_TRANSPORT_ETH_POSIX_NAME).a: $(TRANSPORT_ETH_POSIX_OBJS)
+$(BUILD_DIR)/lib$(LIB_TRANSPORT_ETH_POSIX_NAME).a: $(TRANSPORT_ETH_POSIX_OBJS) $(TRANSPORT_COMMON_OBJS)
 	ar -rc $@ $^
 
 # Compile UDP POSIX files.
@@ -389,20 +410,19 @@ $(TRANSPORT_ETH_POSIX_OBJS): $$(patsubst $$(BUILD_DIR)/%.o,%.c,$$@) |$$(@D)
 ### Transport UDP LWIP targets {
 
 # target: build/lib$(LIB_TRANSPORT_UDP_LWIP_NAME).a  - Build static library for transport udp lwip.
-$(BUILD_DIR)/lib$(LIB_TRANSPORT_UDP_LWIP_NAME).a: $(TRANSPORT_UDP_LWIP_OBJS)
+$(BUILD_DIR)/lib$(LIB_TRANSPORT_UDP_LWIP_NAME).a: $(TRANSPORT_UDP_LWIP_OBJS) $(TRANSPORT_COMMON_OBJS)
 	ar -rc $@ $^
 
 # Compile UDP LWIP files.
 $(TRANSPORT_UDP_LWIP_OBJS): $$(patsubst $$(BUILD_DIR)/%.o,%.c,$$@) |$$(@D)
 	$(CC) -c $(CFLAGS) $(INC_TRANSPORT_UDP_LWIP) -o $@ $<
 
-
 ### }
 
 ### Transport ETH STELLARIS targets {
 
 # target: build/lib$(LIB_TRANSPORT_ETH_STELLARIS_NAME).a  - Build static library for transport Ethernet Stellaris.
-$(BUILD_DIR)/lib$(LIB_TRANSPORT_ETH_STELLARIS_NAME).a: $(TRANSPORT_ETH_STELLARIS_OBJS)
+$(BUILD_DIR)/lib$(LIB_TRANSPORT_ETH_STELLARIS_NAME).a: $(TRANSPORT_ETH_STELLARIS_OBJS) $(TRANSPORT_COMMON_OBJS)
 	ar -rc $@ $^
 
 # Compile ETH STELLARIS files.
@@ -499,7 +519,7 @@ doc-full-open: $(DOC_GEN_FULL_DIR)/html/index.html
 
 # target: test - Run all tests.
 test: $(TEST_PROGS)
-	@for prog in $^; do \
+	@for prog in $(filter-out $(TEST_PROGS_REQ_ROOT),$^); do \
 		echo "=========================>BEGIN TEST: $${prog}"; \
 		./$$prog; \
 		test "$$?" -ne 0 && \
@@ -558,9 +578,11 @@ help:
 clean:
 	$(RM) $(OUR_LIBS)
 	$(RM) $(FIREFLY_OBJS)
+	$(RM) $(TRANSPORT_COMMON_OBJS)
 	$(RM) $(TRANSPORT_UDP_POSIX_OBJS)
 	$(RM) $(TRANSPORT_ETH_POSIX_OBJS)
 	$(RM) $(TRANSPORT_UDP_LWIP_OBJS)
+	$(RM) $(TRANSPORT_ETH_STELLARIS_OBJS)
 	$(RM) $(TEST_OBJS)
 	$(RM) $(TEST_PROGS)
 	$(RM) $(DFILES)

@@ -210,8 +210,11 @@ static void *eth_reader_thread_main(void *args)
 	struct firefly_transport_llp *llp;
 
 	llp = (struct firefly_transport_llp *) args;
+	struct timeval tv;
+	tv.tv_sec = 2;
+	tv.tv_usec = 0;
 	while (1)
-		firefly_transport_eth_posix_read(llp);
+		firefly_transport_eth_posix_read(llp, &tv);
 }
 
 void *pong_main_thread(void *arg)
