@@ -22,7 +22,7 @@ struct resend_queue *firefly_resend_queue_new()
 void firefly_resend_queue_free(struct resend_queue *rq)
 {
 	pthread_mutex_lock(&rq->lock);
-	struct resend_elem *re = rq->last;
+	struct resend_elem *re = rq->first;
 	struct resend_elem *tmp;
 
 	while(re != NULL) {
@@ -55,12 +55,12 @@ unsigned char firefly_resend_add(struct resend_queue *rq,
 	if (rq->next_id == 0) {
 		rq->next_id = 1;
 	}
-	if (rq->first == NULL) {
-		rq->last = re;
+	if (rq->last == NULL) {
+		rq->first = re;
 	} else {
-		rq->first->prev = re;
+		rq->last->prev = re;
 	}
-	rq->first = re;
+	rq->last = re;
 	pthread_cond_signal(&rq->sig);
 	pthread_mutex_unlock(&rq->lock);
 	return re->id;
@@ -69,7 +69,7 @@ unsigned char firefly_resend_add(struct resend_queue *rq,
 void firefly_resend_remove(struct resend_queue *rq, unsigned char id)
 {
 	pthread_mutex_lock(&rq->lock);
-	struct resend_elem **re = &rq->last;
+	struct resend_elem **re = &rq->first;
 	while ((*re) != NULL) {
 		if ((*re)->id == id) {
 			struct resend_elem *tmp = *re;
@@ -80,8 +80,8 @@ void firefly_resend_remove(struct resend_queue *rq, unsigned char id)
 			re = &(*re)->prev;
 		}
 	}
-	if (rq->last == NULL) {
-		rq->first = NULL;
+	if (rq->first == NULL) {
+		rq->last = NULL;
 	}
 	pthread_cond_signal(&rq->sig);
 	pthread_mutex_unlock(&rq->lock);

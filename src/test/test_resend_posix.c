@@ -117,8 +117,8 @@ void test_add_many()
 	CU_ASSERT_NOT_EQUAL(id_1, id_2);
 	CU_ASSERT_NOT_EQUAL(id_2, rq->next_id);
 	CU_ASSERT_PTR_NOT_EQUAL(rq->first, rq->last);
-	CU_ASSERT_PTR_EQUAL(re->prev, rq->first);
-	re = rq->first;
+	CU_ASSERT_PTR_EQUAL(re->prev, rq->last);
+	re = rq->last;
 	CU_ASSERT_PTR_NULL(re->prev);
 
 	unsigned char id_3 = firefly_resend_add(rq, data_test_new(), DATA_SIZE, at_3, NULL);
@@ -126,8 +126,8 @@ void test_add_many()
 	CU_ASSERT_NOT_EQUAL(id_1, id_3);
 	CU_ASSERT_NOT_EQUAL(id_2, id_3);
 	CU_ASSERT_NOT_EQUAL(id_3, rq->next_id);
-	CU_ASSERT_PTR_EQUAL(re->prev, rq->first);
-	re = rq->first;
+	CU_ASSERT_PTR_EQUAL(re->prev, rq->last);
+	re = rq->last;
 	CU_ASSERT_PTR_NULL(re->prev);
 
 	firefly_resend_queue_free(rq);
