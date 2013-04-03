@@ -40,7 +40,7 @@ void firefly_resend_queue_free(struct resend_queue *rq)
 
 unsigned char firefly_resend_add(struct resend_queue *rq,
 		unsigned char *data, size_t size, struct timespec at,
-		struct firefly_connection *conn)
+		unsigned char retries, struct firefly_connection *conn)
 {
 	struct resend_elem *re = malloc(sizeof(struct resend_elem));
 	if (re == NULL) {
@@ -49,6 +49,7 @@ unsigned char firefly_resend_add(struct resend_queue *rq,
 	re->data = data;
 	re->size = size;
 	re->resend_at = at;
+	re->num_retries = retries;
 	re->prev = NULL;
 	pthread_mutex_lock(&rq->lock);
 	re->id = rq->next_id++;
