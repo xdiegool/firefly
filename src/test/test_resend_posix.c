@@ -196,6 +196,25 @@ void test_remove_not_ordered()
 	firefly_resend_queue_free(rq);
 }
 
+void test_remove_non_existing_elem()
+{
+	struct timespec at;
+	at.tv_sec = 1;
+	at.tv_nsec = 2;
+	struct resend_queue *rq = firefly_resend_queue_new();
+
+	unsigned char id = firefly_resend_add(rq, data_test_new(), DATA_SIZE,
+			at, 1, NULL);
+
+	firefly_resend_remove(rq, id + 1);
+	CU_ASSERT_PTR_NOT_NULL(rq->first);
+	CU_ASSERT_PTR_NOT_NULL(rq->last);
+	firefly_resend_remove(rq, id);
+	CU_ASSERT_PTR_NULL(rq->first);
+	CU_ASSERT_PTR_NULL(rq->last);
+
+	firefly_resend_queue_free(rq);
+}
 
 void test_top_simple()
 {
@@ -251,6 +270,9 @@ int main()
 			   ||
 		(CU_add_test(resend_posix, "test_remove_not_ordered",
 				test_remove_not_ordered) == NULL)
+			   ||
+		(CU_add_test(resend_posix, "test_remove_non_existing_elem",
+				test_remove_non_existing_elem) == NULL)
 			   ||
 		(CU_add_test(resend_posix, "test_top_simple",
 				test_top_simple) == NULL)
