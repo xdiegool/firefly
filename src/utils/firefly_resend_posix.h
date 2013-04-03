@@ -3,6 +3,9 @@
 
 #include <protocol/firefly_protocol.h>
 
+/**
+ * Represents an element in the resend queue.
+ */
 struct resend_elem {
 	unsigned char *data;
 	size_t size;
@@ -13,6 +16,9 @@ struct resend_elem {
 	struct resend_elem *prev;
 };
 
+/**
+ * The resend queue itself (as a single linked list).
+ */
 struct resend_queue {
 	struct resend_elem *first;
 	struct resend_elem *last;
@@ -21,17 +27,45 @@ struct resend_queue {
 	unsigned char next_id;
 };
 
+/**
+ * Allocates memory and initializes the elements in the new resend queue struct.
+ *
+ * @warning The memory allocated by this function must be freed by calling
+ * #firefly_resend_queue_free, freeing in any other way is undefined behaviour
+ * and should be avoided unless you know exactly what you do!
+ *
+ * @return A pointer to the newly allocated resend queue or NULL on failure.
+ */
 struct resend_queue *firefly_resend_queue_new();
 
+/**
+ * Safely frees the memory held by the provided resend queue and all of its
+ * elements.  This function MUST be called in order to avoid memory leaks!
+ *
+ * @param rq The resend queue to free.
+ */
 void firefly_resend_queue_free(struct resend_queue *rq);
 
 /**
+ * Adds a new element to the back of the provided resend queue with the
+ * specified parameters.
+ *
+ * @param rq      The queue to add the element to.
+ * @param data    The data to resend.
+ * @param size    The size of the data to resend.
+ * @param at      The time to resend at.
+ * @param retries The number of retries before giving up.
+ * @param conn    The connection to resend on.
+ *
  * @return The id assigned to the created resend block.
  */
 unsigned char firefly_resend_add(struct resend_queue *rq,
 		unsigned char *data, size_t size, struct timespec at,
 		unsigned char retries, struct firefly_connection *conn);
 
+/**
+ * Removes the element from the queue with the provided ID.
+ */
 void firefly_resend_remove(struct resend_queue *rq, unsigned char id);
 
 /**
