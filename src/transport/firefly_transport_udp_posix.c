@@ -208,7 +208,7 @@ struct firefly_connection *firefly_transport_connection_udp_posix_open(
 }
 
 void firefly_transport_udp_posix_write(unsigned char *data, size_t data_size,
-		struct firefly_connection *conn)
+		struct firefly_connection *conn, bool important)
 {
 	struct protocol_connection_udp_posix *conn_udp =
 		(struct protocol_connection_udp_posix *)
@@ -219,6 +219,9 @@ void firefly_transport_udp_posix_write(unsigned char *data, size_t data_size,
 	if (res == -1) {
 		firefly_error(FIREFLY_ERROR_TRANS_WRITE, 2, "Failed in %s().\n",
 			__FUNCTION__);
+	}
+	if (important) {
+		// TODO
 	}
 }
 

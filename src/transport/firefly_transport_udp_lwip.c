@@ -226,7 +226,7 @@ struct firefly_connection *firefly_transport_connection_udp_lwip_open(
 // TODO we should not have to memcpy the data to write. Can we make memory alloc
 // transport specific or avoid this problem somehow?
 void firefly_transport_udp_lwip_write(unsigned char *data, size_t data_size,
-		struct firefly_connection *conn)
+		struct firefly_connection *conn, bool important)
 {
 	struct protocol_connection_udp_lwip *conn_udp =
 		(struct protocol_connection_udp_lwip *)
@@ -245,6 +245,9 @@ void firefly_transport_udp_lwip_write(unsigned char *data, size_t data_size,
 	if (err != ERR_OK) {
 		firefly_error(FIREFLY_ERROR_TRANS_WRITE, 2,
 				"Failed in %s().\n", __FUNCTION__);
+	}
+	if (important) {
+		// TODO
 	}
 }
 

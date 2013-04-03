@@ -24,9 +24,19 @@ void reg_proto_sigs(struct labcomm_encoder *enc,
  *
  * @param data The data to be written.
  * @param data_size The size of the data to be written.
- * @param conn The #firefly_connection to written the data on.
+ * @param conn The #firefly_connection to write the data to.
  */
 typedef void (* transport_write_f)(unsigned char *data, size_t data_size,
+					struct firefly_connection *conn, bool important);
+
+/**
+ * @brief Inform transport that a packet is acked or should not be resent
+ * anymore.
+ *
+ * @param pkg_id The id of the packet.
+ * @param conn The #firefly_connection the packet is sent on.
+ */
+typedef void (* transport_ack_f)(unsigned char *pkg_id,
 					struct firefly_connection *conn);
 
 typedef void (*transport_connection_free)(struct firefly_connection *conn);
@@ -68,6 +78,8 @@ struct firefly_connection {
 								saved. */
 	transport_write_f transport_write; /**< Write bytes to the transport
 							layer. */
+	transport_ack_f transport_ack; /**< Inform transport that a packet is acked
+									 or should not be resent anymore. */
 	firefly_channel_is_open_f on_channel_opened; /**< Callback, called when
 							a channel has been
 							opened */

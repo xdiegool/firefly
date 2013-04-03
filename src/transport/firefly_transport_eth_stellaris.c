@@ -196,7 +196,7 @@ struct firefly_connection *firefly_transport_connection_eth_stellaris_open(
 }
 
 void firefly_transport_eth_stellaris_write(unsigned char *data, size_t data_size,
-		struct firefly_connection *conn)
+		struct firefly_connection *conn, bool important)
 {
 	struct protocol_connection_eth_stellaris *conn_eth;
 	struct transport_llp_eth_stellaris *llp_eth;

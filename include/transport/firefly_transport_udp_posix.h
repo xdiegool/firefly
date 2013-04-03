@@ -106,8 +106,10 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp);
  * @param data The data to be written.
  * @param data_size The size of the data to be written.
  * @param conn The connection to written the data on.
+ * @param important If true the packet will be resent until it is acked by
+ * calling #firefly_transport_udp_posix_ack
  */
 void firefly_transport_udp_posix_write(unsigned char *data, size_t data_size,
-		struct firefly_connection *conn);
+		struct firefly_connection *conn, bool important);
 
 #endif

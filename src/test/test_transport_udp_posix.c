@@ -434,7 +434,7 @@ void test_conn_open_and_send()
 	setup_sockaddr(&recv_addr, 55550);
 	int recv_soc = open_socket(&recv_addr);
 
-	firefly_transport_udp_posix_write(send_buf, sizeof(send_buf), conn);
+	firefly_transport_udp_posix_write(send_buf, sizeof(send_buf), conn, false);
 
 	recv_data(recv_soc);
 
@@ -508,7 +508,7 @@ void test_open_and_recv_with_two_llp()
 	CU_ASSERT_PTR_NOT_NULL(conn_send);
 
 	firefly_transport_udp_posix_write(send_buf, sizeof(send_buf),
-						conn_send);
+						conn_send, false);
 
 	firefly_transport_udp_posix_read(llp_recv);
 	execute_events(eq, 1);
@@ -520,7 +520,7 @@ void test_open_and_recv_with_two_llp()
 	data_received = false;
 
 	firefly_transport_udp_posix_write(send_buf, sizeof(send_buf),
-						conn_recv);
+						conn_recv, false);
 
 	firefly_transport_udp_posix_read(llp_send);
 	execute_events(eq, 1);

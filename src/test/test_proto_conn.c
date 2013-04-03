@@ -55,11 +55,12 @@ static void free_plat_conn_test(struct firefly_connection *conn)
 
 static bool transport_sent = false;
 static void transport_write_mock(unsigned char *data, size_t size,
-		struct firefly_connection *conn)
+		struct firefly_connection *conn, bool important)
 {
 	UNUSED_VAR(data);
 	UNUSED_VAR(size);
 	UNUSED_VAR(conn);
+	UNUSED_VAR(important);
 	transport_sent = true;
 }
 
