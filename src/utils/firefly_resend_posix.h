@@ -34,4 +34,14 @@ unsigned char firefly_resend_add(struct resend_queue *rq,
 
 void firefly_resend_remove(struct resend_queue *rq, unsigned char id);
 
+/**
+ * Returns, but does not remove, the first element from the queue.
+ *
+ * @param rq The resend_queue to search through.
+ *
+ * @return The resend element first in the queue or \c NULL if the queue if
+ * empty.
+ */
+struct resend_elem *firefly_resend_top(struct resend_queue *rq);
+
 #endif

@@ -87,3 +87,12 @@ void firefly_resend_remove(struct resend_queue *rq, unsigned char id)
 	pthread_cond_signal(&rq->sig);
 	pthread_mutex_unlock(&rq->lock);
 }
+
+struct resend_elem *firefly_resend_top(struct resend_queue *rq)
+{
+	struct resend_elem *re = NULL;
+	pthread_mutex_lock(&rq->lock);
+	re = rq->first;
+	pthread_mutex_unlock(&rq->lock);
+	return re;
+}

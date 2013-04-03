@@ -6,5 +6,6 @@ int teardown_resend_posix();
 
 void test_add_simple();
 void test_remove_simple();
+void test_top_simple();
 
 #endif
