@@ -36,10 +36,11 @@ int clean_suit_protolc()
 static size_t proto_check_cnt = 0;
 
 void proto_check_writer(unsigned char *data, size_t data_size,
-			struct firefly_connection *conn, bool important)
+			struct firefly_connection *conn, bool important, unsigned char *id)
 {
 	UNUSED_VAR(conn);
 	UNUSED_VAR(important);
+	UNUSED_VAR(id);
 	if (proto_check_cnt == 0) {
 		// DO nothing
 	} else if (proto_check_cnt == 1 || proto_check_cnt == 2) {

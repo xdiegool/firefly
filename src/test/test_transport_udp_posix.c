@@ -2,6 +2,7 @@
  * @file
  * @brief Test the transport layer with POSIX UDP.
  */
+#define _POSIX_C_SOURCE (200112L)
 #include <pthread.h>
 #include "test/test_transport_udp_posix.h"
 
@@ -9,6 +10,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <sys/time.h>
+#include <time.h>
 #include "CUnit/Basic.h"
 #include "CUnit/Console.h"
 #include <arpa/inet.h>
@@ -22,9 +25,11 @@
 #include <protocol/firefly_protocol.h>
 #include <transport/firefly_transport_udp_posix.h>
 
+#include <utils/firefly_errors.h>
 #include "transport/firefly_transport_private.h"
 #include "transport/firefly_transport_udp_posix_private.h"
 #include "protocol/firefly_protocol_private.h"
+#include "test/error_helper.h"
 #include "utils/cppmacros.h"
 #include "test_transport.h"
 
@@ -32,6 +37,9 @@ extern unsigned char send_buf[16];
 extern bool data_received;
 extern size_t data_recv_size;
 extern unsigned char *data_recv_buf;
+
+extern bool was_in_error;
+extern enum firefly_error expected_error;
 
 int init_suit_udp_posix()
 {
@@ -410,6 +418,7 @@ void test_null_pointer_as_callback()
 	send_data(&remote_addr, remote_port, send_buf, sizeof(send_buf));
 
 	firefly_transport_udp_posix_read(llp);
+	expected_error = FIREFLY_ERROR_MISSING_CALLBACK;
 	execute_events(eq, 1);
 
 	CU_PASS("Passed null pointer as callback\n");
@@ -417,6 +426,7 @@ void test_null_pointer_as_callback()
 	firefly_transport_llp_udp_posix_free(llp);
 	execute_remaining_events(eq);
 	firefly_event_queue_free(&eq);
+	expected_error = FIREFLY_ERROR_FIRST;
 }
 
 void test_conn_open_and_send()
@@ -434,7 +444,7 @@ void test_conn_open_and_send()
 	setup_sockaddr(&recv_addr, 55550);
 	int recv_soc = open_socket(&recv_addr);
 
-	firefly_transport_udp_posix_write(send_buf, sizeof(send_buf), conn, false);
+	firefly_transport_udp_posix_write(send_buf, sizeof(send_buf), conn, false, NULL);
 
 	recv_data(recv_soc);
 
@@ -508,7 +518,7 @@ void test_open_and_recv_with_two_llp()
 	CU_ASSERT_PTR_NOT_NULL(conn_send);
 
 	firefly_transport_udp_posix_write(send_buf, sizeof(send_buf),
-						conn_send, false);
+						conn_send, false, NULL);
 
 	firefly_transport_udp_posix_read(llp_recv);
 	execute_events(eq, 1);
@@ -520,7 +530,7 @@ void test_open_and_recv_with_two_llp()
 	data_received = false;
 
 	firefly_transport_udp_posix_write(send_buf, sizeof(send_buf),
-						conn_recv, false);
+						conn_recv, false, NULL);
 
 	firefly_transport_udp_posix_read(llp_send);
 	execute_events(eq, 1);
@@ -772,4 +782,194 @@ void test_llp_free_mult_conns_w_chans()
 	close(socket);
 	firefly_event_queue_free(&eq);
 	data_sent = false;
+}
+
+unsigned int time_ms_diff(struct timespec *from, struct timespec *to)
+{
+	unsigned int diff = (to->tv_sec - from->tv_sec) * 1000;
+	diff += (to->tv_nsec - from->tv_nsec) / 1000000;
+	return diff;
+}
+
+void print_timepsec(struct timespec t)
+{
+	printf("%ld:%ld", t.tv_sec, t.tv_nsec);
+}
+
+void test_send_important()
+{
+	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
+			NULL);
+	struct firefly_transport_llp *llp = firefly_transport_llp_udp_posix_new(
+							local_port, NULL, eq);
+	struct transport_llp_udp_posix *llp_udp =
+		(struct transport_llp_udp_posix *) llp->llp_platspec;
+	struct firefly_connection *conn =
+		firefly_transport_connection_udp_posix_open(NULL, NULL, NULL,
+				"127.0.0.1", 55550, FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT,
+				llp);
+	CU_ASSERT_PTR_NOT_NULL_FATAL(conn);
+
+	unsigned char id;
+	struct timespec before;
+	clock_gettime(CLOCK_REALTIME, &before);
+	firefly_transport_udp_posix_write(send_buf, sizeof(send_buf), conn, true, &id);
+	struct timespec after;
+	clock_gettime(CLOCK_REALTIME, &after);
+
+	CU_ASSERT_PTR_NOT_NULL_FATAL(llp_udp->resend_queue->first);
+	CU_ASSERT_PTR_NOT_NULL_FATAL(llp_udp->resend_queue->last);
+
+	CU_ASSERT_TRUE(memcmp(send_buf, llp_udp->resend_queue->first->data,
+				sizeof(send_buf)) == 0);
+
+	bool test_before = time_ms_diff(&before,
+			&llp_udp->resend_queue->first->resend_at) >=
+			FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT;
+	bool test_after = time_ms_diff(&after,
+			&llp_udp->resend_queue->first->resend_at) <=
+			FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT;
+	CU_ASSERT_TRUE(test_before);
+	CU_ASSERT_TRUE(test_after);
+	if (!test_before) {
+		printf("\n");
+		printf("before:\t");
+		print_timepsec(before);
+		printf("\n");
+		printf("at:\t");
+		print_timepsec(llp_udp->resend_queue->first->resend_at);
+		printf("\n");
+		printf("diff:\t%d\n", time_ms_diff(&before,
+					&llp_udp->resend_queue->first->resend_at));
+	}
+	if (!test_after) {
+		printf("\n");
+		printf("after:\t");
+		print_timepsec(after);
+		printf("\n");
+		printf("at:\t");
+		print_timepsec(llp_udp->resend_queue->first->resend_at);
+		printf("\n");
+		printf("diff:\t%d\n", time_ms_diff(&after,
+					&llp_udp->resend_queue->first->resend_at));
+	}
+
+	firefly_transport_llp_udp_posix_free(llp);
+	execute_remaining_events(eq);
+	firefly_event_queue_free(&eq);
+}
+
+void test_send_important_ack()
+{
+	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
+			NULL);
+	struct firefly_transport_llp *llp = firefly_transport_llp_udp_posix_new(
+							local_port, NULL, eq);
+	struct transport_llp_udp_posix *llp_udp =
+		(struct transport_llp_udp_posix *) llp->llp_platspec;
+	struct firefly_connection *conn =
+		firefly_transport_connection_udp_posix_open(NULL, NULL, NULL,
+				"127.0.0.1", 55550, FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT,
+				llp);
+	CU_ASSERT_PTR_NOT_NULL_FATAL(conn);
+
+	unsigned char id;
+	firefly_transport_udp_posix_write(send_buf, sizeof(send_buf), conn, true, &id);
+
+	CU_ASSERT_PTR_NOT_NULL_FATAL(llp_udp->resend_queue->first);
+	CU_ASSERT_PTR_NOT_NULL_FATAL(llp_udp->resend_queue->last);
+
+	firefly_transport_udp_posix_ack(id, conn);
+
+	CU_ASSERT_PTR_NULL(llp_udp->resend_queue->first);
+	CU_ASSERT_PTR_NULL(llp_udp->resend_queue->last);
+
+	firefly_transport_llp_udp_posix_free(llp);
+	execute_remaining_events(eq);
+	firefly_event_queue_free(&eq);
+}
+
+void test_send_important_id_null()
+{
+	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
+			NULL);
+	struct firefly_transport_llp *llp = firefly_transport_llp_udp_posix_new(
+							local_port, NULL, eq);
+	struct transport_llp_udp_posix *llp_udp =
+		(struct transport_llp_udp_posix *) llp->llp_platspec;
+	struct firefly_connection *conn =
+		firefly_transport_connection_udp_posix_open(NULL, NULL, NULL,
+				"127.0.0.1", 55550, FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT,
+				llp);
+	CU_ASSERT_PTR_NOT_NULL_FATAL(conn);
+
+	expected_error = FIREFLY_ERROR_TRANS_WRITE;
+	firefly_transport_udp_posix_write(send_buf, sizeof(send_buf), conn, true, NULL);
+	CU_ASSERT_TRUE(was_in_error);
+
+	CU_ASSERT_PTR_NULL(llp_udp->resend_queue->first);
+	CU_ASSERT_PTR_NULL(llp_udp->resend_queue->last);
+
+	firefly_transport_llp_udp_posix_free(llp);
+	execute_remaining_events(eq);
+	firefly_event_queue_free(&eq);
+	expected_error = FIREFLY_ERROR_FIRST;
+}
+
+void test_send_important_long_timeout()
+{
+	unsigned int long_timeout = 1999;
+	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
+			NULL);
+	struct firefly_transport_llp *llp = firefly_transport_llp_udp_posix_new(
+							local_port, NULL, eq);
+	struct transport_llp_udp_posix *llp_udp =
+		(struct transport_llp_udp_posix *) llp->llp_platspec;
+	struct firefly_connection *conn =
+		firefly_transport_connection_udp_posix_open(NULL, NULL, NULL,
+				"127.0.0.1", 55550, long_timeout,
+				llp);
+	CU_ASSERT_PTR_NOT_NULL_FATAL(conn);
+
+	unsigned char id;
+	struct timespec before;
+	clock_gettime(CLOCK_REALTIME, &before);
+	firefly_transport_udp_posix_write(send_buf, sizeof(send_buf), conn, true, &id);
+	struct timespec after;
+	clock_gettime(CLOCK_REALTIME, &after);
+
+	CU_ASSERT_PTR_NOT_NULL_FATAL(llp_udp->resend_queue->first);
+	CU_ASSERT_PTR_NOT_NULL_FATAL(llp_udp->resend_queue->last);
+
+	CU_ASSERT_TRUE(memcmp(send_buf, llp_udp->resend_queue->first->data,
+				sizeof(send_buf)) == 0);
+
+	bool test_before = time_ms_diff(&before,
+			&llp_udp->resend_queue->first->resend_at) >= long_timeout;
+	bool test_after = time_ms_diff(&after,
+			&llp_udp->resend_queue->first->resend_at) <= long_timeout;
+	CU_ASSERT_TRUE(test_before);
+	CU_ASSERT_TRUE(test_after);
+	if (!test_before) {
+		printf("\n");
+		printf("before:\t");
+		print_timepsec(before);
+		printf("\n");
+		printf("at:\t");
+		print_timepsec(llp_udp->resend_queue->first->resend_at);
+		printf("\n");
+	}
+	if (!test_after) {
+		printf("\n");
+		printf("after:\t");
+		print_timepsec(after);
+		printf("\n");
+		printf("at:\t");
+		print_timepsec(llp_udp->resend_queue->first->resend_at);
+		printf("\n");
+	}
+
+	firefly_transport_llp_udp_posix_free(llp);
+	execute_remaining_events(eq);
+	firefly_event_queue_free(&eq);
 }

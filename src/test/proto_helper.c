@@ -48,10 +48,12 @@ void chan_opened_mock(struct firefly_channel *chan)
 }
 
 void transport_write_test_decoder(unsigned char *data, size_t size,
-					  struct firefly_connection *conn, bool important)
+					  struct firefly_connection *conn, bool important,
+					   unsigned char *id)
 {
 	UNUSED_VAR(conn);
 	UNUSED_VAR(important);
+	UNUSED_VAR(id);
 	test_dec_ctx->enc_data = data;
 	test_dec_ctx->size = size;
 	labcomm_decoder_decode_one(test_dec);
@@ -67,10 +69,12 @@ bool chan_open_recv_accept_open(struct firefly_channel *chan)
 }
 
 void chan_open_recv_write_open(unsigned char *data, size_t size,
-					   struct firefly_connection *conn, bool important)
+					   struct firefly_connection *conn, bool important,
+					   unsigned char *id)
 {
 	UNUSED_VAR(conn);
 	UNUSED_VAR(important);
+	UNUSED_VAR(id);
 	conn_open_write.data = malloc(size);
 	memcpy(conn_open_write.data, data, size);
 	conn_open_write.size = size;
@@ -83,10 +87,12 @@ bool chan_open_recv_accept_recv(struct firefly_channel *chan)
 }
 
 void chan_open_recv_write_recv(unsigned char *data, size_t size,
-					   struct firefly_connection *conn, bool important)
+					   struct firefly_connection *conn, bool important,
+					   unsigned char *id)
 {
 	UNUSED_VAR(conn);
 	UNUSED_VAR(important);
+	UNUSED_VAR(id);
 	conn_recv_write.data = malloc(size);
 	memcpy(conn_recv_write.data, data, size);
 	conn_recv_write.size = size;

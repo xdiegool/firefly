@@ -817,10 +817,12 @@ void trans_w(struct data_space **space,
 			 unsigned char *data,
 			 size_t data_size,
 			 struct firefly_connection *conn,
-			 bool important)
+			 bool important,
+			 unsigned char *id)
 {
 	UNUSED_VAR(conn);
 	UNUSED_VAR(important);
+	UNUSED_VAR(id);
 	struct data_space *tmp;
 
 	if (*space == NULL) {
@@ -842,15 +844,17 @@ void trans_w(struct data_space **space,
 }
 
 void trans_w_from_conn_0(unsigned char *data, size_t data_size,
-					 struct firefly_connection *conn, bool important)
+					 struct firefly_connection *conn, bool important,
+					 unsigned char *id)
 {
-	trans_w(&space_from_conn[0], data, data_size, conn, important);
+	trans_w(&space_from_conn[0], data, data_size, conn, important, id);
 }
 
 void trans_w_from_conn_1(unsigned char *data, size_t data_size,
-					 struct firefly_connection *conn, bool important)
+					 struct firefly_connection *conn, bool important,
+					 unsigned char *id)
 {
-	trans_w(&space_from_conn[1], data, data_size, conn, important);
+	trans_w(&space_from_conn[1], data, data_size, conn, important, id);
 }
 
 size_t read_connection_mock(struct firefly_connection *conns[], int conn_n)

@@ -135,7 +135,7 @@ int ff_transport_writer(labcomm_writer_t *w, labcomm_writer_action_t action)
 			w->pos = 0;
 			result = 0;
 			conn->transport_write(writer_data->data,
-						writer_data->pos, conn, false);
+						writer_data->pos, conn, false, NULL);
 			writer_data->pos = 0;
 		}
 	} break;

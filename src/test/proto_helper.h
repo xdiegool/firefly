@@ -16,17 +16,20 @@ struct firefly_connection *setup_test_conn_new(firefly_channel_is_open_f ch_op,
 void chan_opened_mock(struct firefly_channel *chan);
 
 void transport_write_test_decoder(unsigned char *data, size_t size,
-					  struct firefly_connection *conn, bool important);
+					  struct firefly_connection *conn, bool important,
+					   unsigned char *id);
 
 bool chan_open_recv_accept_open(struct firefly_channel *chan);
 
 void chan_open_recv_write_open(unsigned char *data, size_t size,
-							   struct firefly_connection *conn, bool important);
+							   struct firefly_connection *conn, bool important,
+					   unsigned char *id);
 
 bool chan_open_recv_accept_recv(struct firefly_channel *chan);
 
 void chan_open_recv_write_recv(unsigned char *data, size_t size,
-					   struct firefly_connection *conn, bool important);
+					   struct firefly_connection *conn, bool important,
+					   unsigned char *id);
 
 void free_tmp_data(struct tmp_data *td);
 

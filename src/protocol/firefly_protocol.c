@@ -17,10 +17,11 @@
 struct firefly_connection *tmp_conn;
 
 void mock_trans_write(unsigned char *data, size_t size,
-					  struct firefly_connection *conn, bool important)
+			struct firefly_connection *conn, bool important, unsigned char *id)
 {
 	UNUSED_VAR(conn);
 	UNUSED_VAR(important);
+	UNUSED_VAR(id);
 	protocol_data_received(tmp_conn, data, size);
 }
 

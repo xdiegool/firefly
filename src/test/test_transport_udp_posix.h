@@ -27,4 +27,10 @@ void test_null_pointer_as_callback();
 
 void test_read_mult_threads();
 
+// test resend buffer
+void test_send_important();
+void test_send_important_ack();
+void test_send_important_id_null();
+void test_send_important_long_timeout();
+
 #endif

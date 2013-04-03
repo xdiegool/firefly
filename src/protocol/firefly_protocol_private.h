@@ -25,9 +25,13 @@ void reg_proto_sigs(struct labcomm_encoder *enc,
  * @param data The data to be written.
  * @param data_size The size of the data to be written.
  * @param conn The #firefly_connection to write the data to.
+ * @param important If true the packet must be resent until acked.
+ * @param id If important is true the id is a return value and will contain the
+ * identifier of the packet which must be used when acking the packet.
  */
 typedef void (* transport_write_f)(unsigned char *data, size_t data_size,
-					struct firefly_connection *conn, bool important);
+					struct firefly_connection *conn, bool important,
+					unsigned char *id);
 
 /**
  * @brief Inform transport that a packet is acked or should not be resent

@@ -10,6 +10,8 @@
 #include <transport/firefly_transport_udp_posix.h>
 #include "firefly_transport_udp_posix_private.h"
 
+#include <sys/time.h>
+#include <time.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <unistd.h>
@@ -213,8 +215,18 @@ struct firefly_connection *firefly_transport_connection_udp_posix_open(
 	return conn;
 }
 
+void firefly_transport_udp_posix_ack(unsigned char pkt_id,
+		struct firefly_connection *conn)
+{
+	struct protocol_connection_udp_posix *conn_udp =
+		(struct protocol_connection_udp_posix *)
+		conn->transport_conn_platspec;
+	firefly_resend_remove(((struct transport_llp_udp_posix *)
+					conn_udp->llp->llp_platspec)->resend_queue, pkt_id);
+}
+
 void firefly_transport_udp_posix_write(unsigned char *data, size_t data_size,
-		struct firefly_connection *conn, bool important)
+		struct firefly_connection *conn, bool important, unsigned char *id)
 {
 	struct protocol_connection_udp_posix *conn_udp =
 		(struct protocol_connection_udp_posix *)
@@ -227,7 +239,24 @@ void firefly_transport_udp_posix_write(unsigned char *data, size_t data_size,
 			__FUNCTION__);
 	}
 	if (important) {
-		// TODO
+		if (id != NULL) {
+			unsigned char *new_data = malloc(data_size);
+			memcpy(new_data, data, data_size);
+			struct timespec at;
+			clock_gettime(CLOCK_REALTIME, &at);
+			at.tv_nsec += conn_udp->timeout * 1000000;
+			if (at.tv_nsec >= 1000000000) {
+				at.tv_sec++;
+				at.tv_nsec -= 1000000000;
+			}
+			*id = firefly_resend_add(((struct transport_llp_udp_posix *)
+					conn_udp->llp->llp_platspec)->resend_queue,
+					new_data, data_size, at,
+					FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_RETRIES, conn);
+		} else {
+			firefly_error(FIREFLY_ERROR_TRANS_WRITE, 1,
+					"Parameter id was NULL.\n");
+		}
 	}
 }
 

@@ -69,10 +69,11 @@ void handle_firefly_protocol_data_sample(
 // previously encoded.
 static size_t last_written_size = 0;
 void transport_write_udp_posix_mock(unsigned char *data, size_t data_size,
-		struct firefly_connection *conn, bool important)
+		struct firefly_connection *conn, bool important, unsigned char *id)
 {
 	UNUSED_VAR(conn);
 	UNUSED_VAR(important);
+	UNUSED_VAR(id);
 	unsigned char *zero_buf = calloc(1, WRITE_BUF_SIZE);
 	// The buffer shoule not be empty anymore.
 	CU_ASSERT_NOT_EQUAL(0, memcmp(data, zero_buf, WRITE_BUF_SIZE));
@@ -160,10 +161,12 @@ void test_encode_decode_protocol()
 
 static size_t nbr_entries = 0;
 void transport_write_udp_posix_mock_cmp(unsigned char *data, size_t data_size,
-					struct firefly_connection *conn, bool important)
+					struct firefly_connection *conn, bool important,
+					unsigned char *id)
 {
 	UNUSED_VAR(conn);
 	UNUSED_VAR(important);
+	UNUSED_VAR(id);
 	size_t file_size;
 	unsigned char *file_data;
 	if (nbr_entries == 0) {

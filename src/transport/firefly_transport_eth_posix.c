@@ -209,7 +209,7 @@ struct firefly_connection *firefly_transport_connection_eth_posix_open(
 }
 
 void firefly_transport_eth_posix_write(unsigned char *data, size_t data_size,
-		struct firefly_connection *conn, bool important)
+		struct firefly_connection *conn, bool important, unsigned char *id)
 {
 	int err;
 	struct protocol_connection_eth_posix *conn_eth =
@@ -222,7 +222,7 @@ void firefly_transport_eth_posix_write(unsigned char *data, size_t data_size,
 				"Failed in %s() on line %d.\nFailed to select.", __FUNCTION__,
 				__LINE__);
 	}
-	if (important) {
+	if (important && id != NULL) {
 		// TODO
 	}
 }

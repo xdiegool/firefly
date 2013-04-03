@@ -123,4 +123,7 @@ struct firefly_connection *firefly_connection_udp_posix_new(
 void firefly_transport_connection_udp_posix_free(
 		struct firefly_connection *conn);
 
+void firefly_transport_udp_posix_ack(unsigned char pkt_id,
+		struct firefly_connection *conn);
+
 #endif

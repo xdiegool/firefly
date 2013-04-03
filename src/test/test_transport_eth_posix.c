@@ -398,7 +398,7 @@ void test_eth_conn_open_and_send()
 
 	int socket = open_socket();
 
-	firefly_transport_eth_posix_write(send_buf, sizeof(send_buf), conn, false);
+	firefly_transport_eth_posix_write(send_buf, sizeof(send_buf), conn, false, NULL);
 
 	recv_data(socket);
 	close(socket);

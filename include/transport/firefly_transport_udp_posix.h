@@ -14,6 +14,7 @@
 #include <utils/firefly_event_queue.h>
 
 #define FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT (500)
+#define FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_RETRIES (5)
 
 /**
  * @brief An opaque UDP specific link layer port data.
@@ -114,6 +115,6 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp);
  * calling #firefly_transport_udp_posix_ack
  */
 void firefly_transport_udp_posix_write(unsigned char *data, size_t data_size,
-		struct firefly_connection *conn, bool important);
+		struct firefly_connection *conn, bool important, unsigned char *id);
 
 #endif
