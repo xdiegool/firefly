@@ -110,7 +110,7 @@ struct firefly_connection *ping_connection_received(
 		printf("PING: Connection accepted.\n");
 		conn = firefly_transport_connection_udp_posix_open(
 				ping_chan_opened, ping_chan_closed, ping_chan_received,
-				ip_addr, port, llp);
+				ip_addr, port, FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT, llp);
 	}
 	return conn;
 }
@@ -168,7 +168,8 @@ void *ping_main_thread(void *arg)
 	struct firefly_connection *conn =
 			firefly_transport_connection_udp_posix_open(ping_chan_opened,
 					ping_chan_closed, ping_chan_received,
-					PONG_ADDR, PONG_PORT, llp);
+					PONG_ADDR, PONG_PORT,
+					FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT, llp);
 	if (conn != NULL) {
 		ping_pass_test(CONNECTION_OPEN);
 	}

@@ -22,6 +22,7 @@
 #include <utils/firefly_errors.h>
 #include <utils/firefly_event_queue.h>
 
+#include <utils/firefly_resend_posix.h>
 #include "utils/firefly_event_queue_private.h"
 #include "protocol/firefly_protocol_private.h"
 #include "transport/firefly_transport_private.h"
@@ -64,6 +65,7 @@ struct firefly_transport_llp *firefly_transport_llp_udp_posix_new(
 	}
 	llp_udp->on_conn_recv = on_conn_recv;
 	llp_udp->event_queue = event_queue;
+	llp_udp->resend_queue = firefly_resend_queue_new();
 
 	struct firefly_transport_llp *llp = malloc(sizeof(
 						struct firefly_transport_llp));
@@ -111,6 +113,7 @@ int firefly_transport_llp_udp_posix_free_event(void *event_arg)
 	if (empty) {
 		close(llp_udp->local_udp_socket);
 		free(llp_udp->local_addr);
+		firefly_resend_queue_free(llp_udp->resend_queue);
 		free(llp_udp);
 		free(llp);
 	} else {
@@ -124,6 +127,7 @@ struct firefly_connection *firefly_connection_udp_posix_new(
 		firefly_channel_closed_f on_channel_closed,
 		firefly_channel_accept_f on_channel_recv,
 		struct firefly_transport_llp *llp,
+		unsigned int timeout,
 		struct sockaddr_in *remote_addr)
 {
 	struct transport_llp_udp_posix *llp_udp;
@@ -150,6 +154,7 @@ struct firefly_connection *firefly_connection_udp_posix_new(
 	conn_udp->remote_addr = remote_addr;
 	conn_udp->socket = llp_udp->local_udp_socket;
 	conn_udp->llp = llp;
+	conn_udp->timeout = timeout;
 
 	return conn;
 }
@@ -173,6 +178,7 @@ struct firefly_connection *firefly_transport_connection_udp_posix_open(
 		firefly_channel_accept_f on_channel_recv,
 		const char *remote_ip_addr,
 		unsigned short remote_port,
+		unsigned int timeout,
 		struct firefly_transport_llp *llp)
 {
 	struct sockaddr_in *remote_addr;
@@ -198,7 +204,7 @@ struct firefly_connection *firefly_transport_connection_udp_posix_open(
 	}
 
 	conn = firefly_connection_udp_posix_new(on_channel_opened,
-			on_channel_closed, on_channel_recv, llp, remote_addr);
+			on_channel_closed, on_channel_recv, llp, timeout, remote_addr);
 
 	if (conn != NULL) {
 		add_connection_to_llp(conn, llp);

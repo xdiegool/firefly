@@ -10,6 +10,7 @@
 #include <signal.h>
 
 #include <utils/firefly_event_queue.h>
+#include <utils/firefly_resend_posix.h>
 
 #include "transport/firefly_transport_private.h"
 
@@ -23,6 +24,7 @@ struct transport_llp_udp_posix {
 							when a new connection is
 							detected. */
 	struct firefly_event_queue *event_queue;
+	struct resend_queue *resend_queue;
 };
 
 /**
@@ -34,6 +36,7 @@ struct protocol_connection_udp_posix {
 	int socket; /**< The socket file descriptor associated with this
 				connection. */
 	struct firefly_transport_llp *llp;
+	unsigned int timeout; /**< The time between resends on this connection. */
 };
 
 struct firefly_event_llp_read_udp_posix {
@@ -95,6 +98,7 @@ int firefly_transport_llp_udp_posix_free_event(void *event_arg);
  * @param event_queue The event queue all events relating to this connection is
  * offered to.
  * @param llp The link layer port this connection receives data from.
+ * @param timeout The time in ms between resends.
  * @param remote_addr The address of the remote node.
  *
  * @return A new firefly_connection with udp posix specific data.
@@ -105,6 +109,7 @@ struct firefly_connection *firefly_connection_udp_posix_new(
 					firefly_channel_closed_f on_channel_closed,
 					firefly_channel_accept_f on_channel_recv,
 					struct firefly_transport_llp *llp,
+					unsigned int timeout,
 					struct sockaddr_in *remote_addr);
 
 /**

@@ -13,6 +13,8 @@
 #include <transport/firefly_transport.h>
 #include <utils/firefly_event_queue.h>
 
+#define FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT (500)
+
 /**
  * @brief An opaque UDP specific link layer port data.
  */
@@ -70,6 +72,7 @@ void firefly_transport_llp_udp_posix_free(struct firefly_transport_llp *llp);
  *
  * @param remote_ip_addr The IP address to connect to.
  * @param remote_port The port to connect to.
+ * @param timeout The time in ms between resends.
  * @param llp The \c #firefly_transport_llp to open a connection on.
  * @return The newly opened connection.
  * @retval NULL Returns \c NULL upon failure.
@@ -80,6 +83,7 @@ struct firefly_connection *firefly_transport_connection_udp_posix_open(
 				firefly_channel_accept_f on_channel_recv,
 				const char *remote_ip_addr,
 				unsigned short remote_port,
+				unsigned int timeout,
 				struct firefly_transport_llp *llp);
 
 /**
