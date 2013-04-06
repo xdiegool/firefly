@@ -67,7 +67,7 @@ void proto_check_writer(unsigned char *data, size_t data_size,
 void test_proto_writer()
 {
 	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
-			NULL);
+			2, NULL);
 	if (eq == NULL) {
 		CU_FAIL("Could not create queue.\n");
 	}
@@ -163,6 +163,7 @@ void test_proto_writer()
 	struct firefly_event *ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 
 	// Test sample packet.
 	create_labcomm_files_general(
@@ -173,6 +174,7 @@ void test_proto_writer()
 	ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 
 	CU_ASSERT_EQUAL(proto_check_cnt, 3);
 

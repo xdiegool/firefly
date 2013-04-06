@@ -14,8 +14,6 @@
 
 #include <stdlib.h>
 
-#include "gen/firefly_protocol.h"
-
 /**
  * Defines different priorities.
  */
@@ -64,8 +62,8 @@ typedef int (*firefly_event_execute_f)(void *event_arg);
  * @retval 0 If event was successfully added.
  * @retval != 0 if an error occured.
  */
-typedef int (*firefly_offer_event)(struct firefly_event_queue *queue,
-		struct firefly_event *event);
+typedef int (*firefly_offer_event)(struct firefly_event_queue *eq,
+		unsigned char prio, firefly_event_execute_f execute, void *context);
 
 /**
  * @brief Initializes and allocates a new firefly_event_queue.
@@ -74,10 +72,12 @@ typedef int (*firefly_offer_event)(struct firefly_event_queue *queue,
  *		A function implementing firefly_offer_event.
  * @param context
  *		The user defined context of this firefly_event_queue.
+ * @param pool_size
+ *		The initial size of the pre-allocated event pool to be allocated.
  * @return The created firefly_event_queue.
  */
 struct firefly_event_queue *firefly_event_queue_new(
-		firefly_offer_event offer_cb, void *context);
+		firefly_offer_event offer_cb, size_t pool_size, void *context);
 
 /**
  * @brief Free the provided firefly_event_queue, this function will also free
@@ -96,29 +96,6 @@ struct firefly_event_queue *firefly_event_queue_new(
 void firefly_event_queue_free(struct firefly_event_queue **eq);
 
 /**
- * @brief Initializes and allocates a new event.
- *
- * @param prio The priority of the new event.
- * @param execute The function called when the firefly_event is executed.
- * @param context The argument passed to the execute function when called.
- * @return The new event.
- * @retval NULL upon error.
- */
-struct firefly_event *firefly_event_new(unsigned char prio,
-		firefly_event_execute_f execute, void *context);
-
-/**
- * @brief Frees a generic event.
- *
- * @warning It does not frees the context of the specific event, this needs
- * to be done separately.
- *
- * @param ev
- *		A pointer to the pointer of the firefly_event to free.
- */
-void firefly_event_free(struct firefly_event **ev);
-
-/**
  * @brief A default implementation of adding an event to the
  * firefly_event_queue. The event will be sorted into the proper position.
  *
@@ -129,11 +106,14 @@ void firefly_event_free(struct firefly_event **ev);
  * function at least needs to be wrapped by a function that locks a mutex.
  *
  * @param eq The firefly_event_queue to add the firefly_event to.
- * @param ev The firefly_event to add to the firefly_event_queue.
+ * @param prio The priority of the new event.
+ * @param execute The function called when the firefly_event is executed.
+ * @param context The argument passed to the execute function when called.
  * @return A integer indicating the result.
  * @retval A negative integer upon error.
  */
-int firefly_event_add(struct firefly_event_queue *eq, struct firefly_event *ev);
+int firefly_event_add(struct firefly_event_queue *eq, unsigned char prio,
+		firefly_event_execute_f execute, void *context);
 
 /**
  * @brief Get the first event in the firefly_event_queue and remove it from the
@@ -147,14 +127,22 @@ int firefly_event_add(struct firefly_event_queue *eq, struct firefly_event *ev);
 struct firefly_event *firefly_event_pop(struct firefly_event_queue *eq);
 
 /**
- * @brief Executes and frees the provided event.
+ * @brief Returns the event to the pool of available event in the queue. The
+ * reference to the event will be set to NULL to prevent it from being used.
+ *
+ * @param q The event queue to return the event to
+ * @param ev A referece to the reference to the event to return.
+ */
+void firefly_event_return(struct firefly_event_queue *q,
+		struct firefly_event **ev);
+
+/**
+ * @brief Executes the provided event.
  *
  * The firefly_event_type of the event is checked, the parameters of the event
- * are extracted and the action is performed. All data used by this event as
- * well as the event itself are freed after execution.
+ * are extracted and the action is performed.
  *
- * @param ev
- *		The event to execute and free.
+ * @param ev The event to execute.
  * @return An integer to indicate whether the execution was successful or not.
  * @retval A negative integer upon error.
  */
@@ -175,6 +163,6 @@ size_t firefly_event_queue_length(struct firefly_event_queue *eq);
  * @param ev The event queue to get the context from
  * @return The context.
  */
-void * firefly_event_queue_get_context(struct firefly_event_queue *ev);
+void *firefly_event_queue_get_context(struct firefly_event_queue *eq);
 
 #endif

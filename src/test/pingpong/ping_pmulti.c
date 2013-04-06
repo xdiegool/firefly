@@ -208,7 +208,7 @@ void *ping_main_thread(void *arg)
 	pthread_mutex_init(&eq_s.eq_lock, NULL);
 	pthread_cond_init(&eq_s.eq_cond, NULL);
 	eq_s.event_exec_finish = false;
-	event_queue = firefly_event_queue_new(event_add_mutex, &eq_s);
+	event_queue = firefly_event_queue_new(event_add_mutex, 20, &eq_s);
 
 	pthread_create(&event_thread, NULL, event_thread_main, event_queue);
 	ping_init_tests();

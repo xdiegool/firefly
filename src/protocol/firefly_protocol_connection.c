@@ -104,10 +104,8 @@ struct firefly_connection *firefly_connection_new(
 
 void firefly_connection_close(struct firefly_connection *conn)
 {
-	struct firefly_event *ev = firefly_event_new(FIREFLY_PRIORITY_MEDIUM,
-			firefly_connection_close_event, conn);
-
-	int ret = conn->event_queue->offer_event_cb(conn->event_queue, ev);
+	int ret = conn->event_queue->offer_event_cb(conn->event_queue,
+			FIREFLY_PRIORITY_MEDIUM, firefly_connection_close_event, conn);
 	if (ret) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1,
 					  "could not add event to queue");
@@ -131,9 +129,8 @@ int firefly_connection_close_event(void *event_arg)
 		if (conn->transport_conn_platspec_free != NULL) {
 			conn->transport_conn_platspec_free(conn);
 		}
-		struct firefly_event *ev = firefly_event_new(FIREFLY_PRIORITY_LOW,
-				firefly_connection_free_event, conn);
-		int ret = conn->event_queue->offer_event_cb(conn->event_queue, ev);
+		int ret = conn->event_queue->offer_event_cb(conn->event_queue,
+				FIREFLY_PRIORITY_LOW, firefly_connection_free_event, conn);
 		if (ret) {
 			firefly_error(FIREFLY_ERROR_ALLOC, 1,
 						  "could not add event to queue");

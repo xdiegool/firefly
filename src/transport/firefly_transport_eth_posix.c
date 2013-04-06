@@ -95,11 +95,10 @@ struct firefly_transport_llp *firefly_transport_llp_eth_posix_new(
 
 void firefly_transport_llp_eth_posix_free(struct firefly_transport_llp *llp)
 {
-	struct firefly_event *ev = firefly_event_new(FIREFLY_PRIORITY_LOW,
-			firefly_transport_llp_eth_posix_free_event, llp);
 	struct transport_llp_eth_posix *llp_eth;
 	llp_eth = (struct transport_llp_eth_posix *) llp->llp_platspec;
-	int ret = llp_eth->event_queue->offer_event_cb(llp_eth->event_queue, ev);
+	int ret = llp_eth->event_queue->offer_event_cb(llp_eth->event_queue,
+			FIREFLY_PRIORITY_LOW, firefly_transport_llp_eth_posix_free_event, llp);
 	if (ret) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1,
 					  "could not add event to queue");
@@ -298,9 +297,8 @@ void firefly_transport_eth_posix_read(struct firefly_transport_llp *llp,
 				"Failed in %s.\n%s()\nCould not read from socket.", __FUNCTION__, err_buf);
 	}
 
-	struct firefly_event *ev = firefly_event_new(FIREFLY_PRIORITY_HIGH,
-			firefly_transport_eth_posix_read_event, ev_arg);
-	llp_eth->event_queue->offer_event_cb(llp_eth->event_queue, ev);
+	llp_eth->event_queue->offer_event_cb(llp_eth->event_queue,
+			FIREFLY_PRIORITY_HIGH, firefly_transport_eth_posix_read_event, ev_arg);
 }
 
 int firefly_transport_eth_posix_read_event(void *event_args)

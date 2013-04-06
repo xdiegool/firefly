@@ -6,6 +6,8 @@
 #include "CUnit/Basic.h"
 #include "CUnit/Console.h"
 
+#include <stdio.h>
+
 #include <utils/firefly_event_queue.h>
 
 #include "utils/firefly_event_queue_private.h"
@@ -23,20 +25,19 @@ int clean_suite_event()
 void test_add_pop_event_simple()
 {
 	struct firefly_event_queue *q =
-		firefly_event_queue_new(firefly_event_add, NULL);
+		firefly_event_queue_new(firefly_event_add, 1, NULL);
 
-	struct firefly_event *ev = firefly_event_new(1, NULL, NULL);
-	int st = q->offer_event_cb(q, ev);
+	int st = q->offer_event_cb(q, 1, NULL, NULL);
 	CU_ASSERT_EQUAL(st, 0);
+	CU_ASSERT_PTR_NOT_NULL_FATAL(q->head);
 	struct firefly_event *test = firefly_event_pop(q);
 
-	CU_ASSERT_PTR_EQUAL(ev, test);
-	CU_ASSERT_EQUAL(ev->prio, test->prio);
+	CU_ASSERT_EQUAL(1, test->prio);
 
 	CU_ASSERT_PTR_NULL(q->head);
 
 	// Clean up
-	firefly_event_free(&ev);
+	firefly_event_return(q, &test);
 	firefly_event_queue_free(&q);
 	CU_ASSERT_PTR_NULL(q);
 }
@@ -44,31 +45,29 @@ void test_add_pop_event_simple()
 void test_queue_events_in_order()
 {
 	int st;
+	struct firefly_event *ev;
 	struct firefly_event_queue *q =
-		firefly_event_queue_new(firefly_event_add, NULL);
+		firefly_event_queue_new(firefly_event_add, 3, NULL);
 
-	struct firefly_event *ev_low = firefly_event_new(
-			FIREFLY_PRIORITY_LOW, NULL, NULL);
-	st = q->offer_event_cb(q, ev_low);
+	st = q->offer_event_cb(q, FIREFLY_PRIORITY_LOW, NULL, NULL);
 	CU_ASSERT_EQUAL(st, 0);
-	struct firefly_event *ev_med = firefly_event_new(
-			FIREFLY_PRIORITY_MEDIUM, NULL, NULL);
-	st = q->offer_event_cb(q, ev_med);
+	st = q->offer_event_cb(q, FIREFLY_PRIORITY_MEDIUM, NULL, NULL);
 	CU_ASSERT_EQUAL(st, 0);
-	struct firefly_event *ev_high = firefly_event_new(
-			FIREFLY_PRIORITY_HIGH, NULL, NULL);
-	st = q->offer_event_cb(q, ev_high);
+	st = q->offer_event_cb(q, FIREFLY_PRIORITY_HIGH, NULL, NULL);
 	CU_ASSERT_EQUAL(st, 0);
 
-	CU_ASSERT_PTR_EQUAL(ev_high, firefly_event_pop(q));
-	CU_ASSERT_PTR_EQUAL(ev_med, firefly_event_pop(q));
-	CU_ASSERT_PTR_EQUAL(ev_low, firefly_event_pop(q));
+	ev = firefly_event_pop(q);
+	CU_ASSERT_EQUAL(FIREFLY_PRIORITY_HIGH, ev->prio);
+	firefly_event_return(q, &ev);
+	ev = firefly_event_pop(q);
+	CU_ASSERT_EQUAL(FIREFLY_PRIORITY_MEDIUM, ev->prio);
+	firefly_event_return(q, &ev);
+	ev = firefly_event_pop(q);
+	CU_ASSERT_EQUAL(FIREFLY_PRIORITY_LOW, ev->prio);
+	firefly_event_return(q, &ev);
 
 	CU_ASSERT_PTR_NULL(q->head);
 
-	firefly_event_free(&ev_low);
-	firefly_event_free(&ev_med);
-	firefly_event_free(&ev_high);
 	firefly_event_queue_free(&q);
 }
 
@@ -76,31 +75,30 @@ void test_queue_event_same_prio()
 {
 
 	int st;
+	struct firefly_event *ev;
+	int id_1, id_2, id_3;
 	struct firefly_event_queue *q =
-		firefly_event_queue_new(firefly_event_add, NULL);
+		firefly_event_queue_new(firefly_event_add, 3, NULL);
 
-	struct firefly_event *ev_1 = firefly_event_new(
-			FIREFLY_PRIORITY_MEDIUM, NULL, NULL);
-	st = q->offer_event_cb(q, ev_1);
+	st = q->offer_event_cb(q, FIREFLY_PRIORITY_MEDIUM, NULL, &id_1);
 	CU_ASSERT_EQUAL(st, 0);
-	struct firefly_event *ev_2 = firefly_event_new(
-			FIREFLY_PRIORITY_MEDIUM, NULL, NULL);
-	st = q->offer_event_cb(q, ev_2);
+	st = q->offer_event_cb(q, FIREFLY_PRIORITY_MEDIUM, NULL, &id_2);
 	CU_ASSERT_EQUAL(st, 0);
-	struct firefly_event *ev_3 = firefly_event_new(
-			FIREFLY_PRIORITY_MEDIUM, NULL, NULL);
-	st = q->offer_event_cb(q, ev_3);
+	st = q->offer_event_cb(q, FIREFLY_PRIORITY_MEDIUM, NULL, &id_3);
 	CU_ASSERT_EQUAL(st, 0);
 
-	CU_ASSERT_PTR_EQUAL(ev_1, firefly_event_pop(q));
-	CU_ASSERT_PTR_EQUAL(ev_2, firefly_event_pop(q));
-	CU_ASSERT_PTR_EQUAL(ev_3, firefly_event_pop(q));
+	ev = firefly_event_pop(q);
+	CU_ASSERT_PTR_EQUAL(&id_1, ev->context);
+	firefly_event_return(q, &ev);
+	ev = firefly_event_pop(q);
+	CU_ASSERT_PTR_EQUAL(&id_2, ev->context);
+	firefly_event_return(q, &ev);
+	ev = firefly_event_pop(q);
+	CU_ASSERT_PTR_EQUAL(&id_3, ev->context);
+	firefly_event_return(q, &ev);
 
 	CU_ASSERT_PTR_NULL(q->head);
 
-	firefly_event_free(&ev_1);
-	firefly_event_free(&ev_2);
-	firefly_event_free(&ev_3);
 	firefly_event_queue_free(&q);
 }
 
@@ -108,78 +106,72 @@ void test_queue_event_same_and_diff_prio()
 {
 
 	int st;
+	struct firefly_event *ev;
+	int id_l1, id_l2, id_m1, id_m2, id_h1, id_h2;
 	struct firefly_event_queue *q =
-		firefly_event_queue_new(firefly_event_add, NULL);
+		firefly_event_queue_new(firefly_event_add, 6, NULL);
 
-	struct firefly_event *ev_low1 = firefly_event_new(
-			FIREFLY_PRIORITY_LOW, NULL, NULL);
-	st = q->offer_event_cb(q, ev_low1);
+	st = q->offer_event_cb(q, FIREFLY_PRIORITY_LOW, NULL, &id_l1);
 	CU_ASSERT_EQUAL(st, 0);
-	struct firefly_event *ev_low2 = firefly_event_new(
-			FIREFLY_PRIORITY_LOW, NULL, NULL);
-	st = q->offer_event_cb(q, ev_low2);
+	st = q->offer_event_cb(q, FIREFLY_PRIORITY_LOW, NULL, &id_l2);
 	CU_ASSERT_EQUAL(st, 0);
-	struct firefly_event *ev_med1 = firefly_event_new(
-			FIREFLY_PRIORITY_MEDIUM, NULL, NULL);
-	st = q->offer_event_cb(q, ev_med1);
+	st = q->offer_event_cb(q, FIREFLY_PRIORITY_MEDIUM, NULL, &id_m1);
 	CU_ASSERT_EQUAL(st, 0);
-	struct firefly_event *ev_med2 = firefly_event_new(
-			FIREFLY_PRIORITY_MEDIUM, NULL, NULL);
-	st = q->offer_event_cb(q, ev_med2);
+	st = q->offer_event_cb(q, FIREFLY_PRIORITY_MEDIUM, NULL, &id_m2);
 	CU_ASSERT_EQUAL(st, 0);
-	struct firefly_event *ev_high1 = firefly_event_new(
-			FIREFLY_PRIORITY_HIGH, NULL, NULL);
-	st = q->offer_event_cb(q, ev_high1);
+	st = q->offer_event_cb(q, FIREFLY_PRIORITY_HIGH, NULL, &id_h1);
 	CU_ASSERT_EQUAL(st, 0);
-	struct firefly_event *ev_high2 = firefly_event_new(
-			FIREFLY_PRIORITY_HIGH, NULL, NULL);
-	st = q->offer_event_cb(q, ev_high2);
+	st = q->offer_event_cb(q, FIREFLY_PRIORITY_HIGH, NULL, &id_h2);
 	CU_ASSERT_EQUAL(st, 0);
 
-	CU_ASSERT_PTR_EQUAL(ev_high1, firefly_event_pop(q));
-	CU_ASSERT_PTR_EQUAL(ev_high2, firefly_event_pop(q));
-	CU_ASSERT_PTR_EQUAL(ev_med1, firefly_event_pop(q));
-	CU_ASSERT_PTR_EQUAL(ev_med2, firefly_event_pop(q));
-	CU_ASSERT_PTR_EQUAL(ev_low1, firefly_event_pop(q));
-	CU_ASSERT_PTR_EQUAL(ev_low2, firefly_event_pop(q));
+	ev = firefly_event_pop(q);
+	CU_ASSERT_PTR_EQUAL(&id_h1, ev->context);
+	firefly_event_return(q, &ev);
+	ev = firefly_event_pop(q);
+	CU_ASSERT_PTR_EQUAL(&id_h2, ev->context);
+	firefly_event_return(q, &ev);
+	ev = firefly_event_pop(q);
+	CU_ASSERT_PTR_EQUAL(&id_m1, ev->context);
+	firefly_event_return(q, &ev);
+	ev = firefly_event_pop(q);
+	CU_ASSERT_PTR_EQUAL(&id_m2, ev->context);
+	firefly_event_return(q, &ev);
+	ev = firefly_event_pop(q);
+	CU_ASSERT_PTR_EQUAL(&id_l1, ev->context);
+	firefly_event_return(q, &ev);
+	ev = firefly_event_pop(q);
+	CU_ASSERT_PTR_EQUAL(&id_l2, ev->context);
+	firefly_event_return(q, &ev);
 
 	CU_ASSERT_PTR_NULL(q->head);
 
-	firefly_event_free(&ev_low1);
-	firefly_event_free(&ev_low2);
-	firefly_event_free(&ev_med1);
-	firefly_event_free(&ev_med2);
-	firefly_event_free(&ev_high1);
-	firefly_event_free(&ev_high2);
 	firefly_event_queue_free(&q);
 }
 
 void test_pop_empty()
 {
+	struct firefly_event *ev;
 	struct firefly_event_queue *q =
-		firefly_event_queue_new(firefly_event_add, NULL);
+		firefly_event_queue_new(firefly_event_add, 3, NULL);
 
 	CU_ASSERT_PTR_NULL(firefly_event_pop(q));
 
-	struct firefly_event *ev_1 = firefly_event_new(1, NULL, NULL);
-	int st = q->offer_event_cb(q, ev_1);
+	int st = q->offer_event_cb(q, 1, NULL, NULL);
 	CU_ASSERT_EQUAL(st, 0);
-	struct firefly_event *ev_2 = firefly_event_new(2, NULL, NULL);
-	st = q->offer_event_cb(q, ev_2);
+	st = q->offer_event_cb(q, 1, NULL, NULL);
 	CU_ASSERT_EQUAL(st, 0);
-	struct firefly_event *ev_3 = firefly_event_new(3, NULL, NULL);
-	st = q->offer_event_cb(q, ev_3);
+	st = q->offer_event_cb(q, 1, NULL, NULL);
 	CU_ASSERT_EQUAL(st, 0);
 
-	firefly_event_pop(q);
-	firefly_event_pop(q);
-	firefly_event_pop(q);
+	ev = firefly_event_pop(q);
+	firefly_event_return(q, &ev);
+	ev = firefly_event_pop(q);
+	firefly_event_return(q, &ev);
+	ev = firefly_event_pop(q);
+	firefly_event_return(q, &ev);
 
 	CU_ASSERT_PTR_NULL(firefly_event_pop(q));
 
-	firefly_event_free(&ev_1);
-	firefly_event_free(&ev_2);
-	firefly_event_free(&ev_3);
 	firefly_event_queue_free(&q);
 }
 
@@ -187,11 +179,10 @@ void test_length()
 {
 	const int k_len = 256;
 	struct firefly_event_queue *q =
-		firefly_event_queue_new(firefly_event_add, NULL);
+		firefly_event_queue_new(firefly_event_add, k_len, NULL);
 
 	for (int i = 0; i < k_len; i++) {
-		struct firefly_event *ev = firefly_event_new(1, NULL, NULL);
-		q->offer_event_cb(q, ev);
+		q->offer_event_cb(q, 1, NULL, NULL);
 	}
 
 	CU_ASSERT_EQUAL(firefly_event_queue_length(q), k_len);
@@ -240,48 +231,127 @@ static int complex_event(void *event_arg)
 
 void test_complex_priorities()
 {
+	struct firefly_event *ev;
 	struct firefly_event_queue *q =
-		firefly_event_queue_new(firefly_event_add, NULL);
+		firefly_event_queue_new(firefly_event_add, 7, NULL);
 
 	int id_1 = 1;
-	struct firefly_event *ev_1 = firefly_event_new(FIREFLY_PRIORITY_LOW,
-			complex_event, &id_1);
 	int id_2 = 2;
-	struct firefly_event *ev_2 = firefly_event_new(FIREFLY_PRIORITY_MEDIUM,
-			complex_event, &id_2);
 	int id_3 = 3;
-	struct firefly_event *ev_3 = firefly_event_new(FIREFLY_PRIORITY_LOW,
-			complex_event, &id_3);
 	int id_4 = 4;
-	struct firefly_event *ev_4 = firefly_event_new(FIREFLY_PRIORITY_HIGH,
-			complex_event, &id_4);
 	int id_5 = 5;
-	struct firefly_event *ev_5 = firefly_event_new(FIREFLY_PRIORITY_HIGH,
-			complex_event, &id_5);
 	int id_6 = 6;
-	struct firefly_event *ev_6 = firefly_event_new(FIREFLY_PRIORITY_MEDIUM,
-			complex_event, &id_6);
 	int id_7 = 7;
-	struct firefly_event *ev_7 = firefly_event_new(FIREFLY_PRIORITY_LOW,
-			complex_event, &id_7);
 
-	q->offer_event_cb(q, ev_1);
-	firefly_event_execute(firefly_event_pop(q));
-	q->offer_event_cb(q, ev_2);
-	q->offer_event_cb(q, ev_3);
-	firefly_event_execute(firefly_event_pop(q));
-	q->offer_event_cb(q, ev_4);
-	q->offer_event_cb(q, ev_5);
-	q->offer_event_cb(q, ev_6);
-	firefly_event_execute(firefly_event_pop(q));
-	firefly_event_execute(firefly_event_pop(q));
-	firefly_event_execute(firefly_event_pop(q));
-	q->offer_event_cb(q, ev_7);
-	firefly_event_execute(firefly_event_pop(q));
-	firefly_event_execute(firefly_event_pop(q));
+	q->offer_event_cb(q, FIREFLY_PRIORITY_LOW, complex_event, &id_1);
+	ev = firefly_event_pop(q);
+	firefly_event_execute(ev);
+	firefly_event_return(q, &ev);
+	q->offer_event_cb(q, FIREFLY_PRIORITY_MEDIUM, complex_event, &id_2);
+	q->offer_event_cb(q, FIREFLY_PRIORITY_LOW, complex_event, &id_3);
+	ev = firefly_event_pop(q);
+	firefly_event_execute(ev);
+	firefly_event_return(q, &ev);
+	q->offer_event_cb(q, FIREFLY_PRIORITY_HIGH, complex_event, &id_4);
+	q->offer_event_cb(q, FIREFLY_PRIORITY_HIGH, complex_event, &id_5);
+	q->offer_event_cb(q, FIREFLY_PRIORITY_MEDIUM, complex_event, &id_6);
+	ev = firefly_event_pop(q);
+	firefly_event_execute(ev);
+	firefly_event_return(q, &ev);
+	ev = firefly_event_pop(q);
+	firefly_event_execute(ev);
+	firefly_event_return(q, &ev);
+	ev = firefly_event_pop(q);
+	firefly_event_execute(ev);
+	firefly_event_return(q, &ev);
+	q->offer_event_cb(q, FIREFLY_PRIORITY_LOW, complex_event, &id_7);
+	ev = firefly_event_pop(q);
+	firefly_event_execute(ev);
+	firefly_event_return(q, &ev);
+	ev = firefly_event_pop(q);
+	firefly_event_execute(ev);
+	firefly_event_return(q, &ev);
+
 	firefly_event_queue_free(&q);
 }
 
+void test_event_pool_simple()
+{
+	struct firefly_event *ev;
+	struct firefly_event_queue *q =
+		firefly_event_queue_new(firefly_event_add, 1, NULL);
+	CU_ASSERT_PTR_NOT_NULL_FATAL(q->event_pool);
+	CU_ASSERT_PTR_NOT_NULL(q->event_pool[0]);
+
+	// Test take and return an event
+	q->offer_event_cb(q, FIREFLY_PRIORITY_LOW, NULL, NULL);
+	CU_ASSERT_PTR_NULL(q->event_pool[0]);
+	ev = firefly_event_pop(q);
+	firefly_event_return(q, &ev);
+	CU_ASSERT_PTR_NOT_NULL(q->event_pool[0]);
+
+	// Same test again to test reusability of event
+	q->offer_event_cb(q, FIREFLY_PRIORITY_LOW, NULL, NULL);
+	CU_ASSERT_PTR_NULL(q->event_pool[0]);
+	ev = firefly_event_pop(q);
+	firefly_event_return(q, &ev);
+	CU_ASSERT_PTR_NOT_NULL(q->event_pool[0]);
+
+	firefly_event_queue_free(&q);
+}
+
+void test_event_pool_three()
+{
+	struct firefly_event *ev;
+	struct firefly_event_queue *q =
+		firefly_event_queue_new(firefly_event_add, 3, NULL);
+	CU_ASSERT_PTR_NOT_NULL_FATAL(q->event_pool);
+	CU_ASSERT_PTR_NOT_NULL(q->event_pool[0]);
+	CU_ASSERT_PTR_NOT_NULL(q->event_pool[1]);
+	CU_ASSERT_PTR_NOT_NULL(q->event_pool[2]);
+
+	// Test take three events
+	q->offer_event_cb(q, FIREFLY_PRIORITY_LOW, NULL, NULL);
+	CU_ASSERT_PTR_NULL(q->event_pool[0]);
+	q->offer_event_cb(q, FIREFLY_PRIORITY_LOW, NULL, NULL);
+	CU_ASSERT_PTR_NULL(q->event_pool[1]);
+	q->offer_event_cb(q, FIREFLY_PRIORITY_LOW, NULL, NULL);
+	CU_ASSERT_PTR_NULL(q->event_pool[2]);
+
+	// Test return one event and take it again
+	ev = firefly_event_pop(q);
+	firefly_event_return(q, &ev);
+	CU_ASSERT_PTR_NOT_NULL(q->event_pool[2]);
+	q->offer_event_cb(q, FIREFLY_PRIORITY_LOW, NULL, NULL);
+	CU_ASSERT_PTR_NULL(q->event_pool[2]);
+
+	// Test return two events and take them again
+	ev = firefly_event_pop(q);
+	firefly_event_return(q, &ev);
+	CU_ASSERT_PTR_NOT_NULL(q->event_pool[2]);
+	ev = firefly_event_pop(q);
+	firefly_event_return(q, &ev);
+	CU_ASSERT_PTR_NOT_NULL(q->event_pool[1]);
+	q->offer_event_cb(q, FIREFLY_PRIORITY_LOW, NULL, NULL);
+	CU_ASSERT_PTR_NULL(q->event_pool[1]);
+	q->offer_event_cb(q, FIREFLY_PRIORITY_LOW, NULL, NULL);
+	CU_ASSERT_PTR_NULL(q->event_pool[2]);
+
+	// Test return all events
+	ev = firefly_event_pop(q);
+	firefly_event_return(q, &ev);
+	CU_ASSERT_PTR_NOT_NULL(q->event_pool[2]);
+	ev = firefly_event_pop(q);
+	firefly_event_return(q, &ev);
+	CU_ASSERT_PTR_NOT_NULL(q->event_pool[1]);
+	ev = firefly_event_pop(q);
+	firefly_event_return(q, &ev);
+	CU_ASSERT_PTR_NOT_NULL(q->event_pool[0]);
+
+	firefly_event_queue_free(&q);
+}
+
+// TODO test errors when using event pool
 int main()
 {
 	CU_pSuite event_suite = NULL;
@@ -320,6 +390,12 @@ int main()
 		||
 		(CU_add_test(event_suite, "test_complex_priorities",
 					 test_complex_priorities) == NULL)
+		||
+		(CU_add_test(event_suite, "test_event_pool_simple",
+					 test_event_pool_simple) == NULL)
+		||
+		(CU_add_test(event_suite, "test_event_pool_three",
+					 test_event_pool_three) == NULL)
 	   ) {
 		CU_cleanup_registry();
 		return CU_get_error();

@@ -9,7 +9,7 @@
 #include <utils/firefly_errors.h>
 
 struct firefly_event_queue *firefly_event_queue_new(
-		firefly_offer_event offer_cb, void *context)
+		firefly_offer_event offer_cb, size_t pool_size, void *context)
 {
 	struct firefly_event_queue *q = NULL;
 
@@ -17,6 +17,12 @@ struct firefly_event_queue *firefly_event_queue_new(
 		q->head = NULL;
 		q->offer_event_cb = offer_cb;
 		q->context = context;
+		q->event_pool = malloc(sizeof(struct firefly_event *)*pool_size);
+		for (size_t i = 0; i < pool_size; i++) {
+			q->event_pool[i] = malloc(sizeof(struct firefly_event));
+		}
+		q->event_pool_size = pool_size;
+		q->event_pool_in_use = 0;
 	}
 
 	return q;
@@ -27,7 +33,11 @@ void firefly_event_queue_free(struct firefly_event_queue **q)
 	struct firefly_event *ev;
 
 	while ((ev = firefly_event_pop(*q)) != NULL)
-		firefly_event_free(&ev);
+		firefly_event_return(*q, &ev);
+	for (size_t i = 0; i < (*q)->event_pool_size; i++) {
+		firefly_event_free((*q)->event_pool[i]);
+	}
+	free((*q)->event_pool);
 	free(*q);
 	*q = NULL;
 }
@@ -46,49 +56,76 @@ struct firefly_event *firefly_event_new(unsigned char prio,
 	return ev;
 }
 
-void firefly_event_free(struct firefly_event **ev)
+void firefly_event_free(struct firefly_event *ev)
 {
-	free(*ev);
-	*ev = NULL;
+	free(ev);
 }
 
-int firefly_event_add(struct firefly_event_queue *eq, struct firefly_event *ev)
+void firefly_event_init(struct firefly_event *ev, unsigned char prio,
+		firefly_event_execute_f execute, void *context)
 {
-	struct firefly_eq_node **n = &eq->head;
+		ev->prio = prio;
+		ev->execute = execute;
+		ev->context = context;
+}
+
+struct firefly_event *firefly_event_take(struct firefly_event_queue *q)
+{
+	if (q->event_pool_in_use >= q->event_pool_size) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 1,
+				"No available events in the pool.");
+		return NULL;
+	}
+	struct firefly_event *ev = q->event_pool[q->event_pool_in_use];
+	q->event_pool[q->event_pool_in_use] = NULL;
+	q->event_pool_in_use++;
+
+	return ev;
+}
+
+void firefly_event_return(struct firefly_event_queue *q,
+		struct firefly_event **ev)
+{
+	if (q->event_pool_in_use > q->event_pool_size) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 1,
+				"Too many events are used from this pool.");
+	} else {
+		q->event_pool_in_use--;
+		q->event_pool[q->event_pool_in_use] = *ev;
+		*ev = NULL;
+	}
+}
+
+int firefly_event_add(struct firefly_event_queue *eq, unsigned char prio,
+		firefly_event_execute_f execute, void *context)
+{
+	struct firefly_event **n = &eq->head;
 
 	// Find the node to insert the event before, it may be NULL and eq->head
-	while (*n != NULL && (*n)->event->prio >= ev->prio) {
+	while (*n != NULL && (*n)->prio >= prio) {
 		n = &(*n)->next;
 	}
 
-	struct firefly_eq_node *node = malloc(sizeof(struct firefly_eq_node));
-	if (node == NULL) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 1,
-				"Could not allocate event");
+	struct firefly_event *ev = firefly_event_take(eq);
+	if (ev == NULL) {
 		return -1;
 	}
-	node->event = ev;
-
-	node->next = (*n);
-	*n = node;
+	firefly_event_init(ev, prio, execute, context);
+	ev->next = (*n);
+	*n = ev;
 
 	return 0;
 }
 
 struct firefly_event *firefly_event_pop(struct firefly_event_queue *eq)
 {
-	// The node containing the event.
-	struct firefly_eq_node *event_node;
-
 	// The actual event
 	struct firefly_event *ev;
 
-	if ((event_node = eq->head) == NULL) {
+	if ((ev = eq->head) == NULL) {
 		return NULL;
 	}
 	eq->head = eq->head->next;
-	ev = event_node->event;
-	free(event_node);
 
 	return ev;
 }
@@ -102,13 +139,12 @@ int firefly_event_execute(struct firefly_event *ev)
 	} else {
 		res = ev->execute(ev->context);
 	}
-	firefly_event_free(&ev);
 	return res;
 }
 
 size_t firefly_event_queue_length(struct firefly_event_queue *eq)
 {
-	struct firefly_eq_node *ev;
+	struct firefly_event *ev;
 	size_t n = 0;
 
 	ev = eq->head;
@@ -120,7 +156,7 @@ size_t firefly_event_queue_length(struct firefly_event_queue *eq)
 	return n;
 }
 
-void * firefly_event_queue_get_context(struct firefly_event_queue *ev)
+void *firefly_event_queue_get_context(struct firefly_event_queue *eq)
 {
-	return ev->context;
+	return eq->context;
 }

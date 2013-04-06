@@ -46,7 +46,8 @@ void pingpong_test_pass(struct pingpong_test *test);
 void pingpong_test_print_results(struct pingpong_test *tests, size_t nbr_tests,
 		char *test_suite_name);
 
-int event_add_mutex(struct firefly_event_queue *eq, struct firefly_event *ev);
+int event_add_mutex(struct firefly_event_queue *eq, unsigned char prio,
+		firefly_event_execute_f execute, void *context);
 
 void *event_thread_main(void *args);
 #endif

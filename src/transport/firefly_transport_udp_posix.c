@@ -86,12 +86,12 @@ struct firefly_transport_llp *firefly_transport_llp_udp_posix_new(
 
 void firefly_transport_llp_udp_posix_free(struct firefly_transport_llp *llp)
 {
-	struct firefly_event *ev = firefly_event_new(FIREFLY_PRIORITY_LOW,
-			firefly_transport_llp_udp_posix_free_event, llp);
 	struct transport_llp_udp_posix *llp_udp =
 		(struct transport_llp_udp_posix *) llp->llp_platspec;
 
-	int ret = llp_udp->event_queue->offer_event_cb(llp_udp->event_queue, ev);
+	int ret = llp_udp->event_queue->offer_event_cb(llp_udp->event_queue,
+			FIREFLY_PRIORITY_LOW, firefly_transport_llp_udp_posix_free_event,
+			llp);
 	if (ret) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1,
 					  "could not add event to queue");
@@ -393,9 +393,9 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 	ev_arg->data = data;
 	ev_arg->len = pkg_len;
 
-	struct firefly_event *ev = firefly_event_new(FIREFLY_PRIORITY_HIGH,
-			firefly_transport_udp_posix_read_event, ev_arg);
-	llp_udp->event_queue->offer_event_cb(llp_udp->event_queue, ev);
+	llp_udp->event_queue->offer_event_cb(llp_udp->event_queue,
+			FIREFLY_PRIORITY_HIGH, firefly_transport_udp_posix_read_event,
+			ev_arg);
 }
 
 int firefly_transport_udp_posix_read_event(void *event_arg)

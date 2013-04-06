@@ -58,7 +58,7 @@ static void mk_lc_and_reg_sigs(struct firefly_connection **conn_open,
 				   struct firefly_connection **conn_recv,
 				   struct firefly_event_queue **eq)
 {
-	*eq = firefly_event_queue_new(firefly_event_add, NULL);
+	*eq = firefly_event_queue_new(firefly_event_add, 1, NULL);
 	if (*eq == NULL) {
 		CU_FAIL("Could not create queue.\n");
 	}
@@ -96,6 +96,7 @@ void test_unexpected_ack()
 	struct firefly_event *ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL_FATAL(ev);
 	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 
 	expected_error = FIREFLY_ERROR_FIRST; // Reset
 	CU_ASSERT_TRUE(was_in_error);
@@ -128,6 +129,7 @@ void test_unexpected_response()
 	struct firefly_event *ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL_FATAL(ev);
 	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 
 	expected_error = FIREFLY_ERROR_FIRST; // Reset
 	CU_ASSERT_TRUE(was_in_error);
@@ -166,6 +168,7 @@ void test_unexpected_data_sample()
 	struct firefly_event *ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL_FATAL(ev);
 	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 
 	CU_ASSERT_TRUE(was_in_error);
 	expected_error = FIREFLY_ERROR_FIRST; // Reset

@@ -1,6 +1,8 @@
 #include <pthread.h>
 #include "test/pingpong/pingpong.h"
 
+#include <stdio.h>
+
 #include <utils/firefly_event_queue.h>
 
 #include "utils/cppmacros.h"
@@ -32,7 +34,8 @@ void pingpong_test_print_results(struct pingpong_test *tests, size_t nbr_tests,
 		(nbr_tests - nbr_success));
 }
 
-int event_add_mutex(struct firefly_event_queue *eq, struct firefly_event *ev)
+int event_add_mutex(struct firefly_event_queue *eq, unsigned char prio,
+		firefly_event_execute_f execute, void *context)
 {
 	int res = 0;
 	struct event_queue_signals *eq_s =
@@ -42,7 +45,7 @@ int event_add_mutex(struct firefly_event_queue *eq, struct firefly_event *ev)
 	if (res) {
 		return res;
 	}
-	res = firefly_event_add(eq, ev);
+	res = firefly_event_add(eq, prio, execute, context);
 	if (!res) {
 		pthread_cond_signal(&eq_s->eq_cond);
 	}
@@ -76,6 +79,7 @@ void *event_thread_main(void *args)
 		pthread_mutex_unlock(&eq_s->eq_lock);
 		if (ev != NULL) {
 			firefly_event_execute(ev);
+			firefly_event_return(eq, &ev);
 		}
 	}
 	return NULL;

@@ -39,9 +39,8 @@ static void udp_lwip_recv_callback(void *recv_arg, struct udp_pcb *upcb,
 	ev_a->p = pbuf;
 	ev_a->port = remote_port;
 
-	struct firefly_event *ev = firefly_event_new(FIREFLY_PRIORITY_HIGH,
-			firefly_transport_udp_lwip_read_event, ev_a);
-	llp_udp->event_queue->offer_event_cb(llp_udp->event_queue, ev);
+	llp_udp->event_queue->offer_event_cb(llp_udp->event_queue,
+			FIREFLY_PRIORITY_HIGH, firefly_transport_udp_lwip_read_event, ev_a);
 }
 
 int firefly_transport_udp_lwip_read_event(void *event_arg)
@@ -132,12 +131,11 @@ struct firefly_transport_llp *firefly_transport_llp_udp_lwip_new(
 
 void firefly_transport_llp_udp_lwip_free(struct firefly_transport_llp *llp)
 {
-	struct firefly_event *ev = firefly_event_new(FIREFLY_PRIORITY_LOW,
-			firefly_transport_llp_udp_lwip_free_event, llp);
 	struct transport_llp_udp_lwip *llp_lwip =
 		(struct transport_llp_udp_lwip *) llp->llp_platspec;
 
-	int ret = llp_lwip->event_queue->offer_event_cb(llp_lwip->event_queue, ev);
+	int ret = llp_lwip->event_queue->offer_event_cb(llp_lwip->event_queue,
+			FIREFLY_PRIORITY_LOW, firefly_transport_llp_udp_lwip_free_event, llp);
 	if (ret) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1,
 					  "could not add event to queue");

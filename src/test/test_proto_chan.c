@@ -22,6 +22,9 @@
 
 #define REMOTE_CHAN_ID (2) // Chan id used by all simulated remote channels.
 
+
+static struct firefly_event_queue *eq = NULL;
+
 extern struct labcomm_decoder *test_dec;
 extern labcomm_mem_reader_context_t *test_dec_ctx;
 
@@ -44,12 +47,15 @@ extern bool received_channel_close;
 int init_suit_proto_chan()
 {
 	init_labcomm_test_enc_dec();
+
+	eq = firefly_event_queue_new(firefly_event_add, 10, NULL);
 	return 0; // Success.
 }
 
 int clean_suit_proto_chan()
 {
 	clean_labcomm_test_enc_dec();
+	firefly_event_queue_free(&eq);
 	return 0; // Success.
 }
 
@@ -59,11 +65,6 @@ extern bool chan_opened_called;
 
 void test_next_channel_id()
 {
-	struct firefly_event_queue *eq = firefly_event_queue_new(
-			firefly_event_add, NULL);
-	if (eq == NULL) {
-		CU_FAIL("Could not create queue.\n");
-	}
 	struct firefly_connection *conn = setup_test_conn_new(NULL,
 			NULL, NULL, eq);
 	for (int i = 0; i < MAX_TESTED_ID; ++i) {
@@ -72,7 +73,6 @@ void test_next_channel_id()
 		firefly_channel_free(ch);
 	}
 	firefly_connection_free(&conn);
-	firefly_event_queue_free(&eq);
 }
 
 void test_get_streams()
@@ -114,11 +114,6 @@ void test_get_streams()
 
 void test_get_conn()
 {
-	struct firefly_event_queue *eq = firefly_event_queue_new(
-			firefly_event_add, NULL);
-	if (eq == NULL) {
-		CU_FAIL("Could not create queue.\n");
-	}
 	// Init connection and register error handler on encoder and decoder
 	struct firefly_connection *conn =
 		setup_test_conn_new(chan_opened_mock, NULL, NULL, eq);
@@ -129,16 +124,10 @@ void test_get_conn()
 	CU_ASSERT_PTR_EQUAL(conn, get_conn);
 	firefly_channel_free(chan);
 	firefly_connection_free(&conn);
-	firefly_event_queue_free(&eq);
 }
 
 void test_chan_open()
 {
-	struct firefly_event_queue *eq = firefly_event_queue_new(
-			firefly_event_add, NULL);
-	if (eq == NULL) {
-		CU_FAIL("Could not create queue.\n");
-	}
 	// Init connection and register error handler on encoder and decoder
 	struct firefly_connection *conn =
 		setup_test_conn_new(chan_opened_mock, NULL, NULL, eq);
@@ -149,6 +138,7 @@ void test_chan_open()
 	struct firefly_event *ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 
 	// Test that a chan open request is sent.
 	CU_ASSERT_TRUE(received_channel_request);
@@ -168,6 +158,7 @@ void test_chan_open()
 	ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 
 	// Test that we sent an ack
 	CU_ASSERT_TRUE(received_channel_ack);
@@ -183,7 +174,6 @@ void test_chan_open()
 	// Clean up
 	chan_opened_called = false;
 	firefly_connection_free(&conn);
-	firefly_event_queue_free(&eq);
 }
 
 static bool chan_accept_called = false;
@@ -196,11 +186,6 @@ static bool chan_recv_accept_chan(struct firefly_channel *chan)
 
 void test_chan_recv_accept()
 {
-	struct firefly_event_queue *eq = firefly_event_queue_new(
-			firefly_event_add, NULL);
-	if (eq == NULL) {
-		CU_FAIL("Could not create queue.\n");
-	}
 	// Init connection and register error handler on encoder and decoder
 	struct firefly_connection *conn =
 		setup_test_conn_new(chan_opened_mock, NULL,
@@ -217,6 +202,7 @@ void test_chan_recv_accept()
 
 	struct firefly_event *ev = firefly_event_pop(eq);
 	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 
 	// Test accept called.
 	CU_ASSERT_TRUE(chan_accept_called);
@@ -240,12 +226,12 @@ void test_chan_recv_accept()
 	test_enc_ctx->write_pos = 0;
 	ev = firefly_event_pop(eq);
 	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 
 	CU_ASSERT_TRUE(chan_opened_called);
 	chan_opened_called = false;
 
 	firefly_connection_free(&conn);
-	firefly_event_queue_free(&eq);
 }
 
 static bool chan_recv_reject_chan(struct firefly_channel *chan)
@@ -257,11 +243,6 @@ static bool chan_recv_reject_chan(struct firefly_channel *chan)
 
 void test_chan_recv_reject()
 {
-	struct firefly_event_queue *eq = firefly_event_queue_new(
-			firefly_event_add, NULL);
-	if (eq == NULL) {
-		CU_FAIL("Could not create queue.\n");
-	}
 	// Setup connection
 	struct firefly_connection *conn =
 		setup_test_conn_new(chan_opened_mock, NULL,
@@ -277,6 +258,7 @@ void test_chan_recv_reject()
 
 	struct firefly_event *ev = firefly_event_pop(eq);
 	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 
 	// check accept called
 	CU_ASSERT_TRUE(chan_accept_called);
@@ -297,7 +279,6 @@ void test_chan_recv_reject()
 	chan_opened_called = false;
 	chan_accept_called = false;
 	firefly_connection_free(&conn);
-	firefly_event_queue_free(&eq);
 }
 
 static bool chan_rejected_called = false;
@@ -309,13 +290,6 @@ void chan_open_chan_rejected(struct firefly_connection *conn)
 
 void test_chan_open_rejected()
 {
-
-	struct firefly_event_queue *eq = firefly_event_queue_new(
-			firefly_event_add, NULL);
-	if (eq == NULL) {
-		CU_FAIL("Could not create queue.\n");
-	}
-
 	// Setup connection
 	struct firefly_connection *conn =
 		setup_test_conn_new(chan_opened_mock, NULL,
@@ -328,6 +302,7 @@ void test_chan_open_rejected()
 	struct firefly_event *ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 
 	CU_ASSERT_TRUE(received_channel_request);
 	received_channel_request = false;
@@ -344,6 +319,7 @@ void test_chan_open_rejected()
 	ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 
 	CU_ASSERT_FALSE(received_channel_ack);
 	received_channel_ack = false;
@@ -356,7 +332,6 @@ void test_chan_open_rejected()
 	chan_rejected_called = false;
 	chan_opened_called = false;
 	firefly_connection_free(&conn);
-	firefly_event_queue_free(&eq);
 }
 
 extern bool conn_recv_accept_called;
@@ -368,12 +343,6 @@ void test_chan_open_recv()
 {
 	struct firefly_connection *conn_open;
 	struct firefly_connection *conn_recv;
-
-	struct firefly_event_queue *eq = firefly_event_queue_new(
-			firefly_event_add, NULL);
-	if (eq == NULL) {
-		CU_FAIL("Could not create queue.\n");
-	}
 	// Init connection to open channel
 	conn_open = setup_test_conn_new(chan_opened_mock, NULL,
 				   	   chan_open_recv_accept_open, eq);
@@ -389,12 +358,14 @@ void test_chan_open_recv()
 	struct firefly_event *ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 
 	protocol_data_received(conn_recv, conn_open_write.data,
 			conn_open_write.size);
 	ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 
 	free_tmp_data(&conn_open_write);
 	CU_ASSERT_TRUE(conn_recv_accept_called);
@@ -403,6 +374,7 @@ void test_chan_open_recv()
 	ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 	CU_ASSERT_TRUE(chan_opened_called);
 	chan_opened_called = false;
 
@@ -412,6 +384,7 @@ void test_chan_open_recv()
 	free_tmp_data(&conn_open_write);
 	ev = firefly_event_pop(eq);
 	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 	CU_ASSERT_TRUE(chan_opened_called);
 	chan_opened_called = false;
 
@@ -426,7 +399,6 @@ void test_chan_open_recv()
 	chan_opened_called = false;
 	firefly_connection_free(&conn_open);
 	firefly_connection_free(&conn_recv);
-	firefly_event_queue_free(&eq);
 }
 
 static bool chan_closed_called = false;
@@ -438,12 +410,6 @@ void chan_closed_cb(struct firefly_channel *chan)
 
 void test_chan_close()
 {
-	struct firefly_event_queue *eq = firefly_event_queue_new(
-			firefly_event_add, NULL);
-	if (eq == NULL) {
-		CU_FAIL("Could not create queue.\n");
-	}
-
 	// Setup connection
 	struct firefly_connection *conn =
 		setup_test_conn_new(NULL, chan_closed_cb, NULL, eq);
@@ -459,6 +425,7 @@ void test_chan_close()
 	struct firefly_event *ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 
 	// test close packet sent
 	CU_ASSERT_TRUE(received_channel_close);
@@ -470,6 +437,7 @@ void test_chan_close()
 	ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 	// test channel state, free'd
 	CU_ASSERT_PTR_NULL(conn->chan_list);
 	CU_ASSERT_TRUE(chan_closed_called);
@@ -477,17 +445,10 @@ void test_chan_close()
 	// clean up
 	chan_closed_called = false;
 	firefly_connection_free(&conn);
-	firefly_event_queue_free(&eq);
 }
 
 void test_chan_recv_close()
 {
-	struct firefly_event_queue *eq = firefly_event_queue_new(
-			firefly_event_add, NULL);
-	if (eq == NULL) {
-		CU_FAIL("Could not create queue.\n");
-	}
-
 	// Setup connection
 	struct firefly_connection *conn =
 		setup_test_conn_new(NULL, chan_closed_cb, NULL, eq);
@@ -510,6 +471,7 @@ void test_chan_recv_close()
 	struct firefly_event *ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL_FATAL(ev);
 	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 	// check callback called.
 	CU_ASSERT_TRUE(chan_closed_called);
 	// check channel state
@@ -518,7 +480,6 @@ void test_chan_recv_close()
 	// clean up
 	chan_closed_called = false;
 	firefly_connection_free(&conn);
-	firefly_event_queue_free(&eq);
 }
 
 static bool sent_app_data = false;
@@ -533,12 +494,6 @@ void test_send_app_data()
 {
 	test_test_var app_test_data = 1;
 	struct firefly_event *ev;
-
-	struct firefly_event_queue *eq = firefly_event_queue_new(
-			firefly_event_add, NULL);
-	if (eq == NULL) {
-		CU_FAIL("Could not create queue.\n");
-	}
 
 	// Setup connection
 	struct firefly_connection *conn =
@@ -565,6 +520,7 @@ void test_send_app_data()
 	ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 
 	CU_ASSERT_TRUE(received_data_sample);
 	received_data_sample = false;
@@ -579,6 +535,7 @@ void test_send_app_data()
 	ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 	CU_ASSERT_TRUE(received_data_sample);
 	received_data_sample = false;
 
@@ -592,17 +549,11 @@ void test_send_app_data()
 	firefly_connection_free(&conn);
 	labcomm_decoder_free(test_dec_2);
 	free(test_dec_ctx_2);
-	firefly_event_queue_free(&eq);
 }
 
 void test_recv_app_data()
 {
 	struct firefly_event *ev;
-	struct firefly_event_queue *eq =
-		firefly_event_queue_new(firefly_event_add, NULL);
-	if (eq == NULL) {
-		CU_FAIL("Could not create queue.\n");
-	}
 
 	// Setup connection
 	struct firefly_connection *conn =
@@ -640,6 +591,7 @@ void test_recv_app_data()
 	ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 
 	// create protocol sample with app data
 	firefly_protocol_data_sample proto_data_pkt;
@@ -657,6 +609,7 @@ void test_recv_app_data()
 	ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 
 	// check if app data was received
 	CU_ASSERT_TRUE(sent_app_data);
@@ -665,7 +618,6 @@ void test_recv_app_data()
 	// clean up
 	encoded_packet_free(ep_app);
 	firefly_connection_free(&conn);
-	firefly_event_queue_free(&eq);
 }
 
 
@@ -846,7 +798,7 @@ void test_transmit_app_data_over_mock_trans_layer()
 	/* construct and configure queues with callback */
 	for (int i = 0; i < n_conn; i++) {
 		event_queues[i] = firefly_event_queue_new(firefly_event_add,
-				NULL);
+				4, NULL);
 		if (!event_queues[i])
 			CU_FAIL("Could not allocate queue");
 	}
@@ -873,6 +825,7 @@ void test_transmit_app_data_over_mock_trans_layer()
 	CU_ASSERT_EQUAL(firefly_event_queue_length(
 				connections[0]->event_queue), 0);
 	firefly_event_execute(ev);
+	firefly_event_return(connections[0]->event_queue, &ev);
 	CU_ASSERT_EQUAL(firefly_event_queue_length(
 				connections[0]->event_queue), 0);
 	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[0]), 1);
@@ -889,6 +842,7 @@ void test_transmit_app_data_over_mock_trans_layer()
 			1);
 	ev = firefly_event_pop(connections[1]->event_queue);
 	firefly_event_execute(ev);
+	firefly_event_return(connections[1]->event_queue, &ev);
 
 	/* Chan 1 should have written chan_req_resp. Read it. */
 	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[0]), 0);
@@ -899,6 +853,7 @@ void test_transmit_app_data_over_mock_trans_layer()
 			1);
 	ev = firefly_event_pop(connections[0]->event_queue); /* recv_resp */
 	firefly_event_execute(ev);
+	firefly_event_return(connections[0]->event_queue, &ev);
 
 	/* No new events are spawned, but an ack in data space. */
 	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[0]), 1); // Ack
@@ -920,6 +875,7 @@ void test_transmit_app_data_over_mock_trans_layer()
 	channels[0] = new_chan;
 	ev = firefly_event_pop(connections[1]->event_queue); /* recv_resp */
 	firefly_event_execute(ev);
+	firefly_event_return(connections[1]->event_queue, &ev);
 
 	/* process other one */
 	read_connection_mock(connections, 0);
@@ -976,6 +932,7 @@ void test_transmit_app_data_over_mock_trans_layer()
 	for (int i = 0; i < 2; i++) {
 		ev = firefly_event_pop(connections[i]->event_queue);
 		firefly_event_execute(ev);
+		firefly_event_return(connections[i]->event_queue, &ev);
 		/* The event is consumed and the data is written. */
 		CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[i]), 1);
 		CU_ASSERT_EQUAL(firefly_event_queue_length(
@@ -993,6 +950,7 @@ void test_transmit_app_data_over_mock_trans_layer()
 	for (int i = 0; i < 2; i++) {
 		ev = firefly_event_pop(connections[i]->event_queue);
 		firefly_event_execute(ev);
+		firefly_event_return(connections[i]->event_queue, &ev);
 		/* The event is consumed and the data is written. */
 		CU_ASSERT_EQUAL(firefly_event_queue_length(
 					connections[i]->event_queue), 0);
@@ -1021,6 +979,7 @@ void test_transmit_app_data_over_mock_trans_layer()
 	/* Execute to send. */
 	ev = firefly_event_pop(connections[0]->event_queue);
 	firefly_event_execute(ev);
+	firefly_event_return(connections[0]->event_queue, &ev);
 	CU_ASSERT_EQUAL(firefly_event_queue_length(connections[0]->event_queue),
 			0);
 	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[0]), 1);
@@ -1035,6 +994,7 @@ void test_transmit_app_data_over_mock_trans_layer()
 			1);
 	ev = firefly_event_pop(connections[1]->event_queue);
 	firefly_event_execute(ev);
+	firefly_event_return(connections[1]->event_queue, &ev);
 	CU_ASSERT_EQUAL(firefly_event_queue_length(connections[1]->event_queue),
 			0);
 	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[0]), 0);
@@ -1054,10 +1014,12 @@ void test_transmit_app_data_over_mock_trans_layer()
 			2);
 	ev = firefly_event_pop(connections[0]->event_queue);
 	firefly_event_execute(ev);
+	firefly_event_return(connections[0]->event_queue, &ev);
 	/* ...and data to tell the other party. */
 	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[0]), 1);
 	ev = firefly_event_pop(connections[0]->event_queue);
 	firefly_event_execute(ev);
+	firefly_event_return(connections[0]->event_queue, &ev);
 	/* No new event should be spawned. */
 	CU_ASSERT_EQUAL(firefly_event_queue_length(connections[0]->event_queue),
 			0);
@@ -1074,6 +1036,7 @@ void test_transmit_app_data_over_mock_trans_layer()
 	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[1]), 0);
 	ev = firefly_event_pop(connections[1]->event_queue);
 	firefly_event_execute(ev);
+	firefly_event_return(connections[1]->event_queue, &ev);
 	/* No new events... */
 	CU_ASSERT_EQUAL(firefly_event_queue_length(connections[1]->event_queue),
 			0);
@@ -1141,11 +1104,6 @@ void test_chan_open_close_multiple()
 	struct firefly_connection *conn_open;
 	struct firefly_connection *conn_recv;
 
-	struct firefly_event_queue *eq = firefly_event_queue_new(
-			firefly_event_add, NULL);
-	if (eq == NULL) {
-		CU_FAIL("Could not create queue.\n");
-	}
 	// Init connection to open channel
 	conn_open = setup_test_conn_new(chan_opened_mock, NULL,
 							chan_accept_mock, eq);
@@ -1161,12 +1119,14 @@ void test_chan_open_close_multiple()
 	struct firefly_event *ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 
 	protocol_data_received(conn_recv, conn_open_write.data,
 			conn_open_write.size);
 	ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 	free_tmp_data(&conn_open_write);
 	CU_ASSERT_TRUE(chan_accept_called);
 	chan_accept_called = false;
@@ -1176,6 +1136,7 @@ void test_chan_open_close_multiple()
 	ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 	CU_ASSERT_TRUE(chan_opened_called);
 	chan_opened_called = false;
 
@@ -1185,6 +1146,7 @@ void test_chan_open_close_multiple()
 	free_tmp_data(&conn_open_write);
 	ev = firefly_event_pop(eq);
 	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 	CU_ASSERT_TRUE(chan_opened_called);
 	chan_opened_called = false;
 
@@ -1203,12 +1165,14 @@ void test_chan_open_close_multiple()
 	ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 
 	protocol_data_received(conn_open, conn_recv_write.data,
 			conn_recv_write.size);
 	ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 	free_tmp_data(&conn_recv_write);
 
 	CU_ASSERT_TRUE(chan_accept_called);
@@ -1218,6 +1182,7 @@ void test_chan_open_close_multiple()
 	ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 	free_tmp_data(&conn_open_write);
 	CU_ASSERT_TRUE(chan_opened_called);
 	chan_opened_called = false;
@@ -1227,6 +1192,7 @@ void test_chan_open_close_multiple()
 	free_tmp_data(&conn_recv_write);
 	ev = firefly_event_pop(eq);
 	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 	CU_ASSERT_TRUE(chan_opened_called);
 	chan_opened_called = false;
 
@@ -1287,75 +1253,107 @@ void test_chan_open_close_multiple()
 
 	// register types on encoders, it will spawn one event per registration
 	labcomm_encoder_register_test_test_var(open_chan1_enc);
-	firefly_event_execute(firefly_event_pop(eq));
+	ev = firefly_event_pop(eq);
+	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 	protocol_data_received(conn_recv, conn_open_write.data,
 			conn_open_write.size);
 	free_tmp_data(&conn_open_write);
-	firefly_event_execute(firefly_event_pop(eq));
+	ev = firefly_event_pop(eq);
+	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 	free_tmp_data(&conn_recv_write);
 
 	labcomm_encoder_register_test_test_var(open_chan2_enc);
-	firefly_event_execute(firefly_event_pop(eq));
+	ev = firefly_event_pop(eq);
+	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 	protocol_data_received(conn_recv, conn_open_write.data,
 			conn_open_write.size);
 	free_tmp_data(&conn_open_write);
-	firefly_event_execute(firefly_event_pop(eq));
+	ev = firefly_event_pop(eq);
+	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 	free_tmp_data(&conn_recv_write);
 
 	labcomm_encoder_register_test_test_var(recv_chan1_enc);
-	firefly_event_execute(firefly_event_pop(eq));
+	ev = firefly_event_pop(eq);
+	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 	protocol_data_received(conn_open, conn_recv_write.data,
 			conn_recv_write.size);
 	free_tmp_data(&conn_recv_write);
-	firefly_event_execute(firefly_event_pop(eq));
+	ev = firefly_event_pop(eq);
+	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 	free_tmp_data(&conn_open_write);
 
 	labcomm_encoder_register_test_test_var(recv_chan2_enc);
-	firefly_event_execute(firefly_event_pop(eq));
+	ev = firefly_event_pop(eq);
+	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 	protocol_data_received(conn_open, conn_recv_write.data,
 			conn_recv_write.size);
 	free_tmp_data(&conn_recv_write);
-	firefly_event_execute(firefly_event_pop(eq));
+	ev = firefly_event_pop(eq);
+	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 	free_tmp_data(&conn_open_write);
 
 	// Send data on chan1 from conn_open
 	test_test_var var_oc1 = 1;
 	labcomm_encode_test_test_var(open_chan1_enc, &var_oc1);
-	firefly_event_execute(firefly_event_pop(eq));
+	ev = firefly_event_pop(eq);
+	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 	protocol_data_received(conn_recv, conn_open_write.data,
 			conn_open_write.size);
 	free_tmp_data(&conn_open_write);
-	firefly_event_execute(firefly_event_pop(eq));
+	ev = firefly_event_pop(eq);
+	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 	CU_ASSERT_TRUE(recv_chan1_var_received);
 	recv_chan1_var_received = false;
 	// Send data on chan1 from conn_recv
 	test_test_var var_oc2 = 2;
 	labcomm_encode_test_test_var(open_chan2_enc, &var_oc2);
-	firefly_event_execute(firefly_event_pop(eq));
+	ev = firefly_event_pop(eq);
+	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 	protocol_data_received(conn_recv, conn_open_write.data,
 			conn_open_write.size);
 	free_tmp_data(&conn_open_write);
-	firefly_event_execute(firefly_event_pop(eq));
+	ev = firefly_event_pop(eq);
+	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 	CU_ASSERT_TRUE(recv_chan2_var_received);
 	recv_chan2_var_received = false;
 	// Send data on chan2 from conn_open
 	test_test_var var_rc1 = 3;
 	labcomm_encode_test_test_var(recv_chan1_enc, &var_rc1);
-	firefly_event_execute(firefly_event_pop(eq));
+	ev = firefly_event_pop(eq);
+	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 	protocol_data_received(conn_open, conn_recv_write.data,
 			conn_recv_write.size);
 	free_tmp_data(&conn_recv_write);
-	firefly_event_execute(firefly_event_pop(eq));
+	ev = firefly_event_pop(eq);
+	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 	CU_ASSERT_TRUE(open_chan1_var_received);
 	open_chan1_var_received = false;
 	// Send data on chan2 from conn_recv
 	test_test_var var_rc2 = 4;
 	labcomm_encode_test_test_var(recv_chan2_enc, &var_rc2);
-	firefly_event_execute(firefly_event_pop(eq));
+	ev = firefly_event_pop(eq);
+	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 	protocol_data_received(conn_open, conn_recv_write.data,
 			conn_recv_write.size);
 	free_tmp_data(&conn_recv_write);
-	firefly_event_execute(firefly_event_pop(eq));
+	ev = firefly_event_pop(eq);
+	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 	CU_ASSERT_TRUE(open_chan2_var_received);
 	open_chan2_var_received = false;
 
@@ -1367,14 +1365,17 @@ void test_chan_open_close_multiple()
 	ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 	protocol_data_received(conn_recv, conn_open_write.data,
 			conn_open_write.size);
 	ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 	ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 	free_tmp_data(&conn_open_write);
 
 	// Test only one channel remains
@@ -1391,14 +1392,17 @@ void test_chan_open_close_multiple()
 	ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 	protocol_data_received(conn_recv, conn_open_write.data,
 			conn_open_write.size);
 	ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 	ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	firefly_event_execute(ev);
+	firefly_event_return(eq, &ev);
 	free_tmp_data(&conn_open_write);
 	// Test no channel remains
 	CU_ASSERT_PTR_NULL(conn_open->chan_list);
@@ -1407,7 +1411,6 @@ void test_chan_open_close_multiple()
 	// Clean up
 	firefly_connection_free(&conn_open);
 	firefly_connection_free(&conn_recv);
-	firefly_event_queue_free(&eq);
 }
 
 void test_nbr_chan()

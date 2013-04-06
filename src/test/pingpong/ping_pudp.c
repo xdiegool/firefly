@@ -155,7 +155,7 @@ void *ping_main_thread(void *arg)
 		fprintf(stderr, "ERROR: init cond variable.\n");
 	}
 	eq_s.event_exec_finish = false;
-	event_queue = firefly_event_queue_new(event_add_mutex, &eq_s);
+	event_queue = firefly_event_queue_new(event_add_mutex, 20, &eq_s);
 	res = pthread_create(&event_thread, NULL, event_thread_main, event_queue);
 	if (res) {
 		fprintf(stderr, "ERROR: starting event thread.\n");

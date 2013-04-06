@@ -46,7 +46,7 @@ static struct firefly_event_queue *eq = NULL;
 
 int init_suit_eth_posix()
 {
-	eq = firefly_event_queue_new(firefly_event_add, NULL);
+	eq = firefly_event_queue_new(firefly_event_add, 10, NULL);
 	return 0; // Success.
 }
 
