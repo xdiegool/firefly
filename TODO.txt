@@ -26,3 +26,31 @@ Fix reliability of signatures:
    function should use the labcomm api to register each type. 2. Open channel
    and specify the callback. 3. The protocol will call the callback when it is
    ready to send the signatures.
+
+Decease runtime malloc, ignore any malloc during setup setup:
+	- The transport layer makes sure to have mem alvailable to read the data.
+	  (no changes, 1 malloc)
+	- transport_read creates the read event and sets the data pointer. (may
+	  avoid mallocing the event_arg).
+	- transport_read_event gives the mem to protocol. Does NOT free it. (no
+	  change except for remove free).
+	- The mem is th responsibility of protocol now.
+	- The protocol labcomm decoder: instead of copying the mem to labcomm
+	  internal memory, give the mem directly to labcomm. (no runtime change).
+	- Consider future changes to labcomm and fragmentation when doing this.
+	  Contact Blomdell about it.
+	- Labcomm decoder will alloc the sample data, unavoidable unless labcomm
+	  compiler is reqritten.
+	- handle_sample_data will take the memory given by the transport layer and
+	  copy the sample data to it. This memory is referenced by
+	  conn->reader_data->data. (1 malloc less!).
+	- handle_sample_data creates the event and gives it a reference to the
+	  memory.
+	- The handle_sample_data_event gives the memory to labcomm_reader which in
+	  turn gives it to labcomm internal.
+	- After this point we have no control as the data is on the applayer and
+	  consequently the mem must be freed.
+	- possible rewrite of labcomm compiler to let the decoder use the data
+	  memory instead of allocing a new mem and copying the reader data to it.
+	  Only usable with variable length arrays. Other types have much easier
+	  solutions.
