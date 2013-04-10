@@ -13,6 +13,7 @@
 #define FIREFLY_EVENT_QUEUE_H
 
 #include <stdlib.h>
+#include <stdbool.h>
 
 /**
  * Defines different priorities.
@@ -94,6 +95,17 @@ struct firefly_event_queue *firefly_event_queue_new(
  *		A pointer to the pionter of the firefly_event_queue to be freed.
  */
 void firefly_event_queue_free(struct firefly_event_queue **eq);
+
+/**
+ * @brief Set the strict size attribute of the event_queue
+ *
+ * @param eq The event queue to set the attribute on.
+ * @param strict_size If true the queue will give error when trying to use more
+ * events than allocated. If false the queue will allocate more events when
+ * needed.
+ */
+void firefly_event_queue_set_strict_pool_size(struct firefly_event_queue *eq,
+		bool strict_size);
 
 /**
  * @brief A default implementation of adding an event to the

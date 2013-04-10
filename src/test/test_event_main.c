@@ -351,6 +351,60 @@ void test_event_pool_three()
 	firefly_event_queue_free(&q);
 }
 
+void test_event_pool_resize()
+{
+	struct firefly_event *ev;
+	struct firefly_event_queue *q =
+		firefly_event_queue_new(firefly_event_add, 1, NULL);
+	CU_ASSERT_PTR_NOT_NULL_FATAL(q->event_pool);
+	CU_ASSERT_PTR_NOT_NULL(q->event_pool[0]);
+
+	q->offer_event_cb(q, FIREFLY_PRIORITY_LOW, NULL, NULL);
+	CU_ASSERT_PTR_NULL(q->event_pool[0]);
+
+	q->offer_event_cb(q, FIREFLY_PRIORITY_LOW, NULL, NULL);
+	CU_ASSERT_EQUAL_FATAL(2, q->event_pool_size);
+	CU_ASSERT_PTR_NULL(q->event_pool[1]);
+
+	q->offer_event_cb(q, FIREFLY_PRIORITY_LOW, NULL, NULL);
+	CU_ASSERT_EQUAL_FATAL(4, q->event_pool_size);
+	CU_ASSERT_PTR_NULL(q->event_pool[2]);
+	CU_ASSERT_PTR_NOT_NULL(q->event_pool[3]);
+
+	q->offer_event_cb(q, FIREFLY_PRIORITY_LOW, NULL, NULL);
+	CU_ASSERT_EQUAL(4, q->event_pool_size);
+	CU_ASSERT_PTR_NULL(q->event_pool[3]);
+
+	q->offer_event_cb(q, FIREFLY_PRIORITY_LOW, NULL, NULL);
+	CU_ASSERT_EQUAL_FATAL(8, q->event_pool_size);
+	CU_ASSERT_PTR_NULL(q->event_pool[4]);
+	CU_ASSERT_PTR_NOT_NULL(q->event_pool[5]);
+
+	// test return the events again
+	ev = firefly_event_pop(q);
+	firefly_event_return(q, &ev);
+	CU_ASSERT_PTR_NOT_NULL(q->event_pool[4]);
+	ev = firefly_event_pop(q);
+	firefly_event_return(q, &ev);
+	CU_ASSERT_PTR_NOT_NULL(q->event_pool[3]);
+	ev = firefly_event_pop(q);
+	firefly_event_return(q, &ev);
+	CU_ASSERT_PTR_NOT_NULL(q->event_pool[2]);
+	ev = firefly_event_pop(q);
+	firefly_event_return(q, &ev);
+	CU_ASSERT_PTR_NOT_NULL(q->event_pool[1]);
+	ev = firefly_event_pop(q);
+	firefly_event_return(q, &ev);
+	CU_ASSERT_PTR_NOT_NULL(q->event_pool[0]);
+
+	// test add one to make sure they were returned ok
+	q->offer_event_cb(q, FIREFLY_PRIORITY_LOW, NULL, NULL);
+	CU_ASSERT_PTR_NULL(q->event_pool[0]);
+
+	// Cleanup
+	firefly_event_queue_free(&q);
+}
+
 // TODO test errors when using event pool
 int main()
 {
@@ -396,6 +450,9 @@ int main()
 		||
 		(CU_add_test(event_suite, "test_event_pool_three",
 					 test_event_pool_three) == NULL)
+		||
+		(CU_add_test(event_suite, "test_event_pool_resize",
+					 test_event_pool_resize) == NULL)
 	   ) {
 		CU_cleanup_registry();
 		return CU_get_error();

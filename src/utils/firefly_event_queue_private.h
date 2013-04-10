@@ -8,6 +8,8 @@
 
 #include <utils/firefly_event_queue.h>
 
+#include <stdbool.h>
+
 /**
  * @brief An event queue
  *
@@ -21,6 +23,7 @@ struct firefly_event_queue {
 	struct firefly_event **event_pool;
 	size_t event_pool_size;
 	size_t event_pool_in_use;
+	bool event_pool_strict_size;
 	void *context; /**< A application defined context for this queue.
 							  Possibly a mutex. */
 };

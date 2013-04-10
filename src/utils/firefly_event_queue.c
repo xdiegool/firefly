@@ -5,6 +5,7 @@
 #include "utils/firefly_event_queue_private.h"
 
 #include <stdlib.h>
+#include <stdbool.h>
 
 #include <utils/firefly_errors.h>
 
@@ -23,6 +24,7 @@ struct firefly_event_queue *firefly_event_queue_new(
 		}
 		q->event_pool_size = pool_size;
 		q->event_pool_in_use = 0;
+		q->event_pool_strict_size = false;
 	}
 
 	return q;
@@ -40,6 +42,12 @@ void firefly_event_queue_free(struct firefly_event_queue **q)
 	free((*q)->event_pool);
 	free(*q);
 	*q = NULL;
+}
+
+void firefly_event_queue_set_strict_pool_size(struct firefly_event_queue *eq,
+		bool strict_size)
+{
+	eq->event_pool_strict_size = strict_size;
 }
 
 struct firefly_event *firefly_event_new(unsigned char prio,
@@ -71,10 +79,28 @@ void firefly_event_init(struct firefly_event *ev, unsigned char prio,
 
 struct firefly_event *firefly_event_take(struct firefly_event_queue *q)
 {
-	if (q->event_pool_in_use >= q->event_pool_size) {
+	if (q->event_pool_in_use > q->event_pool_size) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 1,
+				"EVENT: Inconsistent state, more events in use than possible.");
+		return NULL;
+	} else if (q->event_pool_in_use == q->event_pool_size) {
+		if (q->event_pool_strict_size) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1,
 				"No available events in the pool.");
-		return NULL;
+			return NULL;
+		} else {
+			// Double the size of the new pool
+			size_t new_size = q->event_pool_size*2;
+			struct firefly_event **new_pool =
+				malloc(sizeof(struct firefly_event*)*new_size);
+			memcpy(new_pool, q->event_pool, q->event_pool_size);
+			for (size_t i = q->event_pool_in_use; i < new_size; i++) {
+				new_pool[i] = malloc(sizeof(struct firefly_event));
+			}
+			free(q->event_pool);
+			q->event_pool = new_pool;
+			q->event_pool_size = new_size;
+		}
 	}
 	struct firefly_event *ev = q->event_pool[q->event_pool_in_use];
 	q->event_pool[q->event_pool_in_use] = NULL;
@@ -88,7 +114,7 @@ void firefly_event_return(struct firefly_event_queue *q,
 {
 	if (q->event_pool_in_use > q->event_pool_size) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1,
-				"Too many events are used from this pool.");
+				"EVENT: Inconsistent state, more events in use than possible.");
 	} else {
 		q->event_pool_in_use--;
 		q->event_pool[q->event_pool_in_use] = *ev;
