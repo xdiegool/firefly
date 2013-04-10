@@ -50,6 +50,7 @@ unsigned char firefly_resend_add(struct resend_queue *rq,
 	re->size = size;
 	re->resend_at = at;
 	re->num_retries = retries;
+	re->conn = conn;
 	re->prev = NULL;
 	pthread_mutex_lock(&rq->lock);
 	re->id = rq->next_id++;
