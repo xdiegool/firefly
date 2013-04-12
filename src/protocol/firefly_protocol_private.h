@@ -474,7 +474,7 @@ int ff_transport_reader(labcomm_reader_t *r, labcomm_reader_action_t action);
  * @return Value indicating how the action could be handled.
  * TODO rename this. prefix ff_ is nonstandard. No need to prefix with firefly for private functions. probalby prefix "labcomm_" should be neought so we know that it has with labcomm to do.
  */
-int ff_transport_writer(labcomm_writer_t *w, labcomm_writer_action_t action);
+int ff_transport_writer(labcomm_writer_t *w, labcomm_writer_action_t action, ...);
 
 /**
  * @brief Feeds LabComm decoder with bytes from the protocol layer.
@@ -490,6 +490,6 @@ int protocol_reader(labcomm_reader_t *r, labcomm_reader_action_t action);
  * @param action What action is requested.
  * @return Value indicating how the action could be handled.
  */
-int protocol_writer(labcomm_writer_t *w, labcomm_writer_action_t action);
+int protocol_writer(labcomm_writer_t *w, labcomm_writer_action_t action, ...);
 
 #endif

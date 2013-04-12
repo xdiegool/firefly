@@ -77,11 +77,14 @@ int firefly_labcomm_reader(labcomm_reader_t *r, labcomm_reader_action_t action,
 			result = 0;
 		}
 	} break;
+	case labcomm_reader_ioctl: {
+		break;
+	}
 	}
 	return result;
 }
 
-int ff_transport_writer(labcomm_writer_t *w, labcomm_writer_action_t action)
+int ff_transport_writer(labcomm_writer_t *w, labcomm_writer_action_t action, ...)
 {
 	struct firefly_connection  *conn =
 			(struct firefly_connection *) w->context;
@@ -109,9 +112,11 @@ int ff_transport_writer(labcomm_writer_t *w, labcomm_writer_action_t action)
 		w->count = 0;
 		w->pos = 0;
 	} break;
+	case labcomm_writer_start_signature:
 	case labcomm_writer_start: {
 		w->pos = 0;
 	} break;
+	case labcomm_writer_continue_signature:
 	case labcomm_writer_continue: {
 		int res = copy_to_writer_data(writer_data, w->data, w->pos);
 		if (res == -1) {
@@ -124,6 +129,7 @@ int ff_transport_writer(labcomm_writer_t *w, labcomm_writer_action_t action)
 			result = 0;
 		}
 	} break;
+	case labcomm_writer_end_signature:
 	case labcomm_writer_end: {
 		int res = copy_to_writer_data(writer_data, w->data, w->pos);
 		if (res == -1) {
@@ -139,9 +145,6 @@ int ff_transport_writer(labcomm_writer_t *w, labcomm_writer_action_t action)
 			writer_data->pos = 0;
 		}
 	} break;
-	case labcomm_writer_available: {
-		result = w->count - w->pos;
-	} break;
 	}
 	return result;
 }
@@ -154,7 +157,7 @@ int ff_transport_reader(labcomm_reader_t *r, labcomm_reader_action_t action)
 	return firefly_labcomm_reader(r, action, reader_data);
 }
 
-int protocol_writer(labcomm_writer_t *w, labcomm_writer_action_t action)
+int protocol_writer(labcomm_writer_t *w, labcomm_writer_action_t action, ...)
 {
 	struct firefly_channel *chan =
 			(struct firefly_channel *) w->context;
@@ -182,9 +185,11 @@ int protocol_writer(labcomm_writer_t *w, labcomm_writer_action_t action)
 		w->count = 0;
 		w->pos = 0;
 	} break;
+	case labcomm_writer_start_signature:
 	case labcomm_writer_start: {
 		w->pos = 0;
 	} break;
+	case labcomm_writer_continue_signature:
 	case labcomm_writer_continue: {
 		if (chan->conn->open != FIREFLY_CONNECTION_OPEN) {
 			firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
@@ -203,6 +208,7 @@ int protocol_writer(labcomm_writer_t *w, labcomm_writer_action_t action)
 			}
 		}
 	} break;
+	case labcomm_writer_end_signature:
 	case labcomm_writer_end: {
 		if (chan->conn->open != FIREFLY_CONNECTION_OPEN) {
 			firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
@@ -241,9 +247,6 @@ int protocol_writer(labcomm_writer_t *w, labcomm_writer_action_t action)
 				writer_data->pos = 0;
 			}
 		}
-	} break;
-	case labcomm_writer_available: {
-		result = w->count - w->pos;
 	} break;
 	}
 	return result;

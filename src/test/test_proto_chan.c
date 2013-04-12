@@ -3,8 +3,8 @@
 #include "CUnit/Basic.h"
 
 #include <labcomm.h>
-#include <labcomm_mem_writer.h>
-#include <labcomm_mem_reader.h>
+#include <test/labcomm_mem_writer.h>
+#include <test/labcomm_mem_reader.h>
 #include <labcomm_fd_reader_writer.h>
 
 #include <stdbool.h>

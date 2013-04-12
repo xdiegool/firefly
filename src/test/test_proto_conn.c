@@ -3,7 +3,7 @@
 #include "CUnit/Basic.h"
 #include <gen/test.h>
 #include <gen/firefly_protocol.h>
-#include <labcomm_mem_writer.h>
+#include <test/labcomm_mem_writer.h>
 
 #include <stdbool.h>
 

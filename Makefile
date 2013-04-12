@@ -439,15 +439,15 @@ $(BUILD_DIR)/test/test_event_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_event
 	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) $(LDLIBS_TEST) -o $@
 
 # Main test program for the pingpong udp program.
-$(BUILD_DIR)/test/pingpong/pingpong_main: $(patsubst %,$(BUILD_DIR)/test/pingpong/%.o,pingpong_main pingpong_pudp pingpong pong_pudp ping_pudp hack_lctypes) $(BUILD_DIR)/$(GEN_DIR)/pingpong.o
+$(BUILD_DIR)/test/pingpong/pingpong_main: $(patsubst %,$(BUILD_DIR)/test/pingpong/%.o,pingpong_main pingpong_pudp pingpong pong_pudp ping_pudp) $(BUILD_DIR)/$(GEN_DIR)/pingpong.o
 	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) $(LDLIBS_TEST) -o $@ 
 
 # Main test program for the pingpong ethernet program.
-$(BUILD_DIR)/test/pingpong/pingpong_eth_main: $(patsubst %,$(BUILD_DIR)/test/pingpong/%.o,pingpong_main pingpong pingpong_peth pong_peth ping_peth hack_lctypes) $(BUILD_DIR)/$(GEN_DIR)/pingpong.o
+$(BUILD_DIR)/test/pingpong/pingpong_eth_main: $(patsubst %,$(BUILD_DIR)/test/pingpong/%.o,pingpong_main pingpong pingpong_peth pong_peth ping_peth) $(BUILD_DIR)/$(GEN_DIR)/pingpong.o
 	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) $(LDLIBS_TEST) -o $@ 
 
 # Main test program for the multiple transport layer functionality.
-$(BUILD_DIR)/test/pingpong/pingpong_multi_main: $(patsubst %,$(BUILD_DIR)/test/pingpong/%.o,pingpong_main pingpong pong_pmulti ping_pmulti hack_lctypes) $(BUILD_DIR)/$(GEN_DIR)/pingpong.o
+$(BUILD_DIR)/test/pingpong/pingpong_multi_main: $(patsubst %,$(BUILD_DIR)/test/pingpong/%.o,pingpong_main pingpong pong_pmulti ping_pmulti) $(BUILD_DIR)/$(GEN_DIR)/pingpong.o
 	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) $(LDLIBS_TEST) -o $@ 
 
 # Main test program for the resend posix queue tests.
