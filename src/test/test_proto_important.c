@@ -181,3 +181,5 @@ void test_important_seqno_overflow()
 	mock_transport_written = false;
 	firefly_connection_free(&conn);
 }
+
+// Test send ack on important packets

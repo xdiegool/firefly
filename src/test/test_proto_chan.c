@@ -1282,6 +1282,7 @@ void test_chan_open_close_multiple()
 			conn_open_write.size);
 	free_tmp_data(&conn_open_write);
 	firefly_event_execute(firefly_event_pop(eq));
+	free_tmp_data(&conn_recv_write);
 
 	labcomm_encoder_register_test_test_var(open_chan2_enc);
 	firefly_event_execute(firefly_event_pop(eq));
@@ -1289,6 +1290,7 @@ void test_chan_open_close_multiple()
 			conn_open_write.size);
 	free_tmp_data(&conn_open_write);
 	firefly_event_execute(firefly_event_pop(eq));
+	free_tmp_data(&conn_recv_write);
 
 	labcomm_encoder_register_test_test_var(recv_chan1_enc);
 	firefly_event_execute(firefly_event_pop(eq));
@@ -1296,6 +1298,7 @@ void test_chan_open_close_multiple()
 			conn_recv_write.size);
 	free_tmp_data(&conn_recv_write);
 	firefly_event_execute(firefly_event_pop(eq));
+	free_tmp_data(&conn_open_write);
 
 	labcomm_encoder_register_test_test_var(recv_chan2_enc);
 	firefly_event_execute(firefly_event_pop(eq));
@@ -1303,6 +1306,7 @@ void test_chan_open_close_multiple()
 			conn_recv_write.size);
 	free_tmp_data(&conn_recv_write);
 	firefly_event_execute(firefly_event_pop(eq));
+	free_tmp_data(&conn_open_write);
 
 	// Send data on chan1 from conn_open
 	test_test_var var_oc1 = 1;

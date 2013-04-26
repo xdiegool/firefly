@@ -410,6 +410,14 @@ int handle_data_sample_event(void *event_arg)
 		chan->reader_data->data = NULL;
 		chan->reader_data->data_size = 0;
 		chan->reader_data->pos = 0;
+		if (fers->data.important) {
+			firefly_protocol_ack ack_pkt;
+			ack_pkt.dest_chan_id = chan->local_id;
+			ack_pkt.src_chan_id = chan->remote_id;
+			ack_pkt.seqno = fers->data.seqno;
+			labcomm_encode_firefly_protocol_ack(chan->conn->transport_encoder,
+					&ack_pkt);
+		}
 	} else {
 		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
 					  "Received data sample on non-"
@@ -425,7 +433,7 @@ void handle_ack(firefly_protocol_ack *ack, void *context)
 	struct firefly_connection *conn = (struct firefly_connection *) context;
 	struct firefly_channel *chan =
 		find_channel_by_local_id(conn, ack->dest_chan_id);
-	if (chan->current_seqno == ack->seqno) {
+	if (chan->current_seqno == ack->seqno && ack->seqno > 0) {
 		conn->transport_ack(chan->important_id, conn);
 		chan->important_id = 0;
 	} else if (chan->current_seqno > ack->seqno) {
