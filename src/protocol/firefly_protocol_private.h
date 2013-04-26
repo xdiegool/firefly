@@ -40,7 +40,7 @@ typedef void (* transport_write_f)(unsigned char *data, size_t data_size,
  * @param pkg_id The id of the packet.
  * @param conn The #firefly_connection the packet is sent on.
  */
-typedef void (* transport_ack_f)(unsigned char *pkg_id,
+typedef void (* transport_ack_f)(unsigned char pkg_id,
 					struct firefly_connection *conn);
 
 typedef void (*transport_connection_free)(struct firefly_connection *conn);
@@ -56,6 +56,7 @@ struct ff_transport_data {
 	unsigned char *data;	/**< Buffer where transport data is written. */
 	size_t data_size;	/**< The size of \a data buffer. */
 	size_t pos;		/**< The next position to write to. */
+	unsigned char *important_id; /**< This value will be given to tranport when writing data */
 };
 
 /**
@@ -118,6 +119,8 @@ struct firefly_channel {
 	int local_id; /**< The local ID used to identify this channel */
 	int remote_id; /**< The ID used by the remote node to identify
 				this channel */
+	unsigned char important_id;
+	int current_seqno;
 	struct labcomm_encoder *proto_encoder; /**< LabComm encoder for this
 					   			channel.*/
 	struct labcomm_decoder *proto_decoder; /**< LabComm decoder for this
@@ -138,8 +141,15 @@ struct firefly_channel {
  * @param on_channel_opened Callback for when a channel has been opened.
  * @param on_channel_closed Callback for when a channel has been closed.
  * @param on_channel_recv Callback for when a channel has been recveived.
+ * @param transport_write The interface between transport and protocol layer for
+ * writing data.
+ * @param transport_ack The interface between transport and protocol layer for
+ * removing elements in the resend queue.
  * @param event_queue The event queue all events relating to this connection is
  * offered to.
+ * @param plat_spec Transport layer specifik data.
+ * @param plat_spec_free The funtion responsible for freeing the transport
+ * specifik data.
  *
  * @return A new firefly_connection.
  * @retval NULL on error.
@@ -149,6 +159,7 @@ struct firefly_connection *firefly_connection_new(
 		firefly_channel_closed_f on_channel_closed,
 		firefly_channel_accept_f on_channel_recv,
 		transport_write_f transport_write,
+		transport_ack_f transport_ack,
 		struct firefly_event_queue *event_queue, void *plat_spec,
 		transport_connection_free plat_spec_free);
 
@@ -392,12 +403,19 @@ struct firefly_event_recv_sample {
 int handle_data_sample_event(void *event_arg);
 
 /**
+ *
+ */
+//TODO comments
+void handle_ack(firefly_protocol_ack *ack, void *context);
+
+/**
  * @brief The event argument of handle_channel_ack_event.
  */
 struct firefly_event_send_sample {
 	struct firefly_connection *conn; /**< The connection to send the sample
 						on. */
 	firefly_protocol_data_sample data; /**< The sample to send. */
+	unsigned char *important_id;
 };
 
 /**

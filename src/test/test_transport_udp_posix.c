@@ -208,7 +208,7 @@ void test_recv_data()
 	memcpy(conn_udp->remote_addr, &remote_addr, sizeof(remote_addr));
 	conn_udp->llp = llp;
 	struct firefly_connection *conn = firefly_connection_new(NULL, NULL,
-			NULL, NULL, eq, conn_udp, firefly_transport_connection_udp_posix_free);
+			NULL, NULL, NULL, eq, conn_udp, firefly_transport_connection_udp_posix_free);
 
 	add_connection_to_llp(conn, llp);
 
@@ -617,7 +617,7 @@ void test_read_mult_threads()
 	memcpy(conn_udp->remote_addr, &remote_addr, sizeof(remote_addr));
 	conn_udp->llp = llp;
 	struct firefly_connection *conn = firefly_connection_new(NULL, NULL,
-			NULL, NULL, eq, conn_udp,
+			NULL, NULL, NULL, eq, conn_udp,
 			firefly_transport_connection_udp_posix_free);
 	add_connection_to_llp(conn, llp);
 

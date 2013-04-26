@@ -141,8 +141,9 @@ struct firefly_connection *firefly_connection_udp_posix_new(
 
 	conn = firefly_connection_new(on_channel_opened,
 			on_channel_closed, on_channel_recv,
-			firefly_transport_udp_posix_write, llp_udp->event_queue,
-			conn_udp, firefly_transport_connection_udp_posix_free);
+			firefly_transport_udp_posix_write, firefly_transport_udp_posix_ack,
+			llp_udp->event_queue, conn_udp,
+			firefly_transport_connection_udp_posix_free);
 
 	if (conn == NULL || conn_udp == NULL) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 3,

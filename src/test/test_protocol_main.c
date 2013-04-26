@@ -10,6 +10,7 @@
 #include "test/test_proto_protolc.h"
 #include "test/test_proto_chan.h"
 #include "test/test_proto_conn.h"
+#include "test/test_proto_important.h"
 #include "test/test_proto_errors.h"
 #include "test/test_transport_udp_posix.h"
 
@@ -19,6 +20,7 @@ int main()
 	CU_pSuite protolc_suite = NULL;
 	CU_pSuite chan_suite = NULL;
 	CU_pSuite conn_suite = NULL;
+	CU_pSuite important_suite = NULL;
 	CU_pSuite errors_suite = NULL;
 
 	// Initialize CUnit test registry.
@@ -48,6 +50,12 @@ int main()
 	conn_suite = CU_add_suite("conn_suite", init_suit_proto_conn,
 					clean_suit_proto_conn);
 	if (conn_suite == NULL) {
+		CU_cleanup_registry();
+		return CU_get_error();
+	}
+	important_suite = CU_add_suite("important_suite", init_suit_proto_important,
+					clean_suit_proto_important);
+	if (important_suite == NULL) {
 		CU_cleanup_registry();
 		return CU_get_error();
 	}
@@ -170,6 +178,17 @@ int main()
 				CU_cleanup_registry();
 				return CU_get_error();
 			}
+	// Protocol important tests.
+	if (
+			(CU_add_test(important_suite, "test_important_signature",
+					test_important_signature) == NULL)
+			||
+			(CU_add_test(important_suite, "test_important_recv_ack",
+					test_important_recv_ack) == NULL)
+		) {
+		CU_cleanup_registry();
+		return CU_get_error();
+	}
 
 	// Errors tests.
 	if (

@@ -140,8 +140,8 @@ int ff_transport_writer(labcomm_writer_t *w, labcomm_writer_action_t action, ...
 		} else {
 			w->pos = 0;
 			result = 0;
-			conn->transport_write(writer_data->data,
-						writer_data->pos, conn, false, NULL);
+			conn->transport_write(writer_data->data, writer_data->pos, conn,
+					writer_data->important_id != NULL, writer_data->important_id);
 			writer_data->pos = 0;
 		}
 	} break;
@@ -163,6 +163,7 @@ int protocol_writer(labcomm_writer_t *w, labcomm_writer_action_t action, ...)
 			(struct firefly_channel *) w->context;
 	struct ff_transport_data *writer_data = chan->writer_data;
 	int result = -EINVAL;
+	bool important = false;
 	switch (action) {
 	case labcomm_writer_alloc: {
 		w->data = malloc(BUFFER_SIZE);
@@ -208,7 +209,9 @@ int protocol_writer(labcomm_writer_t *w, labcomm_writer_action_t action, ...)
 			}
 		}
 	} break;
-	case labcomm_writer_end_signature:
+	case labcomm_writer_end_signature: {
+		important = true;
+	}
 	case labcomm_writer_end: {
 		if (chan->conn->open != FIREFLY_CONNECTION_OPEN) {
 			firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
@@ -235,7 +238,11 @@ int protocol_writer(labcomm_writer_t *w, labcomm_writer_action_t action, ...)
 				fess->conn = chan->conn;
 				fess->data.dest_chan_id = chan->remote_id;
 				fess->data.src_chan_id = chan->local_id;
-				fess->data.important = true;
+				fess->data.seqno = 0;
+				fess->data.important = important;
+				if (fess->data.important) {
+					fess->important_id = &chan->important_id;
+				}
 				fess->data.app_enc_data.n_0 = writer_data->pos;
 				fess->data.app_enc_data.a = a;
 				memcpy(fess->data.app_enc_data.a, writer_data->data,
@@ -256,8 +263,10 @@ int send_data_sample_event(void *event_arg)
 {
 	struct firefly_event_send_sample *fess =
 		(struct firefly_event_send_sample *) event_arg;
+	fess->conn->writer_data->important_id = fess->important_id;
 	labcomm_encode_firefly_protocol_data_sample(
 			fess->conn->transport_encoder, &fess->data);
+	fess->conn->writer_data->important_id = NULL;
 	free(fess->data.app_enc_data.a);
 	free(event_arg);
 	return 0;

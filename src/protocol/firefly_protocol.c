@@ -48,11 +48,15 @@ void reg_proto_sigs(struct labcomm_encoder *enc,
 	labcomm_decoder_register_firefly_protocol_channel_close(dec,
 						handle_channel_close, conn);
 
+	labcomm_decoder_register_firefly_protocol_ack(dec,
+						handle_ack, conn);
+
 	labcomm_encoder_register_firefly_protocol_data_sample(enc);
 	labcomm_encoder_register_firefly_protocol_channel_request(enc);
 	labcomm_encoder_register_firefly_protocol_channel_response(enc);
 	labcomm_encoder_register_firefly_protocol_channel_ack(enc);
 	labcomm_encoder_register_firefly_protocol_channel_close(enc);
+	labcomm_encoder_register_firefly_protocol_ack(enc);
 
 	conn->transport_write = orig_twf;
 	tmp_conn = NULL;
@@ -414,6 +418,21 @@ int handle_data_sample_event(void *event_arg)
 	free(fers->data.app_enc_data.a);
 	free(event_arg);
 	return 0;
+}
+
+void handle_ack(firefly_protocol_ack *ack, void *context)
+{
+	struct firefly_connection *conn = (struct firefly_connection *) context;
+	struct firefly_channel *chan =
+		find_channel_by_local_id(conn, ack->dest_chan_id);
+	if (chan->current_seqno == ack->seqno) {
+		conn->transport_ack(chan->important_id, conn);
+		chan->important_id = 0;
+	} else if (chan->current_seqno > ack->seqno) {
+		// Do nothing, old ack
+	} else {
+		// TODO errornous packet
+	}
 }
 
 struct firefly_channel *find_channel_by_local_id(

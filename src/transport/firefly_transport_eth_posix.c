@@ -170,7 +170,7 @@ struct firefly_connection *firefly_transport_connection_eth_posix_open(
 	conn_eth = malloc(sizeof(struct protocol_connection_eth_posix));
 	struct firefly_connection *conn = firefly_connection_new(
 			on_channel_opened, on_channel_closed, on_channel_recv,
-			firefly_transport_eth_posix_write,
+			firefly_transport_eth_posix_write, NULL,
 			((struct transport_llp_eth_posix *)llp->llp_platspec)->event_queue,
 			conn_eth, firefly_transport_connection_eth_posix_free);
 	if (conn == NULL || conn_eth == NULL) {

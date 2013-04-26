@@ -187,6 +187,7 @@ void test_encode_protocol()
 	firefly_protocol_data_sample data_sample;
 	data_sample.src_chan_id = SRC_CHAN_ID;
 	data_sample.dest_chan_id = DEST_CHAN_ID;
+	data_sample.seqno = 0;
 	data_sample.important = important;
 	data_sample.app_enc_data.n_0 = sizeof(app_data);
 	data_sample.app_enc_data.a = app_data;
@@ -234,6 +235,7 @@ void test_decode_protocol()
 	firefly_protocol_data_sample data_sample;
 	data_sample.src_chan_id = SRC_CHAN_ID;
 	data_sample.dest_chan_id = DEST_CHAN_ID;
+	data_sample.seqno = 0;
 	data_sample.important = important;
 	data_sample.app_enc_data.n_0 = sizeof(app_data);
 	data_sample.app_enc_data.a = app_data;
@@ -302,6 +304,7 @@ void test_decode_protocol_multiple_times()
 	firefly_protocol_data_sample data_sample;
 	data_sample.src_chan_id = i;
 	data_sample.dest_chan_id = i;
+	data_sample.seqno = 0;
 	data_sample.important = important;
 	data_sample.app_enc_data.n_0 = sizeof(app_data);
 	data_sample.app_enc_data.a = app_data;
@@ -367,6 +370,7 @@ void test_encode_protocol_multiple_times()
 	firefly_protocol_data_sample data_sample;
 	data_sample.src_chan_id = i;
 	data_sample.dest_chan_id = i;
+	data_sample.seqno = 0;
 	data_sample.important = important;
 	data_sample.app_enc_data.n_0 = sizeof(app_data);
 	data_sample.app_enc_data.a = app_data;
