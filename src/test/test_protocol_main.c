@@ -166,11 +166,11 @@ int main()
 			||
 			(CU_add_test(chan_suite, "test_recv_app_data",
 					test_recv_app_data) == NULL)
-			/*||*/
-			/*(CU_add_test(chan_suite,*/
-					/*"test_transmit_app_data_over_mock_trans_layer",*/
-					/*test_transmit_app_data_over_mock_trans_layer)*/
-					/*== NULL)*/
+			||
+			(CU_add_test(chan_suite,
+					"test_transmit_app_data_over_mock_trans_layer",
+					test_transmit_app_data_over_mock_trans_layer)
+					== NULL)
 			||
 			(CU_add_test(chan_suite, "test_chan_open_close_multiple",
 					test_chan_open_close_multiple) == NULL)

@@ -792,6 +792,11 @@ void handle_ttv(test_test_var *ttv, void *cont)
 	*((test_test_var *) cont) = *ttv;
 }
 
+void mock_ack(unsigned char id, struct firefly_connection *conn) {
+	UNUSED_VAR(id);
+	UNUSED_VAR(conn);
+}
+
 /* we need two connections for this test */
 struct firefly_connection *setup_conn(int conn_n,
 		struct firefly_event_queue *eqs[])
@@ -813,7 +818,7 @@ struct firefly_connection *setup_conn(int conn_n,
 	}
 
 	tcon = firefly_connection_new(chan_was_opened, chan_was_closed,
-					   should_accept_chan, writer, NULL,
+					   should_accept_chan, writer, mock_ack,
 					   eqs[conn_n], NULL, NULL);
 
 	if (tcon == NULL) {
@@ -959,12 +964,11 @@ void test_transmit_app_data_over_mock_trans_layer()
 	 * The new addition of atype should spawn an event. There will
 	 * however be no packet yet.
 	 */
-	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[1]), 0);
 	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[0]), 0);
-	CU_ASSERT_EQUAL(firefly_event_queue_length(connections[0]->event_queue),
-			1);
-	CU_ASSERT_EQUAL(firefly_event_queue_length(connections[1]->event_queue),
-			1);
+	CU_ASSERT_EQUAL(firefly_event_queue_length(connections[0]->event_queue), 1);
+
+	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[1]), 0);
+	CU_ASSERT_EQUAL(firefly_event_queue_length(connections[1]->event_queue), 1);
 
 	/* Execute event to send the data */
 	for (int i = 0; i < 2; i++) {
@@ -975,7 +979,7 @@ void test_transmit_app_data_over_mock_trans_layer()
 		CU_ASSERT_EQUAL(firefly_event_queue_length(
 					connections[i]->event_queue), 0);
 	}
-	// Because this it the upper layer, an event will be spavned by reading.
+	/* Because this it the upper layer, an event will be spavned by reading.*/
 	for (int i = 0; i < 2; i++) {
 		read_connection_mock(connections, i);
 		CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[1-i]),
@@ -988,9 +992,13 @@ void test_transmit_app_data_over_mock_trans_layer()
 		ev = firefly_event_pop(connections[i]->event_queue);
 		firefly_event_execute(ev);
 		/* The event is consumed and the data is written. */
-		CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[i]), 0);
 		CU_ASSERT_EQUAL(firefly_event_queue_length(
 					connections[i]->event_queue), 0);
+	}
+	// read acks
+	for (int i = 0; i < 2; i++) {
+		read_connection_mock(connections, i);
+		CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[1-i]), 0);
 	}
 	/*
 	 * The channel is now ready for transmissions of *real* app data.
