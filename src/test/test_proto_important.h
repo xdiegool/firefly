@@ -6,5 +6,7 @@ int clean_suit_proto_important();
 
 void test_important_signature();
 void test_important_recv_ack();
+void test_important_signatures_mult();
+void test_important_seqno_overflow();
 
 #endif

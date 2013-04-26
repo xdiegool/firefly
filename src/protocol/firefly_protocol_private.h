@@ -464,6 +464,15 @@ struct firefly_channel *remove_channel_from_connection(struct firefly_channel *c
 int next_channel_id(struct firefly_connection *conn);
 
 /**
+ * @brief Gets and updates the sequence number used to identify important
+ * packets.
+ *
+ * @param chan The concerned channel.
+ * @return The next sequence number.
+ */
+int firefly_channel_next_seqno(struct firefly_channel *chan);
+
+/**
  * @brief A general LabComm reader used to feed a decoder with data from
  * memory.
  *

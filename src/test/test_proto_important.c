@@ -2,6 +2,7 @@
 #include <stdbool.h>
 
 #include "CUnit/Basic.h"
+#include <limits.h>
 #include <labcomm.h>
 #include <test/labcomm_mem_writer.h>
 #include <test/labcomm_mem_reader.h>
@@ -23,6 +24,8 @@ extern labcomm_mem_reader_context_t *test_dec_ctx;
 
 extern struct labcomm_encoder *test_enc;
 extern labcomm_mem_writer_context_t *test_enc_ctx;
+
+extern firefly_protocol_data_sample data_sample;
 
 struct firefly_event_queue *eq;
 
@@ -61,6 +64,7 @@ void mock_transport_write_important(unsigned char *data, size_t size,
 		CU_ASSERT_PTR_NOT_NULL(id);
 	}
 	*id = TEST_IMPORTANT_ID;
+	transport_write_test_decoder(data, size, conn, important, id);
 }
 
 bool mock_transport_acked = false;
@@ -80,11 +84,14 @@ void test_important_signature()
 	struct firefly_channel *chan = firefly_channel_new(conn);
 	add_channel_to_connection(chan, conn);
 
+	CU_ASSERT_EQUAL(chan->current_seqno, 0);
 	labcomm_encoder_register_test_test_var(
 			firefly_protocol_get_output_stream(chan));
 	event_execute_test(eq, 1);
 	CU_ASSERT_TRUE(mock_transport_written);
+	CU_ASSERT_TRUE(data_sample.important);
 	CU_ASSERT_EQUAL(chan->important_id, TEST_IMPORTANT_ID);
+	CU_ASSERT_EQUAL(chan->current_seqno, 1);
 
 	mock_transport_written = false;
 	firefly_connection_free(&conn);
@@ -118,4 +125,59 @@ void test_important_recv_ack()
 	firefly_connection_free(&conn);
 }
 
-// TODO test seqnos
+// TODO test old ack, errorneous ack, multiple important queue
+void test_important_signatures_mult()
+{
+	struct test_conn_platspec ps;
+	ps.important = true;
+	struct firefly_connection *conn = firefly_connection_new(NULL, NULL, NULL,
+			mock_transport_write_important, NULL, eq, &ps, NULL);
+	struct firefly_channel *chan = firefly_channel_new(conn);
+	add_channel_to_connection(chan, conn);
+
+	CU_ASSERT_EQUAL(chan->current_seqno, 0);
+	labcomm_encoder_register_test_test_var(
+			firefly_protocol_get_output_stream(chan));
+	event_execute_test(eq, 1);
+	CU_ASSERT_TRUE(mock_transport_written);
+	CU_ASSERT_TRUE(data_sample.important);
+	CU_ASSERT_EQUAL(chan->important_id, TEST_IMPORTANT_ID);
+	CU_ASSERT_EQUAL(chan->current_seqno, 1);
+
+	// simulate ack received
+	chan->important_id = 0;
+
+	labcomm_encoder_register_test_test_var_2(
+			firefly_protocol_get_output_stream(chan));
+
+	event_execute_test(eq, 1);
+	CU_ASSERT_TRUE(mock_transport_written);
+	CU_ASSERT_TRUE(data_sample.important);
+	CU_ASSERT_EQUAL(chan->important_id, TEST_IMPORTANT_ID);
+	CU_ASSERT_EQUAL(chan->current_seqno, 2);
+
+	mock_transport_written = false;
+	firefly_connection_free(&conn);
+}
+
+void test_important_seqno_overflow()
+{
+	struct test_conn_platspec ps;
+	ps.important = true;
+	struct firefly_connection *conn = firefly_connection_new(NULL, NULL, NULL,
+			mock_transport_write_important, NULL, eq, &ps, NULL);
+	struct firefly_channel *chan = firefly_channel_new(conn);
+	add_channel_to_connection(chan, conn);
+
+	chan->current_seqno = INT_MAX;
+	labcomm_encoder_register_test_test_var(
+			firefly_protocol_get_output_stream(chan));
+	event_execute_test(eq, 1);
+	CU_ASSERT_TRUE(mock_transport_written);
+	CU_ASSERT_TRUE(data_sample.important);
+	CU_ASSERT_EQUAL(chan->important_id, TEST_IMPORTANT_ID);
+	CU_ASSERT_EQUAL(chan->current_seqno, 1);
+
+	mock_transport_written = false;
+	firefly_connection_free(&conn);
+}

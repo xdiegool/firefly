@@ -242,6 +242,7 @@ int protocol_writer(labcomm_writer_t *w, labcomm_writer_action_t action, ...)
 				fess->data.important = important;
 				if (fess->data.important) {
 					fess->important_id = &chan->important_id;
+					fess->data.seqno = firefly_channel_next_seqno(chan);
 				}
 				fess->data.app_enc_data.n_0 = writer_data->pos;
 				fess->data.app_enc_data.a = a;

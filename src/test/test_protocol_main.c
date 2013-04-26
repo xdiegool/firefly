@@ -185,6 +185,12 @@ int main()
 			||
 			(CU_add_test(important_suite, "test_important_recv_ack",
 					test_important_recv_ack) == NULL)
+			||
+			(CU_add_test(important_suite, "test_important_signatures_mult",
+					test_important_signatures_mult) == NULL)
+			||
+			(CU_add_test(important_suite, "test_important_seqno_overflow",
+					test_important_seqno_overflow) == NULL)
 		) {
 		CU_cleanup_registry();
 		return CU_get_error();

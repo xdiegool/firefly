@@ -86,7 +86,7 @@ void test_proto_writer()
 	firefly_protocol_data_sample data_sample_sig;
 	data_sample_sig.dest_chan_id = DEST_CHAN_ID;
 	data_sample_sig.src_chan_id = SRC_CHAN_ID;
-	data_sample_sig.seqno = 0;
+	data_sample_sig.seqno = 1;
 	data_sample_sig.important = true;
 	data_sample_sig.app_enc_data.a = test_sig_buf;
 	data_sample_sig.app_enc_data.n_0 = proto_sig_size;
@@ -132,6 +132,7 @@ void test_proto_writer()
 	chan.conn = &conn;
 	chan.local_id = SRC_CHAN_ID;
 	chan.remote_id = DEST_CHAN_ID;
+	chan.current_seqno = 0;
 	struct ff_transport_data writer_data;
 	writer_data.data = (unsigned char *) calloc(1, WRITE_BUF_SIZE);
 	if (writer_data.data == NULL) {
