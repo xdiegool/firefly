@@ -48,7 +48,8 @@ int clean_suit_proto_important()
 }
 
 bool mock_transport_written = false;
-void mock_transport_write_important(unsigned char *data, size_t size, struct firefly_connection *conn, bool important, unsigned char *id)
+void mock_transport_write_important(unsigned char *data, size_t size,
+		struct firefly_connection *conn, bool important, unsigned char *id)
 {
 	UNUSED_VAR(data);
 	UNUSED_VAR(size);
@@ -116,3 +117,5 @@ void test_important_recv_ack()
 	mock_transport_acked = false;
 	firefly_connection_free(&conn);
 }
+
+// TODO test seqnos
