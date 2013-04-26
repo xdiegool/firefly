@@ -14,10 +14,13 @@
 #define FIREFLY_CONNECTION_CLOSED	(0)
 #define FIREFLY_CONNECTION_OPEN	(1)
 
-#define FIREFLY_MALLOC(conn, size) conn->alloc_replacement != NULL ? \\
-							conn->alloc_replacement(conn, size) : malloc(size)
-#define FIREFLY_FREE(conn, ptr) conn->free_replacement != NULL ? \\
-							conn->free_replacement(conn, ptr) : free(ptr)
+#define FIREFLY_MALLOC(conn, size) \\
+		conn->memory_replacements.alloc_replacement != NULL ? \\
+		conn->memory_replacements.alloc_replacement(conn, size) : malloc(size)
+
+#define FIREFLY_FREE(conn, ptr) \\
+		conn->memory_replacements.free_replacement != NULL ? \\
+		conn->memory_replacements.free_replacement(conn, ptr) : free(ptr)
 
 void reg_proto_sigs(struct labcomm_encoder *enc,
 					struct labcomm_decoder *dec,
@@ -58,6 +61,9 @@ typedef void *(*firefly_alloc_f)(struct firefly_connection *conn, size_t size);
  */
 typedef void (*firefly_free_f)(struct firefly_connection *conn, void *p);
 
+/**
+ * @brief Holds the memory replacement functions.
+ */
 struct firefly_memory_funcs {
 	firefly_alloc_f alloc_replacement;
 	firefly_free_f free_replacement;
