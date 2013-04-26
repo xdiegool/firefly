@@ -189,8 +189,8 @@ struct firefly_connection *firefly_transport_connection_eth_stellaris_open(
 
 	struct firefly_connection *conn = firefly_connection_new(
 			on_channel_opened, on_channel_closed, on_channel_recv,
-			firefly_transport_eth_stellaris_write, llp_eth->event_queue,
-			conn_eth,
+			firefly_transport_eth_stellaris_write, NULL,
+			llp_eth->event_queue, conn_eth,
 			firefly_transport_connection_eth_stellaris_free);
 	if (conn == NULL || conn_eth == NULL) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 3,

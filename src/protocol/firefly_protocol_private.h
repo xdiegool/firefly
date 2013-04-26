@@ -14,6 +14,11 @@
 #define FIREFLY_CONNECTION_CLOSED	(0)
 #define FIREFLY_CONNECTION_OPEN	(1)
 
+#define FIREFLY_MALLOC(conn, size) conn->alloc_replacement != NULL ? \\
+							conn->alloc_replacement(conn, size) : malloc(size)
+#define FIREFLY_FREE(conn, ptr) conn->free_replacement != NULL ? \\
+							conn->free_replacement(conn, ptr) : free(ptr)
+
 void reg_proto_sigs(struct labcomm_encoder *enc,
 					struct labcomm_decoder *dec,
 					struct firefly_connection *conn);
@@ -34,6 +39,29 @@ typedef void (*transport_connection_free)(struct firefly_connection *conn);
 typedef void (* protocol_data_received_f)(struct firefly_connection *conn,
 					  unsigned char *data,
 					  size_t size);
+
+/**
+ * @brief A function to a malloc() replacement if needed by the transport layer.
+ *
+ * @param conn The connection to allocate on.
+ * @param size The size to allocate.
+ *
+ * @return A void pointer to the allocated data or NULL on failure.
+ */
+typedef void *(*firefly_alloc_f)(struct firefly_connection *conn, size_t size);
+
+/**
+ * @brief A function to a free() replacement if needed by the transport layer.
+ *
+ * @param conn The connection to free on.
+ * @param p The pointer to free.
+ */
+typedef void (*firefly_free_f)(struct firefly_connection *conn, void *p);
+
+struct firefly_memory_funcs {
+	firefly_alloc_f alloc_replacement;
+	firefly_free_f free_replacement;
+};
 
 /**
  * @brief Structure describing a buffer where transport data is stored.
@@ -90,6 +118,7 @@ struct firefly_connection {
 	struct firefly_event_queue *event_queue; /**< The queue to which spawned events are added. */
 	int channel_id_counter; /**< The unique id reserved to the next opened
 								channel on the connection. */
+	struct firefly_memory_funcs memory_replacements;
 	void *context; /**< A reference to an optional, user defined context.  */
 };
 
@@ -133,6 +162,7 @@ struct firefly_connection *firefly_connection_new(
 		firefly_channel_closed_f on_channel_closed,
 		firefly_channel_accept_f on_channel_recv,
 		transport_write_f transport_write,
+		struct firefly_memory_funcs *memory_replacements,
 		struct firefly_event_queue *event_queue, void *plat_spec,
 		transport_connection_free plat_spec_free);
 

@@ -14,6 +14,7 @@ struct firefly_connection *firefly_connection_new(
 		firefly_channel_closed_f on_channel_closed,
 		firefly_channel_accept_f on_channel_recv,
 		transport_write_f transport_write,
+		struct firefly_memory_funcs *memory_replacements,
 		struct firefly_event_queue *event_queue,
 		void *plat_spec, transport_connection_free plat_spec_free)
 {
@@ -70,6 +71,17 @@ struct firefly_connection *firefly_connection_new(
 			labcomm_error_to_ff_error);
 
 	conn->transport_write = transport_write;
+
+	if (memory_replacements) {
+		conn->memory_replacements.alloc_replacement =
+			memory_replacements->alloc_replacement;
+		conn->memory_replacements.free_replacement =
+			memory_replacements->free_replacement;
+	} else {
+		conn->memory_replacements.alloc_replacement = NULL;
+		conn->memory_replacements.free_replacement = NULL;
+	}
+
 	conn->transport_conn_platspec = plat_spec;
 	conn->transport_conn_platspec_free = plat_spec_free;
 	conn->open = FIREFLY_CONNECTION_OPEN;

@@ -199,7 +199,7 @@ struct firefly_connection *firefly_transport_connection_udp_lwip_open(
 
 	struct firefly_connection *conn = firefly_connection_new(
 			on_channel_opened, on_channel_closed,
-			on_channel_recv, firefly_transport_udp_lwip_write,
+			on_channel_recv, firefly_transport_udp_lwip_write, NULL,
 			llp_lwip->event_queue, conn_udp,
 			firefly_transport_connection_udp_lwip_free);
 	if (conn == NULL || conn_udp == NULL) {

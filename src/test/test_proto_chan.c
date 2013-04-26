@@ -918,7 +918,7 @@ struct firefly_connection *setup_conn(int conn_n,
 	}
 
 	tcon = firefly_connection_new(chan_was_opened, chan_was_closed,
-					   should_accept_chan, writer,
+					   should_accept_chan, writer, NULL,
 					   eqs[conn_n], NULL, NULL);
 
 	if (tcon == NULL) {

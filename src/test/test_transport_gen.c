@@ -25,7 +25,8 @@ void test_add_conn_to_llp()
 	long data_1 = 1234;
 
 	struct firefly_connection *conn_1 = firefly_connection_new(NULL, NULL,
-							NULL, NULL, NULL, &data_1, NULL);
+							NULL, NULL, NULL, NULL,
+							&data_1, NULL);
 	add_connection_to_llp(conn_1, llp);
 
 	CU_ASSERT_PTR_NOT_NULL(llp->conn_list);
@@ -35,8 +36,8 @@ void test_add_conn_to_llp()
 
 	long data_2 = 1234;
 	struct firefly_connection *conn_2 = firefly_connection_new(NULL, NULL,
-															NULL, NULL, NULL,
-															&data_2, NULL);
+							NULL, NULL, NULL, NULL,
+							&data_2, NULL);
 	add_connection_to_llp(conn_2, llp);
 
 	CU_ASSERT_PTR_NOT_NULL(llp->conn_list);
@@ -70,7 +71,8 @@ void test_remove_conn_by_addr()
 
 	long data_1 = 1234;
 	struct firefly_connection *conn_1 = firefly_connection_new(NULL, NULL,
-							NULL, NULL, NULL, &data_1, NULL);
+							NULL, NULL, NULL, NULL,
+							&data_1, NULL);
 	CU_ASSERT_PTR_NOT_NULL(conn_1);
 
 	struct firefly_connection *conn = find_connection(llp, &data_1,
@@ -86,7 +88,8 @@ void test_remove_conn_by_addr()
 	// Add a second connection after the first one
 	long data_2 = 2234;
 	struct firefly_connection *conn_2 = firefly_connection_new(NULL, NULL,
-							NULL, NULL, NULL, &data_2, NULL);
+							NULL, NULL, NULL, NULL,
+							&data_2, NULL);
 	struct llp_connection_list_node *node_2 =
 		malloc(sizeof(struct llp_connection_list_node));
 	node_2->conn = conn_2;
@@ -122,7 +125,8 @@ void test_find_conn_by_addr()
 
 	long data_1 = 1234;
 	struct firefly_connection *conn_1 = firefly_connection_new(NULL, NULL,
-							NULL, NULL, NULL, &data_1, NULL);
+							NULL, NULL, NULL, NULL,
+							&data_1, NULL);
 	CU_ASSERT_PTR_NOT_NULL(conn_1);
 
 	struct firefly_connection *conn = find_connection(llp, &data_1,
@@ -142,7 +146,8 @@ void test_find_conn_by_addr()
 	// Add a second connection after the first one and try to find it
 	long data_2 = 2234;
 	struct firefly_connection *conn_2 = firefly_connection_new(NULL, NULL,
-							NULL, NULL, NULL, &data_2, NULL);
+							NULL, NULL, NULL, NULL,
+							&data_2, NULL);
 	struct llp_connection_list_node *node_2 =
 		malloc(sizeof(struct llp_connection_list_node));
 	node_2->conn = conn_2;
