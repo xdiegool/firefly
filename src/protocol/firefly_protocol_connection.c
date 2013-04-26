@@ -18,32 +18,45 @@ struct firefly_connection *firefly_connection_new(
 		struct firefly_event_queue *event_queue,
 		void *plat_spec, transport_connection_free plat_spec_free)
 {
-	struct firefly_connection *conn =
-		malloc(sizeof(struct firefly_connection));
-	if (conn == NULL) {
+	struct firefly_connection *conn;
+	struct ff_transport_data *writer_data;
+	unsigned char *writer_data_data;
+	struct ff_transport_data *reader_data;
+	struct labcomm_encoder *transport_encoder;
+	struct labcomm_decoder *transport_decoder;
+
+	conn = FIREFLY_MALLOC(sizeof(struct firefly_connection));
+	writer_data = FIREFLY_MALLOC(sizeof(struct ff_transport_data));
+	writer_data_data = FIREFLY_MALLOC(BUFFER_SIZE);
+	reader_data = FIREFLY_MALLOC(sizeof(struct ff_transport_data));
+	transport_encoder = labcomm_encoder_new(ff_transport_writer, conn);
+	transport_decoder = labcomm_decoder_new(ff_transport_reader, conn);
+
+	if (conn == NULL || writer_data == NULL || writer_data_data == NULL ||
+			reader_data == NULL || transport_encoder == NULL ||
+			transport_decoder == NULL)
+	{
 		firefly_error(FIREFLY_ERROR_ALLOC, 1, "malloc failed\n");
+
+		if (transport_encoder)
+			labcomm_encoder_free(transport_encoder);
+		if (transport_decoder)
+			labcomm_decoder_free(transport_decoder);
+		FIREFLY_FREE(writer_data_data);
+		FIREFLY_FREE(writer_data);
+		FIREFLY_FREE(reader_data);
+		FIREFLY_FREE(conn);
+		return NULL;
 	}
+
 	conn->event_queue = event_queue;
-	// Init writer data
-	struct ff_transport_data *writer_data =
-				malloc(sizeof(struct ff_transport_data));
-	if (writer_data == NULL) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 1, "malloc failed\n");
-	}
-	writer_data->data = malloc(BUFFER_SIZE);
-	if (writer_data->data == NULL) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 1, "malloc failed\n");
-	}
+
+	writer_data->data = writer_data_data;
 	writer_data->data_size = BUFFER_SIZE;
 	writer_data->pos = 0;
 	conn->writer_data = writer_data;
 
 	// Init reader data
-	struct ff_transport_data *reader_data =
-				malloc(sizeof(struct ff_transport_data));
-	if (reader_data == NULL) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 1, "malloc failed\n");
-	}
 	reader_data->data = NULL;
 	reader_data->data_size = 0;
 	reader_data->pos = 0;
@@ -54,19 +67,12 @@ struct firefly_connection *firefly_connection_new(
 	conn->on_channel_recv = on_channel_recv;
 	conn->chan_list = NULL;
 	conn->channel_id_counter = 0;
-	conn->transport_encoder =
-		labcomm_encoder_new(ff_transport_writer, conn);
-	if (conn->transport_encoder == NULL) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 1, "malloc failed\n");
-	}
+
+	conn->transport_encoder = transport_encoder;
 	labcomm_register_error_handler_encoder(conn->transport_encoder,
 			labcomm_error_to_ff_error);
 
-	conn->transport_decoder =
-		labcomm_decoder_new(ff_transport_reader, conn);
-	if (conn->transport_decoder == NULL) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 1, "malloc failed\n");
-	}
+	conn->transport_decoder = transport_decoder;
 	labcomm_register_error_handler_decoder(conn->transport_decoder,
 			labcomm_error_to_ff_error);
 
@@ -147,17 +153,17 @@ void firefly_connection_free(struct firefly_connection **conn)
 	while ((*conn)->chan_list != NULL) {
 		firefly_channel_closed_event((*conn)->chan_list->chan);
 	}
-	free((*conn)->chan_list);
+	FIREFLY_FREE((*conn)->chan_list);
 	if ((*conn)->transport_encoder != NULL) {
 		labcomm_encoder_free((*conn)->transport_encoder);
 	}
 	if ((*conn)->transport_decoder != NULL) {
 		labcomm_decoder_free((*conn)->transport_decoder);
 	}
-	free((*conn)->reader_data);
-	free((*conn)->writer_data->data);
-	free((*conn)->writer_data);
-	free((*conn));
+	FIREFLY_FREE((*conn)->reader_data);
+	FIREFLY_FREE((*conn)->writer_data->data);
+	FIREFLY_FREE((*conn)->writer_data);
+	FIREFLY_FREE((*conn));
 	*conn = NULL;
 }
 
@@ -170,7 +176,7 @@ struct firefly_channel *remove_channel_from_connection(
 		if ((*head)->chan->local_id == chan->local_id) {
 			ret = chan;
 			struct channel_list_node *tmp = (*head)->next;
-			free(*head);
+			FIREFLY_FREE(*head);
 			*head = tmp;
 			head = NULL;
 		} else {

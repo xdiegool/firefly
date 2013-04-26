@@ -94,6 +94,8 @@ void test_proto_writer()
 	// Prepare for the test.
 	struct firefly_connection conn;
 	conn.transport_conn_platspec = NULL;
+	conn.memory_replacements.alloc_replacement = NULL;
+	conn.memory_replacements.free_replacement = NULL;
 	conn.writer_data = malloc(sizeof(struct ff_transport_data));
 	if (conn.writer_data == NULL) {
 		CU_FAIL("Could not allocate conn.writer_data.");

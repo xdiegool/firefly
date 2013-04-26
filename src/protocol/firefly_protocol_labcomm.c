@@ -36,7 +36,7 @@ int firefly_labcomm_reader(labcomm_reader_t *r, labcomm_reader_action_t action,
 	int result = -EINVAL;
 	switch (action) {
 	case labcomm_reader_alloc: {
-		r->data = malloc(BUFFER_SIZE);
+		r->data = FIREFLY_MALLOC(BUFFER_SIZE);
 		if (r->data == NULL) {
 			result = -ENOMEM;
 		} else {
@@ -46,7 +46,7 @@ int firefly_labcomm_reader(labcomm_reader_t *r, labcomm_reader_action_t action,
 		}
 	} break;
 	case labcomm_reader_free: {
-		free(r->data);
+		FIREFLY_FREE(r->data);
 		r->data = NULL;
 		r->data_size = 0;
 		r->pos = 0;
@@ -89,7 +89,7 @@ int ff_transport_writer(labcomm_writer_t *w, labcomm_writer_action_t action)
 	int result = -EINVAL;
 	switch (action) {
 	case labcomm_writer_alloc: {
-		w->data = malloc(BUFFER_SIZE);
+		w->data = FIREFLY_MALLOC(BUFFER_SIZE);
 		if (w->data == NULL) {
 			w->data_size = 0;
 			w->count = 0;
@@ -103,7 +103,7 @@ int ff_transport_writer(labcomm_writer_t *w, labcomm_writer_action_t action)
 		}
 	} break;
 	case labcomm_writer_free: {
-		free(w->data);
+		FIREFLY_FREE(w->data);
 		w->data = NULL;
 		w->data_size = 0;
 		w->count = 0;
@@ -158,11 +158,13 @@ int protocol_writer(labcomm_writer_t *w, labcomm_writer_action_t action)
 {
 	struct firefly_channel *chan =
 			(struct firefly_channel *) w->context;
+	struct firefly_connection *conn = chan->conn;
+
 	struct ff_transport_data *writer_data = chan->writer_data;
 	int result = -EINVAL;
 	switch (action) {
 	case labcomm_writer_alloc: {
-		w->data = malloc(BUFFER_SIZE);
+		w->data = FIREFLY_MALLOC(BUFFER_SIZE);
 		if (w->data == NULL) {
 			w->data_size = 0;
 			w->count = 0;
@@ -176,7 +178,7 @@ int protocol_writer(labcomm_writer_t *w, labcomm_writer_action_t action)
 		}
    	} break;
 	case labcomm_writer_free: {
-		free(w->data);
+		FIREFLY_FREE(w->data);
 		w->data = NULL;
 		w->data_size = 0;
 		w->count = 0;
@@ -220,8 +222,8 @@ int protocol_writer(labcomm_writer_t *w, labcomm_writer_action_t action)
 				result = 0;
 				// create protocol packet and encode it
 				struct firefly_event_send_sample *fess =
-					malloc(sizeof(struct firefly_event_send_sample));
-				unsigned char *a = malloc(writer_data->pos);
+					FIREFLY_RUNTIME_MALLOC(conn, sizeof(struct firefly_event_send_sample));
+				unsigned char *a = FIREFLY_RUNTIME_MALLOC(conn, writer_data->pos);
 				if (fess == NULL || a == NULL) {
 					firefly_error(FIREFLY_ERROR_ALLOC, 1,
 							"Protocol writer could not allocate send event\n");
@@ -255,8 +257,8 @@ int send_data_sample_event(void *event_arg)
 		(struct firefly_event_send_sample *) event_arg;
 	labcomm_encode_firefly_protocol_data_sample(
 			fess->conn->transport_encoder, &fess->data);
-	free(fess->data.app_enc_data.a);
-	free(event_arg);
+	FIREFLY_RUNTIME_FREE(fess->conn, fess->data.app_enc_data.a);
+	FIREFLY_RUNTIME_FREE(fess->conn, event_arg);
 	return 0;
 }
 

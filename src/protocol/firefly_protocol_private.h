@@ -14,13 +14,23 @@
 #define FIREFLY_CONNECTION_CLOSED	(0)
 #define FIREFLY_CONNECTION_OPEN	(1)
 
-#define FIREFLY_MALLOC(conn, size) \\
-		conn->memory_replacements.alloc_replacement != NULL ? \\
-		conn->memory_replacements.alloc_replacement(conn, size) : malloc(size)
+#ifndef FIREFLY_MALLOC
+	#define FIREFLY_MALLOC(size) malloc(size)
+#endif
 
-#define FIREFLY_FREE(conn, ptr) \\
-		conn->memory_replacements.free_replacement != NULL ? \\
-		conn->memory_replacements.free_replacement(conn, ptr) : free(ptr)
+#ifndef FIREFLY_FREE
+	#define FIREFLY_FREE(ptr) free(ptr)
+#endif
+
+#define FIREFLY_RUNTIME_MALLOC(conn, size)							\
+		conn->memory_replacements.alloc_replacement != NULL ?		\
+		conn->memory_replacements.alloc_replacement(conn, size) :	\
+		FIREFLY_MALLOC(size)
+
+#define FIREFLY_RUNTIME_FREE(conn, ptr)								\
+		conn->memory_replacements.free_replacement != NULL ?		\
+		conn->memory_replacements.free_replacement(conn, ptr) :		\
+		FIREFLY_FREE(ptr)
 
 void reg_proto_sigs(struct labcomm_encoder *enc,
 					struct labcomm_decoder *dec,
