@@ -191,6 +191,12 @@ int main()
 			||
 			(CU_add_test(important_suite, "test_important_seqno_overflow",
 					test_important_seqno_overflow) == NULL)
+			||
+			(CU_add_test(important_suite, "test_important_send_ack",
+					test_important_send_ack) == NULL)
+			||
+			(CU_add_test(important_suite, "test_not_important_not_send_ack",
+					test_not_important_not_send_ack) == NULL)
 		) {
 		CU_cleanup_registry();
 		return CU_get_error();

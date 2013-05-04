@@ -26,6 +26,8 @@ extern struct labcomm_encoder *test_enc;
 extern labcomm_mem_writer_context_t *test_enc_ctx;
 
 extern firefly_protocol_data_sample data_sample;
+extern firefly_protocol_ack ack;
+extern bool received_ack;
 
 struct firefly_event_queue *eq;
 
@@ -62,8 +64,8 @@ void mock_transport_write_important(unsigned char *data, size_t size,
 	CU_ASSERT_EQUAL(ps->important, important);
 	if (important) {
 		CU_ASSERT_PTR_NOT_NULL(id);
+		*id = TEST_IMPORTANT_ID;
 	}
-	*id = TEST_IMPORTANT_ID;
 	transport_write_test_decoder(data, size, conn, important, id);
 }
 
@@ -182,4 +184,57 @@ void test_important_seqno_overflow()
 	firefly_connection_free(&conn);
 }
 
-// Test send ack on important packets
+void test_important_send_ack()
+{
+	struct test_conn_platspec ps;
+	ps.important = true;
+	struct firefly_connection *conn = firefly_connection_new(NULL, NULL, NULL,
+			transport_write_test_decoder, NULL, eq, &ps, NULL);
+	struct firefly_channel *chan = firefly_channel_new(conn);
+	add_channel_to_connection(chan, conn);
+
+	firefly_protocol_data_sample sample_pkt;
+	sample_pkt.dest_chan_id = chan->local_id;
+	sample_pkt.src_chan_id = chan->remote_id;
+	sample_pkt.seqno = 1;
+	sample_pkt.important = true;
+	sample_pkt.app_enc_data.a = NULL;
+	sample_pkt.app_enc_data.n_0 = 0;
+	labcomm_encode_firefly_protocol_data_sample(test_enc, &sample_pkt);
+	protocol_data_received(conn, test_enc_ctx->buf, test_enc_ctx->write_pos);
+	test_enc_ctx->write_pos = 0;
+	event_execute_test(eq, 1);
+
+	CU_ASSERT_TRUE(received_ack);
+	CU_ASSERT_EQUAL(ack.seqno, 1);
+
+	received_ack = false;
+	firefly_connection_free(&conn);
+}
+
+void test_not_important_not_send_ack()
+{
+	struct test_conn_platspec ps;
+	ps.important = true;
+	struct firefly_connection *conn = firefly_connection_new(NULL, NULL, NULL,
+			transport_write_test_decoder, NULL, eq, &ps, NULL);
+	struct firefly_channel *chan = firefly_channel_new(conn);
+	add_channel_to_connection(chan, conn);
+
+	firefly_protocol_data_sample sample_pkt;
+	sample_pkt.dest_chan_id = chan->local_id;
+	sample_pkt.src_chan_id = chan->remote_id;
+	sample_pkt.seqno = 0;
+	sample_pkt.important = false;
+	sample_pkt.app_enc_data.a = NULL;
+	sample_pkt.app_enc_data.n_0 = 0;
+	labcomm_encode_firefly_protocol_data_sample(test_enc, &sample_pkt);
+	protocol_data_received(conn, test_enc_ctx->buf, test_enc_ctx->write_pos);
+	test_enc_ctx->write_pos = 0;
+	event_execute_test(eq, 1);
+
+	CU_ASSERT_FALSE(received_ack);
+
+	received_ack = false;
+	firefly_connection_free(&conn);
+}
