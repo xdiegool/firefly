@@ -433,13 +433,17 @@ void handle_ack(firefly_protocol_ack *ack, void *context)
 	struct firefly_connection *conn = (struct firefly_connection *) context;
 	struct firefly_channel *chan =
 		find_channel_by_local_id(conn, ack->dest_chan_id);
-	if (chan->current_seqno == ack->seqno && ack->seqno > 0) {
-		conn->transport_ack(chan->important_id, conn);
-		chan->important_id = 0;
-	} else if (chan->current_seqno > ack->seqno) {
-		// Do nothing, old ack
-	} else {
-		// TODO errornous packet
+	// Search for seqno
+	struct firefly_channel_important_packet **imp_pkt = &chan->important_packet;
+	while ((*imp_pkt) != NULL) {
+		if ((*imp_pkt)->seqno == ack->seqno) {
+			conn->transport_ack((*imp_pkt)->important_id, conn);
+			struct firefly_channel_important_packet *tmp = (*imp_pkt)->next;
+			free(*imp_pkt);
+			*imp_pkt = tmp;
+			break;
+		}
+		imp_pkt = &(*imp_pkt)->next;
 	}
 }
 

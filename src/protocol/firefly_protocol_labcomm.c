@@ -241,8 +241,14 @@ int protocol_writer(labcomm_writer_t *w, labcomm_writer_action_t action, ...)
 				fess->data.seqno = 0;
 				fess->data.important = important;
 				if (fess->data.important) {
-					fess->important_id = &chan->important_id;
-					fess->data.seqno = firefly_channel_next_seqno(chan);
+					struct firefly_channel_important_packet *ip;
+					ip = malloc(sizeof(struct firefly_channel_important_packet));
+					ip->next = chan->important_packet;
+					chan->important_packet = ip;
+					ip->seqno = firefly_channel_next_seqno(chan);
+					ip->important_id = 0;
+					fess->data.seqno = ip->seqno;
+					fess->important_id = &ip->important_id;
 				}
 				fess->data.app_enc_data.n_0 = writer_data->pos;
 				fess->data.app_enc_data.a = a;

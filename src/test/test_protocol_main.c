@@ -197,6 +197,12 @@ int main()
 			||
 			(CU_add_test(important_suite, "test_not_important_not_send_ack",
 					test_not_important_not_send_ack) == NULL)
+			||
+			(CU_add_test(important_suite, "test_errorneous_ack",
+					test_errorneous_ack) == NULL)
+			||
+			(CU_add_test(important_suite, "test_multiple_simultaneous_important",
+					test_multiple_simultaneous_important) == NULL)
 		) {
 		CU_cleanup_registry();
 		return CU_get_error();

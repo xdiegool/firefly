@@ -29,7 +29,7 @@ struct firefly_channel *firefly_channel_new(struct firefly_connection *conn)
 		chan->writer_data->data_size = BUFFER_SIZE;
 		chan->writer_data->pos = 0;
 		chan->conn = conn;
-		chan->important_id = 0;
+		chan->important_packet = NULL;
 		chan->current_seqno = 0;
 	} else {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1, "malloc failed");
@@ -68,7 +68,7 @@ struct firefly_connection *firefly_channel_get_connection(
 
 int firefly_channel_next_seqno(struct firefly_channel *chan)
 {
-	if (++chan->current_seqno < 0) {
+	if (++chan->current_seqno <= 0) {
 		chan->current_seqno = 1;
 	}
 	return chan->current_seqno;

@@ -10,5 +10,7 @@ void test_important_signatures_mult();
 void test_important_seqno_overflow();
 void test_important_send_ack();
 void test_not_important_not_send_ack();
+void test_errorneous_ack();
+void test_multiple_simultaneous_important();
 
 #endif

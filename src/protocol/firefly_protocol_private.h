@@ -110,6 +110,11 @@ struct firefly_connection {
 	void *context; /**< A reference to an optional, user defined context.  */
 };
 
+struct firefly_channel_important_packet {
+	unsigned char important_id;
+	int seqno;
+	struct firefly_channel_important_packet *next;
+};
 /**
  * @brief A structure representing a channel.
  */
@@ -119,7 +124,7 @@ struct firefly_channel {
 	int local_id; /**< The local ID used to identify this channel */
 	int remote_id; /**< The ID used by the remote node to identify
 				this channel */
-	unsigned char important_id;
+	struct firefly_channel_important_packet *important_packet;
 	int current_seqno;
 	struct labcomm_encoder *proto_encoder; /**< LabComm encoder for this
 					   			channel.*/

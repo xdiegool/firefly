@@ -92,7 +92,9 @@ void test_important_signature()
 	event_execute_test(eq, 1);
 	CU_ASSERT_TRUE(mock_transport_written);
 	CU_ASSERT_TRUE(data_sample.important);
-	CU_ASSERT_EQUAL(chan->important_id, TEST_IMPORTANT_ID);
+	CU_ASSERT_PTR_NOT_NULL_FATAL(chan->important_packet);
+	CU_ASSERT_EQUAL(chan->important_packet->important_id, TEST_IMPORTANT_ID);
+	CU_ASSERT_EQUAL(chan->important_packet->seqno, 1);
 	CU_ASSERT_EQUAL(chan->current_seqno, 1);
 
 	mock_transport_written = false;
@@ -108,7 +110,9 @@ void test_important_recv_ack()
 	struct firefly_channel *chan = firefly_channel_new(conn);
 	add_channel_to_connection(chan, conn);
 
-	chan->important_id = TEST_IMPORTANT_ID;
+	chan->important_packet = malloc(sizeof(struct firefly_channel_important_packet));
+	chan->important_packet->seqno = 1;
+	chan->important_packet->important_id = TEST_IMPORTANT_ID;
 	chan->current_seqno = 1;
 
 	firefly_protocol_ack ack_pkt;
@@ -119,7 +123,7 @@ void test_important_recv_ack()
 	protocol_data_received(conn, test_enc_ctx->buf, test_enc_ctx->write_pos);
 	test_enc_ctx->write_pos = 0;
 	CU_ASSERT_TRUE(mock_transport_acked);
-	CU_ASSERT_EQUAL(chan->important_id, 0);
+	CU_ASSERT_PTR_NULL(chan->important_packet);
 	CU_ASSERT_EQUAL(chan->current_seqno, 1);
 
 	mock_transport_written = false;
@@ -127,7 +131,6 @@ void test_important_recv_ack()
 	firefly_connection_free(&conn);
 }
 
-// TODO test old ack, errorneous ack, multiple important queue
 void test_important_signatures_mult()
 {
 	struct test_conn_platspec ps;
@@ -143,11 +146,14 @@ void test_important_signatures_mult()
 	event_execute_test(eq, 1);
 	CU_ASSERT_TRUE(mock_transport_written);
 	CU_ASSERT_TRUE(data_sample.important);
-	CU_ASSERT_EQUAL(chan->important_id, TEST_IMPORTANT_ID);
+	CU_ASSERT_PTR_NOT_NULL_FATAL(chan->important_packet);
+	CU_ASSERT_EQUAL(chan->important_packet->important_id, TEST_IMPORTANT_ID);
+	CU_ASSERT_EQUAL(chan->important_packet->seqno, 1);
 	CU_ASSERT_EQUAL(chan->current_seqno, 1);
 
 	// simulate ack received
-	chan->important_id = 0;
+	free(chan->important_packet);
+	chan->important_packet = NULL;
 
 	labcomm_encoder_register_test_test_var_2(
 			firefly_protocol_get_output_stream(chan));
@@ -155,7 +161,9 @@ void test_important_signatures_mult()
 	event_execute_test(eq, 1);
 	CU_ASSERT_TRUE(mock_transport_written);
 	CU_ASSERT_TRUE(data_sample.important);
-	CU_ASSERT_EQUAL(chan->important_id, TEST_IMPORTANT_ID);
+	CU_ASSERT_PTR_NOT_NULL_FATAL(chan->important_packet);
+	CU_ASSERT_EQUAL(chan->important_packet->important_id, TEST_IMPORTANT_ID);
+	CU_ASSERT_EQUAL(chan->important_packet->seqno, 2);
 	CU_ASSERT_EQUAL(chan->current_seqno, 2);
 
 	mock_transport_written = false;
@@ -177,7 +185,9 @@ void test_important_seqno_overflow()
 	event_execute_test(eq, 1);
 	CU_ASSERT_TRUE(mock_transport_written);
 	CU_ASSERT_TRUE(data_sample.important);
-	CU_ASSERT_EQUAL(chan->important_id, TEST_IMPORTANT_ID);
+	CU_ASSERT_PTR_NOT_NULL_FATAL(chan->important_packet);
+	CU_ASSERT_EQUAL(chan->important_packet->important_id, TEST_IMPORTANT_ID);
+	CU_ASSERT_EQUAL(chan->important_packet->seqno, 1);
 	CU_ASSERT_EQUAL(chan->current_seqno, 1);
 
 	mock_transport_written = false;
@@ -238,3 +248,51 @@ void test_not_important_not_send_ack()
 	received_ack = false;
 	firefly_connection_free(&conn);
 }
+
+void test_errorneous_ack()
+{
+	struct test_conn_platspec ps;
+	ps.important = false;
+	struct firefly_connection *conn = firefly_connection_new(NULL, NULL, NULL,
+			transport_write_test_decoder, NULL, eq, &ps, NULL);
+	struct firefly_channel *chan = firefly_channel_new(conn);
+	add_channel_to_connection(chan, conn);
+
+	chan->important_packet = malloc(sizeof(struct firefly_channel_important_packet));
+	chan->important_packet->seqno = 5;
+	chan->important_packet->important_id = TEST_IMPORTANT_ID;
+	chan->current_seqno = 5;
+
+	firefly_protocol_ack ack_pkt;
+	ack_pkt.dest_chan_id = chan->local_id;
+	ack_pkt.src_chan_id = chan->remote_id;
+	ack_pkt.seqno = 4;
+	labcomm_encode_firefly_protocol_ack(test_enc, &ack_pkt);
+	protocol_data_received(conn, test_enc_ctx->buf, test_enc_ctx->write_pos);
+	test_enc_ctx->write_pos = 0;
+	CU_ASSERT_FALSE(mock_transport_acked);
+	CU_ASSERT_PTR_NOT_NULL_FATAL(chan->important_packet);
+	CU_ASSERT_EQUAL(chan->important_packet->important_id, TEST_IMPORTANT_ID);
+	CU_ASSERT_EQUAL(chan->important_packet->seqno, 5);
+	CU_ASSERT_EQUAL(chan->current_seqno, 5);
+
+	ack_pkt.seqno = 6;
+	labcomm_encode_firefly_protocol_ack(test_enc, &ack_pkt);
+	protocol_data_received(conn, test_enc_ctx->buf, test_enc_ctx->write_pos);
+	test_enc_ctx->write_pos = 0;
+	CU_ASSERT_FALSE(mock_transport_acked);
+	CU_ASSERT_PTR_NOT_NULL_FATAL(chan->important_packet);
+	CU_ASSERT_EQUAL(chan->important_packet->important_id, TEST_IMPORTANT_ID);
+	CU_ASSERT_EQUAL(chan->important_packet->seqno, 5);
+	CU_ASSERT_EQUAL(chan->current_seqno, 5);
+
+	mock_transport_written = false;
+	mock_transport_acked = false;
+	firefly_connection_free(&conn);
+}
+
+void test_multiple_simultaneous_important()
+{
+	CU_FAIL("NOT IMPLEMENTED");
+}
+// TODO test multiple important queue
