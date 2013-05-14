@@ -57,6 +57,14 @@ void firefly_channel_free(struct firefly_channel *chan)
 		free(chan->writer_data->data);
 		free(chan->writer_data);
 	}
+
+	struct firefly_channel_important_packet *imp_pkt = chan->important_packet;
+	struct firefly_channel_important_packet *tmp = NULL;
+	while (imp_pkt != NULL) {
+		tmp = imp_pkt->next;
+		free(imp_pkt);
+		imp_pkt = tmp;
+	}
 	free(chan);
 }
 

@@ -113,6 +113,7 @@ void test_important_recv_ack()
 	chan->important_packet = malloc(sizeof(struct firefly_channel_important_packet));
 	chan->important_packet->seqno = 1;
 	chan->important_packet->important_id = TEST_IMPORTANT_ID;
+	chan->important_packet->next = NULL;
 	chan->current_seqno = 1;
 
 	firefly_protocol_ack ack_pkt;
@@ -261,6 +262,7 @@ void test_errorneous_ack()
 	chan->important_packet = malloc(sizeof(struct firefly_channel_important_packet));
 	chan->important_packet->seqno = 5;
 	chan->important_packet->important_id = TEST_IMPORTANT_ID;
+	chan->important_packet->next = NULL;
 	chan->current_seqno = 5;
 
 	firefly_protocol_ack ack_pkt;
