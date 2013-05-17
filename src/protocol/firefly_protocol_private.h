@@ -111,6 +111,14 @@ struct firefly_connection {
 };
 
 /**
+ * @breif A simple queue of important packets.
+ */
+struct firefly_channel_important_queue {
+	struct firefly_event_send_sample *fess;
+	struct firefly_channel_important_queue *next;
+};
+
+/**
  * @brief A structure representing a channel.
  */
 struct firefly_channel {
@@ -119,8 +127,16 @@ struct firefly_channel {
 	int local_id; /**< The local ID used to identify this channel */
 	int remote_id; /**< The ID used by the remote node to identify
 				this channel */
-	unsigned char important_id;
-	int current_seqno;
+	struct firefly_channel_important_queue *important_queue; /**< The queue used
+															   to queue
+															   important packets
+															   when sending
+															   another. */
+	unsigned char important_id; /**< The identifier used to reference the packet
+								  to the transport layer. If 0 no packet is
+								  resent. */
+	int current_seqno; /**< The sequence number of the currently or last
+						 important packet. */
 	struct labcomm_encoder *proto_encoder; /**< LabComm encoder for this
 					   			channel.*/
 	struct labcomm_decoder *proto_decoder; /**< LabComm decoder for this
@@ -412,8 +428,7 @@ void handle_ack(firefly_protocol_ack *ack, void *context);
  * @brief The event argument of handle_channel_ack_event.
  */
 struct firefly_event_send_sample {
-	struct firefly_connection *conn; /**< The connection to send the sample
-						on. */
+	struct firefly_channel *chan; /**< The channel to send the sample on. */
 	firefly_protocol_data_sample data; /**< The sample to send. */
 	unsigned char *important_id;
 };

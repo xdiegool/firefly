@@ -133,6 +133,8 @@ void test_proto_writer()
 	chan.local_id = SRC_CHAN_ID;
 	chan.remote_id = DEST_CHAN_ID;
 	chan.current_seqno = 0;
+	chan.important_queue = NULL;
+	chan.important_id = 0;
 	struct ff_transport_data writer_data;
 	writer_data.data = (unsigned char *) calloc(1, WRITE_BUF_SIZE);
 	if (writer_data.data == NULL) {

@@ -29,6 +29,7 @@ struct firefly_channel *firefly_channel_new(struct firefly_connection *conn)
 		chan->writer_data->data_size = BUFFER_SIZE;
 		chan->writer_data->pos = 0;
 		chan->conn = conn;
+		chan->important_queue = NULL;
 		chan->important_id = 0;
 		chan->current_seqno = 0;
 	} else {

@@ -436,6 +436,16 @@ void handle_ack(firefly_protocol_ack *ack, void *context)
 	if (chan->current_seqno == ack->seqno && ack->seqno > 0) {
 		conn->transport_ack(chan->important_id, conn);
 		chan->important_id = 0;
+		if (chan->important_queue != NULL) {
+			struct firefly_event_send_sample *fess;
+			fess = chan->important_queue->fess;
+			struct firefly_channel_important_queue *tmp = chan->important_queue;
+			chan->important_queue = tmp->next;
+			free(tmp);
+			struct firefly_event *ev = firefly_event_new(
+					FIREFLY_PRIORITY_HIGH, send_data_sample_event, fess);
+			conn->event_queue->offer_event_cb(conn->event_queue, ev);
+		}
 	} else if (chan->current_seqno > ack->seqno) {
 		// Do nothing, old ack
 	} else {
