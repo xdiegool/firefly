@@ -60,27 +60,35 @@ void firefly_channel_open(struct firefly_connection *conn,
 		firefly_channel_rejected_f on_chan_rejected)
 {
 	struct firefly_event_chan_open *feco;
+	struct firefly_event *ev;
 	int ret;
 
 	if (conn->open != FIREFLY_CONNECTION_OPEN) {
 		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
-					"Cannot open new channel on a closed connection.\n");
+					  "Can't open new channel on closed connection.\n");
 		return;
 	}
-	feco = malloc(sizeof(struct firefly_event_chan_open));
-	if (feco == NULL) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 1,
-					  "Could not allocate event.\n");
+
+	feco = FIREFLY_MALLOC(sizeof(struct firefly_event_chan_open));
+	ev = firefly_event_new(FIREFLY_PRIORITY_HIGH, firefly_channel_open_event,
+						   feco);
+	if (feco == NULL || ev == NULL) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Could not allocate event.\n");
+		free(feco);
+		if (ev != NULL)
+			firefly_event_free(&ev);
+
+		return;
 	}
-	feco->conn = conn;
+
+	feco->conn        = conn;
 	feco->rejected_cb = on_chan_rejected;
-	struct firefly_event *ev = firefly_event_new(FIREFLY_PRIORITY_HIGH,
-					firefly_channel_open_event, feco);
 
 	ret = conn->event_queue->offer_event_cb(conn->event_queue, ev);
 	if (ret) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 1,
-					  "could not add event to queue");
+		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Could not add event to queue");
+		free(feco);
+		firefly_event_free(&ev);
 	}
 }
 
@@ -112,42 +120,55 @@ int firefly_channel_open_event(void *event_arg)
 
 static void create_channel_closed_event(struct firefly_channel *chan)
 {
+	struct firefly_event *ev;
 	int ret;
 
-	struct firefly_event *ev = firefly_event_new(FIREFLY_PRIORITY_HIGH,
-			firefly_channel_closed_event, chan);
+	ev = firefly_event_new(FIREFLY_PRIORITY_HIGH, firefly_channel_closed_event,
+						   chan);
 	if (ev == NULL) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1,
-				"Could not allocate closed event.");
+					  "Could not allocate closed event.");
+		return;
 	}
-	ret = chan->conn->event_queue->offer_event_cb(chan->conn->event_queue,
-							ev);
+
+	ret = chan->conn->event_queue->offer_event_cb(chan->conn->event_queue, ev);
 	if (ret) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 1,
-				"Could not add event to queue.");
+		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Could not add event to queue.");
 	}
 }
 
 void firefly_channel_close(struct firefly_channel *chan)
 {
-
 	struct firefly_event_chan_close *fecc;
-	fecc = malloc(sizeof(struct firefly_event_chan_close));
-	if (fecc == NULL) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 1,
-				"Could not create event.");
+	struct firefly_event *ev;
+	struct firefly_connection *conn;
+	int ret;
+
+	fecc = FIREFLY_MALLOC(sizeof(struct firefly_event_chan_close));
+	ev = firefly_event_new(FIREFLY_PRIORITY_HIGH, firefly_channel_close_event,
+						   fecc);
+	if (fecc == NULL || ev == NULL) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Could not create event.");
+		free(fecc);
+		if (ev != NULL)
+			firefly_event_free(&ev);
+
+		return;
 	}
-	fecc->conn = chan->conn;
+
+	conn = chan->conn;
+
+	fecc->conn = conn;
 	fecc->chan_close.dest_chan_id = chan->remote_id;
 	fecc->chan_close.source_chan_id = chan->local_id;
-	struct firefly_event *ev = firefly_event_new(FIREFLY_PRIORITY_HIGH,
-					firefly_channel_close_event, fecc);
-	int ret = chan->conn->event_queue->offer_event_cb(
-						chan->conn->event_queue, ev);
 
+	ret = conn->event_queue->offer_event_cb(conn->event_queue, ev);
 	if (ret) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 1,
-				"Could not add event to queue.");
+		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Could not add event to queue.");
+		free(fecc);
+		firefly_event_free(&ev);
+
+		return; // We don't want to call the function below if we failed here
 	}
 
 	create_channel_closed_event(chan);
@@ -163,7 +184,7 @@ int firefly_channel_close_event(void *event_arg)
 	return 0;
 }
 
-// Add const to data?
+// TODO: Add const to data?
 void protocol_data_received(struct firefly_connection *conn,
 		unsigned char *data, size_t size)
 {
@@ -181,26 +202,34 @@ void protocol_data_received(struct firefly_connection *conn,
 void handle_channel_request(firefly_protocol_channel_request *chan_req,
 		void *context)
 {
+	struct firefly_connection *conn;
+	struct firefly_event_chan_req_recv *fecrr;
+	struct firefly_event *ev;
 	int ret;
-	struct firefly_connection *conn = (struct firefly_connection *) context;
-	struct firefly_event_chan_req_recv *fecrr =
-			malloc(sizeof(struct firefly_event_chan_req_recv));
-	if (fecrr == NULL) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 1,
-					  "Could not allocate event.\n");
+
+	conn = (struct firefly_connection *) context;
+
+	fecrr = FIREFLY_MALLOC(sizeof(struct firefly_event_chan_req_recv));
+	ev = firefly_event_new(FIREFLY_PRIORITY_HIGH, handle_channel_request_event,
+						   fecrr);
+	if (fecrr == NULL || ev == NULL) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Could not allocate event.\n");
+		free(fecrr);
+		if (ev != NULL)
+			firefly_event_free(&ev);
+
+		return;
 	}
+
 	fecrr->conn = conn;
-	memcpy(&fecrr->chan_req, chan_req,
-				sizeof(firefly_protocol_channel_request));
-	struct firefly_event *ev = firefly_event_new(FIREFLY_PRIORITY_HIGH,
-			handle_channel_request_event, fecrr);
+	memcpy(&fecrr->chan_req, chan_req, sizeof(firefly_protocol_channel_request));
 
 	ret = conn->event_queue->offer_event_cb(conn->event_queue, ev);
 	if (ret) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 1,
-					  "could not add event to queue");
+		firefly_error(FIREFLY_ERROR_ALLOC, 1, "could not add event to queue");
+		free(fecrr);
+		firefly_event_free(&ev);
 	}
-
 }
 
 int handle_channel_request_event(void *event_arg)
@@ -250,26 +279,35 @@ int handle_channel_request_event(void *event_arg)
 void handle_channel_response(firefly_protocol_channel_response *chan_res,
 		void *context)
 {
+	struct firefly_connection *conn;
+	struct firefly_event_chan_res_recv *fecrr;
+	struct firefly_event *ev;
 	int ret;
-	struct firefly_connection *conn = (struct firefly_connection *) context;
-	struct firefly_event_chan_res_recv *fecrr =
-			malloc(sizeof(struct firefly_event_chan_res_recv));
-	if (fecrr == NULL) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 1,
-					  "Could not allocate event.\n");
+
+	conn = (struct firefly_connection *) context;
+
+	fecrr = FIREFLY_MALLOC(sizeof(struct firefly_event_chan_res_recv));
+	ev = firefly_event_new(FIREFLY_PRIORITY_HIGH, handle_channel_response_event,
+						   fecrr);
+	if (fecrr == NULL || ev == NULL) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Could not allocate event.\n");
+		free(fecrr);
+		if (ev != NULL)
+			firefly_event_free(&ev);
+
+		return;
 	}
+
 	fecrr->conn = conn;
 	memcpy(&fecrr->chan_res, chan_res,
-				sizeof(firefly_protocol_channel_response));
-	struct firefly_event *ev = firefly_event_new(FIREFLY_PRIORITY_HIGH,
-			handle_channel_response_event, fecrr);
+		   sizeof(firefly_protocol_channel_response));
 
 	ret = conn->event_queue->offer_event_cb(conn->event_queue, ev);
 	if (ret) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 1,
-					  "could not add event to queue");
+		firefly_error(FIREFLY_ERROR_ALLOC, 1, "could not add event to queue");
+		free(fecrr);
+		firefly_event_free(&ev);
 	}
-
 }
 
 int handle_channel_response_event(void *event_arg)
@@ -310,24 +348,33 @@ int handle_channel_response_event(void *event_arg)
 
 void handle_channel_ack(firefly_protocol_channel_ack *chan_ack, void *context)
 {
+	struct firefly_connection *conn;
+	struct firefly_event_chan_ack_recv *fecar;
+	struct firefly_event *ev;
 	int ret;
-	struct firefly_connection *conn = (struct firefly_connection *) context;
-	struct firefly_event_chan_ack_recv *fecar =
-			malloc(sizeof(struct firefly_event_chan_ack_recv));
-	if (fecar == NULL) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 1,
-					  "Could not allocate event.\n");
+
+	conn = (struct firefly_connection *) context;
+
+	fecar = FIREFLY_MALLOC(sizeof(struct firefly_event_chan_ack_recv));
+	ev = firefly_event_new(FIREFLY_PRIORITY_HIGH, handle_channel_ack_event,
+						   fecar);
+	if (fecar == NULL || ev == NULL) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Could not allocate event.\n");
+		free(fecar);
+		if (ev != NULL)
+			firefly_event_free(&ev);
+
+		return;
 	}
+
 	fecar->conn = conn;
-	memcpy(&fecar->chan_ack, chan_ack,
-		sizeof(firefly_protocol_channel_ack));
-	struct firefly_event *ev = firefly_event_new(FIREFLY_PRIORITY_HIGH,
-			handle_channel_ack_event, fecar);
+	memcpy(&fecar->chan_ack, chan_ack, sizeof(firefly_protocol_channel_ack));
 
 	ret = conn->event_queue->offer_event_cb(conn->event_queue, ev);
 	if (ret) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 1,
-					  "could not add event to queue");
+		firefly_error(FIREFLY_ERROR_ALLOC, 1, "could not add event to queue");
+		free(fecar);
+		firefly_event_free(&ev);
 	}
 }
 
@@ -351,41 +398,56 @@ int handle_channel_ack_event(void *event_arg)
 void handle_channel_close(firefly_protocol_channel_close *chan_close,
 		void *context)
 {
-	struct firefly_connection *conn = (struct firefly_connection *) context;
-	struct firefly_channel *chan = find_channel_by_local_id(
-			conn, chan_close->dest_chan_id);
+	struct firefly_connection *conn;
+	struct firefly_channel *chan;
+
+	conn = (struct firefly_connection *) context;
+	chan = find_channel_by_local_id(conn, chan_close->dest_chan_id);
 	if (chan != NULL){
 		create_channel_closed_event(chan);
 	} else {
 		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
-				"Received closed on non-existing channel.\n");
+					  "Received closed on non-existing channel.\n");
 	}
 }
 
-void handle_data_sample(firefly_protocol_data_sample *data,
-		void *context)
+void handle_data_sample(firefly_protocol_data_sample *data, void *context)
 {
-	struct firefly_connection *conn = (struct firefly_connection *) context;
+	struct firefly_connection *conn;
+	struct firefly_event_recv_sample *fers;
+	unsigned char *fers_data;
+	struct firefly_event *ev;
+	int ret;
 
-	struct firefly_event_recv_sample *fers =
-		malloc(sizeof(struct firefly_event_recv_sample));
-	if (fers == NULL) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 1,
-					  "Could not allocate event.\n");
+	conn = (struct firefly_connection *) context;
+
+	fers      = FIREFLY_MALLOC(sizeof(struct firefly_event_recv_sample));
+	fers_data = FIREFLY_MALLOC(data->app_enc_data.n_0);
+	ev        = firefly_event_new(FIREFLY_PRIORITY_LOW, handle_data_sample_event,
+								  fers);
+	if (fers == NULL || fers_data == NULL || ev == NULL) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Could not allocate event.\n");
+		free(fers_data);
+		free(fers);
+		if (ev != NULL)
+			firefly_event_free(&ev);
+
+		return;
 	}
 
 	fers->conn = conn;
-	memcpy(&fers->data, data, sizeof(firefly_protocol_data_sample));
-	fers->data.app_enc_data.a = malloc(data->app_enc_data.n_0);
-	memcpy(fers->data.app_enc_data.a, data->app_enc_data.a,
-		data->app_enc_data.n_0);
 
-	struct firefly_event *ev = firefly_event_new(FIREFLY_PRIORITY_LOW,
-			handle_data_sample_event, fers);
-	int ret = conn->event_queue->offer_event_cb(conn->event_queue, ev);
+	memcpy(&fers->data, data, sizeof(firefly_protocol_data_sample));
+
+	memcpy(fers_data, data->app_enc_data.a, data->app_enc_data.n_0);
+	fers->data.app_enc_data.a = fers_data;
+
+	ret = conn->event_queue->offer_event_cb(conn->event_queue, ev);
 	if (ret) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 1,
-					  "could not add event to queue");
+		firefly_error(FIREFLY_ERROR_ALLOC, 1, "could not add event to queue");
+		free(fers->data.app_enc_data.a);
+		free(fers);
+		firefly_event_free(&ev);
 	}
 }
 
@@ -430,11 +492,18 @@ struct firefly_channel *find_channel_by_local_id(
 void add_channel_to_connection(struct firefly_channel *chan,
 		struct firefly_connection *conn)
 {
-	struct channel_list_node *new_node =
-		malloc(sizeof(struct channel_list_node));
-	new_node->chan = chan;
-	new_node->next = conn->chan_list;
-	conn->chan_list = new_node;
+	struct channel_list_node *new_node;
+
+	new_node = FIREFLY_MALLOC(sizeof(struct channel_list_node));
+
+	if (new_node != NULL) {
+		new_node->chan = chan;
+		new_node->next = conn->chan_list;
+		conn->chan_list = new_node;
+	} else {
+		firefly_error(FIREFLY_ERROR_ALLOC, 1,
+					  "Failed to allocate new channel list note\n");
+	}
 }
 
 struct labcomm_encoder *firefly_protocol_get_output_stream(
@@ -451,7 +520,7 @@ struct labcomm_decoder *firefly_protocol_get_input_stream(
 
 size_t firefly_number_channels_in_connection(struct firefly_connection *conn)
 {
-       	struct channel_list_node *node;
+	struct channel_list_node *node;
 	size_t cnt = 0;
 
 	node = conn->chan_list;
