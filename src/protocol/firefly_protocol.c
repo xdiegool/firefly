@@ -483,8 +483,16 @@ int handle_data_sample_event(void *event_arg)
 		chan->reader_data->data_size = 0;
 		chan->reader_data->pos = 0;
 	} else {
+		firefly_protocol_channel_close chan_close;
+
 		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
 					  "Received data sample on non-existing channel.\n");
+
+		/* Notify the other party of their mistake. */
+		chan_close.dest_chan_id   = fers->data.src_chan_id;
+		chan_close.source_chan_id = fers->data.dest_chan_id;
+		labcomm_encode_firefly_protocol_channel_close(fers->conn->transport_encoder,
+													  &chan_close);
 	}
 
 	FIREFLY_FREE(fers->data.app_enc_data.a);

@@ -168,7 +168,7 @@ void test_unexpected_data_sample()
 
 	firefly_protocol_data_sample sample;
 	sample.dest_chan_id = 14;
-	sample.src_chan_id = 14;
+	sample.src_chan_id = 15;
 	sample.app_enc_data.n_0 = app_data_size;
 	sample.app_enc_data.a = app_data;
 	CU_ASSERT_EQUAL_FATAL(firefly_event_queue_length(eq), 0);
@@ -184,9 +184,32 @@ void test_unexpected_data_sample()
 	CU_ASSERT_PTR_NOT_NULL_FATAL(ev);
 	firefly_event_execute(ev);
 
-	expected_error = FIREFLY_ERROR_FIRST; // Reset
 	CU_ASSERT_TRUE(was_in_error);
+	expected_error = FIREFLY_ERROR_FIRST; // Reset
 	was_in_error = false; // Reset.
+
+	/*
+	 * There should now be a chan_close as response to the erroneous app_data.
+	 * Any error is detected immediately, without the use of event.
+	 * TODO: This is inconsistent. The channel is searched for before creating
+	 * the event. For app data this is done when executing the event.
+	 */
+	CU_ASSERT_PTR_NOT_NULL(conn_open);
+	CU_ASSERT_PTR_NULL(conn_open->chan_list);
+	conn_open->chan_list = malloc(sizeof(struct channel_list_node));
+	conn_open->chan_list->next = NULL;
+	conn_open->chan_list->chan = firefly_channel_new(conn_open);
+	conn_open->chan_list->chan->local_id = 15;
+	conn_open->chan_list->chan->remote_id = 14;
+
+	firefly_protocol_channel_close close_msg;
+
+	protocol_data_received(conn_open, conn_recv_write.data,
+						   conn_recv_write.size);
+	CU_ASSERT_FALSE(was_in_error);
+	expected_error = FIREFLY_ERROR_FIRST; // Reset
+	was_in_error = false; // Reset.
+
 	free(conn_open_write.data);
 
 	mk_lc_and_reg_sigs_free(conn_open, conn_recv, eq);
