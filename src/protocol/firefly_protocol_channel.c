@@ -58,6 +58,7 @@ void firefly_channel_free(struct firefly_channel *chan)
 		free(chan->writer_data->data);
 		free(chan->writer_data);
 	}
+
 	free(chan);
 }
 
@@ -69,7 +70,7 @@ struct firefly_connection *firefly_channel_get_connection(
 
 int firefly_channel_next_seqno(struct firefly_channel *chan)
 {
-	if (++chan->current_seqno < 0) {
+	if (++chan->current_seqno <= 0) {
 		chan->current_seqno = 1;
 	}
 	return chan->current_seqno;

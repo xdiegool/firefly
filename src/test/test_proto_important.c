@@ -247,6 +247,10 @@ void test_important_mult_simultaneously()
 	struct firefly_channel *chan = firefly_channel_new(conn);
 	add_channel_to_connection(chan, conn);
 
+	firefly_protocol_ack ack_pkt;
+	ack_pkt.dest_chan_id = chan->local_id;
+	ack_pkt.src_chan_id = chan->remote_id;
+
 	CU_ASSERT_EQUAL(chan->current_seqno, 0);
 	labcomm_encoder_register_test_test_var(
 			firefly_protocol_get_output_stream(chan));
@@ -264,9 +268,6 @@ void test_important_mult_simultaneously()
 	CU_ASSERT_EQUAL(chan->current_seqno, 1);
 	mock_transport_written = false;
 
-	firefly_protocol_ack ack_pkt;
-	ack_pkt.dest_chan_id = chan->local_id;
-	ack_pkt.src_chan_id = chan->remote_id;
 	ack_pkt.seqno = 1;
 	labcomm_encode_firefly_protocol_ack(test_enc, &ack_pkt);
 	protocol_data_received(conn, test_enc_ctx->buf, test_enc_ctx->write_pos);
@@ -308,4 +309,40 @@ void test_important_mult_simultaneously()
 	firefly_connection_free(&conn);
 
 }
-// TODO test old ack, errorneous ack
+
+void test_errorneous_ack()
+{
+	struct test_conn_platspec ps;
+	ps.important = false;
+	struct firefly_connection *conn = firefly_connection_new(NULL, NULL, NULL,
+			transport_write_test_decoder, NULL, eq, &ps, NULL);
+	struct firefly_channel *chan = firefly_channel_new(conn);
+	add_channel_to_connection(chan, conn);
+
+	chan->current_seqno = 5;
+	chan->important_id = TEST_IMPORTANT_ID;
+
+	firefly_protocol_ack ack_pkt;
+	ack_pkt.dest_chan_id = chan->local_id;
+	ack_pkt.src_chan_id = chan->remote_id;
+	ack_pkt.seqno = 4;
+	labcomm_encode_firefly_protocol_ack(test_enc, &ack_pkt);
+	protocol_data_received(conn, test_enc_ctx->buf, test_enc_ctx->write_pos);
+	test_enc_ctx->write_pos = 0;
+	CU_ASSERT_FALSE(mock_transport_acked);
+	CU_ASSERT_EQUAL(chan->important_id, TEST_IMPORTANT_ID);
+	CU_ASSERT_EQUAL(chan->current_seqno, 5);
+
+	ack_pkt.seqno = 6;
+	labcomm_encode_firefly_protocol_ack(test_enc, &ack_pkt);
+	protocol_data_received(conn, test_enc_ctx->buf, test_enc_ctx->write_pos);
+	test_enc_ctx->write_pos = 0;
+	CU_ASSERT_FALSE(mock_transport_acked);
+	CU_ASSERT_EQUAL(chan->important_id, TEST_IMPORTANT_ID);
+	CU_ASSERT_EQUAL(chan->current_seqno, 5);
+
+	mock_transport_written = false;
+	mock_transport_acked = false;
+	firefly_connection_free(&conn);
+}
+// TODO test multiple important queue
