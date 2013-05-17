@@ -137,6 +137,8 @@ struct firefly_channel {
 								  resent. */
 	int current_seqno; /**< The sequence number of the currently or last
 						 important packet. */
+	int remote_seqno; /**< The sequence number of the last received important
+						packet. */
 	struct labcomm_encoder *proto_encoder; /**< LabComm encoder for this
 					   			channel.*/
 	struct labcomm_decoder *proto_decoder; /**< LabComm decoder for this

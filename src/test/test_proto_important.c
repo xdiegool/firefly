@@ -206,6 +206,7 @@ void test_important_send_ack()
 
 	CU_ASSERT_TRUE(received_ack);
 	CU_ASSERT_EQUAL(ack.seqno, 1);
+	CU_ASSERT_EQUAL(chan->remote_seqno, 1);
 
 	received_ack = false;
 	firefly_connection_free(&conn);
@@ -345,4 +346,73 @@ void test_errorneous_ack()
 	mock_transport_acked = false;
 	firefly_connection_free(&conn);
 }
-// TODO test multiple important queue
+
+void handle_test_var_error(test_test_var *d, void *context)
+{
+	UNUSED_VAR(d);
+	UNUSED_VAR(context);
+	CU_FAIL("Received test var data but should not have");
+}
+
+void test_important_recv_duplicate()
+{
+	struct test_conn_platspec ps;
+	ps.important = false;
+	struct firefly_connection *conn = firefly_connection_new(NULL, NULL, NULL,
+			transport_write_test_decoder, NULL, eq, &ps, NULL);
+	struct firefly_channel *chan = firefly_channel_new(conn);
+	add_channel_to_connection(chan, conn);
+
+	CU_ASSERT_EQUAL(chan->remote_seqno, 0);
+
+	labcomm_decoder_register_test_test_var(
+			firefly_protocol_get_input_stream(chan), handle_test_var_error, NULL);
+	labcomm_encoder_register_test_test_var(test_enc);
+	firefly_protocol_data_sample sample_pkt;
+	sample_pkt.dest_chan_id = chan->local_id;
+	sample_pkt.src_chan_id = chan->remote_id;
+	sample_pkt.seqno = 1;
+	sample_pkt.important = true;
+	sample_pkt.app_enc_data.a = malloc(test_enc_ctx->write_pos);
+	memcpy(sample_pkt.app_enc_data.a, test_enc_ctx->buf,
+			test_enc_ctx->write_pos);
+	sample_pkt.app_enc_data.n_0 = test_enc_ctx->write_pos;
+	test_enc_ctx->write_pos = 0;
+	labcomm_encode_firefly_protocol_data_sample(test_enc, &sample_pkt);
+	protocol_data_received(conn, test_enc_ctx->buf, test_enc_ctx->write_pos);
+	test_enc_ctx->write_pos = 0;
+	event_execute_test(eq, 1);
+
+	CU_ASSERT_TRUE(received_ack);
+	CU_ASSERT_EQUAL(ack.seqno, 1);
+	CU_ASSERT_EQUAL(chan->remote_seqno, 1);
+
+	free(sample_pkt.app_enc_data.a);
+
+	test_test_var app_data = 1;
+	labcomm_encode_test_test_var(test_enc, &app_data);
+	sample_pkt.dest_chan_id = chan->local_id;
+	sample_pkt.src_chan_id = chan->remote_id;
+	sample_pkt.seqno = 1;
+	sample_pkt.important = true;
+	sample_pkt.app_enc_data.a = malloc(test_enc_ctx->write_pos);
+	memcpy(sample_pkt.app_enc_data.a, test_enc_ctx->buf,
+			test_enc_ctx->write_pos);
+	sample_pkt.app_enc_data.n_0 = test_enc_ctx->write_pos;
+	test_enc_ctx->write_pos = 0;
+	labcomm_encode_firefly_protocol_data_sample(test_enc, &sample_pkt);
+
+	protocol_data_received(conn, test_enc_ctx->buf, test_enc_ctx->write_pos);
+	test_enc_ctx->write_pos = 0;
+	event_execute_test(eq, 1);
+
+	CU_ASSERT_TRUE(received_ack);
+	CU_ASSERT_EQUAL(ack.seqno, 1);
+	CU_ASSERT_EQUAL(chan->remote_seqno, 1);
+
+	free(sample_pkt.app_enc_data.a);
+
+	mock_transport_written = false;
+	mock_transport_acked = false;
+	firefly_connection_free(&conn);
+}

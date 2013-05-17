@@ -403,13 +403,22 @@ int handle_data_sample_event(void *event_arg)
 			fers->data.dest_chan_id);
 
 	if (chan != NULL) {
-		chan->reader_data->data = fers->data.app_enc_data.a;
-		chan->reader_data->data_size = fers->data.app_enc_data.n_0;
-		chan->reader_data->pos = 0;
-		labcomm_decoder_decode_one(chan->proto_decoder);
-		chan->reader_data->data = NULL;
-		chan->reader_data->data_size = 0;
-		chan->reader_data->pos = 0;
+		int expected_seqno = chan->remote_seqno + 1;
+		if (expected_seqno <= 0) {
+			expected_seqno = 1;
+		}
+		if (!fers->data.important || expected_seqno == fers->data.seqno) {
+			chan->reader_data->data = fers->data.app_enc_data.a;
+			chan->reader_data->data_size = fers->data.app_enc_data.n_0;
+			chan->reader_data->pos = 0;
+			labcomm_decoder_decode_one(chan->proto_decoder);
+			chan->reader_data->data = NULL;
+			chan->reader_data->data_size = 0;
+			chan->reader_data->pos = 0;
+			if (fers->data.important) {
+				chan->remote_seqno = fers->data.seqno;
+			}
+		}
 		if (fers->data.important) {
 			firefly_protocol_ack ack_pkt;
 			ack_pkt.dest_chan_id = chan->local_id;

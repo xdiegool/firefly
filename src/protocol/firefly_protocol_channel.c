@@ -32,6 +32,7 @@ struct firefly_channel *firefly_channel_new(struct firefly_connection *conn)
 		chan->important_queue = NULL;
 		chan->important_id = 0;
 		chan->current_seqno = 0;
+		chan->remote_seqno = 0;
 	} else {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1, "malloc failed");
 	}

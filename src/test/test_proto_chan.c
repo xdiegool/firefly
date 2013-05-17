@@ -629,6 +629,7 @@ void test_recv_app_data()
 	proto_sign_pkt.src_chan_id = REMOTE_CHAN_ID;
 	proto_sign_pkt.dest_chan_id = ch->local_id;
 	proto_sign_pkt.important = true;
+	proto_sign_pkt.seqno = 1;
 	proto_sign_pkt.app_enc_data.a = ep_app->sign;
 	proto_sign_pkt.app_enc_data.n_0 = ep_app->ssize;
 
@@ -645,6 +646,7 @@ void test_recv_app_data()
 	proto_data_pkt.src_chan_id = REMOTE_CHAN_ID;
 	proto_data_pkt.dest_chan_id = ch->local_id;
 	proto_data_pkt.important = true;
+	proto_data_pkt.seqno = 2;
 	proto_data_pkt.app_enc_data.a = ep_app->data;
 	proto_data_pkt.app_enc_data.n_0 = ep_app->dsize;
 
