@@ -10,3 +10,4 @@ Fix timeout in UDP.
 
 Reliability:
 	- Ack transport packets when closing a channel.
+	- conn->transport_ack == NULL should be interpreted as reliability ensured
