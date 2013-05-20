@@ -199,11 +199,7 @@ void *pong_main_thread(void *arg)
 	}
 	pthread_mutex_unlock(&pong_done_lock);
 
-	pthread_cancel(reader_thread);
-	pthread_join(reader_thread, NULL);
-
-	pthread_cancel(resend_thread);
-	pthread_join(resend_thread, NULL);
+	firefly_transport_udp_posix_stop(llp, &reader_thread, &resend_thread);
 
 	firefly_transport_llp_udp_posix_free(llp);
 

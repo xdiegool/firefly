@@ -95,6 +95,8 @@ struct firefly_connection *firefly_transport_connection_udp_posix_open(
  */
 int firefly_transport_udp_posix_run(struct firefly_transport_llp *llp,
 		pthread_t *reader, pthread_t *resend);
+int firefly_transport_udp_posix_stop(struct firefly_transport_llp *llp,
+		pthread_t *reader, pthread_t *resend);
 
 /**
  * @brief Read data from the connection and fire events.

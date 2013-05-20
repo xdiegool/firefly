@@ -264,12 +264,15 @@ void *firefly_transport_udp_posix_resend(void *args)
 	unsigned char id;
 	int res;
 	while (true) { // Change to some finite value
+		int prev_state;
 		firefly_resend_wait(rq, &data, &size, &conn, &id);
+		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &prev_state);
 		// TODO fix better way to resend, imprtant = false and id = NULL might
 		// break inthe future
 		firefly_transport_udp_posix_write(data, size, conn,
 				false, NULL);
 		free(data);
+		pthread_setcancelstate(prev_state, NULL);
 		res = firefly_resend_readd(rq, id,
 				((struct protocol_connection_udp_posix *)
 				conn->transport_conn_platspec)->timeout);
@@ -285,6 +288,7 @@ void *firefly_transport_udp_posix_read_run(void *args)
 	struct firefly_transport_llp *llp = (struct firefly_transport_llp *) args;
 	while (true)
 		firefly_transport_udp_posix_read(llp);
+	return NULL;
 }
 
 int firefly_transport_udp_posix_run(struct firefly_transport_llp *llp,
@@ -309,6 +313,20 @@ int firefly_transport_udp_posix_run(struct firefly_transport_llp *llp,
 			}
 			return res;
 		}
+	}
+	return 0;
+}
+
+int firefly_transport_udp_posix_stop(struct firefly_transport_llp *llp,
+		pthread_t *reader, pthread_t *resend)
+{
+	if (reader != NULL) {
+		pthread_cancel(*reader);
+		pthread_join(*reader, NULL);
+	}
+	if (resend != NULL) {
+		pthread_cancel(*resend);
+		pthread_join(*resend, NULL);
 	}
 	return 0;
 }
