@@ -139,6 +139,7 @@ void *ping_main_thread(void *arg)
 	UNUSED_VAR(arg);
 	int res;
 	pthread_t reader_thread;
+	pthread_t resend_thread;
 	pthread_t event_thread;
 
 	printf("Hello, Firefly from Ping!\n");
@@ -176,9 +177,10 @@ void *ping_main_thread(void *arg)
 
 	firefly_channel_open(conn, ping_channel_rejected);
 
-	res = pthread_create(&reader_thread, NULL, reader_thread_main, llp);
+	res = firefly_transport_udp_posix_run(llp, &reader_thread, &resend_thread);
+	/*res = pthread_create(&reader_thread, NULL, reader_thread_main, llp);*/
 	if (res) {
-		fprintf(stderr, "ERROR: starting reader thread.\n");
+		fprintf(stderr, "ERROR: starting reader/resend thread.\n");
 	}
 
 	pthread_mutex_lock(&ping_done_lock);
@@ -189,6 +191,9 @@ void *ping_main_thread(void *arg)
 
 	pthread_cancel(reader_thread);
 	pthread_join(reader_thread, NULL);
+
+	pthread_cancel(resend_thread);
+	pthread_join(resend_thread, NULL);
 
 	firefly_transport_llp_udp_posix_free(llp);
 	pthread_mutex_lock(&eq_s.eq_lock);

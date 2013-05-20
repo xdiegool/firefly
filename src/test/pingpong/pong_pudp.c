@@ -155,6 +155,7 @@ void *pong_main_thread(void *arg)
 	int res;
 	pthread_t event_thread;
 	pthread_t reader_thread;
+	pthread_t resend_thread;
 	struct thread_arg *ta = (struct thread_arg *) arg;
 
 	printf("Hello, Firefly from Pong!\n");
@@ -180,7 +181,8 @@ void *pong_main_thread(void *arg)
 			firefly_transport_llp_udp_posix_new(PONG_PORT,
 					pong_connection_received, event_queue);
 
-	res = pthread_create(&reader_thread, NULL, reader_thread_main, llp);
+	res = firefly_transport_udp_posix_run(llp, &reader_thread, &resend_thread);
+	/*res = pthread_create(&reader_thread, NULL, reader_thread_main, llp);*/
 	if (res) {
 		fprintf(stderr, "ERROR: starting reader thread.\n");
 	}
@@ -199,6 +201,9 @@ void *pong_main_thread(void *arg)
 
 	pthread_cancel(reader_thread);
 	pthread_join(reader_thread, NULL);
+
+	pthread_cancel(resend_thread);
+	pthread_join(resend_thread, NULL);
 
 	firefly_transport_llp_udp_posix_free(llp);
 

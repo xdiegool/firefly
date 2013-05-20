@@ -6,6 +6,7 @@
 #ifndef FIREFLY_TRANSPORT_UDP_POSIX_H
 #define FIREFLY_TRANSPORT_UDP_POSIX_H
 
+#include <pthread.h>
 #include <stdbool.h>
 #include <netinet/in.h>
 
@@ -86,6 +87,14 @@ struct firefly_connection *firefly_transport_connection_udp_posix_open(
 				unsigned short remote_port,
 				unsigned int timeout,
 				struct firefly_transport_llp *llp);
+
+/**
+ * @brief TODO
+ *
+ * Run resend and reader, if NULL dont run
+ */
+int firefly_transport_udp_posix_run(struct firefly_transport_llp *llp,
+		pthread_t *reader, pthread_t *resend);
 
 /**
  * @brief Read data from the connection and fire events.

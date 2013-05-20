@@ -5,6 +5,7 @@
 #undef _GNU_SOURCE
 #endif
 #define _POSIX_C_SOURCE (200112L)
+#include <pthread.h>
 #include <string.h>
 
 #include <transport/firefly_transport_udp_posix.h>
@@ -264,21 +265,59 @@ void firefly_transport_udp_posix_write(unsigned char *data, size_t data_size,
 void *firefly_transport_udp_posix_resend(void *args)
 {
 	struct resend_queue *rq = (struct resend_queue *) args;
+	unsigned char *data;
+	size_t size;
+	struct firefly_connection *conn;
+	unsigned char id;
 	int res;
 	while (true) { // Change to some finite value
-		struct resend_elem *re = firefly_resend_wait(rq);
+		firefly_resend_wait(rq, &data, &size, &conn, &id);
 		// TODO fix better way to resend, imprtant = false and id = NULL might
 		// break inthe future
-		firefly_transport_udp_posix_write(re->data, re->size, re->conn,
+		firefly_transport_udp_posix_write(data, size, conn,
 				false, NULL);
-		res = firefly_resend_readd(rq, re,
+		free(data);
+		res = firefly_resend_readd(rq, id,
 				((struct protocol_connection_udp_posix *)
-				re->conn->transport_conn_platspec)->timeout);
+				conn->transport_conn_platspec)->timeout);
 		if (res < 0) {
-			// TODO max retries reached, free resend_elem
+			// TODO max retries reached
 		}
 	}
 	return NULL;
+}
+
+void *firefly_transport_udp_posix_read_run(void *args)
+{
+	struct firefly_transport_llp *llp = (struct firefly_transport_llp *) args;
+	while (true)
+		firefly_transport_udp_posix_read(llp);
+}
+
+int firefly_transport_udp_posix_run(struct firefly_transport_llp *llp,
+		pthread_t *reader, pthread_t *resend)
+{
+	int res;
+	struct transport_llp_udp_posix *llp_udp =
+		(struct transport_llp_udp_posix *) llp->llp_platspec;
+	if (reader != NULL) {
+		res = pthread_create(reader, NULL, firefly_transport_udp_posix_read_run,
+				llp);
+		if (res < 0) {
+			return res;
+		}
+	}
+	if (resend != NULL) {
+		res = pthread_create(resend, NULL, firefly_transport_udp_posix_resend,
+				llp_udp->resend_queue);
+		if (res < 0) {
+			if (reader != NULL) {
+				pthread_cancel(*reader);
+			}
+			return res;
+		}
+	}
+	return 0;
 }
 
 void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
