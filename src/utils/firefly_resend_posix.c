@@ -40,8 +40,17 @@ void firefly_resend_queue_free(struct resend_queue *rq)
 	free(rq);
 }
 
+static inline void timespec_add_ms(struct timespec *t, long d)
+{
+	t->tv_nsec += d * 1000000;
+	if (t->tv_nsec >= 1000000000) {
+		t->tv_sec += t->tv_nsec / 1000000000;
+		t->tv_nsec = t->tv_nsec % 1000000000;
+	}
+}
+
 unsigned char firefly_resend_add(struct resend_queue *rq,
-		unsigned char *data, size_t size, struct timespec at,
+		unsigned char *data, size_t size, long timeout_ms,
 		unsigned char retries, struct firefly_connection *conn)
 {
 	struct resend_elem *re = malloc(sizeof(struct resend_elem));
@@ -50,7 +59,8 @@ unsigned char firefly_resend_add(struct resend_queue *rq,
 	}
 	re->data = data;
 	re->size = size;
-	re->resend_at = at;
+	clock_gettime(CLOCK_REALTIME, &re->resend_at);
+	timespec_add_ms(&re->resend_at, timeout_ms);
 	re->num_retries = retries;
 	re->conn = conn;
 	re->prev = NULL;
@@ -101,7 +111,7 @@ static inline struct resend_elem *firefly_resend_pop(
 }
 
 int firefly_resend_readd(struct resend_queue *rq, unsigned char id,
-		long timeout)
+		long timeout_ms)
 {
 	struct resend_elem *re = firefly_resend_pop(rq, id);
 	if (re == NULL)
@@ -112,11 +122,7 @@ int firefly_resend_readd(struct resend_queue *rq, unsigned char id,
 		return -1;
 	}
 
-	re->resend_at.tv_nsec += timeout * 1000000;
-	if (re->resend_at.tv_nsec >= 1000000000) {
-		re->resend_at.tv_sec += re->resend_at.tv_nsec / 1000000000;
-		re->resend_at.tv_nsec = re->resend_at.tv_nsec % 1000000000;
-	}
+	timespec_add_ms(&re->resend_at, timeout_ms);
 	re->prev = NULL;
 	if (rq->last == NULL) {
 		rq->first = re;

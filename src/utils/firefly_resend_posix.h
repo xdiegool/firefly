@@ -60,7 +60,7 @@ void firefly_resend_queue_free(struct resend_queue *rq);
  * @return The id assigned to the created resend block.
  */
 unsigned char firefly_resend_add(struct resend_queue *rq,
-		unsigned char *data, size_t size, struct timespec at,
+		unsigned char *data, size_t size, long timeout_ms,
 		unsigned char retries, struct firefly_connection *conn);
 
 /**
@@ -96,5 +96,5 @@ void firefly_resend_wait(struct resend_queue *rq,
  * Add to queue again, add timeout to resend_at, return -1 if retries reached 0
  */
 int firefly_resend_readd(struct resend_queue *rq, unsigned char id,
-		long timeout);
+		long timeout_ms);
 #endif

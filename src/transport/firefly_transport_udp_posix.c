@@ -244,16 +244,9 @@ void firefly_transport_udp_posix_write(unsigned char *data, size_t data_size,
 		if (id != NULL) {
 			unsigned char *new_data = malloc(data_size);
 			memcpy(new_data, data, data_size);
-			struct timespec at;
-			clock_gettime(CLOCK_REALTIME, &at);
-			at.tv_nsec += conn_udp->timeout * 1000000;
-			if (at.tv_nsec >= 1000000000) {
-				at.tv_sec += at.tv_nsec / 1000000000;
-				at.tv_nsec = at.tv_nsec % 1000000000;
-			}
 			*id = firefly_resend_add(((struct transport_llp_udp_posix *)
 					conn_udp->llp->llp_platspec)->resend_queue,
-					new_data, data_size, at,
+					new_data, data_size, conn_udp->timeout,
 					FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_RETRIES, conn);
 		} else {
 			firefly_error(FIREFLY_ERROR_TRANS_WRITE, 1,
