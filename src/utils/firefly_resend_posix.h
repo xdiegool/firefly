@@ -69,6 +69,11 @@ unsigned char firefly_resend_add(struct resend_queue *rq,
 void firefly_resend_remove(struct resend_queue *rq, unsigned char id);
 
 /**
+ * @brief TODO
+ */
+void firefly_resend_elem_free(struct resend_elem *re);
+
+/**
  * Returns, but does not remove, the first element from the queue.
  *
  * @param rq The resend_queue to search through.
@@ -78,4 +83,16 @@ void firefly_resend_remove(struct resend_queue *rq, unsigned char id);
  */
 struct resend_elem *firefly_resend_top(struct resend_queue *rq);
 
+/**
+ * @brief TODO
+ */
+struct resend_elem *firefly_resend_wait(struct resend_queue *rq);
+
+/**
+ * @brief TODO
+ *
+ * Add to queue again, add timeout to resend_at, return -1 if retries reached 0
+ */
+int firefly_resend_readd(struct resend_queue *rq, struct resend_elem *re,
+		long timeout);
 #endif

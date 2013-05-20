@@ -247,8 +247,8 @@ void firefly_transport_udp_posix_write(unsigned char *data, size_t data_size,
 			clock_gettime(CLOCK_REALTIME, &at);
 			at.tv_nsec += conn_udp->timeout * 1000000;
 			if (at.tv_nsec >= 1000000000) {
-				at.tv_sec++;
-				at.tv_nsec -= 1000000000;
+				at.tv_sec += at.tv_nsec / 1000000000;
+				at.tv_nsec = at.tv_nsec % 1000000000;
 			}
 			*id = firefly_resend_add(((struct transport_llp_udp_posix *)
 					conn_udp->llp->llp_platspec)->resend_queue,
@@ -259,6 +259,26 @@ void firefly_transport_udp_posix_write(unsigned char *data, size_t data_size,
 					"Parameter id was NULL.\n");
 		}
 	}
+}
+
+void *firefly_transport_udp_posix_resend(void *args)
+{
+	struct resend_queue *rq = (struct resend_queue *) args;
+	int res;
+	while (true) { // Change to some finite value
+		struct resend_elem *re = firefly_resend_wait(rq);
+		// TODO fix better way to resend, imprtant = false and id = NULL might
+		// break inthe future
+		firefly_transport_udp_posix_write(re->data, re->size, re->conn,
+				false, NULL);
+		res = firefly_resend_readd(rq, re,
+				((struct protocol_connection_udp_posix *)
+				re->conn->transport_conn_platspec)->timeout);
+		if (res < 0) {
+			// TODO max retries reached, free resend_elem
+		}
+	}
+	return NULL;
 }
 
 void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)

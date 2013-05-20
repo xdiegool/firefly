@@ -238,6 +238,64 @@ void test_top_simple()
 	firefly_resend_queue_free(rq);
 }
 
+void test_readd_simple()
+{
+	struct timespec at;
+	at.tv_sec = 1;
+	at.tv_nsec = 2;
+	struct resend_queue *rq = firefly_resend_queue_new();
+
+	firefly_resend_add(rq, data_test_new(), DATA_SIZE,
+			at, 2, NULL);
+	struct resend_elem *re = rq->first;
+	rq->first = NULL;
+	rq->last = NULL;
+	int res = firefly_resend_readd(rq, re, 500);
+
+	CU_ASSERT_EQUAL(res, 0);
+	CU_ASSERT_EQUAL(re->num_retries, 1);
+	CU_ASSERT_EQUAL(re->resend_at.tv_sec, 1);
+	CU_ASSERT_EQUAL(re->resend_at.tv_nsec, 500000002);
+	CU_ASSERT_EQUAL(rq->first, re);
+	CU_ASSERT_EQUAL(rq->first, rq->last);
+
+
+	firefly_resend_queue_free(rq);
+}
+
+void test_readd_complex()
+{
+	struct timespec at;
+	at.tv_sec = 1;
+	at.tv_nsec = 2;
+	struct resend_queue *rq = firefly_resend_queue_new();
+
+	firefly_resend_add(rq, data_test_new(), DATA_SIZE,
+			at, 2, NULL);
+	firefly_resend_add(rq, data_test_new(), DATA_SIZE,
+			at, 1, NULL);
+	firefly_resend_add(rq, data_test_new(), DATA_SIZE,
+			at, 2, NULL);
+	struct resend_elem *re = rq->first;
+	rq->first = re->prev;
+	int res = firefly_resend_readd(rq, re, 1500);
+
+	CU_ASSERT_EQUAL(res, 0);
+	CU_ASSERT_EQUAL(re->num_retries, 1);
+	CU_ASSERT_EQUAL(re->resend_at.tv_sec, 2);
+	CU_ASSERT_EQUAL(re->resend_at.tv_nsec, 500000002);
+	CU_ASSERT_NOT_EQUAL(rq->first, re);
+	CU_ASSERT_EQUAL(rq->last, re);
+
+	re = rq->first;
+	rq->first = re->prev;
+	res = firefly_resend_readd(rq, re, 1500);
+	CU_ASSERT_EQUAL(res, -1);
+	firefly_resend_elem_free(re);
+
+	firefly_resend_queue_free(rq);
+}
+
 int main()
 {
 	CU_pSuite resend_posix = NULL;
@@ -276,6 +334,12 @@ int main()
 			   ||
 		(CU_add_test(resend_posix, "test_top_simple",
 				test_top_simple) == NULL)
+			   ||
+		(CU_add_test(resend_posix, "test_readd_simple",
+				test_readd_simple) == NULL)
+			   ||
+		(CU_add_test(resend_posix, "test_readd_complex",
+				test_readd_complex) == NULL)
 	) {
 		CU_cleanup_registry();
 		return CU_get_error();
