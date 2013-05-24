@@ -13,5 +13,7 @@ void test_not_important_not_send_ack();
 void test_errorneous_ack();
 void test_important_mult_simultaneously();
 void test_important_recv_duplicate();
+void test_important_handshake_recv();
+void test_important_handshake_open();
 
 #endif

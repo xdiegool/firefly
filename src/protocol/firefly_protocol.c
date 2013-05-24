@@ -110,8 +110,11 @@ int firefly_channel_open_event(void *event_arg)
 	chan_req.source_chan_id = chan->local_id;
 	chan_req.dest_chan_id = chan->remote_id;
 
+
+	conn->writer_data->important_id = &chan->important_id;
 	labcomm_encode_firefly_protocol_channel_request(conn->transport_encoder,
 			&chan_req);
+	conn->writer_data->important_id = NULL;
 	free(event_arg);
 	return 0;
 }
@@ -244,9 +247,10 @@ int handle_channel_request_event(void *event_arg)
 					remove_channel_from_connection(chan,
 								fecrr->conn));
 			}
-
+			fecrr->conn->writer_data->important_id = &chan->important_id;
 			labcomm_encode_firefly_protocol_channel_response(
 					fecrr->conn->transport_encoder, &res);
+			fecrr->conn->writer_data->important_id = NULL;
 		}
 	}
 	free(event_arg);
@@ -304,7 +308,10 @@ int handle_channel_response_event(void *event_arg)
 		labcomm_encode_firefly_protocol_channel_ack(
 					fecrr->conn->transport_encoder, &ack);
 		// Should be done after encode above.
-		fecrr->conn->on_channel_opened(chan);
+		if (chan != NULL) {
+			fecrr->conn->transport_ack(chan->important_id, fecrr->conn);
+			fecrr->conn->on_channel_opened(chan);
+		}
 	} else {
 		chan->on_chan_rejected(fecrr->conn);
 		firefly_channel_free(remove_channel_from_connection(chan,
@@ -345,6 +352,7 @@ int handle_channel_ack_event(void *event_arg)
 	struct firefly_channel *chan = find_channel_by_local_id(fecar->conn,
 			local_chan_id);
 	if (chan != NULL) {
+		fecar->conn->transport_ack(chan->important_id, fecar->conn);
 		fecar->conn->on_channel_opened(chan);
 	} else {
 		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1, "Received ack"

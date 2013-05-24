@@ -206,6 +206,12 @@ int main()
 			||
 			(CU_add_test(important_suite, "test_important_recv_duplicate",
 					test_important_recv_duplicate) == NULL)
+			||
+			(CU_add_test(important_suite, "test_important_handshake_recv",
+					test_important_handshake_recv) == NULL)
+			||
+			(CU_add_test(important_suite, "test_important_handshake_open",
+					test_important_handshake_open) == NULL)
 		) {
 		CU_cleanup_registry();
 		return CU_get_error();

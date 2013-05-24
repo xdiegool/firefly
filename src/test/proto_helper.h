@@ -18,6 +18,8 @@ struct firefly_connection *setup_test_conn_new(firefly_channel_is_open_f ch_op,
 
 void chan_opened_mock(struct firefly_channel *chan);
 
+void transport_ack_test(unsigned char id, struct firefly_connection *conn);
+
 void transport_write_test_decoder(unsigned char *data, size_t size,
 					  struct firefly_connection *conn, bool important,
 					   unsigned char *id);

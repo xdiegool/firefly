@@ -46,7 +46,8 @@ struct firefly_connection *setup_test_conn_new(firefly_channel_is_open_f ch_op,
 {
 	struct firefly_connection *conn =
 		firefly_connection_new(ch_op, ch_cl, ch_acc,
-				transport_write_test_decoder, NULL, eq, NULL, NULL);
+				transport_write_test_decoder, transport_ack_test,
+				eq, NULL, NULL);
 	if (conn == NULL) {
 		CU_FAIL("Could not create connection.\n");
 	}
@@ -63,6 +64,11 @@ void chan_opened_mock(struct firefly_channel *chan)
 {
 	UNUSED_VAR(chan);
 	chan_opened_called = true;
+}
+
+void transport_ack_test(unsigned char id, struct firefly_connection *conn)
+{
+
 }
 
 void transport_write_test_decoder(unsigned char *data, size_t size,
