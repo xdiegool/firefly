@@ -265,20 +265,21 @@ void *firefly_transport_udp_posix_resend(void *args)
 	int res;
 	while (true) { // Change to some finite value
 		int prev_state;
-		firefly_resend_wait(rq, &data, &size, &conn, &id);
+		res = firefly_resend_wait(rq, &data, &size, &conn, &id);
 		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &prev_state);
-		// TODO fix better way to resend, imprtant = false and id = NULL might
-		// break inthe future
-		firefly_transport_udp_posix_write(data, size, conn,
-				false, NULL);
-		free(data);
-		pthread_setcancelstate(prev_state, NULL);
-		res = firefly_resend_readd(rq, id,
-				((struct protocol_connection_udp_posix *)
-				conn->transport_conn_platspec)->timeout);
 		if (res < 0) {
-			// TODO max retries reached
+			firefly_connection_close(conn);
+		} else {
+			// TODO fix better way to resend, imprtant = false and id = NULL
+			// might break inthe future
+			firefly_transport_udp_posix_write(data, size, conn,
+					false, NULL);
+			free(data);
+			firefly_resend_readd(rq, id,
+					((struct protocol_connection_udp_posix *)
+					conn->transport_conn_platspec)->timeout);
 		}
+		pthread_setcancelstate(prev_state, NULL);
 	}
 	return NULL;
 }

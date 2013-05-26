@@ -166,8 +166,11 @@ int firefly_channel_close_event(void *event_arg)
 {
 	struct firefly_event_chan_close *fecc =
 			(struct firefly_event_chan_close *) event_arg;
-	labcomm_encode_firefly_protocol_channel_close(
-			fecc->conn->transport_encoder, &fecc->chan_close);
+	// TODO add unit test
+	if (fecc->conn->open == FIREFLY_CONNECTION_OPEN) {
+		labcomm_encode_firefly_protocol_channel_close(
+				fecc->conn->transport_encoder, &fecc->chan_close);
+	}
 	free(event_arg);
 	return 0;
 }
@@ -310,6 +313,7 @@ int handle_channel_response_event(void *event_arg)
 		// Should be done after encode above.
 		if (chan != NULL) {
 			fecrr->conn->transport_ack(chan->important_id, fecrr->conn);
+			chan->important_id = 0;
 			fecrr->conn->on_channel_opened(chan);
 		}
 	} else {
@@ -353,6 +357,7 @@ int handle_channel_ack_event(void *event_arg)
 			local_chan_id);
 	if (chan != NULL) {
 		fecar->conn->transport_ack(chan->important_id, fecar->conn);
+		chan->important_id = 0;
 		fecar->conn->on_channel_opened(chan);
 	} else {
 		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1, "Received ack"

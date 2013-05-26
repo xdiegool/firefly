@@ -423,7 +423,7 @@ void test_important_recv_duplicate()
 bool handshake_chan_open_called = false;
 void important_handshake_chan_open(struct firefly_channel *chan)
 {
-	UNUSED_VAR(chan);
+	CU_ASSERT_EQUAL(chan->important_id, 0);
 	handshake_chan_open_called = true;
 }
 

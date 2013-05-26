@@ -744,9 +744,6 @@ void test_llp_free_mult_conns_w_chans()
 	execute_events(eq, 1);
 	// channel close
 	execute_events(eq, 1);
-	recv_socket_chan_close(socket);
-	CU_ASSERT_TRUE(data_sent);
-	data_sent = false;
 	// channel free
 	execute_events(eq, 1);
 
@@ -754,9 +751,6 @@ void test_llp_free_mult_conns_w_chans()
 	execute_events(eq, 1);
 	// channel close
 	execute_events(eq, 1);
-	recv_socket_chan_close(socket);
-	CU_ASSERT_TRUE(data_sent);
-	data_sent = false;
 	// channel free
 	execute_events(eq, 1);
 
@@ -764,16 +758,10 @@ void test_llp_free_mult_conns_w_chans()
 	execute_events(eq, 1);
 	// channel close
 	execute_events(eq, 1);
-	recv_socket_chan_close(socket);
-	CU_ASSERT_TRUE(data_sent);
-	data_sent = false;
 	// channel free
 	execute_events(eq, 1);
 	// channel close
 	execute_events(eq, 1);
-	recv_socket_chan_close(socket);
-	CU_ASSERT_TRUE(data_sent);
-	data_sent = false;
 	// channel free
 	execute_events(eq, 1);
 

@@ -56,7 +56,8 @@ void test_add_simple()
 	CU_ASSERT_EQUAL(re->size, DATA_SIZE);
 	CU_ASSERT_EQUAL(memcmp(data, re->data, DATA_SIZE), 0);
 	long diff = timespec_diff_ms(&at, &re->resend_at);
-	CU_ASSERT_TRUE(diff < 1500 && diff > 1490);
+	CU_ASSERT_TRUE(diff < 1500);
+	CU_ASSERT_TRUE(diff > 1490);
 	CU_ASSERT_PTR_NULL(re->prev);
 	
 	firefly_resend_queue_free(rq);
@@ -229,9 +230,8 @@ void test_readd_simple()
 	struct resend_elem *re = rq->first;
 	re->resend_at.tv_sec = 1;
 	re->resend_at.tv_nsec = 2;
-	int res = firefly_resend_readd(rq, re->id, 500);
+	firefly_resend_readd(rq, re->id, 500);
 
-	CU_ASSERT_EQUAL(res, 0);
 	CU_ASSERT_EQUAL(re->num_retries, 1);
 	CU_ASSERT_EQUAL(re->resend_at.tv_sec, 1);
 	CU_ASSERT_EQUAL(re->resend_at.tv_nsec, 500000002);
@@ -255,18 +255,13 @@ void test_readd_complex()
 	struct resend_elem *re = rq->first;
 	re->resend_at.tv_sec = 1;
 	re->resend_at.tv_nsec = 600000002;
-	int res = firefly_resend_readd(rq, re->id, 2500);
+	firefly_resend_readd(rq, re->id, 2500);
 
-	CU_ASSERT_EQUAL(res, 0);
 	CU_ASSERT_EQUAL(re->num_retries, 1);
 	CU_ASSERT_EQUAL(re->resend_at.tv_sec, 4);
 	CU_ASSERT_EQUAL(re->resend_at.tv_nsec, 100000002);
 	CU_ASSERT_NOT_EQUAL(rq->first, re);
 	CU_ASSERT_EQUAL(rq->last, re);
-
-	re = rq->first;
-	res = firefly_resend_readd(rq, re->id, 1500);
-	CU_ASSERT_EQUAL(res, -1);
 
 	firefly_resend_queue_free(rq);
 }
@@ -279,9 +274,8 @@ void test_readd_removed()
 			0, 2, NULL);
 	struct resend_elem *re = rq->first;
 	struct timespec t = re->resend_at;
-	int res = firefly_resend_readd(rq, 5, 500);
+	firefly_resend_readd(rq, 5, 500);
 
-	CU_ASSERT_EQUAL(res, 0);
 	CU_ASSERT_EQUAL(re->num_retries, 2);
 	CU_ASSERT_EQUAL(re->resend_at.tv_sec, t.tv_sec);
 	CU_ASSERT_EQUAL(re->resend_at.tv_nsec, t.tv_nsec);

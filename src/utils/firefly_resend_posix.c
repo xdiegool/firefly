@@ -110,17 +110,15 @@ static inline struct resend_elem *firefly_resend_pop(
 	return NULL;
 }
 
-int firefly_resend_readd(struct resend_queue *rq, unsigned char id,
+void firefly_resend_readd(struct resend_queue *rq, unsigned char id,
 		long timeout_ms)
 {
 	struct resend_elem *re = firefly_resend_pop(rq, id);
 	if (re == NULL)
-		return 0;
-	// Decrement counter and check if it has reached 0
-	if (--re->num_retries <= 0) {
-		firefly_resend_elem_free(re);
-		return -1;
-	}
+		return;
+
+	// Decrement retries counter
+	re->num_retries--;
 
 	timespec_add_ms(&re->resend_at, timeout_ms);
 	re->prev = NULL;
@@ -132,7 +130,6 @@ int firefly_resend_readd(struct resend_queue *rq, unsigned char id,
 	rq->last = re;
 	pthread_cond_signal(&rq->sig);
 	pthread_mutex_unlock(&rq->lock);
-	return 0;
 }
 
 void firefly_resend_remove(struct resend_queue *rq, unsigned char id)
@@ -160,22 +157,23 @@ struct resend_elem *firefly_resend_top(struct resend_queue *rq)
 	return re;
 }
 
-static inline bool timespec_past(struct timespec fixed, struct timespec var)
+static inline bool timespec_past(struct timespec *fixed, struct timespec *var)
 {
-	return fixed.tv_sec == var.tv_sec ?
-		fixed.tv_nsec <= var.tv_nsec : fixed.tv_sec < var.tv_sec;
+	return fixed->tv_sec == var->tv_sec ?
+		var->tv_nsec <= fixed->tv_nsec : var->tv_sec < fixed->tv_sec;
 }
 
-void firefly_resend_wait(struct resend_queue *rq,
+int firefly_resend_wait(struct resend_queue *rq,
 		unsigned char **data, size_t *size, struct firefly_connection **conn,
 		unsigned char *id)
 {
+	int result;
 	struct resend_elem *res = NULL;
 	struct timespec now;
 	pthread_mutex_lock(&rq->lock);
 	clock_gettime(CLOCK_REALTIME, &now);
 	res = rq->first;
-	while (res == NULL || !timespec_past(now, res->resend_at)) {
+	while (res == NULL || !timespec_past(&now, &res->resend_at)) {
 		if (res == NULL) {
 			pthread_cond_wait(&rq->sig, &rq->lock);
 		} else {
@@ -184,11 +182,23 @@ void firefly_resend_wait(struct resend_queue *rq,
 		clock_gettime(CLOCK_REALTIME, &now);
 		res = rq->first;
 	}
-	// TODO find better way to safely return data block
-	*data = malloc(res->size);
-	memcpy(*data, res->data, res->size);
-	*size = res->size;
 	*conn = res->conn;
-	*id = res->id;
+	// TODO find better way to safely return data block
+	// Check if counter has reached 0
+	if (res->num_retries <= 0) {
+		firefly_resend_pop(rq, res->id);
+		firefly_resend_elem_free(res);
+		*data = NULL;
+		*id = 0;
+		*size = 0;
+		result = -1;
+	} else {
+		*data = malloc(res->size);
+		memcpy(*data, res->data, res->size);
+		*size = res->size;
+		*id = res->id;
+		result = 0;
+	}
 	pthread_mutex_unlock(&rq->lock);
+	return result;
 }

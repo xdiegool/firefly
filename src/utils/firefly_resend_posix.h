@@ -86,7 +86,7 @@ struct resend_elem *firefly_resend_top(struct resend_queue *rq);
 /**
  * @brief TODO
  */
-void firefly_resend_wait(struct resend_queue *rq,
+int firefly_resend_wait(struct resend_queue *rq,
 		unsigned char **data, size_t *size, struct firefly_connection **conn,
 		unsigned char *id);
 
@@ -95,6 +95,6 @@ void firefly_resend_wait(struct resend_queue *rq,
  *
  * Add to queue again, add timeout to resend_at, return -1 if retries reached 0
  */
-int firefly_resend_readd(struct resend_queue *rq, unsigned char id,
+void firefly_resend_readd(struct resend_queue *rq, unsigned char id,
 		long timeout_ms);
 #endif
