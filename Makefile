@@ -30,10 +30,11 @@ NS_PROTOCOL_DIR = $(BUILD_DIR)/protocol
 NS_UTILS_DIR = $(BUILD_DIR)/utils
 NS_TRANSPORT_DIR = $(BUILD_DIR)/transport
 NS_TEST_DIR = $(BUILD_DIR)/test
+NS_TEST_SYSTEM_DIR = $(BUILD_DIR)/test/system
 NS_TESTPINGPONG_DIR = $(NS_TEST_DIR)/pingpong
 
 # All volatile directories that are to be created.
-DIRS_TO_CREATE= $(BUILD_DIR) $(LIB_DIR) $(DOC_GEN_DIR) $(DOC_GEN_FULL_DIR) $(DOC_GEN_API_DIR) $(GEN_DIR) $(TESTFILES_DIR) $(INSTALL_INCLUDE_DIR) $(NS_GEN_DIR) $(NS_PROTOCOL_DIR) $(NS_UTILS_DIR) $(NS_TRANSPORT_DIR) $(NS_TEST_DIR) $(NS_TESTPINGPONG_DIR)
+DIRS_TO_CREATE= $(BUILD_DIR) $(LIB_DIR) $(DOC_GEN_DIR) $(DOC_GEN_FULL_DIR) $(DOC_GEN_API_DIR) $(GEN_DIR) $(TESTFILES_DIR) $(INSTALL_INCLUDE_DIR) $(NS_GEN_DIR) $(NS_PROTOCOL_DIR) $(NS_UTILS_DIR) $(NS_TRANSPORT_DIR) $(NS_TEST_DIR) $(NS_TESTPINGPONG_DIR) $(NS_TEST_SYSTEM_DIR)
 
 # LabComm
 LIBPATH = ../lib
@@ -453,6 +454,10 @@ $(BUILD_DIR)/test/pingpong/pingpong_multi_main: $(patsubst %,$(BUILD_DIR)/test/p
 # Main test program for the resend posix queue tests.
 $(BUILD_DIR)/test/test_resend_posix: $(patsubst %,$(BUILD_DIR)/test/%.o,test_resend_posix) $(patsubst %,$(BUILD_DIR)/%.o,utils/firefly_resend_posix)
 	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) $(LDLIBS_TEST) -o $@
+
+# UDP System tests
+$(BUILD_DIR)/test/system/udp_posix: $(patsubst %,$(BUILD_DIR)/test/%.o,system/udp_posix test_labcomm_utils event_helper) $(patsubst %,$(BUILD_DIR)/%.o,utils/firefly_resend_posix gen/test) $(BUILD_DIR)/lib$(LIB_TRANSPORT_UDP_POSIX_NAME).a $(BUILD_DIR)/lib$(LIB_FIREFLY_NAME).a $(LABCOMMLIBPATH)/liblabcomm.a
+	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) $(filter-out %eth-posix,$(LDLIBS_TEST)) -o $@
 
 ### }
 

@@ -1,3 +1,7 @@
 sample int test_var;
 sample int test_var_2;
 sample int test_var_3;
+sample struct {
+	long sec;
+	long nsec;
+} time_sample;
