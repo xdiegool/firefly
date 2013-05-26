@@ -80,6 +80,9 @@ void firefly_transport_connection_eth_stellaris_free(
 		struct firefly_connection *conn);
 
 void firefly_transport_eth_stellaris_write(unsigned char *data, size_t data_size,
-		struct firefly_connection *conn, bool important);
+		struct firefly_connection *conn, bool important, unsigned char *id);
+
+void firefly_transport_eth_stellaris_ack(unsigned char pkg_id,
+		struct firefly_connection *conn);
 
 #endif

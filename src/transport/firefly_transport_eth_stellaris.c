@@ -174,7 +174,8 @@ struct firefly_connection *firefly_transport_connection_eth_stellaris_open(
 
 	struct firefly_connection *conn = firefly_connection_new(
 			on_channel_opened, on_channel_closed, on_channel_recv,
-			firefly_transport_eth_stellaris_write, llp_eth->event_queue,
+			firefly_transport_eth_stellaris_write,
+			firefly_transport_eth_stellaris_ack, llp_eth->event_queue,
 			conn_eth,
 			firefly_transport_connection_eth_stellaris_free);
 	if (conn == NULL || conn_eth == NULL) {
@@ -196,7 +197,7 @@ struct firefly_connection *firefly_transport_connection_eth_stellaris_open(
 }
 
 void firefly_transport_eth_stellaris_write(unsigned char *data, size_t data_size,
-		struct firefly_connection *conn, bool important)
+		struct firefly_connection *conn, bool important, unsigned char *id)
 {
 	struct protocol_connection_eth_stellaris *conn_eth;
 	struct transport_llp_eth_stellaris *llp_eth;
@@ -225,6 +226,11 @@ void firefly_transport_eth_stellaris_write(unsigned char *data, size_t data_size
 	}
 }
 
+void firefly_transport_eth_stellaris_ack(unsigned char pkg_id,
+		struct firefly_connection *conn)
+{
+
+}
 void sprint_mac(char *buf, unsigned char *addr)
 {
 	int strp = 0;
