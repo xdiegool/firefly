@@ -670,32 +670,6 @@ void test_llp_free_mult_conns()
 	firefly_event_queue_free(&eq);
 }
 
-static bool data_sent = false;
-static void recv_socket_chan_close(int socket)
-{
-	int res;
-	size_t pkg_len = 0;
-	res = ioctl(socket, FIONREAD, &pkg_len);
-	if (res == -1) {
-		printf("Could not read recv data size\n");
-		return;
-	}
-	if (pkg_len <= 0) {
-		printf("Expected to receive data but did not.\n");
-		return;
-	}
-	unsigned char *recv_buf = malloc(pkg_len);
-	struct sockaddr_in remote_addr;
-	socklen_t len = sizeof(struct sockaddr_in);
-	res = recvfrom(socket, recv_buf, pkg_len, 0,
-			(struct sockaddr *) &remote_addr, &len);
-	free(recv_buf);
-	if (res == -1) {
-		CU_FAIL("Failed to receive data from socket.\n");
-		return;
-	}
-	data_sent = true;
-}
 
 void test_llp_free_mult_conns_w_chans()
 {
@@ -733,9 +707,6 @@ void test_llp_free_mult_conns_w_chans()
 	ch->remote_id = 3;
 	add_channel_to_connection(ch, conn);
 
-	struct sockaddr_in addr;
-	setup_sockaddr(&addr, 55550);
-	int socket = open_socket(&addr);
 	firefly_transport_llp_udp_posix_free(llp);
 	// llp free
 	execute_events(eq, 1);
@@ -767,9 +738,7 @@ void test_llp_free_mult_conns_w_chans()
 
 	// 3 conn close, 3 conn free, llp free
 	execute_events(eq, 7);
-	close(socket);
 	firefly_event_queue_free(&eq);
-	data_sent = false;
 }
 
 unsigned int time_ms_diff(struct timespec *from, struct timespec *to)

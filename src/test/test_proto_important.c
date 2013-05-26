@@ -429,6 +429,7 @@ void important_handshake_chan_open(struct firefly_channel *chan)
 
 bool important_handshake_chan_acc(struct firefly_channel *chan)
 {
+	UNUSED_VAR(chan);
 	return true;
 }
 

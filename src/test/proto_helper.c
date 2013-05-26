@@ -68,7 +68,8 @@ void chan_opened_mock(struct firefly_channel *chan)
 
 void transport_ack_test(unsigned char id, struct firefly_connection *conn)
 {
-
+	UNUSED_VAR(id);
+	UNUSED_VAR(conn);
 }
 
 void transport_write_test_decoder(unsigned char *data, size_t size,
