@@ -50,6 +50,9 @@ struct firefly_event_llp_read_udp_posix {
 	u16_t port;
 };
 
+void firefly_transport_udp_lwip_ack(unsigned char pkt_id,
+		struct firefly_connection *conn);
+
 int firefly_transport_udp_lwip_read_event(void *event_arg);
 
 int firefly_transport_llp_udp_lwip_free_event(void *event_arg);
