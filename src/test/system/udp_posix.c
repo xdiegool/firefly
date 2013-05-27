@@ -178,6 +178,12 @@ static inline long timespec_diff_ms(struct timespec *from, struct timespec *to)
 		(to->tv_nsec - from->tv_nsec)/1000000;
 }
 
+static inline long timespec_diff_ns(struct timespec *from, struct timespec *to)
+{
+	return (to->tv_sec - from->tv_sec)*1000000000 +
+		(to->tv_nsec - from->tv_nsec);
+}
+
 static inline void timespec_print(struct timespec *t)
 {
 	printf("%ld.%09ld", t->tv_sec, t->tv_nsec);
@@ -190,6 +196,25 @@ static struct mock_data_collector *last_packet = NULL;
 static int nbr_packets = 0;
 
 static bool firefly_channel_open_status = false;
+
+static void mock_data_collector_packet_free(void *packet, enum packet_type type)
+{
+	if (type == DATA_SAMPLE_TYPE) {
+		firefly_protocol_data_sample *ds =
+			(firefly_protocol_data_sample *) packet;
+		free(ds->app_enc_data.a);
+	}
+	free(packet);
+}
+
+static void mock_data_collector_free(struct mock_data_collector *p)
+{
+	if (p->next != NULL) {
+		mock_data_collector_free(p->next);
+	}
+	mock_data_collector_packet_free(p->packet, p->type);
+	free(p);
+}
 
 static void add_packet(struct mock_data_collector *p)
 {
@@ -324,8 +349,10 @@ void test_handle_channel_request(firefly_protocol_channel_request *d, void *ctx)
 {
 	static int nbr_reqs;
 	nbr_reqs++;
+	firefly_protocol_channel_request *d_cpy = malloc(sizeof(*d));
+	memcpy(d_cpy, d, sizeof(*d));
 	pthread_mutex_lock(&mock_data_lock);
-	received_packet(d, CHANNEL_REQUEST_TYPE);
+	received_packet(d_cpy, CHANNEL_REQUEST_TYPE);
 	pthread_cond_signal(&mock_data_signal);
 	pthread_mutex_unlock(&mock_data_lock);
 	if (nbr_reqs == 2) {
@@ -348,8 +375,10 @@ void test_handle_channel_response(firefly_protocol_channel_response *d, void *ct
 {
 	UNUSED_VAR(d);
 	UNUSED_VAR(ctx);
+	firefly_protocol_channel_response *d_cpy = malloc(sizeof(*d));
+	memcpy(d_cpy, d, sizeof(*d));
 	pthread_mutex_lock(&mock_data_lock);
-	received_packet(d, CHANNEL_RESPONSE_TYPE);
+	received_packet(d_cpy, CHANNEL_RESPONSE_TYPE);
 	pthread_cond_signal(&mock_data_signal);
 	pthread_mutex_unlock(&mock_data_lock);
 }
@@ -358,8 +387,10 @@ void test_handle_channel_ack(firefly_protocol_channel_ack *d, void *ctx)
 {
 	UNUSED_VAR(d);
 	UNUSED_VAR(ctx);
+	firefly_protocol_channel_ack *d_cpy = malloc(sizeof(*d));
+	memcpy(d_cpy, d, sizeof(*d));
 	pthread_mutex_lock(&mock_data_lock);
-	received_packet(d, CHANNEL_ACK_TYPE);
+	received_packet(d_cpy, CHANNEL_ACK_TYPE);
 	pthread_cond_signal(&mock_data_signal);
 	pthread_mutex_unlock(&mock_data_lock);
 }
@@ -368,8 +399,10 @@ void test_handle_channel_close(firefly_protocol_channel_close *d, void *ctx)
 {
 	UNUSED_VAR(d);
 	UNUSED_VAR(ctx);
+	firefly_protocol_channel_close *d_cpy = malloc(sizeof(*d));
+	memcpy(d_cpy, d, sizeof(*d));
 	pthread_mutex_lock(&mock_data_lock);
-	received_packet(d, CHANNEL_CLOSE_TYPE);
+	received_packet(d_cpy, CHANNEL_CLOSE_TYPE);
 	pthread_cond_signal(&mock_data_signal);
 	pthread_mutex_unlock(&mock_data_lock);
 }
@@ -378,8 +411,10 @@ void test_handle_ack(firefly_protocol_ack *d, void *ctx)
 {
 	UNUSED_VAR(d);
 	UNUSED_VAR(ctx);
+	firefly_protocol_ack *d_cpy = malloc(sizeof(*d));
+	memcpy(d_cpy, d, sizeof(*d));
 	pthread_mutex_lock(&mock_data_lock);
-	received_packet(d, ACK_TYPE);
+	received_packet(d_cpy, ACK_TYPE);
 	pthread_cond_signal(&mock_data_signal);
 	pthread_mutex_unlock(&mock_data_lock);
 }
@@ -465,7 +500,7 @@ void mock_handle_time_sample(test_time_sample *d, void *ctx)
 	struct timespec sent;
 	sent.tv_sec = d->sec;
 	sent.tv_nsec = d->nsec;
-	long diff = timespec_diff_ms(&sent, &packet->timestamp); 
+	long diff = timespec_diff_ns(&sent, &packet->timestamp);
 	acc_delay += diff;
 }
 
@@ -670,7 +705,7 @@ void test_something()
 		pthread_mutex_unlock(&mock_data_lock);
 		prev_packet = current_packet;
 	}
-	printf("Average packet delay: %f\n", ((float) acc_delay / NBR_TIME_SAMPLES));
+	printf("Average packet delay (ns): %f\n", ((float) acc_delay / NBR_TIME_SAMPLES));
 
 	labcomm_decoder_register_test_test_var_2(
 			firefly_protocol_get_input_stream(firefly_chan),
@@ -725,6 +760,7 @@ void test_something()
 	labcomm_encoder_free(mock_out);
 	labcomm_decoder_free(mock_in);
 	labcomm_decoder_free(mock_data_in);
+	mock_data_collector_free(data_collection);
 }
 
 int init_suit_system()
