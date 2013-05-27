@@ -77,11 +77,14 @@ int firefly_labcomm_reader(labcomm_reader_t *r, labcomm_reader_action_t action,
 			result = 0;
 		}
 	} break;
+	case labcomm_reader_ioctl: {
+		break;
+	}
 	}
 	return result;
 }
 
-int ff_transport_writer(labcomm_writer_t *w, labcomm_writer_action_t action)
+int ff_transport_writer(labcomm_writer_t *w, labcomm_writer_action_t action, ...)
 {
 	struct firefly_connection  *conn =
 			(struct firefly_connection *) w->context;
@@ -109,9 +112,11 @@ int ff_transport_writer(labcomm_writer_t *w, labcomm_writer_action_t action)
 		w->count = 0;
 		w->pos = 0;
 	} break;
+	case labcomm_writer_start_signature:
 	case labcomm_writer_start: {
 		w->pos = 0;
 	} break;
+	case labcomm_writer_continue_signature:
 	case labcomm_writer_continue: {
 		int res = copy_to_writer_data(writer_data, w->data, w->pos);
 		if (res == -1) {
@@ -124,6 +129,7 @@ int ff_transport_writer(labcomm_writer_t *w, labcomm_writer_action_t action)
 			result = 0;
 		}
 	} break;
+	case labcomm_writer_end_signature:
 	case labcomm_writer_end: {
 		int res = copy_to_writer_data(writer_data, w->data, w->pos);
 		if (res == -1) {
@@ -134,13 +140,10 @@ int ff_transport_writer(labcomm_writer_t *w, labcomm_writer_action_t action)
 		} else {
 			w->pos = 0;
 			result = 0;
-			conn->transport_write(writer_data->data,
-						writer_data->pos, conn);
+			conn->transport_write(writer_data->data, writer_data->pos, conn,
+					writer_data->important_id != NULL, writer_data->important_id);
 			writer_data->pos = 0;
 		}
-	} break;
-	case labcomm_writer_available: {
-		result = w->count - w->pos;
 	} break;
 	}
 	return result;
@@ -154,7 +157,7 @@ int ff_transport_reader(labcomm_reader_t *r, labcomm_reader_action_t action)
 	return firefly_labcomm_reader(r, action, reader_data);
 }
 
-int protocol_writer(labcomm_writer_t *w, labcomm_writer_action_t action)
+int protocol_writer(labcomm_writer_t *w, labcomm_writer_action_t action, ...)
 {
 	struct firefly_channel *chan =
 			(struct firefly_channel *) w->context;
@@ -162,6 +165,7 @@ int protocol_writer(labcomm_writer_t *w, labcomm_writer_action_t action)
 
 	struct ff_transport_data *writer_data = chan->writer_data;
 	int result = -EINVAL;
+	bool important = false;
 	switch (action) {
 	case labcomm_writer_alloc: {
 		w->data = FIREFLY_MALLOC(BUFFER_SIZE);
@@ -184,9 +188,11 @@ int protocol_writer(labcomm_writer_t *w, labcomm_writer_action_t action)
 		w->count = 0;
 		w->pos = 0;
 	} break;
+	case labcomm_writer_start_signature:
 	case labcomm_writer_start: {
 		w->pos = 0;
 	} break;
+	case labcomm_writer_continue_signature:
 	case labcomm_writer_continue: {
 		if (chan->conn->open != FIREFLY_CONNECTION_OPEN) {
 			firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
@@ -205,6 +211,9 @@ int protocol_writer(labcomm_writer_t *w, labcomm_writer_action_t action)
 			}
 		}
 	} break;
+	case labcomm_writer_end_signature: {
+		important = true;
+	}
 	case labcomm_writer_end: {
 		if (chan->conn->open != FIREFLY_CONNECTION_OPEN) {
 			firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
@@ -228,10 +237,11 @@ int protocol_writer(labcomm_writer_t *w, labcomm_writer_action_t action)
 					firefly_error(FIREFLY_ERROR_ALLOC, 1,
 							"Protocol writer could not allocate send event\n");
 				}
-				fess->conn = chan->conn;
+				fess->chan = chan;
 				fess->data.dest_chan_id = chan->remote_id;
 				fess->data.src_chan_id = chan->local_id;
-				fess->data.important = true;
+				fess->data.seqno = 0;
+				fess->data.important = important;
 				fess->data.app_enc_data.n_0 = writer_data->pos;
 				fess->data.app_enc_data.a = a;
 				memcpy(fess->data.app_enc_data.a, writer_data->data,
@@ -244,9 +254,6 @@ int protocol_writer(labcomm_writer_t *w, labcomm_writer_action_t action)
 			}
 		}
 	} break;
-	case labcomm_writer_available: {
-		result = w->count - w->pos;
-	} break;
 	}
 	return result;
 }
@@ -255,10 +262,28 @@ int send_data_sample_event(void *event_arg)
 {
 	struct firefly_event_send_sample *fess =
 		(struct firefly_event_send_sample *) event_arg;
-	labcomm_encode_firefly_protocol_data_sample(
-			fess->conn->transport_encoder, &fess->data);
-	FIREFLY_RUNTIME_FREE(fess->conn, fess->data.app_enc_data.a);
-	FIREFLY_RUNTIME_FREE(fess->conn, event_arg);
+
+	if (fess->data.important && fess->chan->important_id != 0) {
+		// Queue the important packet
+		struct firefly_channel_important_queue **last =
+			&fess->chan->important_queue;
+		while (*last != NULL) {
+			last = &(*last)->next;
+		}
+		*last = FIREFLY_MALLOC(sizeof(struct firefly_channel_important_queue));
+		(*last)->next = NULL;
+		(*last)->fess = fess;
+	} else {
+		if (fess->data.important) {
+			fess->data.seqno = firefly_channel_next_seqno(fess->chan);
+			fess->chan->conn->writer_data->important_id = &fess->chan->important_id;
+		}
+		labcomm_encode_firefly_protocol_data_sample(
+				fess->chan->conn->transport_encoder, &fess->data);
+		fess->chan->conn->writer_data->important_id = NULL;
+		FIREFLY_RUNTIME_FREE(fess->chan->conn, fess->data.app_enc_data.a);
+		FIREFLY_RUNTIME_FREE(fess->chan->conn, event_arg);
+	}
 	return 0;
 }
 

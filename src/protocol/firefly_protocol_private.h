@@ -42,9 +42,23 @@ void reg_proto_sigs(struct labcomm_encoder *enc,
  *
  * @param data The data to be written.
  * @param data_size The size of the data to be written.
- * @param conn The #firefly_connection to written the data on.
+ * @param conn The #firefly_connection to write the data to.
+ * @param important If true the packet must be resent until acked.
+ * @param id If important is true the id is a return value and will contain the
+ * identifier of the packet which must be used when acking the packet.
  */
 typedef void (* transport_write_f)(unsigned char *data, size_t data_size,
+					struct firefly_connection *conn, bool important,
+					unsigned char *id);
+
+/**
+ * @brief Inform transport that a packet is acked or should not be resent
+ * anymore.
+ *
+ * @param pkg_id The id of the packet.
+ * @param conn The #firefly_connection the packet is sent on.
+ */
+typedef void (* transport_ack_f)(unsigned char pkg_id,
 					struct firefly_connection *conn);
 
 typedef void (*transport_connection_free)(struct firefly_connection *conn);
@@ -86,6 +100,7 @@ struct ff_transport_data {
 	unsigned char *data;	/**< Buffer where transport data is written. */
 	size_t data_size;	/**< The size of \a data buffer. */
 	size_t pos;		/**< The next position to write to. */
+	unsigned char *important_id; /**< This value will be given to tranport when writing data */
 };
 
 /**
@@ -112,6 +127,8 @@ struct firefly_connection {
 								saved. */
 	transport_write_f transport_write; /**< Write bytes to the transport
 							layer. */
+	transport_ack_f transport_ack; /**< Inform transport that a packet is acked
+									 or should not be resent anymore. */
 	firefly_channel_is_open_f on_channel_opened; /**< Callback, called when
 							a channel has been
 							opened */
@@ -139,6 +156,14 @@ struct firefly_connection {
 };
 
 /**
+ * @breif A simple queue of important packets.
+ */
+struct firefly_channel_important_queue {
+	struct firefly_event_send_sample *fess;
+	struct firefly_channel_important_queue *next;
+};
+
+/**
  * @brief A structure representing a channel.
  */
 struct firefly_channel {
@@ -147,6 +172,18 @@ struct firefly_channel {
 	int local_id; /**< The local ID used to identify this channel */
 	int remote_id; /**< The ID used by the remote node to identify
 				this channel */
+	struct firefly_channel_important_queue *important_queue; /**< The queue used
+															   to queue
+															   important packets
+															   when sending
+															   another. */
+	unsigned char important_id; /**< The identifier used to reference the packet
+								  to the transport layer. If 0 no packet is
+								  resent. */
+	int current_seqno; /**< The sequence number of the currently or last
+						 important packet. */
+	int remote_seqno; /**< The sequence number of the last received important
+						packet. */
 	struct labcomm_encoder *proto_encoder; /**< LabComm encoder for this
 					   			channel.*/
 	struct labcomm_decoder *proto_decoder; /**< LabComm decoder for this
@@ -167,8 +204,15 @@ struct firefly_channel {
  * @param on_channel_opened Callback for when a channel has been opened.
  * @param on_channel_closed Callback for when a channel has been closed.
  * @param on_channel_recv Callback for when a channel has been recveived.
+ * @param transport_write The interface between transport and protocol layer for
+ * writing data.
+ * @param transport_ack The interface between transport and protocol layer for
+ * removing elements in the resend queue.
  * @param event_queue The event queue all events relating to this connection is
  * offered to.
+ * @param plat_spec Transport layer specifik data.
+ * @param plat_spec_free The funtion responsible for freeing the transport
+ * specifik data.
  *
  * @return A new firefly_connection.
  * @retval NULL on error.
@@ -178,6 +222,7 @@ struct firefly_connection *firefly_connection_new(
 		firefly_channel_closed_f on_channel_closed,
 		firefly_channel_accept_f on_channel_recv,
 		transport_write_f transport_write,
+		transport_ack_f transport_ack,
 		struct firefly_memory_funcs *memory_replacements,
 		struct firefly_event_queue *event_queue, void *plat_spec,
 		transport_connection_free plat_spec_free);
@@ -422,12 +467,18 @@ struct firefly_event_recv_sample {
 int handle_data_sample_event(void *event_arg);
 
 /**
+ *
+ */
+//TODO comments
+void handle_ack(firefly_protocol_ack *ack, void *context);
+
+/**
  * @brief The event argument of handle_channel_ack_event.
  */
 struct firefly_event_send_sample {
-	struct firefly_connection *conn; /**< The connection to send the sample
-						on. */
+	struct firefly_channel *chan; /**< The channel to send the sample on. */
 	firefly_protocol_data_sample data; /**< The sample to send. */
+	unsigned char *important_id;
 };
 
 /**
@@ -476,6 +527,15 @@ struct firefly_channel *remove_channel_from_connection(struct firefly_channel *c
 int next_channel_id(struct firefly_connection *conn);
 
 /**
+ * @brief Gets and updates the sequence number used to identify important
+ * packets.
+ *
+ * @param chan The concerned channel.
+ * @return The next sequence number.
+ */
+int firefly_channel_next_seqno(struct firefly_channel *chan);
+
+/**
  * @brief A general LabComm reader used to feed a decoder with data from
  * memory.
  *
@@ -504,7 +564,7 @@ int ff_transport_reader(labcomm_reader_t *r, labcomm_reader_action_t action);
  * @return Value indicating how the action could be handled.
  * TODO rename this. prefix ff_ is nonstandard. No need to prefix with firefly for private functions. probalby prefix "labcomm_" should be neought so we know that it has with labcomm to do.
  */
-int ff_transport_writer(labcomm_writer_t *w, labcomm_writer_action_t action);
+int ff_transport_writer(labcomm_writer_t *w, labcomm_writer_action_t action, ...);
 
 /**
  * @brief Feeds LabComm decoder with bytes from the protocol layer.
@@ -520,6 +580,6 @@ int protocol_reader(labcomm_reader_t *r, labcomm_reader_action_t action);
  * @param action What action is requested.
  * @return Value indicating how the action could be handled.
  */
-int protocol_writer(labcomm_writer_t *w, labcomm_writer_action_t action);
+int protocol_writer(labcomm_writer_t *w, labcomm_writer_action_t action, ...);
 
 #endif

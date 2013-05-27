@@ -14,8 +14,8 @@
 #include "CUnit/Console.h"
 #include <fcntl.h>
 #include <labcomm.h>
-#include <labcomm_mem_writer.h>
-#include <labcomm_mem_reader.h>
+#include <test/labcomm_mem_writer.h>
+#include <test/labcomm_mem_reader.h>
 #include <labcomm_fd_reader_writer.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -69,9 +69,11 @@ void handle_firefly_protocol_data_sample(
 // previously encoded.
 static size_t last_written_size = 0;
 void transport_write_udp_posix_mock(unsigned char *data, size_t data_size,
-		struct firefly_connection *conn)
+		struct firefly_connection *conn, bool important, unsigned char *id)
 {
 	UNUSED_VAR(conn);
+	UNUSED_VAR(important);
+	UNUSED_VAR(id);
 	unsigned char *zero_buf = calloc(1, WRITE_BUF_SIZE);
 	// The buffer shoule not be empty anymore.
 	CU_ASSERT_NOT_EQUAL(0, memcmp(data, zero_buf, WRITE_BUF_SIZE));
@@ -159,9 +161,12 @@ void test_encode_decode_protocol()
 
 static size_t nbr_entries = 0;
 void transport_write_udp_posix_mock_cmp(unsigned char *data, size_t data_size,
-					struct firefly_connection *conn)
+					struct firefly_connection *conn, bool important,
+					unsigned char *id)
 {
 	UNUSED_VAR(conn);
+	UNUSED_VAR(important);
+	UNUSED_VAR(id);
 	size_t file_size;
 	unsigned char *file_data;
 	if (nbr_entries == 0) {
@@ -182,6 +187,7 @@ void test_encode_protocol()
 	firefly_protocol_data_sample data_sample;
 	data_sample.src_chan_id = SRC_CHAN_ID;
 	data_sample.dest_chan_id = DEST_CHAN_ID;
+	data_sample.seqno = 0;
 	data_sample.important = important;
 	data_sample.app_enc_data.n_0 = sizeof(app_data);
 	data_sample.app_enc_data.a = app_data;
@@ -229,6 +235,7 @@ void test_decode_protocol()
 	firefly_protocol_data_sample data_sample;
 	data_sample.src_chan_id = SRC_CHAN_ID;
 	data_sample.dest_chan_id = DEST_CHAN_ID;
+	data_sample.seqno = 0;
 	data_sample.important = important;
 	data_sample.app_enc_data.n_0 = sizeof(app_data);
 	data_sample.app_enc_data.a = app_data;
@@ -297,6 +304,7 @@ void test_decode_protocol_multiple_times()
 	firefly_protocol_data_sample data_sample;
 	data_sample.src_chan_id = i;
 	data_sample.dest_chan_id = i;
+	data_sample.seqno = 0;
 	data_sample.important = important;
 	data_sample.app_enc_data.n_0 = sizeof(app_data);
 	data_sample.app_enc_data.a = app_data;
@@ -362,6 +370,7 @@ void test_encode_protocol_multiple_times()
 	firefly_protocol_data_sample data_sample;
 	data_sample.src_chan_id = i;
 	data_sample.dest_chan_id = i;
+	data_sample.seqno = 0;
 	data_sample.important = important;
 	data_sample.app_enc_data.n_0 = sizeof(app_data);
 	data_sample.app_enc_data.a = app_data;

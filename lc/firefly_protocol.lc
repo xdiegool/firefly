@@ -1,9 +1,16 @@
 sample struct {
 	int dest_chan_id;
 	int src_chan_id;
+	int seqno;
 	boolean important;
 	byte app_enc_data[_];
 } data_sample;
+
+sample struct {
+	int dest_chan_id;
+	int src_chan_id;
+	int seqno;
+} ack;
 
 sample struct {
 	int dest_chan_id;

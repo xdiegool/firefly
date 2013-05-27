@@ -54,3 +54,6 @@ Decease runtime malloc, ignore any malloc during setup setup:
 	  memory instead of allocing a new mem and copying the reader data to it.
 	  Only usable with variable length arrays. Other types have much easier
 	  solutions.
+Reliability:
+	- Ack transport packets when closing a channel.
+	- conn->transport_ack == NULL should be interpreted as reliability ensured

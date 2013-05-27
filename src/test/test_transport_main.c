@@ -21,7 +21,7 @@ int main()
 		return CU_get_error();
 	}
 
-	 /*Transport UDP Posix tests.*/
+	/*Transport general tests.*/
 	if (
 		(CU_add_test(trans_gen, "test_find_conn_by_addr",
 				test_find_conn_by_addr) == NULL)
@@ -36,6 +36,7 @@ int main()
 		return CU_get_error();
 	}
 
+	/*Transport UDP Posix tests.*/
 	if (
 		(CU_add_test(trans_udp_posix, "test_recv_connection",
 				test_recv_connection) == NULL)
@@ -84,6 +85,18 @@ int main()
 				||
 		(CU_add_test(trans_udp_posix, "test_llp_free_mult_conns_w_chans",
 					 test_llp_free_mult_conns_w_chans) == NULL)
+				||
+		(CU_add_test(trans_udp_posix, "test_send_important",
+					 test_send_important) == NULL)
+				||
+		(CU_add_test(trans_udp_posix, "test_send_important_ack",
+					 test_send_important_ack) == NULL)
+				||
+		(CU_add_test(trans_udp_posix, "test_send_important_id_null",
+					 test_send_important_id_null) == NULL)
+				||
+		(CU_add_test(trans_udp_posix, "test_send_important_long_timeout",
+					 test_send_important_long_timeout) == NULL)
 	   ) {
 		CU_cleanup_registry();
 		return CU_get_error();

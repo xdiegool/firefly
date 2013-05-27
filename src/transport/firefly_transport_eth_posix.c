@@ -170,7 +170,7 @@ struct firefly_connection *firefly_transport_connection_eth_posix_open(
 	conn_eth = malloc(sizeof(struct protocol_connection_eth_posix));
 	struct firefly_connection *conn = firefly_connection_new(
 			on_channel_opened, on_channel_closed, on_channel_recv,
-			firefly_transport_eth_posix_write,
+			firefly_transport_eth_posix_write, firefly_transport_eth_posix_ack,
 			NULL,
 			((struct transport_llp_eth_posix *)llp->llp_platspec)->event_queue,
 			conn_eth, firefly_transport_connection_eth_posix_free);
@@ -210,7 +210,7 @@ struct firefly_connection *firefly_transport_connection_eth_posix_open(
 }
 
 void firefly_transport_eth_posix_write(unsigned char *data, size_t data_size,
-		struct firefly_connection *conn)
+		struct firefly_connection *conn, bool important, unsigned char *id)
 {
 	int err;
 	struct protocol_connection_eth_posix *conn_eth =
@@ -223,6 +223,15 @@ void firefly_transport_eth_posix_write(unsigned char *data, size_t data_size,
 				"Failed in %s() on line %d.\nFailed to select.", __FUNCTION__,
 				__LINE__);
 	}
+	if (important && id != NULL) {
+		// TODO
+	}
+}
+
+void firefly_transport_eth_posix_ack(unsigned char pkt_id,
+		struct firefly_connection *conn)
+{
+
 }
 
 void firefly_transport_eth_posix_read(struct firefly_transport_llp *llp,

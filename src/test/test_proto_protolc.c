@@ -21,8 +21,6 @@
 #define DEST_CHAN_ID	(1)			/* Desination channel ID. */
 #define WRITE_BUF_SIZE	(256)	/* Size of the LabComm buffer to write to. */
 
-static bool important = true;
-
 int init_suit_protolc()
 {
 	return 0;
@@ -36,9 +34,11 @@ int clean_suit_protolc()
 static size_t proto_check_cnt = 0;
 
 void proto_check_writer(unsigned char *data, size_t data_size,
-			struct firefly_connection *conn)
+			struct firefly_connection *conn, bool important, unsigned char *id)
 {
 	UNUSED_VAR(conn);
+	UNUSED_VAR(important);
+	UNUSED_VAR(id);
 	if (proto_check_cnt == 0) {
 		// DO nothing
 	} else if (proto_check_cnt == 1 || proto_check_cnt == 2) {
@@ -48,7 +48,14 @@ void proto_check_writer(unsigned char *data, size_t data_size,
 		file_size = read_file_to_mem(&file_data, DATA_FILE);
 
 		CU_ASSERT_EQUAL(data_size, file_size);
-		CU_ASSERT_EQUAL(0, memcmp(data, file_data, data_size));
+		int cmp = memcmp(data, file_data, data_size);
+		CU_ASSERT_EQUAL(0, cmp);
+		if (cmp != 0) {
+			printf("\nGOT\tEXP\tcnt:%zu\n", proto_check_cnt);
+			for (size_t i = 0; i < file_size; i++) {
+				printf("%02x\t%02x\n", data[i], file_data[i]);
+			}
+		}
 
 		free(file_data);
 	} else {
@@ -79,7 +86,8 @@ void test_proto_writer()
 	firefly_protocol_data_sample data_sample_sig;
 	data_sample_sig.dest_chan_id = DEST_CHAN_ID;
 	data_sample_sig.src_chan_id = SRC_CHAN_ID;
-	data_sample_sig.important = important;
+	data_sample_sig.seqno = 1;
+	data_sample_sig.important = true;
 	data_sample_sig.app_enc_data.a = test_sig_buf;
 	data_sample_sig.app_enc_data.n_0 = proto_sig_size;
 
@@ -87,7 +95,8 @@ void test_proto_writer()
 	firefly_protocol_data_sample data_sample_data;
 	data_sample_data.dest_chan_id = DEST_CHAN_ID;
 	data_sample_data.src_chan_id = SRC_CHAN_ID;
-	data_sample_data.important = important;
+	data_sample_data.seqno = 0;
+	data_sample_data.important = false;
 	data_sample_data.app_enc_data.a = test_data_buf;
 	data_sample_data.app_enc_data.n_0 = proto_data_size;
 
@@ -125,6 +134,9 @@ void test_proto_writer()
 	chan.conn = &conn;
 	chan.local_id = SRC_CHAN_ID;
 	chan.remote_id = DEST_CHAN_ID;
+	chan.current_seqno = 0;
+	chan.important_queue = NULL;
+	chan.important_id = 0;
 	struct ff_transport_data writer_data;
 	writer_data.data = (unsigned char *) calloc(1, WRITE_BUF_SIZE);
 	if (writer_data.data == NULL) {
@@ -227,4 +239,15 @@ void test_proto_reader()
 	labcomm_decoder_free(proto_decoder);
 	free(test_sig_buf);
 	free(test_data_buf);
+}
+
+bool writer_important_written = false;
+void proto_check_writer_signature(unsigned char *data, size_t data_size,
+			struct firefly_connection *conn, bool important, unsigned char *id)
+{
+	UNUSED_VAR(conn);
+	UNUSED_VAR(data);
+	UNUSED_VAR(data_size);
+	UNUSED_VAR(id);
+	writer_important_written = important;
 }

@@ -14,6 +14,7 @@ struct firefly_connection *firefly_connection_new(
 		firefly_channel_closed_f on_channel_closed,
 		firefly_channel_accept_f on_channel_recv,
 		transport_write_f transport_write,
+		transport_ack_f transport_ack,
 		struct firefly_memory_funcs *memory_replacements,
 		struct firefly_event_queue *event_queue,
 		void *plat_spec, transport_connection_free plat_spec_free)
@@ -54,6 +55,7 @@ struct firefly_connection *firefly_connection_new(
 	writer_data->data = writer_data_data;
 	writer_data->data_size = BUFFER_SIZE;
 	writer_data->pos = 0;
+	writer_data->important_id = NULL;
 	conn->writer_data = writer_data;
 
 	// Init reader data
@@ -77,6 +79,7 @@ struct firefly_connection *firefly_connection_new(
 			labcomm_error_to_ff_error);
 
 	conn->transport_write = transport_write;
+	conn->transport_ack = transport_ack;
 
 	if (memory_replacements) {
 		conn->memory_replacements.alloc_replacement =

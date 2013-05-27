@@ -30,10 +30,11 @@ NS_PROTOCOL_DIR = $(BUILD_DIR)/protocol
 NS_UTILS_DIR = $(BUILD_DIR)/utils
 NS_TRANSPORT_DIR = $(BUILD_DIR)/transport
 NS_TEST_DIR = $(BUILD_DIR)/test
+NS_TEST_SYSTEM_DIR = $(BUILD_DIR)/test/system
 NS_TESTPINGPONG_DIR = $(NS_TEST_DIR)/pingpong
 
 # All volatile directories that are to be created.
-DIRS_TO_CREATE= $(BUILD_DIR) $(LIB_DIR) $(DOC_GEN_DIR) $(DOC_GEN_FULL_DIR) $(DOC_GEN_API_DIR) $(GEN_DIR) $(TESTFILES_DIR) $(INSTALL_INCLUDE_DIR) $(NS_GEN_DIR) $(NS_PROTOCOL_DIR) $(NS_UTILS_DIR) $(NS_TRANSPORT_DIR) $(NS_TEST_DIR) $(NS_TESTPINGPONG_DIR)
+DIRS_TO_CREATE= $(BUILD_DIR) $(LIB_DIR) $(DOC_GEN_DIR) $(DOC_GEN_FULL_DIR) $(DOC_GEN_API_DIR) $(GEN_DIR) $(TESTFILES_DIR) $(INSTALL_INCLUDE_DIR) $(NS_GEN_DIR) $(NS_PROTOCOL_DIR) $(NS_UTILS_DIR) $(NS_TRANSPORT_DIR) $(NS_TEST_DIR) $(NS_TESTPINGPONG_DIR) $(NS_TEST_SYSTEM_DIR)
 
 # LabComm
 LIBPATH = ../lib
@@ -146,7 +147,7 @@ LDFLAGS=
 LDFLAGS_TEST= -L$(BUILD_DIR) -L$(LABCOMMLIBPATH)
 
 # Libraries to link with test programs.
-LDLIBS_TEST= -l$(LIB_TRANSPORT_UDP_POSIX_NAME) -l$(LIB_TRANSPORT_ETH_POSIX_NAME) -l$(LIB_FIREFLY_NAME) -llabcomm -lcunit -lpthread
+LDLIBS_TEST= -l$(LIB_TRANSPORT_UDP_POSIX_NAME) -l$(LIB_TRANSPORT_ETH_POSIX_NAME) -l$(LIB_FIREFLY_NAME) -llabcomm -lcunit -lpthread -lrt
 
 ### }
 
@@ -296,6 +297,7 @@ TRANSPORT_ETH_STELLARIS_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(TRANSPORT_ETH_ST
 TEST_SRC = $(shell find $(SRC_DIR)/test/ -type f -name '*.c' | sed 's/^$(SRC_DIR)\///')
 TEST_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(TEST_SRC))
 TEST_PROGS = $(shell find $(SRC_DIR)/test/ -type f -name '*_main.c' | sed -e 's/^$(SRC_DIR)\//$(BUILD_DIR)\//' -e 's/\.c//')
+TEST_PROGS += $(BUILD_DIR)/test/test_resend_posix
 TEST_PROGS_REQ_ROOT = $(BUILD_DIR)/test/pingpong/pingpong_eth_main $(BUILD_DIR)/test/pingpong/pingpong_multi_main
 TEST_PROGS += $(TEST_PROGS_REQ_ROOT)
 
@@ -440,13 +442,13 @@ $(TEST_PROGS): $$(patsubst %,$$(BUILD_DIR)/lib%.a,$$(LIB_FIREFLY_NAME) $$(LIB_TR
 
 # Main test program for the protocol tests.
 # Filter-out libraries since those are not "in-files" but the still depend on them so they can be used for linking.
-$(BUILD_DIR)/test/test_protocol_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_protocol_main test_labcomm_utils test_proto_chan test_proto_conn test_proto_translc test_proto_protolc test_proto_errors proto_helper) $(BUILD_DIR)/$(GEN_DIR)/test.o
+$(BUILD_DIR)/test/test_protocol_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_protocol_main test_labcomm_utils test_proto_chan test_proto_conn test_proto_important test_proto_translc test_proto_protolc test_proto_errors error_helper proto_helper event_helper) $(BUILD_DIR)/$(GEN_DIR)/test.o
 	cp $(BUILD_DIR)/lib$(LIB_FIREFLY_NAME).a /tmp/lib$(LIB_FIREFLY_NAME)_wo_error.a
 	ar d /tmp/lib$(LIB_FIREFLY_NAME)_wo_error.a firefly_errors.o
 	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) -L/tmp/ $(filter-out %.a,$^) $(patsubst -l$(LIB_FIREFLY_NAME),-l$(LIB_FIREFLY_NAME)_wo_error,$(LDLIBS_TEST)) -o $@
 
 # Main test program for the transport tests.
-$(BUILD_DIR)/test/test_transport_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_transport_main test_transport test_transport_gen test_transport_udp_posix)
+$(BUILD_DIR)/test/test_transport_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_transport_main test_transport test_transport_gen test_transport_udp_posix error_helper)
 	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $^ $(filter-out %$(LIB_FIREFLY_NAME).a, $(LDLIBS_TEST)) -o $@
 
 # Main test program for the eth posix transport tests.
@@ -458,16 +460,24 @@ $(BUILD_DIR)/test/test_event_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_event
 	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) $(LDLIBS_TEST) -o $@
 
 # Main test program for the pingpong udp program.
-$(BUILD_DIR)/test/pingpong/pingpong_main: $(patsubst %,$(BUILD_DIR)/test/pingpong/%.o,pingpong_main pingpong_pudp pingpong pong_pudp ping_pudp hack_lctypes) $(BUILD_DIR)/$(GEN_DIR)/pingpong.o
+$(BUILD_DIR)/test/pingpong/pingpong_main: $(patsubst %,$(BUILD_DIR)/test/pingpong/%.o,pingpong_main pingpong_pudp pingpong pong_pudp ping_pudp) $(BUILD_DIR)/$(GEN_DIR)/pingpong.o
 	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) $(LDLIBS_TEST) -o $@ 
 
 # Main test program for the pingpong ethernet program.
-$(BUILD_DIR)/test/pingpong/pingpong_eth_main: $(patsubst %,$(BUILD_DIR)/test/pingpong/%.o,pingpong_main pingpong pingpong_peth pong_peth ping_peth hack_lctypes) $(BUILD_DIR)/$(GEN_DIR)/pingpong.o
+$(BUILD_DIR)/test/pingpong/pingpong_eth_main: $(patsubst %,$(BUILD_DIR)/test/pingpong/%.o,pingpong_main pingpong pingpong_peth pong_peth ping_peth) $(BUILD_DIR)/$(GEN_DIR)/pingpong.o
 	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) $(LDLIBS_TEST) -o $@ 
 
 # Main test program for the multiple transport layer functionality.
-$(BUILD_DIR)/test/pingpong/pingpong_multi_main: $(patsubst %,$(BUILD_DIR)/test/pingpong/%.o,pingpong_main pingpong pong_pmulti ping_pmulti hack_lctypes) $(BUILD_DIR)/$(GEN_DIR)/pingpong.o
+$(BUILD_DIR)/test/pingpong/pingpong_multi_main: $(patsubst %,$(BUILD_DIR)/test/pingpong/%.o,pingpong_main pingpong pong_pmulti ping_pmulti) $(BUILD_DIR)/$(GEN_DIR)/pingpong.o
 	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) $(LDLIBS_TEST) -o $@ 
+
+# Main test program for the resend posix queue tests.
+$(BUILD_DIR)/test/test_resend_posix: $(patsubst %,$(BUILD_DIR)/test/%.o,test_resend_posix) $(patsubst %,$(BUILD_DIR)/%.o,utils/firefly_resend_posix)
+	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) $(LDLIBS_TEST) -o $@
+
+# UDP System tests
+$(BUILD_DIR)/test/system/udp_posix: $(patsubst %,$(BUILD_DIR)/test/%.o,system/udp_posix test_labcomm_utils event_helper) $(patsubst %,$(BUILD_DIR)/%.o,utils/firefly_resend_posix gen/test) $(BUILD_DIR)/lib$(LIB_TRANSPORT_UDP_POSIX_NAME).a $(BUILD_DIR)/lib$(LIB_FIREFLY_NAME).a $(LABCOMMLIBPATH)/liblabcomm.a
+	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) $(filter-out %eth-posix,$(LDLIBS_TEST)) -o $@
 
 ### }
 

@@ -198,8 +198,9 @@ struct firefly_connection *firefly_transport_connection_udp_lwip_open(
 	conn_udp->upcb = llp_lwip->upcb;
 
 	struct firefly_connection *conn = firefly_connection_new(
-			on_channel_opened, on_channel_closed,
-			on_channel_recv, firefly_transport_udp_lwip_write, NULL,
+			on_channel_opened, on_channel_closed, on_channel_recv,
+			firefly_transport_udp_lwip_write, firefly_transport_udp_lwip_ack,
+			NULL,
 			llp_lwip->event_queue, conn_udp,
 			firefly_transport_connection_udp_lwip_free);
 	if (conn == NULL || conn_udp == NULL) {
@@ -226,7 +227,7 @@ struct firefly_connection *firefly_transport_connection_udp_lwip_open(
 // TODO we should not have to memcpy the data to write. Can we make memory alloc
 // transport specific or avoid this problem somehow?
 void firefly_transport_udp_lwip_write(unsigned char *data, size_t data_size,
-		struct firefly_connection *conn)
+		struct firefly_connection *conn, bool important, unsigned char *id)
 {
 	struct protocol_connection_udp_lwip *conn_udp =
 		(struct protocol_connection_udp_lwip *)
@@ -246,6 +247,15 @@ void firefly_transport_udp_lwip_write(unsigned char *data, size_t data_size,
 		firefly_error(FIREFLY_ERROR_TRANS_WRITE, 2,
 				"Failed in %s().\n", __FUNCTION__);
 	}
+	if (important && id != NULL) {
+		// TODO
+	}
+}
+
+void firefly_transport_udp_lwip_ack(unsigned char pkt_id,
+		struct firefly_connection *conn)
+{
+
 }
 
 bool transport_udp_lwip_conn_eq_ipaddr(struct firefly_connection *conn,

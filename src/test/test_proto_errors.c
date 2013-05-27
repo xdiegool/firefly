@@ -13,6 +13,7 @@
 
 #include "protocol/firefly_protocol_private.h"
 #include "proto_helper.h"
+#include "test/error_helper.h"
 #include "utils/cppmacros.h"
 
 extern struct tmp_data conn_open_write;
@@ -28,24 +29,6 @@ int init_suite_proto_errors()
 int clean_suite_proto_errors()
 {
 	return 0;
-}
-
-bool was_in_error = false;
-enum firefly_error expected_error;
-
-// Override.
-void firefly_error(enum firefly_error error_id, size_t nbr_va_args, ...)
-{
-	UNUSED_VAR(nbr_va_args);
-	was_in_error = true;
-	/*printf("Error: %d\n", error_id);*/
-	/*if (nbr_va_args >= 1) {*/
-		/*va_list arg_pointer;*/
-		/*va_start(arg_pointer, nbr_va_args);*/
-		/*char *print_format = va_arg(arg_pointer, char *);*/
-		/*vfprintf(stderr, print_format, arg_pointer);*/
-	/*}*/
-	CU_ASSERT_EQUAL(expected_error, error_id);
 }
 
 // Override.

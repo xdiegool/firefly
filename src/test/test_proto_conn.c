@@ -3,7 +3,7 @@
 #include "CUnit/Basic.h"
 #include <gen/test.h>
 #include <gen/firefly_protocol.h>
-#include <labcomm_mem_writer.h>
+#include <test/labcomm_mem_writer.h>
 
 #include <stdbool.h>
 
@@ -55,11 +55,13 @@ static void free_plat_conn_test(struct firefly_connection *conn)
 
 static bool transport_sent = false;
 static void transport_write_mock(unsigned char *data, size_t size,
-		struct firefly_connection *conn)
+		struct firefly_connection *conn, bool important, unsigned char *id)
 {
 	UNUSED_VAR(data);
 	UNUSED_VAR(size);
 	UNUSED_VAR(conn);
+	UNUSED_VAR(important);
+	UNUSED_VAR(id);
 	transport_sent = true;
 }
 
@@ -77,7 +79,7 @@ void test_conn_close_empty()
 	}
 	struct firefly_connection *conn = firefly_connection_new(
 			NULL, NULL, NULL, NULL,
-			NULL, eq, dummy_data, free_plat_conn_test);
+			NULL, NULL, eq, dummy_data, free_plat_conn_test);
 
 	CU_ASSERT_EQUAL(conn->open, FIREFLY_CONNECTION_OPEN);
 	firefly_connection_close(conn);
@@ -105,7 +107,7 @@ void test_conn_close_mult_chans()
 		CU_FAIL("Could not create queue.\n");
 	}
 	struct firefly_connection *conn = firefly_connection_new(NULL, NULL, NULL,
-			transport_write_mock, NULL, eq, dummy_data,
+			transport_write_mock, NULL, NULL, eq, dummy_data,
 			free_plat_conn_test);
 
 	struct firefly_channel *ch = firefly_channel_new(conn);
@@ -139,7 +141,7 @@ void test_conn_close_open_chan()
 	}
 	struct firefly_connection *conn = firefly_connection_new(
 			NULL, NULL, NULL,
-			transport_write_mock, NULL, eq, NULL, NULL);
+			transport_write_mock, NULL, NULL, eq, NULL, NULL);
 
 	struct firefly_channel *ch = firefly_channel_new(conn);
 	ch->remote_id = 0;
@@ -174,7 +176,7 @@ void test_conn_close_send_data()
 	}
 	struct firefly_connection *conn = firefly_connection_new(
 			NULL, NULL, NULL,
-			transport_write_mock, NULL, eq, NULL, NULL);
+			transport_write_mock, NULL, NULL, eq, NULL, NULL);
 
 	struct firefly_channel *ch = firefly_channel_new(conn);
 	ch->remote_id = 0;
@@ -222,7 +224,7 @@ void test_conn_close_send_first()
 		CU_FAIL("Could not create queue.\n");
 	}
 	struct firefly_connection *conn = firefly_connection_new(NULL, NULL, NULL,
-			transport_write_mock, NULL, eq, NULL, NULL);
+			transport_write_mock, NULL, NULL, eq, NULL, NULL);
 
 	struct firefly_channel *ch = firefly_channel_new(conn);
 	ch->remote_id = 0;
@@ -252,7 +254,7 @@ void test_conn_close_recv_any()
 		CU_FAIL("Could not create queue.\n");
 	}
 	struct firefly_connection *conn = firefly_connection_new(NULL, NULL, NULL,
-			transport_write_mock, NULL, eq, NULL, NULL);
+			transport_write_mock, NULL, NULL, eq, NULL, NULL);
 
 	struct firefly_channel *ch = firefly_channel_new(conn);
 	ch->remote_id = 0;
@@ -294,7 +296,7 @@ void test_conn_close_recv_chan_req_first()
 		CU_FAIL("Could not create queue.\n");
 	}
 	struct firefly_connection *conn = firefly_connection_new(NULL, NULL,
-			channel_accept_test, transport_write_mock, NULL, eq,
+			channel_accept_test, transport_write_mock, NULL, NULL, eq,
 			NULL, NULL);
 
 	/* First add close connection event */

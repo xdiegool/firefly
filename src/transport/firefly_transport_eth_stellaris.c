@@ -189,7 +189,8 @@ struct firefly_connection *firefly_transport_connection_eth_stellaris_open(
 
 	struct firefly_connection *conn = firefly_connection_new(
 			on_channel_opened, on_channel_closed, on_channel_recv,
-			firefly_transport_eth_stellaris_write, NULL,
+			firefly_transport_eth_stellaris_write,
+			firefly_transport_eth_stellaris_ack, NULL,
 			llp_eth->event_queue, conn_eth,
 			firefly_transport_connection_eth_stellaris_free);
 	if (conn == NULL || conn_eth == NULL) {
@@ -211,7 +212,7 @@ struct firefly_connection *firefly_transport_connection_eth_stellaris_open(
 }
 
 void firefly_transport_eth_stellaris_write(unsigned char *data, size_t data_size,
-		struct firefly_connection *conn)
+		struct firefly_connection *conn, bool important, unsigned char *id)
 {
 	struct protocol_connection_eth_stellaris *conn_eth;
 	struct transport_llp_eth_stellaris *llp_eth;
@@ -238,6 +239,26 @@ void firefly_transport_eth_stellaris_write(unsigned char *data, size_t data_size
 				__func__, __LINE__);
 		}
 	}
+}
+
+void firefly_transport_eth_stellaris_ack(unsigned char pkg_id,
+		struct firefly_connection *conn)
+{
+
+}
+void sprint_mac(char *buf, unsigned char *addr)
+{
+	int strp = 0;
+
+	for (int i = 0; i < ETH_ADDR_LEN; i++) {
+		char hex[] = {'0','1','2','3','4','5','6','7',
+					  '8','9','A','B','C','D','E','F'};
+
+		buf[strp++] = hex[(addr[i] & 0xF0) >> 4];
+		buf[strp++] = hex[(addr[i] & 0x0F)];
+		buf[strp++] = ':';
+	}
+	buf[strp - 1] = '\0';		/* Replace last colon with terminator. */
 }
 
 bool connection_eq_remmac(struct firefly_connection *conn, void *context)

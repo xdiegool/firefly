@@ -6,12 +6,16 @@
 #ifndef FIREFLY_TRANSPORT_UDP_POSIX_H
 #define FIREFLY_TRANSPORT_UDP_POSIX_H
 
+#include <pthread.h>
 #include <stdbool.h>
 #include <netinet/in.h>
 
 #include <protocol/firefly_protocol.h>
 #include <transport/firefly_transport.h>
 #include <utils/firefly_event_queue.h>
+
+#define FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT (500)
+#define FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_RETRIES (5)
 
 /**
  * @brief An opaque UDP specific link layer port data.
@@ -70,6 +74,7 @@ void firefly_transport_llp_udp_posix_free(struct firefly_transport_llp *llp);
  *
  * @param remote_ip_addr The IP address to connect to.
  * @param remote_port The port to connect to.
+ * @param timeout The time in ms between resends.
  * @param llp The \c #firefly_transport_llp to open a connection on.
  * @return The newly opened connection.
  * @retval NULL Returns \c NULL upon failure.
@@ -80,7 +85,18 @@ struct firefly_connection *firefly_transport_connection_udp_posix_open(
 				firefly_channel_accept_f on_channel_recv,
 				const char *remote_ip_addr,
 				unsigned short remote_port,
+				unsigned int timeout,
 				struct firefly_transport_llp *llp);
+
+/**
+ * @brief TODO
+ *
+ * Run resend and reader, if NULL dont run
+ */
+int firefly_transport_udp_posix_run(struct firefly_transport_llp *llp,
+		pthread_t *reader, pthread_t *resend);
+int firefly_transport_udp_posix_stop(struct firefly_transport_llp *llp,
+		pthread_t *reader, pthread_t *resend);
 
 /**
  * @brief Read data from the connection and fire events.
@@ -106,8 +122,10 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp);
  * @param data The data to be written.
  * @param data_size The size of the data to be written.
  * @param conn The connection to written the data on.
+ * @param important If true the packet will be resent until it is acked by
+ * calling #firefly_transport_udp_posix_ack
  */
 void firefly_transport_udp_posix_write(unsigned char *data, size_t data_size,
-		struct firefly_connection *conn);
+		struct firefly_connection *conn, bool important, unsigned char *id);
 
 #endif

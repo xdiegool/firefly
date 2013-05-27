@@ -75,6 +75,7 @@ struct firefly_connection *pong_udp_connection_received(
 								   pong_chan_received,
 								   ip_addr,
 								   port,
+								   FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT,
 								   llp);
 	} else {
 		fprintf(stderr, "ERROR: Received unknown connection: %s:%hu\n",

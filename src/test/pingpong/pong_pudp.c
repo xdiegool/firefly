@@ -68,7 +68,7 @@ struct firefly_connection *pong_connection_received(
 			port == PING_PORT) {
 		conn = firefly_transport_connection_udp_posix_open(
 				pong_chan_opened, pong_chan_closed, pong_chan_received,
-				ip_addr, port, llp);
+				ip_addr, port, FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT, llp);
 		pong_pass_test(CONNECTION_OPEN);
 	} else {
 		fprintf(stderr, "ERROR: Received unknown connection: %s:%hu\n",
@@ -155,6 +155,7 @@ void *pong_main_thread(void *arg)
 	int res;
 	pthread_t event_thread;
 	pthread_t reader_thread;
+	pthread_t resend_thread;
 	struct thread_arg *ta = (struct thread_arg *) arg;
 
 	printf("Hello, Firefly from Pong!\n");
@@ -180,7 +181,8 @@ void *pong_main_thread(void *arg)
 			firefly_transport_llp_udp_posix_new(PONG_PORT,
 					pong_connection_received, event_queue);
 
-	res = pthread_create(&reader_thread, NULL, reader_thread_main, llp);
+	res = firefly_transport_udp_posix_run(llp, &reader_thread, &resend_thread);
+	/*res = pthread_create(&reader_thread, NULL, reader_thread_main, llp);*/
 	if (res) {
 		fprintf(stderr, "ERROR: starting reader thread.\n");
 	}
@@ -197,8 +199,7 @@ void *pong_main_thread(void *arg)
 	}
 	pthread_mutex_unlock(&pong_done_lock);
 
-	pthread_cancel(reader_thread);
-	pthread_join(reader_thread, NULL);
+	firefly_transport_udp_posix_stop(llp, &reader_thread, &resend_thread);
 
 	firefly_transport_llp_udp_posix_free(llp);
 

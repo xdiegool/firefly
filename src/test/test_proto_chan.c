@@ -3,8 +3,8 @@
 #include "CUnit/Basic.h"
 
 #include <labcomm.h>
-#include <labcomm_mem_writer.h>
-#include <labcomm_mem_reader.h>
+#include <test/labcomm_mem_writer.h>
+#include <test/labcomm_mem_reader.h>
 #include <labcomm_fd_reader_writer.h>
 
 #include <stdbool.h>
@@ -21,146 +21,35 @@
 #include "utils/cppmacros.h"
 
 #define REMOTE_CHAN_ID (2) // Chan id used by all simulated remote channels.
-#define ENCODER_WRITE_BUF_SIZE (128)
-#define DATA_SAMPLE_DATA_SIZE (128)
 
 extern struct labcomm_decoder *test_dec;
 extern labcomm_mem_reader_context_t *test_dec_ctx;
 
-struct labcomm_encoder *test_enc;
-labcomm_mem_writer_context_t *test_enc_ctx;
+extern struct labcomm_encoder *test_enc;
+extern labcomm_mem_writer_context_t *test_enc_ctx;
 
-static unsigned char data_sample_data[DATA_SAMPLE_DATA_SIZE];
-static firefly_protocol_data_sample data_sample;
-static firefly_protocol_channel_request channel_request;
-static firefly_protocol_channel_response channel_response;
-static firefly_protocol_channel_ack channel_ack;
-static firefly_protocol_channel_close channel_close;
+extern unsigned char data_sample_data[DATA_SAMPLE_DATA_SIZE];
+extern firefly_protocol_data_sample data_sample;
+extern firefly_protocol_channel_request channel_request;
+extern firefly_protocol_channel_response channel_response;
+extern firefly_protocol_channel_ack channel_ack;
+extern firefly_protocol_channel_close channel_close;
 
-static bool received_data_sample = false;
-static bool received_channel_request = false;
-static bool received_channel_response = false;
-static bool received_channel_ack = false;
-static bool received_channel_close = false;
-
-static void test_handle_data_sample(firefly_protocol_data_sample *d, void *ctx)
-{
-	UNUSED_VAR(ctx);
-	memcpy(&data_sample, d, sizeof(firefly_protocol_data_sample));
-	if (d->app_enc_data.n_0 > DATA_SAMPLE_DATA_SIZE) {
-		CU_FAIL("Received too large data block, modify test accordingly");
-	}
-	data_sample.app_enc_data.a = data_sample_data;
-	data_sample.app_enc_data.n_0 = d->app_enc_data.n_0;
-
-	memcpy(data_sample.app_enc_data.a, d->app_enc_data.a, d->app_enc_data.n_0);
-	received_data_sample = true;
-}
-static void test_handle_channel_request(firefly_protocol_channel_request *d, void *ctx)
-{
-	UNUSED_VAR(ctx);
-	memcpy(&channel_request, d, sizeof(firefly_protocol_channel_request));
-	received_channel_request = true;
-}
-static void test_handle_channel_response(firefly_protocol_channel_response *d, void *ctx)
-{
-	UNUSED_VAR(ctx);
-	memcpy(&channel_response, d, sizeof(firefly_protocol_channel_response));
-	received_channel_response = true;
-}
-static void test_handle_channel_ack(firefly_protocol_channel_ack *d, void *ctx)
-{
-	UNUSED_VAR(ctx);
-	memcpy(&channel_ack, d, sizeof(firefly_protocol_channel_ack));
-	received_channel_ack = true;
-}
-static void test_handle_channel_close(firefly_protocol_channel_close *d, void *ctx)
-{
-	UNUSED_VAR(ctx);
-	memcpy(&channel_close, d, sizeof(firefly_protocol_channel_close));
-	received_channel_close = true;
-}
+extern bool received_data_sample;
+extern bool received_channel_request;
+extern bool received_channel_response;
+extern bool received_channel_ack;
+extern bool received_channel_close;
 
 int init_suit_proto_chan()
 {
-	test_enc_ctx = malloc(sizeof(labcomm_mem_writer_context_t));
-	if (test_enc_ctx == NULL) {
-		return 1;
-	}
-	test_enc_ctx->buf = malloc(ENCODER_WRITE_BUF_SIZE);
-	if (test_enc_ctx->buf == NULL) {
-		return 1;
-	}
-	test_enc_ctx->length = ENCODER_WRITE_BUF_SIZE;
-	test_enc_ctx->write_pos = 0;
-	test_enc = labcomm_encoder_new(labcomm_mem_writer, test_enc_ctx);
-	if (test_enc == NULL) {
-		return 1;
-	}
-	labcomm_register_error_handler_encoder(test_enc, handle_labcomm_error);
-
-	test_dec_ctx = malloc(sizeof(labcomm_mem_reader_context_t));
-	if (test_dec_ctx == NULL) {
-		CU_FAIL("Test decoder context was null\n");
-	}
-	test_dec = labcomm_decoder_new(labcomm_mem_reader, test_dec_ctx);
-	if (test_dec == NULL) {
-		CU_FAIL("Test decoder was null\n");
-	}
-	labcomm_register_error_handler_decoder(test_dec, handle_labcomm_error);
-
-	labcomm_decoder_register_firefly_protocol_data_sample(test_dec,
-					  	  test_handle_data_sample, NULL);
-	labcomm_decoder_register_firefly_protocol_channel_request(test_dec,
-					  	  test_handle_channel_request, NULL);
-	labcomm_decoder_register_firefly_protocol_channel_response(test_dec,
-					  	  test_handle_channel_response, NULL);
-	labcomm_decoder_register_firefly_protocol_channel_ack(test_dec,
-					  	  test_handle_channel_ack, NULL);
-	labcomm_decoder_register_firefly_protocol_channel_close(test_dec,
-					  	  test_handle_channel_close, NULL);
-
-	labcomm_encoder_register_firefly_protocol_data_sample(test_enc);
-	test_dec_ctx->enc_data = test_enc_ctx->buf;
-	test_dec_ctx->size = test_enc_ctx->write_pos;
-	labcomm_decoder_decode_one(test_dec);
-	test_enc_ctx->write_pos = 0;
-
-	labcomm_encoder_register_firefly_protocol_channel_request(test_enc);
-	test_dec_ctx->enc_data = test_enc_ctx->buf;
-	test_dec_ctx->size = test_enc_ctx->write_pos;
-	labcomm_decoder_decode_one(test_dec);
-	test_enc_ctx->write_pos = 0;
-
-	labcomm_encoder_register_firefly_protocol_channel_response(test_enc);
-	test_dec_ctx->enc_data = test_enc_ctx->buf;
-	test_dec_ctx->size = test_enc_ctx->write_pos;
-	labcomm_decoder_decode_one(test_dec);
-	test_enc_ctx->write_pos = 0;
-
-	labcomm_encoder_register_firefly_protocol_channel_ack(test_enc);
-	test_dec_ctx->enc_data = test_enc_ctx->buf;
-	test_dec_ctx->size = test_enc_ctx->write_pos;
-	labcomm_decoder_decode_one(test_dec);
-	test_enc_ctx->write_pos = 0;
-
-	labcomm_encoder_register_firefly_protocol_channel_close(test_enc);
-	test_dec_ctx->enc_data = test_enc_ctx->buf;
-	test_dec_ctx->size = test_enc_ctx->write_pos;
-	labcomm_decoder_decode_one(test_dec);
-	test_enc_ctx->write_pos = 0;
+	init_labcomm_test_enc_dec();
 	return 0; // Success.
 }
 
 int clean_suit_proto_chan()
 {
-	labcomm_encoder_free(test_enc);
-	test_enc = NULL;
-	free(test_enc_ctx->buf);
-	free(test_enc_ctx);
-	test_enc_ctx = NULL;
-	free(test_dec_ctx);
-	labcomm_decoder_free(test_dec);
+	clean_labcomm_test_enc_dec();
 	return 0; // Success.
 }
 
@@ -740,6 +629,7 @@ void test_recv_app_data()
 	proto_sign_pkt.src_chan_id = REMOTE_CHAN_ID;
 	proto_sign_pkt.dest_chan_id = ch->local_id;
 	proto_sign_pkt.important = true;
+	proto_sign_pkt.seqno = 1;
 	proto_sign_pkt.app_enc_data.a = ep_app->sign;
 	proto_sign_pkt.app_enc_data.n_0 = ep_app->ssize;
 
@@ -756,6 +646,7 @@ void test_recv_app_data()
 	proto_data_pkt.src_chan_id = REMOTE_CHAN_ID;
 	proto_data_pkt.dest_chan_id = ch->local_id;
 	proto_data_pkt.important = true;
+	proto_data_pkt.seqno = 2;
 	proto_data_pkt.app_enc_data.a = ep_app->data;
 	proto_data_pkt.app_enc_data.n_0 = ep_app->dsize;
 
@@ -816,9 +707,13 @@ static struct data_space *space_from_conn[2];
 void trans_w(struct data_space **space,
 			 unsigned char *data,
 			 size_t data_size,
-			 struct firefly_connection *conn)
+			 struct firefly_connection *conn,
+			 bool important,
+			 unsigned char *id)
 {
 	UNUSED_VAR(conn);
+	UNUSED_VAR(important);
+	UNUSED_VAR(id);
 	struct data_space *tmp;
 
 	if (*space == NULL) {
@@ -840,15 +735,17 @@ void trans_w(struct data_space **space,
 }
 
 void trans_w_from_conn_0(unsigned char *data, size_t data_size,
-					 struct firefly_connection *conn)
+					 struct firefly_connection *conn, bool important,
+					 unsigned char *id)
 {
-	trans_w(&space_from_conn[0], data, data_size, conn);
+	trans_w(&space_from_conn[0], data, data_size, conn, important, id);
 }
 
 void trans_w_from_conn_1(unsigned char *data, size_t data_size,
-					 struct firefly_connection *conn)
+					 struct firefly_connection *conn, bool important,
+					 unsigned char *id)
 {
-	trans_w(&space_from_conn[1], data, data_size, conn);
+	trans_w(&space_from_conn[1], data, data_size, conn, important, id);
 }
 
 size_t read_connection_mock(struct firefly_connection *conns[], int conn_n)
@@ -897,6 +794,11 @@ void handle_ttv(test_test_var *ttv, void *cont)
 	*((test_test_var *) cont) = *ttv;
 }
 
+void mock_ack(unsigned char id, struct firefly_connection *conn) {
+	UNUSED_VAR(id);
+	UNUSED_VAR(conn);
+}
+
 /* we need two connections for this test */
 struct firefly_connection *setup_conn(int conn_n,
 		struct firefly_event_queue *eqs[])
@@ -918,7 +820,7 @@ struct firefly_connection *setup_conn(int conn_n,
 	}
 
 	tcon = firefly_connection_new(chan_was_opened, chan_was_closed,
-					   should_accept_chan, writer, NULL,
+					   should_accept_chan, writer, mock_ack, NULL,
 					   eqs[conn_n], NULL, NULL);
 
 	if (tcon == NULL) {
@@ -1064,12 +966,11 @@ void test_transmit_app_data_over_mock_trans_layer()
 	 * The new addition of atype should spawn an event. There will
 	 * however be no packet yet.
 	 */
-	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[1]), 0);
 	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[0]), 0);
-	CU_ASSERT_EQUAL(firefly_event_queue_length(connections[0]->event_queue),
-			1);
-	CU_ASSERT_EQUAL(firefly_event_queue_length(connections[1]->event_queue),
-			1);
+	CU_ASSERT_EQUAL(firefly_event_queue_length(connections[0]->event_queue), 1);
+
+	CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[1]), 0);
+	CU_ASSERT_EQUAL(firefly_event_queue_length(connections[1]->event_queue), 1);
 
 	/* Execute event to send the data */
 	for (int i = 0; i < 2; i++) {
@@ -1080,7 +981,7 @@ void test_transmit_app_data_over_mock_trans_layer()
 		CU_ASSERT_EQUAL(firefly_event_queue_length(
 					connections[i]->event_queue), 0);
 	}
-	// Because this it the upper layer, an event will be spavned by reading.
+	/* Because this it the upper layer, an event will be spavned by reading.*/
 	for (int i = 0; i < 2; i++) {
 		read_connection_mock(connections, i);
 		CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[1-i]),
@@ -1093,9 +994,13 @@ void test_transmit_app_data_over_mock_trans_layer()
 		ev = firefly_event_pop(connections[i]->event_queue);
 		firefly_event_execute(ev);
 		/* The event is consumed and the data is written. */
-		CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[i]), 0);
 		CU_ASSERT_EQUAL(firefly_event_queue_length(
 					connections[i]->event_queue), 0);
+	}
+	// read acks
+	for (int i = 0; i < 2; i++) {
+		read_connection_mock(connections, i);
+		CU_ASSERT_EQUAL(n_packets_in_data_space(space_from_conn[1-i]), 0);
 	}
 	/*
 	 * The channel is now ready for transmissions of *real* app data.
@@ -1387,6 +1292,7 @@ void test_chan_open_close_multiple()
 			conn_open_write.size);
 	free_tmp_data(&conn_open_write);
 	firefly_event_execute(firefly_event_pop(eq));
+	free_tmp_data(&conn_recv_write);
 
 	labcomm_encoder_register_test_test_var(open_chan2_enc);
 	firefly_event_execute(firefly_event_pop(eq));
@@ -1394,6 +1300,7 @@ void test_chan_open_close_multiple()
 			conn_open_write.size);
 	free_tmp_data(&conn_open_write);
 	firefly_event_execute(firefly_event_pop(eq));
+	free_tmp_data(&conn_recv_write);
 
 	labcomm_encoder_register_test_test_var(recv_chan1_enc);
 	firefly_event_execute(firefly_event_pop(eq));
@@ -1401,6 +1308,7 @@ void test_chan_open_close_multiple()
 			conn_recv_write.size);
 	free_tmp_data(&conn_recv_write);
 	firefly_event_execute(firefly_event_pop(eq));
+	free_tmp_data(&conn_open_write);
 
 	labcomm_encoder_register_test_test_var(recv_chan2_enc);
 	firefly_event_execute(firefly_event_pop(eq));
@@ -1408,6 +1316,7 @@ void test_chan_open_close_multiple()
 			conn_recv_write.size);
 	free_tmp_data(&conn_recv_write);
 	firefly_event_execute(firefly_event_pop(eq));
+	free_tmp_data(&conn_open_write);
 
 	// Send data on chan1 from conn_open
 	test_test_var var_oc1 = 1;

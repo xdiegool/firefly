@@ -101,8 +101,11 @@ void firefly_transport_connection_udp_lwip_free(
  * @param data The data to be written.
  * @param data_size The size of the data to be written.
  * @param conn The connection to written the data on.
+ * @param important If true the packet will be resent unitl acked.
+ * @param id If important is true the id is a return value and will contain the
+ * identifier of the packet which must be used when acking the packet.
  */
 // TODO should this really be a public API function??
 void firefly_transport_udp_lwip_write(unsigned char *data, size_t data_size,
-		struct firefly_connection *conn);
+		struct firefly_connection *conn, bool important, unsigned char *id);
 #endif

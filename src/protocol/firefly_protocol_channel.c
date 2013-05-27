@@ -36,10 +36,14 @@ struct firefly_channel *firefly_channel_new(struct firefly_connection *conn)
 		return NULL;
 	}
 
-	chan->local_id      = next_channel_id(conn);
-	chan->remote_id     = CHANNEL_ID_NOT_SET;
-	chan->proto_decoder = proto_decoder;
-	chan->proto_encoder = proto_encoder;
+	chan->local_id			= next_channel_id(conn);
+	chan->remote_id			= CHANNEL_ID_NOT_SET;
+	chan->important_queue	= NULL;
+	chan->important_id		= 0;
+	chan->current_seqno		= 0;
+	chan->remote_seqno		= 0;
+	chan->proto_decoder		= proto_decoder;
+	chan->proto_encoder		= proto_encoder;
 
 	chan->reader_data            = reader_data;
 	chan->reader_data->data      = NULL;
@@ -83,6 +87,14 @@ struct firefly_connection *firefly_channel_get_connection(
 		struct firefly_channel *chan)
 {
 	return chan->conn;
+}
+
+int firefly_channel_next_seqno(struct firefly_channel *chan)
+{
+	if (++chan->current_seqno <= 0) {
+		chan->current_seqno = 1;
+	}
+	return chan->current_seqno;
 }
 
 int firefly_channel_closed_event(void *event_arg)

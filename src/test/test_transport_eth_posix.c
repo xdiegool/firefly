@@ -398,7 +398,7 @@ void test_eth_conn_open_and_send()
 
 	int socket = open_socket();
 
-	firefly_transport_eth_posix_write(send_buf, sizeof(send_buf), conn);
+	firefly_transport_eth_posix_write(send_buf, sizeof(send_buf), conn, false, NULL);
 
 	recv_data(socket);
 	close(socket);
@@ -550,33 +550,6 @@ void test_eth_llp_free_mult_conns()
 	firefly_event_queue_free(&eq);
 }
 
-static bool data_sent = false;
-static void recv_socket_chan_close(int socket)
-{
-	int res;
-	size_t pkg_len = 0;
-	res = ioctl(socket, FIONREAD, &pkg_len);
-	if (res == -1) {
-		printf("Could not read recv data size\n");
-		return;
-	}
-	if (pkg_len <= 0) {
-		printf("Expected to receive data but did not.\n");
-		return;
-	}
-	unsigned char *recv_buf = malloc(pkg_len);
-	struct sockaddr_ll remote_addr;
-	socklen_t len = sizeof(struct sockaddr_in);
-	res = recvfrom(socket, recv_buf, pkg_len, 0,
-			(struct sockaddr *) &remote_addr, &len);
-	free(recv_buf);
-	if (res == -1) {
-		CU_FAIL("Failed to receive data from socket.\n");
-		return;
-	}
-	data_sent = true;
-}
-
 void test_eth_llp_free_mult_conns_w_chans()
 {
 	// test correct number of events and channel close packets sent in the
@@ -613,7 +586,6 @@ void test_eth_llp_free_mult_conns_w_chans()
 	ch->remote_id = 3;
 	add_channel_to_connection(ch, conn);
 
-	int socket = open_socket();
 	firefly_transport_llp_eth_posix_free(llp);
 	// llp free
 	execute_events(eq, 1);
@@ -622,9 +594,6 @@ void test_eth_llp_free_mult_conns_w_chans()
 	execute_events(eq, 1);
 	// channel close
 	execute_events(eq, 1);
-	recv_socket_chan_close(socket);
-	CU_ASSERT_TRUE(data_sent);
-	data_sent = false;
 	// channel free
 	execute_events(eq, 1);
 
@@ -632,9 +601,6 @@ void test_eth_llp_free_mult_conns_w_chans()
 	execute_events(eq, 1);
 	// channel close
 	execute_events(eq, 1);
-	recv_socket_chan_close(socket);
-	CU_ASSERT_TRUE(data_sent);
-	data_sent = false;
 	// channel free
 	execute_events(eq, 1);
 
@@ -642,22 +608,14 @@ void test_eth_llp_free_mult_conns_w_chans()
 	execute_events(eq, 1);
 	// channel close
 	execute_events(eq, 1);
-	recv_socket_chan_close(socket);
-	CU_ASSERT_TRUE(data_sent);
-	data_sent = false;
 	// channel free
 	execute_events(eq, 1);
 	// channel close
 	execute_events(eq, 1);
-	recv_socket_chan_close(socket);
-	CU_ASSERT_TRUE(data_sent);
-	data_sent = false;
 	// channel free
 	execute_events(eq, 1);
 
 	// 3 conn close, 3 conn free, llp free
 	execute_events(eq, 7);
-	close(socket);
 	firefly_event_queue_free(&eq);
-	data_sent = false;
 }
