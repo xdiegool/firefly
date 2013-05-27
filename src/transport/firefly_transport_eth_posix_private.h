@@ -38,6 +38,9 @@ void firefly_transport_connection_eth_posix_free(struct firefly_connection *conn
 void firefly_transport_eth_posix_write(unsigned char *data, size_t data_size,
 		struct firefly_connection *conn, bool important, unsigned char *id);
 
+void firefly_transport_eth_posix_ack(unsigned char pkt_id,
+		struct firefly_connection *conn);
+
 void get_mac_addr(struct sockaddr_ll *addr, char *mac_addr);
 
 bool connection_eq_addr(struct firefly_connection *conn, void *context);
