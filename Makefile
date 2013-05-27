@@ -43,7 +43,7 @@ LABCOMMLIBPATH = $(LABCOMMPATH)/lib/c
 LABCOMMC = $(LABCOMMPATH)/compiler/labComm.jar
 
 # FreeRTOS and LWIP
-COMPILER_DIR=$$HOME/devel/arm-2010q1/bin
+COMPILER_DIR=$$HOME/bin/arm-2010q1/bin
 FT_SENSE_DIR = ../ft-sense
 LDSCRIPT= $(FT_SENSE_DIR)/src/adc_freertos_lwip/standalone.ld
 RTOS_BASE = $(FT_SENSE_DIR)/lib/freertos/
