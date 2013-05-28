@@ -76,6 +76,12 @@ ERRFLAGS = -Wall -Wextra
 
 # Common flags to the compiler.
 CFLAGS = -std=c99 $(ERRFLAGS) $(INC_COMMON) -D DEBUG
+ifdef FIREFLY_MALLOC
+CFLAGS += -D FIREFLY_MALLOC\(size\)=$(FIREFLY_MALLOC)
+endif
+ifdef FIREFLY_FREE
+CFLAGS += -D FIREFLY_FREE\(p\)=$(FIREFLY_FREE)
+endif
 
 
 ### Includes {
@@ -474,6 +480,10 @@ $(BUILD_DIR)/test/pingpong/pingpong_multi_main: $(patsubst %,$(BUILD_DIR)/test/p
 # Main test program for the resend posix queue tests.
 $(BUILD_DIR)/test/test_resend_posix: $(patsubst %,$(BUILD_DIR)/test/%.o,test_resend_posix) $(patsubst %,$(BUILD_DIR)/%.o,utils/firefly_resend_posix)
 	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) $(LDLIBS_TEST) -o $@
+
+# Main test program for the memory management tests.
+$(BUILD_DIR)/test/test_proto_memman: $(patsubst %,$(BUILD_DIR)/test/%.o,test_proto_memman proto_helper test_labcomm_utils event_helper) $(patsubst %,$(BUILD_DIR)/%.o,utils/firefly_resend_posix gen/test) $(BUILD_DIR)/lib$(LIB_FIREFLY_NAME).a $(LABCOMMLIBPATH)/liblabcomm.a
+	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) -lfirefly -llabcomm -lcunit -lpthread -lrt -o $@
 
 # UDP System tests
 $(BUILD_DIR)/test/system/udp_posix: $(patsubst %,$(BUILD_DIR)/test/%.o,system/udp_posix test_labcomm_utils event_helper) $(patsubst %,$(BUILD_DIR)/%.o,utils/firefly_resend_posix gen/test) $(BUILD_DIR)/lib$(LIB_TRANSPORT_UDP_POSIX_NAME).a $(BUILD_DIR)/lib$(LIB_FIREFLY_NAME).a $(LABCOMMLIBPATH)/liblabcomm.a

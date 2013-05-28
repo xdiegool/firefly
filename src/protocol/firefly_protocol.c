@@ -455,14 +455,14 @@ void handle_data_sample(firefly_protocol_data_sample *data, void *context)
 
 	conn = (struct firefly_connection *) context;
 
-	fers      = FIREFLY_MALLOC(sizeof(struct firefly_event_recv_sample));
-	fers_data = FIREFLY_MALLOC(data->app_enc_data.n_0);
+	fers      = FIREFLY_RUNTIME_MALLOC(conn, sizeof(struct firefly_event_recv_sample));
+	fers_data = FIREFLY_RUNTIME_MALLOC(conn, data->app_enc_data.n_0);
 	ev        = firefly_event_new(FIREFLY_PRIORITY_LOW, handle_data_sample_event,
 								  fers);
 	if (fers == NULL || fers_data == NULL || ev == NULL) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Could not allocate event.\n");
-		FIREFLY_FREE(fers_data);
-		FIREFLY_FREE(fers);
+		FIREFLY_RUNTIME_FREE(conn, fers_data);
+		FIREFLY_RUNTIME_FREE(conn, fers);
 		if (ev != NULL)
 			firefly_event_free(&ev);
 
@@ -479,8 +479,8 @@ void handle_data_sample(firefly_protocol_data_sample *data, void *context)
 	ret = conn->event_queue->offer_event_cb(conn->event_queue, ev);
 	if (ret) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1, "could not add event to queue");
-		FIREFLY_FREE(fers->data.app_enc_data.a);
-		FIREFLY_FREE(fers);
+		FIREFLY_RUNTIME_FREE(conn, fers->data.app_enc_data.a);
+		FIREFLY_RUNTIME_FREE(conn, fers);
 		firefly_event_free(&ev);
 	}
 }
@@ -530,8 +530,8 @@ int handle_data_sample_event(void *event_arg)
 													  &chan_close);
 	}
 
-	FIREFLY_FREE(fers->data.app_enc_data.a);
-	FIREFLY_FREE(event_arg);
+	FIREFLY_RUNTIME_FREE(fers->conn, fers->data.app_enc_data.a);
+	FIREFLY_RUNTIME_FREE(fers->conn, event_arg);
 
 	return 0;
 }
@@ -541,7 +541,7 @@ void handle_ack(firefly_protocol_ack *ack, void *context)
 	struct firefly_connection *conn = (struct firefly_connection *) context;
 	struct firefly_channel *chan =
 		find_channel_by_local_id(conn, ack->dest_chan_id);
-	if (chan->current_seqno == ack->seqno && ack->seqno > 0) {
+	if (chan != NULL && chan->current_seqno == ack->seqno && ack->seqno > 0) {
 		conn->transport_ack(chan->important_id, conn);
 		chan->important_id = 0;
 		if (chan->important_queue != NULL) {

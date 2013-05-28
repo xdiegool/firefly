@@ -84,6 +84,9 @@ void transport_write_test_decoder(unsigned char *data, size_t size,
 	labcomm_decoder_decode_one(test_dec);
 	test_dec_ctx->enc_data = NULL;
 	test_dec_ctx->size = 0;
+	if (important) {
+		*id = 1;
+	}
 }
 
 bool chan_open_recv_accept_open(struct firefly_channel *chan)
