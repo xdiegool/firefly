@@ -193,6 +193,7 @@ void test_unexpected_data_sample()
 	expected_error = FIREFLY_ERROR_FIRST; // Reset
 	was_in_error = false; // Reset.
 
+	free(conn_recv_write.data);
 	free(conn_open_write.data);
 
 	mk_lc_and_reg_sigs_free(conn_open, conn_recv, eq);

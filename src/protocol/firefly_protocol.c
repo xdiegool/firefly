@@ -289,8 +289,9 @@ int handle_channel_request_event(void *event_arg)
 			if (!res.ack) {
 				res.source_chan_id = CHANNEL_ID_NOT_SET;
 				firefly_channel_free(remove_channel_from_connection(chan, conn));
+			} else {
+				fecrr->conn->writer_data->important_id = &chan->important_id;
 			}
-			fecrr->conn->writer_data->important_id = &chan->important_id;
 			labcomm_encode_firefly_protocol_channel_response(
 					conn->transport_encoder, &res);
 			fecrr->conn->writer_data->important_id = NULL;
