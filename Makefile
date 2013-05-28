@@ -301,11 +301,12 @@ TRANSPORT_ETH_STELLARIS_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(TRANSPORT_ETH_ST
 
 ### Tests {
 TEST_SRC = $(shell find $(SRC_DIR)/test/ -type f -name '*.c' | sed 's/^$(SRC_DIR)\///')
-TEST_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(TEST_SRC))
-TEST_PROGS = $(shell find $(SRC_DIR)/test/ -type f -name '*_main.c' | sed -e 's/^$(SRC_DIR)\//$(BUILD_DIR)\//' -e 's/\.c//')
-TEST_PROGS += $(BUILD_DIR)/test/test_resend_posix
-TEST_PROGS_REQ_ROOT = $(BUILD_DIR)/test/pingpong/pingpong_eth_main $(BUILD_DIR)/test/pingpong/pingpong_multi_main
-TEST_PROGS += $(TEST_PROGS_REQ_ROOT)
+TEST_OBJS = $(patsubst %.c,$(BUILD_DIR)/%.o,$(TEST_SRC))
+TEST_UNIT_PROGS = $(patsubst %,$(BUILD_DIR)/test/%,test_event_main test_protocol_main test_transport_eth_posix_main test_transport_main test_resend_posix)
+TEST_UNIT_ROOT_PROGS = $(patsubst %,$(BUILD_DIR)/test/%,test_transport_eth_posix_main)
+TEST_SYSTEM_PROGS = $(patsubst %,$(BUILD_DIR)/test/%,pingpong/pingpong_main pingpong/pingpong_eth_main pingpong/pingpong_multi_main system/udp_posix)
+TEST_SYSTEM_ROOT_PROGS = $(patsubst %,$(BUILD_DIR)/test/%,pingpong/pingpong_eth_main pingpong/pingpong_multi_main)
+TEST_PROGS = $(TEST_UNIT_PROGS) $(TEST_SYSTEM_PROGS)
 
 ### }
 
@@ -315,7 +316,7 @@ TEST_PROGS += $(TEST_PROGS_REQ_ROOT)
 ### Targets {
 ## Special built-in targets {
 # Non-file targets.
-.PHONY: all clean cleaner doc doc-api doc-api-open doc-full doc-full-open doc-open install ping pong tags-all test testc uninstall
+.PHONY: all clean cleaner doc doc-api doc-api-open doc-full doc-full-open doc-open install ping pong tags-all test test-system testc uninstall
 
 # This will enable expression involving automatic variables in the prerequisities list. It must be defined before any usage of these feauteres.
 .SECONDEXPANSION:
@@ -538,8 +539,8 @@ doc-full-open: $(DOC_GEN_FULL_DIR)/html/index.html
 ## Utility targets {
 
 # target: test - Run all tests.
-test: $(TEST_PROGS)
-	@for prog in $(filter-out $(TEST_PROGS_REQ_ROOT),$^); do \
+test: $(TEST_UNIT_PROGS)
+	@for prog in $(filter-out $(TEST_UNIT_ROOT_PROGS),$^); do \
 		echo "=========================>BEGIN TEST: $${prog}"; \
 		./$$prog; \
 		test "$$?" -ne 0 && \
@@ -547,6 +548,36 @@ test: $(TEST_PROGS)
 		break; \
 		echo "=========================>END TEST: $${prog}"; \
 	done
+ifdef WITH_ROOT
+	@for prog in $(TEST_UNIT_ROOT_PROGS); do \
+		echo "=========================>BEGIN TEST: $${prog}"; \
+		sudo ./$$prog; \
+		test "$$?" -ne 0 && \
+		echo "FAILURE: Program exited with failure status." >&2 && \
+		break; \
+		echo "=========================>END TEST: $${prog}"; \
+	done
+endif
+
+test-system: $(TEST_SYSTEM_PROGS)
+	@for prog in $(filter-out $(TEST_SYSTEM_ROOT_PROGS),$^); do \
+		echo "=========================>BEGIN TEST: $${prog}"; \
+		./$$prog; \
+		test "$$?" -ne 0 && \
+		echo "FAILURE: Program exited with failure status." >&2 && \
+		break; \
+		echo "=========================>END TEST: $${prog}"; \
+	done
+ifdef WITH_ROOT
+	@for prog in $(TEST_SYSTEM_ROOT_PROGS); do \
+		echo "=========================>BEGIN TEST: $${prog}"; \
+		sudo ./$$prog; \
+		test "$$?" -ne 0 && \
+		echo "FAILURE: Program exited with failure status." >&2 && \
+		break; \
+		echo "=========================>END TEST: $${prog}"; \
+	done
+endif
 
 # target: testc - Run all tests with sound effects!
 testc:
