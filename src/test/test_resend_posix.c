@@ -56,7 +56,7 @@ void test_add_simple()
 	CU_ASSERT_EQUAL(re->size, DATA_SIZE);
 	CU_ASSERT_EQUAL(memcmp(data, re->data, DATA_SIZE), 0);
 	long diff = timespec_diff_ms(&at, &re->resend_at);
-	CU_ASSERT_TRUE(diff < 1500);
+	CU_ASSERT_TRUE(diff <= 1500);
 	CU_ASSERT_TRUE(diff > 1490);
 	CU_ASSERT_PTR_NULL(re->prev);
 	
