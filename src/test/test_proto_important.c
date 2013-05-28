@@ -41,7 +41,7 @@ struct test_conn_platspec {
 int init_suit_proto_important()
 {
 	init_labcomm_test_enc_dec();
-	eq = firefly_event_queue_new(firefly_event_add, NULL);
+	eq = firefly_event_queue_new(firefly_event_add, 10, NULL);
 	if (eq == NULL) {
 		return 1;
 	}
