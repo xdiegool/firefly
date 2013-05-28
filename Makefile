@@ -542,7 +542,7 @@ doc-full-open: $(DOC_GEN_FULL_DIR)/html/index.html
 test: $(TEST_UNIT_PROGS)
 	@for prog in $(filter-out $(TEST_UNIT_ROOT_PROGS),$^); do \
 		echo "=========================>BEGIN TEST: $${prog}"; \
-		./$$prog; \
+		valgrind --quiet --error-exitcode=1 --leak-check=full --show-reachable=yes ./$$prog; \
 		test "$$?" -ne 0 && \
 		echo "FAILURE: Program exited with failure status." >&2 && \
 		break; \
@@ -551,7 +551,7 @@ test: $(TEST_UNIT_PROGS)
 ifdef WITH_ROOT
 	@for prog in $(TEST_UNIT_ROOT_PROGS); do \
 		echo "=========================>BEGIN TEST: $${prog}"; \
-		sudo ./$$prog; \
+		sudo valgrind --quiet --error-exitcode=1 --leak-check=full --show-reachable=yes ./$$prog; \
 		test "$$?" -ne 0 && \
 		echo "FAILURE: Program exited with failure status." >&2 && \
 		break; \
@@ -562,7 +562,7 @@ endif
 test-system: $(TEST_SYSTEM_PROGS)
 	@for prog in $(filter-out $(TEST_SYSTEM_ROOT_PROGS),$^); do \
 		echo "=========================>BEGIN TEST: $${prog}"; \
-		./$$prog; \
+		valgrind --quiet --error-exitcode=1 --leak-check=full --show-reachable=yes ./$$prog; \
 		test "$$?" -ne 0 && \
 		echo "FAILURE: Program exited with failure status." >&2 && \
 		break; \
@@ -571,7 +571,7 @@ test-system: $(TEST_SYSTEM_PROGS)
 ifdef WITH_ROOT
 	@for prog in $(TEST_SYSTEM_ROOT_PROGS); do \
 		echo "=========================>BEGIN TEST: $${prog}"; \
-		sudo ./$$prog; \
+		sudo valgrind --quiet --error-exitcode=1 --leak-check=full --show-reachable=yes ./$$prog; \
 		test "$$?" -ne 0 && \
 		echo "FAILURE: Program exited with failure status." >&2 && \
 		break; \

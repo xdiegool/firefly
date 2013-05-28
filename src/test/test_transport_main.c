@@ -108,10 +108,12 @@ int main()
 
 	// Run all test suites.
 	CU_basic_run_tests();
-
-
+	int res = CU_get_number_of_tests_failed();
 	// Clean up.
 	CU_cleanup_registry();
 
+	if (res != 0) {
+		return 1;
+	}
 	return CU_get_error();
 }
