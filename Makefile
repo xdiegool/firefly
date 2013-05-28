@@ -186,9 +186,8 @@ endif
 # Set with $make -e TARGET_ISA=<isa>
 # To make a complete arm compilation you will typically type:
 # $ make -e TARGET_ISA=arm_thumb -e FIREFLY_ERROR_USER_DEFINED=true build/lib{firefly,transport-udp-lwip}.a
-ifeq ($(TARGET_ISA), arm_thumb)
-	CC = $(COMPILER_DIR)/arm-none-eabi-gcc
-	CFLAGS += -Wfloat-equal -Werror-implicit-function-declaration \
+CC_ARM = arm-none-eabi-gcc
+CFLAGS_ARM = $(CFLAGS) -Wfloat-equal -Werror-implicit-function-declaration \
 		  -mthumb -mcpu=cortex-m3 -T$(LDSCRIPT) \
 		  -ffunction-sections -fdata-sections \
 		  $(INC_TRANSPORT_UDP_LWIP) \
@@ -202,7 +201,24 @@ ifeq ($(TARGET_ISA), arm_thumb)
 		  -D ARM_CORTEXM3_CODESOURCERY \
 		  -D LABCOMM_NO_STDIO \
 		  -D GCC_ARMCM3=1
-endif
+
+#ifeq ($(TARGET_ISA), arm_thumb)
+#CC = $(COMPILER_DIR)/arm-none-eabi-gcc
+#CFLAGS += -Wfloat-equal -Werror-implicit-function-declaration \
+#-mthumb -mcpu=cortex-m3 -T$(LDSCRIPT) \
+#-ffunction-sections -fdata-sections \
+#$(INC_TRANSPORT_UDP_LWIP) \
+#-D sprintf=usprintf \
+#-D snprintf=usnprintf \
+#-D vsnprintf=uvsnprintf \
+#-D printf=uipprintf \
+#-D malloc=pvPortMalloc \
+#-D calloc=pvPortCalloc \
+#-D free=vPortFree \
+#-D ARM_CORTEXM3_CODESOURCERY \
+#-D LABCOMM_NO_STDIO \
+#-D GCC_ARMCM3=1
+#endif
 
 # Clang does not support noexecstack it seems.
 ifeq ($(CC), gcc)
@@ -240,7 +256,8 @@ GEN_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(filter-out %.h,$(GEN_FILES)))
 
 ### Firefly {
 # Source files for libfirefly.
-FIREFLY_SRC = $(shell find $(SRC_DIR)/protocol/ -type f -name '*.c' -print | sed 's/^$(SRC_DIR)\///') $(filter-out utils/firefly_errors.c,$(shell find $(SRC_DIR)/utils/ -type f -name '*.c' -print| sed 's/^$(SRC_DIR)\///')) $(GEN_DIR)/firefly_protocol.c
+#FIREFLY_SRC = $(shell find $(SRC_DIR)/protocol/ -type f -name '*.c' -print | sed 's/^$(SRC_DIR)\///') $(filter-out utils/firefly_errors.c,$(shell find $(SRC_DIR)/utils/ -type f -name '*.c' -print| sed 's/^$(SRC_DIR)\///')) $(GEN_DIR)/firefly_protocol.c
+FIREFLY_SRC = $(shell find $(SRC_DIR)/protocol/ -type f -name '*.c' -print | sed 's/^$(SRC_DIR)\///') $(patsubst %,utils/%.c, firefly_errors_utils firefly_event_queue) $(GEN_DIR)/firefly_protocol.c
 
 # Disable default error handler that prints with fprintf. If set to true, you
 # must provide an own implementation at link time.
@@ -250,16 +267,27 @@ ifneq ($(FIREFLY_ERROR_USER_DEFINED),true)
 endif
 
 # Object files from sources.
-FIREFLY_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(FIREFLY_SRC))
+FIREFLY_OBJS = $(patsubst %.c,$(BUILD_DIR)/%.o,$(FIREFLY_SRC))
+FIREFLY_ARM_OBJS = $(patsubst %.c,$(BUILD_DIR)/%-arm.o,$(FIREFLY_SRC))
 
 ### }
 
 ### Transport common {
 # Source files common to all transport libs
-TRANSPORT_COMMON_SRC = $(SRC_DIR)/transport/firefly_transport.c
+TRANSPORT_COMMON_SRC = transport/firefly_transport.c
 
 # Object files from sources.
-TRANSPORT_COMMON_OBJS= $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(TRANSPORT_COMMON_SRC))
+TRANSPORT_COMMON_OBJS = $(patsubst %.c,$(BUILD_DIR)/%.o,$(TRANSPORT_COMMON_SRC))
+TRANSPORT_COMMON_ARM_OBJS = $(patsubst %.c,$(BUILD_DIR)/%-arm.o,$(TRANSPORT_COMMON_SRC))
+
+### }
+
+### POSIX common {
+# Source files common to all transport libs
+TRANSPORT_POSIX_COMMON_SRC = utils/firefly_resend_posix.c
+
+# Object files from sources.
+TRANSPORT_POSIX_COMMON_OBJS = $(patsubst %.c,$(BUILD_DIR)/%.o,$(TRANSPORT_POSIX_COMMON_SRC))
 
 ### }
 
@@ -268,7 +296,7 @@ TRANSPORT_COMMON_OBJS= $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(TRANSPORT_CO
 TRANSPORT_UDP_POSIX_SRC = $(shell find $(SRC_DIR)/transport/ -type f \( -name '*udp_posix*.c' \) -print | sed 's/^$(SRC_DIR)\///')
 
 # Object files from sources.
-TRANSPORT_UDP_POSIX_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(TRANSPORT_UDP_POSIX_SRC))
+TRANSPORT_UDP_POSIX_OBJS = $(patsubst %.c,$(BUILD_DIR)/%.o,$(TRANSPORT_UDP_POSIX_SRC))
 
 ### }
 
@@ -277,7 +305,7 @@ TRANSPORT_UDP_POSIX_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(TRANSPORT_UDP_POSIX_
 TRANSPORT_ETH_POSIX_SRC = $(shell find $(SRC_DIR)/transport/ -type f \( -name '*eth_posix*.c' \) -print | sed 's/^$(SRC_DIR)\///')
 
 # Object files from sources.
-TRANSPORT_ETH_POSIX_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(TRANSPORT_ETH_POSIX_SRC))
+TRANSPORT_ETH_POSIX_OBJS = $(patsubst %.c,$(BUILD_DIR)/%.o,$(TRANSPORT_ETH_POSIX_SRC))
 
 ### }
 
@@ -286,7 +314,7 @@ TRANSPORT_ETH_POSIX_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(TRANSPORT_ETH_POSIX_
 TRANSPORT_UDP_LWIP_SRC = $(shell find $(SRC_DIR)/transport/ -type f \( -name '*udp_lwip*.c' \) -print | sed 's/^$(SRC_DIR)\///')
 
 # Object files from sources.
-TRANSPORT_UDP_LWIP_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(TRANSPORT_UDP_LWIP_SRC))
+TRANSPORT_UDP_LWIP_OBJS = $(patsubst %.c,$(BUILD_DIR)/%.o,$(TRANSPORT_UDP_LWIP_SRC))
 
 ### }
 
@@ -295,7 +323,7 @@ TRANSPORT_UDP_LWIP_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(TRANSPORT_UDP_LWIP_SR
 TRANSPORT_ETH_STELLARIS_SRC = $(shell find $(SRC_DIR)/transport/ -type f \( -name '*eth_stellaris*.c' \) -print | sed 's/^$(SRC_DIR)\///')
 
 # Object files from sources.
-TRANSPORT_ETH_STELLARIS_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(TRANSPORT_ETH_STELLARIS_SRC))
+TRANSPORT_ETH_STELLARIS_OBJS = $(patsubst %.c,$(BUILD_DIR)/%.o,$(TRANSPORT_ETH_STELLARIS_SRC))
 
 ### }
 
@@ -348,6 +376,12 @@ $(LABCOMMC):
 	@echo "======End building LabComm compiler======"
 
 # $(LABCOMMLIBPATH/liblabconn.a) - Build static LabComm library.
+$(LABCOMMLIBPATH)/liblabcomm-arm.a:
+	@echo "======Building LabComm======"
+	$(MAKE) -C $(LABCOMMLIBPATH) -e CC=$(CC_ARM) CFLAGS="$(filter-out -Werror -Wextra,$(CFLAGS_ARM)) -D MEM_WRITER_ENCODED_BUFFER=1" -e LABCOMM_NO_EXPERIMENTAL=true liblabcomm.a
+	mv $(LABCOMMLIBPATH)/liblabcomm.a $(LABCOMMLIBPATH)/liblabcomm-arm.a
+	@echo "======End building LabComm======"
+
 $(LABCOMMLIBPATH)/liblabcomm.a:
 	@echo "======Building LabComm======"
 	$(MAKE) -C $(LABCOMMLIBPATH) -e CC=$(CC) CFLAGS="$(filter-out -Werror -Wextra,$(CFLAGS)) -D MEM_WRITER_ENCODED_BUFFER=1" -e LABCOMM_NO_EXPERIMENTAL=true liblabcomm.a
@@ -360,6 +394,9 @@ $(GEN_DIR)/%.c $(GEN_DIR)/%.h: $(LC_DIR)/%.lc $(LABCOMMC) |$(GEN_DIR)
 
 # Compile the generated LabComm files.
 # Remove compiler warning flags. LabComm's errors is not our fault.
+$(BUILD_DIR)/gen/%-arm.o: gen/%.c |$$(@D)
+	$(CC_ARM) -c $(filter-out -W%,$(CFLAGS_ARM)) $(INC_FIREFLY) -o $@ $<
+
 $(BUILD_DIR)/gen/%.o: gen/%.c |$$(@D)
 	$(CC) -c $(filter-out -W%,$(CFLAGS)) $(INC_FIREFLY) -o $@ $<
 
@@ -371,14 +408,24 @@ $(BUILD_DIR)/gen/%.o: gen/%.c |$$(@D)
 $(BUILD_DIR)/libfirefly.a: $(FIREFLY_OBJS)
 	ar -rc $@ $^
 
+$(BUILD_DIR)/libfirefly-arm.a: $(FIREFLY_ARM_OBJS)
+	ar -rc $@ $^
+
 # Compile protocol files.
 # Usually these is an implicit rule but it does not work when the target dir is not the same as the source. Anyhow we need to add some includes for the different namespaces so it doesnt matter.
 # "|<target>" means that <target> is order-only so if it changed it won't cause recompilcation of the target. This is needed here since the modify timestamp is changed when new files are added/removed from a dirctory which will cause constant unneccessary recomplications. This soluton requres GNU Make >= 3.80.
 # References: http://darrendev.blogspot.se/2008/06/stopping-make-delete-intermediate-files.html
+
+$(BUILD_DIR)/protocol/%-arm.o: protocol/%.c |$$(@D)
+	$(CC_ARM) -c $(CFLAGS_ARM) $(INC_FIREFLY) -o $@ $<
+
 $(BUILD_DIR)/protocol/%.o: protocol/%.c |$$(@D)
 	$(CC) -c $(CFLAGS) $(INC_FIREFLY) -o $@ $<
 
 # Compile utils files.
+$(BUILD_DIR)/utils/%-arm.o: utils/%.c |$$(@D)
+	$(CC_ARM) -c $(CFLAGS_ARM) $(INC_FIREFLY) -o $@ $<
+
 $(BUILD_DIR)/utils/%.o: utils/%.c |$$(@D)
 	$(CC) -c $(CFLAGS) $(INC_FIREFLY) -o $@ $<
 
@@ -387,7 +434,10 @@ $(BUILD_DIR)/utils/%.o: utils/%.c |$$(@D)
 ### Transport common targets {
 
 # Compile source files
-$(TRANSPORT_COMMON_OBJS): $$(patsubst $$(BUILD_DIR)/%.o,%.c,$$@) |$$(@D)
+$(TRANSPORT_COMMON_ARM_OBJS): $(TRANSPORT_COMMON_SRC) |$$(@D)
+	$(CC_ARM) -c $(CFLAGS_ARM) $(INC_TRANSPORT_COMMON) -o $@ $<
+
+$(TRANSPORT_COMMON_OBJS): $(TRANSPORT_COMMON_SRC) |$$(@D)
 	$(CC) -c $(CFLAGS) $(INC_TRANSPORT_COMMON) -o $@ $<
 
 ### }
@@ -395,7 +445,7 @@ $(TRANSPORT_COMMON_OBJS): $$(patsubst $$(BUILD_DIR)/%.o,%.c,$$@) |$$(@D)
 ### Transport UDP POSIX targets {
 
 # target: build/lib$(LIB_TRANSPORT_UDP_POSIX_NAME).a  - Build static library for transport udp posix.
-$(BUILD_DIR)/lib$(LIB_TRANSPORT_UDP_POSIX_NAME).a: $(TRANSPORT_UDP_POSIX_OBJS) $(TRANSPORT_COMMON_OBJS)
+$(BUILD_DIR)/lib$(LIB_TRANSPORT_UDP_POSIX_NAME).a: $(TRANSPORT_UDP_POSIX_OBJS) $(TRANSPORT_POSIX_COMMON_OBJS) $(TRANSPORT_COMMON_OBJS)
 	ar -rc $@ $^
 
 # Compile UDP POSIX files.
@@ -407,7 +457,7 @@ $(TRANSPORT_UDP_POSIX_OBJS): $$(patsubst $$(BUILD_DIR)/%.o,%.c,$$@) |$$(@D)
 ### Transport ETH POSIX targets {
 
 # target: build/lib$(LIB_TRANSPORT_ETH_POSIX_NAME).a  - Build static library for transport udp posix.
-$(BUILD_DIR)/lib$(LIB_TRANSPORT_ETH_POSIX_NAME).a: $(TRANSPORT_ETH_POSIX_OBJS) $(TRANSPORT_COMMON_OBJS)
+$(BUILD_DIR)/lib$(LIB_TRANSPORT_ETH_POSIX_NAME).a: $(TRANSPORT_ETH_POSIX_OBJS) $(TRANSPORT_POSIX_COMMON_OBJS) $(TRANSPORT_COMMON_OBJS)
 	ar -rc $@ $^
 
 # Compile UDP POSIX files.
@@ -419,24 +469,24 @@ $(TRANSPORT_ETH_POSIX_OBJS): $$(patsubst $$(BUILD_DIR)/%.o,%.c,$$@) |$$(@D)
 ### Transport UDP LWIP targets {
 
 # target: build/lib$(LIB_TRANSPORT_UDP_LWIP_NAME).a  - Build static library for transport udp lwip.
-$(BUILD_DIR)/lib$(LIB_TRANSPORT_UDP_LWIP_NAME).a: $(TRANSPORT_UDP_LWIP_OBJS) $(TRANSPORT_COMMON_OBJS)
+$(BUILD_DIR)/lib$(LIB_TRANSPORT_UDP_LWIP_NAME).a: $(TRANSPORT_UDP_LWIP_OBJS) $(TRANSPORT_COMMON_ARM_OBJS)
 	ar -rc $@ $^
 
 # Compile UDP LWIP files.
 $(TRANSPORT_UDP_LWIP_OBJS): $$(patsubst $$(BUILD_DIR)/%.o,%.c,$$@) |$$(@D)
-	$(CC) -c $(CFLAGS) $(INC_TRANSPORT_UDP_LWIP) -o $@ $<
+	$(CC_ARM) -c $(CFLAGS_ARM) $(INC_TRANSPORT_UDP_LWIP) -o $@ $<
 
 ### }
 
 ### Transport ETH STELLARIS targets {
 
 # target: build/lib$(LIB_TRANSPORT_ETH_STELLARIS_NAME).a  - Build static library for transport Ethernet Stellaris.
-$(BUILD_DIR)/lib$(LIB_TRANSPORT_ETH_STELLARIS_NAME).a: $(TRANSPORT_ETH_STELLARIS_OBJS) $(TRANSPORT_COMMON_OBJS)
+$(BUILD_DIR)/lib$(LIB_TRANSPORT_ETH_STELLARIS_NAME).a: $(TRANSPORT_ETH_STELLARIS_OBJS) $(TRANSPORT_COMMON_ARM_OBJS)
 	ar -rc $@ $^
 
 # Compile ETH STELLARIS files.
 $(TRANSPORT_ETH_STELLARIS_OBJS): $$(patsubst $$(BUILD_DIR)/%.o,%.c,$$@) |$$(@D)
-	$(CC) -c $(CFLAGS) $(INC_TRANSPORT_ETH_STELLARIS) -o $@ $<
+	$(CC_ARM) -c $(CFLAGS_ARM) $(INC_TRANSPORT_ETH_STELLARIS) -o $@ $<
 
 ### }
 
@@ -629,6 +679,7 @@ help:
 clean:
 	$(RM) $(OUR_LIBS)
 	$(RM) $(FIREFLY_OBJS)
+	$(RM) $(FIREFLY_ARM_OBJS)
 	$(RM) $(TRANSPORT_COMMON_OBJS)
 	$(RM) $(TRANSPORT_UDP_POSIX_OBJS)
 	$(RM) $(TRANSPORT_ETH_POSIX_OBJS)
