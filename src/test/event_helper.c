@@ -9,6 +9,7 @@ void event_execute_test(struct firefly_event_queue *eq, size_t num)
 		ev = firefly_event_pop(eq);
 		CU_ASSERT_PTR_NOT_NULL_FATAL(ev);
 		firefly_event_execute(ev);
+		firefly_event_return(eq, &ev);
 		--num;
 	}
 }
@@ -19,6 +20,7 @@ void event_execute_all_test(struct firefly_event_queue *eq)
 	while (ev != NULL) {
 		CU_ASSERT_PTR_NOT_NULL_FATAL(ev);
 		firefly_event_execute(ev);
+		firefly_event_return(eq, &ev);
 		ev = firefly_event_pop(eq);
 	}
 }

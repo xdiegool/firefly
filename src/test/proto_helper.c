@@ -85,6 +85,7 @@ void transport_write_test_decoder(unsigned char *data, size_t size,
 	test_dec_ctx->enc_data = NULL;
 	test_dec_ctx->size = 0;
 	if (important) {
+		CU_ASSERT_PTR_NOT_NULL_FATAL(id);
 		*id = 1;
 	}
 }
