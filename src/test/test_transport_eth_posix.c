@@ -32,6 +32,7 @@
 #include "transport/firefly_transport_private.h"
 #include "transport/firefly_transport_eth_posix_private.h"
 #include "protocol/firefly_protocol_private.h"
+#include "test/event_helper.h"
 #include "utils/cppmacros.h"
 #include "test_transport.h"
 
@@ -41,14 +42,17 @@
 #define ETH_DATA_START	(14)
 #define ETH_HEADER_LEN	(14)
 
+static struct firefly_event_queue *eq = NULL;
 
 int init_suit_eth_posix()
 {
+	eq = firefly_event_queue_new(firefly_event_add, NULL);
 	return 0; // Success.
 }
 
 int clean_suit_eth_posix()
 {
+	firefly_event_queue_free(&eq);
 	return 0; // Success.
 }
 
@@ -62,26 +66,6 @@ static char *remote_mac_addr = "00:00:00:00:00:01";
 static char *remote_mac_addr_alt = "00:00:00:00:00:02";
 static char *local_mac_addr = "00:00:00:00:00:00";
 static char *if_name = "lo";
-
-static void execute_remaining_events(struct firefly_event_queue *eq)
-{
-	struct firefly_event *ev;
-	while (firefly_event_queue_length(eq) > 0) {
-		ev = firefly_event_pop(eq);
-		CU_ASSERT_PTR_NOT_NULL(ev);
-		firefly_event_execute(ev);
-	}
-}
-
-static void execute_events(struct firefly_event_queue *eq, size_t nbr_events)
-{
-	struct firefly_event *ev;
-	for (size_t i = 0; i < nbr_events; i++) {
-		ev = firefly_event_pop(eq);
-		CU_ASSERT_PTR_NOT_NULL(ev);
-		firefly_event_execute(ev);
-	}
-}
 
 static int open_socket()
 {
@@ -222,8 +206,6 @@ static struct firefly_connection *on_conn_recv_keep_two(
 
 void test_eth_recv_connection()
 {
-	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
-			NULL);
 	struct firefly_transport_llp *llp = firefly_transport_llp_eth_posix_new(
 			"lo", on_conn_recv, eq);
 
@@ -233,19 +215,16 @@ void test_eth_recv_connection()
 	send_data();
 
 	firefly_transport_eth_posix_read(llp, NULL);
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 
 	CU_ASSERT_TRUE(recv_conn_called);
 	recv_conn_called = false;
 	firefly_transport_llp_eth_posix_free(llp);
-	execute_remaining_events(eq);
-	firefly_event_queue_free(&eq);
+	event_execute_all_test(eq);
 }
 
 void test_eth_recv_data()
 {
-	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
-			NULL);
 	struct firefly_transport_llp *llp = firefly_transport_llp_eth_posix_new(
 			"lo", on_conn_recv, eq);
 
@@ -257,21 +236,18 @@ void test_eth_recv_data()
 			NULL, NULL, NULL, remote_mac_addr, "lo", llp);
 
 	firefly_transport_eth_posix_read(llp, NULL);
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 
 	CU_ASSERT_TRUE(data_received);
 	data_received = false;
 	CU_ASSERT_FALSE(recv_conn_called);
 	recv_conn_called = false;
 	firefly_transport_llp_eth_posix_free(llp);
-	execute_remaining_events(eq);
-	firefly_event_queue_free(&eq);
+	event_execute_all_test(eq);
 }
 
 void test_eth_recv_conn_and_data()
 {
-	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
-			NULL);
 	struct firefly_transport_llp *llp = firefly_transport_llp_eth_posix_new(
 			"lo", on_conn_recv_keep, eq);
 
@@ -281,21 +257,18 @@ void test_eth_recv_conn_and_data()
 	send_data();
 
 	firefly_transport_eth_posix_read(llp, NULL);
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 
 	CU_ASSERT_TRUE(recv_conn_called);
 	recv_conn_called = false;
 	CU_ASSERT_TRUE(data_received);
 	data_received = false;
 	firefly_transport_llp_eth_posix_free(llp);
-	execute_remaining_events(eq);
-	firefly_event_queue_free(&eq);
+	event_execute_all_test(eq);
 }
 
 void test_eth_recv_conn_keep()
 {
-	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
-			NULL);
 	struct firefly_transport_llp *llp = firefly_transport_llp_eth_posix_new(
 			"lo", on_conn_recv_keep, eq);
 
@@ -305,7 +278,7 @@ void test_eth_recv_conn_keep()
 	send_data();
 
 	firefly_transport_eth_posix_read(llp, NULL);
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 	CU_ASSERT_TRUE(recv_conn_called);
 	CU_ASSERT_TRUE(data_received);
 
@@ -318,20 +291,17 @@ void test_eth_recv_conn_keep()
 	recv_conn_called = false;
 	data_received = false;
 	firefly_transport_llp_eth_posix_free(llp);
-	execute_remaining_events(eq);
-	firefly_event_queue_free(&eq);
+	event_execute_all_test(eq);
 }
 
 void test_eth_recv_conn_reject()
 {
-	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
-			NULL);
 	struct firefly_transport_llp *llp = firefly_transport_llp_eth_posix_new(
 			"lo", on_conn_recv, eq);
 	send_data();
 
 	firefly_transport_eth_posix_read(llp, NULL);
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 	CU_ASSERT_TRUE(recv_conn_called);
 	CU_ASSERT_FALSE(data_received);
 
@@ -344,14 +314,11 @@ void test_eth_recv_conn_reject()
 	recv_conn_called = false;
 	data_received = false;
 	firefly_transport_llp_eth_posix_free(llp);
-	execute_remaining_events(eq);
-	firefly_event_queue_free(&eq);
+	event_execute_all_test(eq);
 }
 
 void test_eth_recv_conn_and_two_data()
 {
-	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
-			NULL);
 	struct firefly_transport_llp *llp = firefly_transport_llp_eth_posix_new(
 			"lo", on_conn_recv_keep, eq);
 
@@ -361,7 +328,7 @@ void test_eth_recv_conn_and_two_data()
 	send_data();
 
 	firefly_transport_eth_posix_read(llp, NULL);
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 	CU_ASSERT_TRUE(recv_conn_called);
 	CU_ASSERT_TRUE(data_received);
 
@@ -376,21 +343,18 @@ void test_eth_recv_conn_and_two_data()
 	send_data();
 
 	firefly_transport_eth_posix_read(llp, NULL);
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 	CU_ASSERT_FALSE(recv_conn_called);
 	CU_ASSERT_TRUE(data_received);
 
 	recv_conn_called = false;
 	data_received = false;
 	firefly_transport_llp_eth_posix_free(llp);
-	execute_remaining_events(eq);
-	firefly_event_queue_free(&eq);
+	event_execute_all_test(eq);
 }
 
 void test_eth_conn_open_and_send()
 {
-	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
-			NULL);
 	struct firefly_transport_llp *llp = firefly_transport_llp_eth_posix_new(
 			"lo", on_conn_recv, eq);
 	struct firefly_connection *conn = firefly_transport_connection_eth_posix_open(
@@ -403,8 +367,7 @@ void test_eth_conn_open_and_send()
 	recv_data(socket);
 	close(socket);
 	firefly_transport_llp_eth_posix_free(llp);
-	execute_remaining_events(eq);
-	firefly_event_queue_free(&eq);
+	event_execute_all_test(eq);
 }
 
 void test_eth_conn_open_and_recv()
@@ -414,8 +377,6 @@ void test_eth_conn_open_and_recv()
 
 void test_eth_recv_conn_keep_two()
 {
-	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
-			NULL);
 	struct firefly_transport_llp *llp = firefly_transport_llp_eth_posix_new(
 			"lo", on_conn_recv_keep_two, eq);
 
@@ -424,7 +385,7 @@ void test_eth_recv_conn_keep_two()
 
 	send_data_w_addr(remote_mac_addr);
 	firefly_transport_eth_posix_read(llp, NULL);
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 	CU_ASSERT_TRUE(recv_conn_called);
 	CU_ASSERT_TRUE(data_received);
 
@@ -439,7 +400,7 @@ void test_eth_recv_conn_keep_two()
 
 	send_data_w_addr(remote_mac_addr_alt);
 	firefly_transport_eth_posix_read(llp, NULL);
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 	CU_ASSERT_TRUE(recv_conn_called);
 	CU_ASSERT_TRUE(data_received);
 
@@ -454,14 +415,11 @@ void test_eth_recv_conn_keep_two()
 	data_received = false;
 
 	firefly_transport_llp_eth_posix_free(llp);
-	execute_remaining_events(eq);
-	firefly_event_queue_free(&eq);
+	event_execute_all_test(eq);
 }
 
 void test_eth_recv_data_two_conn()
 {
-	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
-			NULL);
 	struct firefly_transport_llp *llp = firefly_transport_llp_eth_posix_new(
 			"lo", on_conn_recv_keep_two, eq);
 
@@ -476,14 +434,14 @@ void test_eth_recv_data_two_conn()
 	data_recv_expected_conn = conn_1;
 	send_data_w_addr(remote_mac_addr);
 	firefly_transport_eth_posix_read(llp, NULL);
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 	CU_ASSERT_FALSE(recv_conn_called);
 	CU_ASSERT_TRUE(data_received);
 
 	data_recv_expected_conn = conn_2;
 	send_data_w_addr(remote_mac_addr_alt);
 	firefly_transport_eth_posix_read(llp, NULL);
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 	CU_ASSERT_FALSE(recv_conn_called);
 	CU_ASSERT_TRUE(data_received);
 
@@ -491,14 +449,11 @@ void test_eth_recv_data_two_conn()
 	data_received = false;
 	data_recv_expected_conn = NULL;
 	firefly_transport_llp_eth_posix_free(llp);
-	execute_remaining_events(eq);
-	firefly_event_queue_free(&eq);
+	event_execute_all_test(eq);
 }
 
 void test_eth_conn_close_recv()
 {
-	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
-			NULL);
 	struct firefly_transport_llp *llp = firefly_transport_llp_eth_posix_new(
 			"lo", on_conn_recv, eq);
 	struct firefly_connection *conn = firefly_transport_connection_eth_posix_open(
@@ -506,32 +461,26 @@ void test_eth_conn_close_recv()
 	firefly_connection_close(conn);
 	send_data();
 	firefly_transport_eth_posix_read(llp, NULL);
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 
 	CU_ASSERT_FALSE(data_received);
 	CU_ASSERT_FALSE(recv_conn_called);
 
 	firefly_transport_llp_eth_posix_free(llp);
-	execute_remaining_events(eq);
-	firefly_event_queue_free(&eq);
+	event_execute_all_test(eq);
 }
 
 void test_eth_llp_free_empty()
 {
-	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
-			NULL);
 	struct firefly_transport_llp *llp = firefly_transport_llp_eth_posix_new(
 					"lo", NULL, eq);
 
 	firefly_transport_llp_eth_posix_free(llp);
-	execute_events(eq, 1);
-	firefly_event_queue_free(&eq);
+	event_execute_test(eq, 1);
 }
 
 void test_eth_llp_free_mult_conns()
 {
-	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
-			NULL);
 	struct firefly_transport_llp *llp = firefly_transport_llp_eth_posix_new(
 					"lo", NULL, eq);
 	struct firefly_connection *conn;
@@ -546,16 +495,13 @@ void test_eth_llp_free_mult_conns()
 			"00:00:00:00:00:00", "lo", llp);
 
 	firefly_transport_llp_eth_posix_free(llp);
-	execute_events(eq, 8);
-	firefly_event_queue_free(&eq);
+	event_execute_test(eq, 8);
 }
 
 void test_eth_llp_free_mult_conns_w_chans()
 {
 	// test correct number of events and channel close packets sent in the
 	// correct order.
-	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
-			NULL);
 	struct firefly_transport_llp *llp = firefly_transport_llp_eth_posix_new(
 					"lo", NULL, eq);
 	struct firefly_connection *conn;
@@ -588,34 +534,33 @@ void test_eth_llp_free_mult_conns_w_chans()
 
 	firefly_transport_llp_eth_posix_free(llp);
 	// llp free
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 
 	// connection close
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 	// channel close
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 	// channel free
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 
 	// connection close
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 	// channel close
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 	// channel free
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 
 	// connection close
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 	// channel close
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 	// channel free
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 	// channel close
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 	// channel free
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 
 	// 3 conn close, 3 conn free, llp free
-	execute_events(eq, 7);
-	firefly_event_queue_free(&eq);
+	event_execute_test(eq, 7);
 }

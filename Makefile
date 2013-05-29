@@ -70,17 +70,40 @@ TAGSFILE_EMACS = TAGS
 
 # Use LLVM clang if it's found.
 CC = $(shell hash clang 2>/dev/null && echo clang || echo cc)
+# Use arm toolchain to compile for arm
+CC_ARM = arm-none-eabi-gcc
 
 # Error flags to the compiler.
 ERRFLAGS = -Wall -Wextra
 
 # Common flags to the compiler.
-CFLAGS = -std=c99 $(ERRFLAGS) $(INC_COMMON) -D DEBUG
+CFLAGS_COM = -std=c99 $(ERRFLAGS) $(INC_COMMON) -D DEBUG
+
+# x86 specific compiler flags
+CFLAGS = $(CFLAGS_COM)
+
+# ARM specific compiler flags
+CFLAGS_ARM = $(CFLAGS_COM) -Wfloat-equal -Werror-implicit-function-declaration \
+		  -mthumb -mcpu=cortex-m3 -T$(LDSCRIPT) \
+		  -ffunction-sections -fdata-sections \
+		  $(INC_TRANSPORT_UDP_LWIP) \
+		  -D sprintf=usprintf \
+		  -D snprintf=usnprintf \
+		  -D vsnprintf=uvsnprintf \
+		  -D printf=uipprintf \
+		  -D malloc=pvPortMalloc \
+		  -D calloc=pvPortCalloc \
+		  -D free=vPortFree \
+		  -D ARM_CORTEXM3_CODESOURCERY \
+		  -D LABCOMM_NO_STDIO \
+		  -D GCC_ARMCM3=1
+
+# Specify alternative memory allocation/deallocation functions
 ifdef FIREFLY_MALLOC
-CFLAGS += -D FIREFLY_MALLOC\(size\)=$(FIREFLY_MALLOC)
+CFLAGS_COM += -D FIREFLY_MALLOC\(size\)=$(FIREFLY_MALLOC)
 endif
 ifdef FIREFLY_FREE
-CFLAGS += -D FIREFLY_FREE\(p\)=$(FIREFLY_FREE)
+CFLAGS_COMM += -D FIREFLY_FREE\(p\)=$(FIREFLY_FREE)
 endif
 
 
@@ -153,72 +176,29 @@ LDFLAGS=
 LDFLAGS_TEST= -L$(BUILD_DIR) -L$(LABCOMMLIBPATH)
 
 # Libraries to link with test programs.
-LDLIBS_TEST= -l$(LIB_TRANSPORT_UDP_POSIX_NAME) -l$(LIB_TRANSPORT_ETH_POSIX_NAME) -l$(LIB_FIREFLY_NAME) -llabcomm -lcunit -lpthread -lrt
+LDLIBS_TEST= -llabcomm -lcunit -lpthread -lrt
 
 ### }
 
 ### Conditional flags {
-ifeq ($(TARGET_ISA), arm_thumb)
-	OPTLVL = s
-else
-	OPTLVL = 2
-endif
 DEBUG = true
 # DEBUG = false
 DEBUGOPT = -g
-
 # Change with $make -e DEBUG=false
 ifeq ($(DEBUG), true)
 	# Disalbe optimizations when deubbing.
-	CFLAGS += $(DEBUGOPT) -O0
+	CFLAGS_COM += $(DEBUGOPT) -O0
 	LDFLAGS += -g
 else
-	CFLAGS += -O$(OPTLVL)
+	CFLAGS += -O2
+	CFLAGS_ARM += -Os
 endif
 
 # Enable instrumented compilation with $make -e COVERAGE=true
 ifeq ($(COVERAGE), true)
-	CFLAGS += --coverage
+	CFLAGS_COMM += --coverage
 	LDFLAGS += --coverage
 endif
-
-# Add options depending on target. Default is x86/x64.
-# Set with $make -e TARGET_ISA=<isa>
-# To make a complete arm compilation you will typically type:
-# $ make -e TARGET_ISA=arm_thumb -e FIREFLY_ERROR_USER_DEFINED=true build/lib{firefly,transport-udp-lwip}.a
-CC_ARM = arm-none-eabi-gcc
-CFLAGS_ARM = $(CFLAGS) -Wfloat-equal -Werror-implicit-function-declaration \
-		  -mthumb -mcpu=cortex-m3 -T$(LDSCRIPT) \
-		  -ffunction-sections -fdata-sections \
-		  $(INC_TRANSPORT_UDP_LWIP) \
-		  -D sprintf=usprintf \
-		  -D snprintf=usnprintf \
-		  -D vsnprintf=uvsnprintf \
-		  -D printf=uipprintf \
-		  -D malloc=pvPortMalloc \
-		  -D calloc=pvPortCalloc \
-		  -D free=vPortFree \
-		  -D ARM_CORTEXM3_CODESOURCERY \
-		  -D LABCOMM_NO_STDIO \
-		  -D GCC_ARMCM3=1
-
-#ifeq ($(TARGET_ISA), arm_thumb)
-#CC = $(COMPILER_DIR)/arm-none-eabi-gcc
-#CFLAGS += -Wfloat-equal -Werror-implicit-function-declaration \
-#-mthumb -mcpu=cortex-m3 -T$(LDSCRIPT) \
-#-ffunction-sections -fdata-sections \
-#$(INC_TRANSPORT_UDP_LWIP) \
-#-D sprintf=usprintf \
-#-D snprintf=usnprintf \
-#-D vsnprintf=uvsnprintf \
-#-D printf=uipprintf \
-#-D malloc=pvPortMalloc \
-#-D calloc=pvPortCalloc \
-#-D free=vPortFree \
-#-D ARM_CORTEXM3_CODESOURCERY \
-#-D LABCOMM_NO_STDIO \
-#-D GCC_ARMCM3=1
-#endif
 
 # Clang does not support noexecstack it seems.
 ifeq ($(CC), gcc)
@@ -232,13 +212,14 @@ endif
 
 ### Our libraries {
 LIB_FIREFLY_NAME = firefly
+LIB_FIREFLY_WERR_NAME = firefly-werr
 LIB_TRANSPORT_UDP_POSIX_NAME = transport-udp-posix
 LIB_TRANSPORT_ETH_POSIX_NAME = transport-eth-posix
 LIB_TRANSPORT_UDP_LWIP_NAME = transport-udp-lwip
 LIB_TRANSPORT_ETH_STELLARIS_NAME = transport-eth-stellaris
 
 # Libraries to build.
-OUR_LIBS=$(patsubst %,$(BUILD_DIR)/lib%.a,$(LIB_FIREFLY_NAME) $(LIB_TRANSPORT_UDP_POSIX_NAME) $(LIB_TRANSPORT_UDP_LWIP_NAME) $(LIB_TRANSPORT_ETH_POSIX_NAME))
+OUR_LIBS=$(patsubst %,$(BUILD_DIR)/lib%.a,$(LIB_FIREFLY_NAME) $(LIB_TRANSPORT_UDP_POSIX_NAME) $(LIB_TRANSPORT_UDP_LWIP_NAME) $(LIB_TRANSPORT_ETH_POSIX_NAME) $(LIB_TRANSPORT_ETH_STELLARIS_NAME))
 
 # Automatically generated prerequisities files.
 DFILES= $(patsubst %.o,%.d,$(filter-out $(BUILD_DIR)/$(GEN_DIR)/firefly_protocol.o,$(FIREFLY_OBJS)) $(TEST_OBJS) $(GEN_OBJS))
@@ -259,16 +240,13 @@ GEN_OBJS= $(patsubst %.c,$(BUILD_DIR)/%.o,$(filter-out %.h,$(GEN_FILES)))
 #FIREFLY_SRC = $(shell find $(SRC_DIR)/protocol/ -type f -name '*.c' -print | sed 's/^$(SRC_DIR)\///') $(filter-out utils/firefly_errors.c,$(shell find $(SRC_DIR)/utils/ -type f -name '*.c' -print| sed 's/^$(SRC_DIR)\///')) $(GEN_DIR)/firefly_protocol.c
 FIREFLY_SRC = $(shell find $(SRC_DIR)/protocol/ -type f -name '*.c' -print | sed 's/^$(SRC_DIR)\///') $(patsubst %,utils/%.c, firefly_errors_utils firefly_event_queue) $(GEN_DIR)/firefly_protocol.c
 
-# Disable default error handler that prints with fprintf. If set to true, you
-# must provide an own implementation at link time.
-# Set with $make -e FIREFLY_ERROR_USER_DEFINED=true
-ifneq ($(FIREFLY_ERROR_USER_DEFINED),true)
-	FIREFLY_SRC += utils/firefly_errors.c
-endif
+FIREFLY_ERR_SRC += utils/firefly_errors.c
 
 # Object files from sources.
 FIREFLY_OBJS = $(patsubst %.c,$(BUILD_DIR)/%.o,$(FIREFLY_SRC))
 FIREFLY_ARM_OBJS = $(patsubst %.c,$(BUILD_DIR)/%-arm.o,$(FIREFLY_SRC))
+
+FIREFLY_ERR_OBJS = $(patsubst %.c,$(BUILD_DIR)/%.o,$(FIREFLY_ERR_SRC))
 
 ### }
 
@@ -405,10 +383,13 @@ $(BUILD_DIR)/gen/%.o: gen/%.c |$$(@D)
 ### Firefly targets {
 
 # target: build/libfirefly.a  - Build static library for firefly.
-$(BUILD_DIR)/libfirefly.a: $(FIREFLY_OBJS)
+$(BUILD_DIR)/lib$(LIB_FIREFLY_NAME).a: $(FIREFLY_OBJS)
 	ar -rc $@ $^
 
-$(BUILD_DIR)/libfirefly-arm.a: $(FIREFLY_ARM_OBJS)
+$(BUILD_DIR)/lib$(LIB_FIREFLY_WERR_NAME).a: $(FIREFLY_OBJS) $(FIREFLY_ERR_OBJS)
+	ar -rc $@ $^
+
+$(BUILD_DIR)/lib$(LIB_FIREFLY_NAME)-arm.a: $(FIREFLY_ARM_OBJS)
 	ar -rc $@ $^
 
 # Compile protocol files.
@@ -495,50 +476,48 @@ $(TEST_OBJS): $$(patsubst $$(BUILD_DIR)/%.o,%.c,$$@) |$$(@D)
 	$(CC) -c $(CFLAGS) $(INC_TEST) -o $@ $<
 
 # The test programs all depends on the libraries it uses and the test files output directory.
-$(TEST_PROGS): $$(patsubst %,$$(BUILD_DIR)/lib%.a,$$(LIB_FIREFLY_NAME) $$(LIB_TRANSPORT_UDP_POSIX_NAME) $$(LIB_TRANSPORT_ETH_POSIX_NAME)) $(LABCOMMLIBPATH)/liblabcomm.a |$(TESTFILES_DIR)
+$(TEST_PROGS): $(LABCOMMLIBPATH)/liblabcomm.a |$(TESTFILES_DIR)
 
 # Main test program for the protocol tests.
 # Filter-out libraries since those are not "in-files" but the still depend on them so they can be used for linking.
-$(BUILD_DIR)/test/test_protocol_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_protocol_main test_labcomm_utils test_proto_chan test_proto_conn test_proto_important test_proto_translc test_proto_protolc test_proto_errors error_helper proto_helper event_helper) $(BUILD_DIR)/$(GEN_DIR)/test.o
-	cp $(BUILD_DIR)/lib$(LIB_FIREFLY_NAME).a /tmp/lib$(LIB_FIREFLY_NAME)_wo_error.a
-	ar d /tmp/lib$(LIB_FIREFLY_NAME)_wo_error.a firefly_errors.o
-	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) -L/tmp/ $(filter-out %.a,$^) $(patsubst -l$(LIB_FIREFLY_NAME),-l$(LIB_FIREFLY_NAME)_wo_error,$(LDLIBS_TEST)) -o $@
+$(BUILD_DIR)/test/test_protocol_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_protocol_main test_labcomm_utils test_proto_chan test_proto_conn test_proto_important test_proto_translc test_proto_protolc test_proto_errors error_helper proto_helper event_helper) $(BUILD_DIR)/$(GEN_DIR)/test.o $(BUILD_DIR)/lib$(LIB_FIREFLY_NAME).a
+	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) -L/tmp/ $(filter-out %.a,$^) -l$(LIB_FIREFLY_NAME) $(LDLIBS_TEST) -o $@
 
 # Main test program for the transport tests.
-$(BUILD_DIR)/test/test_transport_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_transport_main test_transport test_transport_gen test_transport_udp_posix error_helper)
-	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $^ $(filter-out %$(LIB_FIREFLY_NAME).a, $(LDLIBS_TEST)) -o $@
+$(BUILD_DIR)/test/test_transport_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_transport_main test_transport test_transport_gen test_transport_udp_posix error_helper) $(patsubst %,$(BUILD_DIR)/lib%.a,$(LIB_TRANSPORT_UDP_POSIX_NAME))
+	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $^ -l$(LIB_FIREFLY_NAME) -l$(LIB_TRANSPORT_UDP_POSIX_NAME) $(LDLIBS_TEST) -o $@
 
 # Main test program for the eth posix transport tests.
-$(BUILD_DIR)/test/test_transport_eth_posix_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_transport test_transport_eth_posix_main test_transport_eth_posix)
-	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) $(LDLIBS_TEST) -o $@
+$(BUILD_DIR)/test/test_transport_eth_posix_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_transport test_transport_eth_posix_main test_transport_eth_posix error_helper event_helper) $(patsubst %,$(BUILD_DIR)/lib%.a,$(LIB_TRANSPORT_ETH_POSIX_NAME) $(LIB_FIREFLY_NAME))
+	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) -l$(LIB_FIREFLY_NAME) -l$(LIB_TRANSPORT_ETH_POSIX_NAME) $(LDLIBS_TEST) -o $@
 
 # Main test program for the event queue tests.
-$(BUILD_DIR)/test/test_event_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_event_main) $(patsubst %,$(BUILD_DIR)/%.o,utils/firefly_event_queue)
+$(BUILD_DIR)/test/test_event_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_event_main error_helper) $(patsubst %,$(BUILD_DIR)/%.o,utils/firefly_event_queue)
 	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) $(LDLIBS_TEST) -o $@
 
 # Main test program for the pingpong udp program.
-$(BUILD_DIR)/test/pingpong/pingpong_main: $(patsubst %,$(BUILD_DIR)/test/pingpong/%.o,pingpong_main pingpong_pudp pingpong pong_pudp ping_pudp) $(BUILD_DIR)/$(GEN_DIR)/pingpong.o
-	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) $(LDLIBS_TEST) -o $@ 
+$(BUILD_DIR)/test/pingpong/pingpong_main: $(patsubst %,$(BUILD_DIR)/test/pingpong/%.o,pingpong_main pingpong_pudp pingpong pong_pudp ping_pudp) $(BUILD_DIR)/$(GEN_DIR)/pingpong.o $(patsubst %,$(BUILD_DIR)/lib%.a,$(LIB_FIREFLY_WERR_NAME) $(LIB_TRANSPORT_UDP_POSIX_NAME))
+	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) -l$(LIB_FIREFLY_WERR_NAME) -l$(LIB_TRANSPORT_UDP_POSIX_NAME) $(LDLIBS_TEST) -o $@ 
 
 # Main test program for the pingpong ethernet program.
-$(BUILD_DIR)/test/pingpong/pingpong_eth_main: $(patsubst %,$(BUILD_DIR)/test/pingpong/%.o,pingpong_main pingpong pingpong_peth pong_peth ping_peth) $(BUILD_DIR)/$(GEN_DIR)/pingpong.o
-	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) $(LDLIBS_TEST) -o $@ 
+$(BUILD_DIR)/test/pingpong/pingpong_eth_main: $(patsubst %,$(BUILD_DIR)/test/pingpong/%.o,pingpong_main pingpong pingpong_peth pong_peth ping_peth) $(BUILD_DIR)/$(GEN_DIR)/pingpong.o $(patsubst %,$(BUILD_DIR)/lib%.a,$(LIB_FIREFLY_WERR_NAME) $(LIB_TRANSPORT_ETH_POSIX_NAME))
+	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) -l$(LIB_FIREFLY_WERR_NAME) -l$(LIB_TRANSPORT_ETH_POSIX_NAME) $(LDLIBS_TEST) -o $@ 
 
 # Main test program for the multiple transport layer functionality.
-$(BUILD_DIR)/test/pingpong/pingpong_multi_main: $(patsubst %,$(BUILD_DIR)/test/pingpong/%.o,pingpong_main pingpong pong_pmulti ping_pmulti) $(BUILD_DIR)/$(GEN_DIR)/pingpong.o
-	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) $(LDLIBS_TEST) -o $@ 
+$(BUILD_DIR)/test/pingpong/pingpong_multi_main: $(patsubst %,$(BUILD_DIR)/test/pingpong/%.o,pingpong_main pingpong pong_pmulti ping_pmulti) $(BUILD_DIR)/$(GEN_DIR)/pingpong.o $(patsubst %,$(BUILD_DIR)/lib%.a,$(LIB_FIREFLY_WERR_NAME) $(LIB_TRANSPORT_UDP_POSIX_NAME) $(LIB_TRANSPORT_ETH_POSIX_NAME))
+	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) -l$(LIB_FIREFLY_WERR_NAME) -l$(LIB_TRANSPORT_UDP_POSIX_NAME) -l$(LIB_TRANSPORT_ETH_POSIX_NAME) $(LDLIBS_TEST) -o $@ 
 
 # Main test program for the resend posix queue tests.
 $(BUILD_DIR)/test/test_resend_posix: $(patsubst %,$(BUILD_DIR)/test/%.o,test_resend_posix) $(patsubst %,$(BUILD_DIR)/%.o,utils/firefly_resend_posix)
-	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) $(LDLIBS_TEST) -o $@
+	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $^ $(LDLIBS_TEST) -o $@
 
 # Main test program for the memory management tests.
 $(BUILD_DIR)/test/test_proto_memman: $(patsubst %,$(BUILD_DIR)/test/%.o,test_proto_memman proto_helper test_labcomm_utils event_helper) $(patsubst %,$(BUILD_DIR)/%.o,utils/firefly_resend_posix gen/test) $(BUILD_DIR)/lib$(LIB_FIREFLY_NAME).a $(LABCOMMLIBPATH)/liblabcomm.a
-	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) -lfirefly -llabcomm -lcunit -lpthread -lrt -o $@
+	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) -l$(LIB_FIREFLY_NAME) -llabcomm -lcunit -lpthread -lrt -o $@
 
 # UDP System tests
-$(BUILD_DIR)/test/system/udp_posix: $(patsubst %,$(BUILD_DIR)/test/%.o,system/udp_posix test_labcomm_utils event_helper) $(patsubst %,$(BUILD_DIR)/%.o,utils/firefly_resend_posix gen/test) $(BUILD_DIR)/lib$(LIB_TRANSPORT_UDP_POSIX_NAME).a $(BUILD_DIR)/lib$(LIB_FIREFLY_NAME).a $(LABCOMMLIBPATH)/liblabcomm.a
-	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) $(filter-out %eth-posix,$(LDLIBS_TEST)) -o $@
+$(BUILD_DIR)/test/system/udp_posix: $(patsubst %,$(BUILD_DIR)/test/%.o,system/udp_posix test_labcomm_utils error_helper event_helper) $(patsubst %,$(BUILD_DIR)/%.o,utils/firefly_resend_posix gen/test) $(patsubst %,$(BUILD_DIR)/lib%.a,$(LIB_TRANSPORT_UDP_POSIX_NAME) $(LIB_FIREFLY_NAME)) $(LABCOMMLIBPATH)/liblabcomm.a
+	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) -l$(LIB_FIREFLY_NAME) -l$(LIB_TRANSPORT_UDP_POSIX_NAME) $(LDLIBS_TEST) -o $@
 
 ### }
 

@@ -246,20 +246,6 @@ void firefly_transport_eth_stellaris_ack(unsigned char pkg_id,
 {
 
 }
-void sprint_mac(char *buf, unsigned char *addr)
-{
-	int strp = 0;
-
-	for (int i = 0; i < ETH_ADDR_LEN; i++) {
-		char hex[] = {'0','1','2','3','4','5','6','7',
-					  '8','9','A','B','C','D','E','F'};
-
-		buf[strp++] = hex[(addr[i] & 0xF0) >> 4];
-		buf[strp++] = hex[(addr[i] & 0x0F)];
-		buf[strp++] = ':';
-	}
-	buf[strp - 1] = '\0';		/* Replace last colon with terminator. */
-}
 
 bool connection_eq_remmac(struct firefly_connection *conn, void *context)
 {
