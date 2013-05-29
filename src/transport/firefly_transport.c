@@ -8,12 +8,14 @@
 
 #include <transport/firefly_transport.h>
 
+#include "protocol/firefly_protocol_private.h"
+
 void add_connection_to_llp(struct firefly_connection *conn,
 		struct firefly_transport_llp *llp)
 {
 	struct llp_connection_list_node *tmp = llp->conn_list;
 	struct llp_connection_list_node *new_node =
-		malloc(sizeof(struct llp_connection_list_node));
+		FIREFLY_MALLOC(sizeof(struct llp_connection_list_node));
 	new_node->conn = conn;
 	new_node->next = tmp;
 	llp->conn_list = new_node;
@@ -30,7 +32,7 @@ struct firefly_connection *remove_connection_from_llp(
 		if (conn_eq((*head)->conn, context)) {
 			ret = (*head)->conn;
 			struct llp_connection_list_node *tmp = (*head)->next;
-			free(*head);
+			FIREFLY_FREE(*head);
 			*head = tmp;
 			head = NULL;
 		} else {
