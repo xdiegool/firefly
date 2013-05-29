@@ -426,7 +426,8 @@ struct event_queue_signals {
 	bool event_exec_finish;
 };
 
-int event_add_mutex(struct firefly_event_queue *eq, struct firefly_event *ev)
+int event_add_mutex(struct firefly_event_queue *eq, unsigned char prio,
+		firefly_event_execute_f execute, void *context)
 {
 	int res = 0;
 	struct event_queue_signals *eq_s =
@@ -436,7 +437,7 @@ int event_add_mutex(struct firefly_event_queue *eq, struct firefly_event *ev)
 	if (res) {
 		return res;
 	}
-	res = firefly_event_add(eq, ev);
+	res = firefly_event_add(eq, prio, execute, context);
 	if (!res) {
 		pthread_cond_signal(&eq_s->eq_cond);
 	}
@@ -470,6 +471,7 @@ void *event_thread_main(void *args)
 		pthread_mutex_unlock(&eq_s->eq_lock);
 		if (ev != NULL) {
 			firefly_event_execute(ev);
+			firefly_event_return(eq, &ev);
 		}
 	}
 	return NULL;
@@ -626,7 +628,7 @@ void test_something()
 	}
 	eq_s.event_exec_finish = false;
 	struct firefly_event_queue *events =
-		firefly_event_queue_new(event_add_mutex, &eq_s);
+		firefly_event_queue_new(event_add_mutex, 10, &eq_s);
 	res = pthread_create(&event_thread, NULL, event_thread_main, events);
 	if (res) {
 		fprintf(stderr, "ERROR: starting event thread.\n");

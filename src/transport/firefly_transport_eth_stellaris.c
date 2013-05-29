@@ -125,11 +125,11 @@ struct firefly_transport_llp *firefly_transport_llp_eth_stellaris_new(
 
 void firefly_transport_llp_eth_stellaris_free(struct firefly_transport_llp *llp)
 {
-	struct firefly_event *ev = firefly_event_new(FIREFLY_PRIORITY_LOW,
-			firefly_transport_llp_eth_stellaris_free_event, llp);
 	struct transport_llp_eth_stellaris *llp_eth;
 	llp_eth = (struct transport_llp_eth_stellaris *) llp->llp_platspec;
-	int ret = llp_eth->event_queue->offer_event_cb(llp_eth->event_queue, ev);
+	int ret = llp_eth->event_queue->offer_event_cb(llp_eth->event_queue,
+			FIREFLY_PRIORITY_LOW,
+			firefly_transport_llp_eth_stellaris_free_event, llp);
 	if (ret) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1,
 					  "could not add event to queue");
@@ -315,9 +315,9 @@ void firefly_transport_eth_stellaris_read(struct firefly_transport_llp *llp)
 
 	llp_eth = (struct transport_llp_eth_stellaris *) llp->llp_platspec;
 
-	struct firefly_event *ev = firefly_event_new(FIREFLY_PRIORITY_HIGH,
+	llp_eth->event_queue->offer_event_cb(llp_eth->event_queue,
+			FIREFLY_PRIORITY_HIGH,
 			firefly_transport_eth_stellaris_read_event, ev_a);
-	llp_eth->event_queue->offer_event_cb(llp_eth->event_queue, ev);
 
 }
 
