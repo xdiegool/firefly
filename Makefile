@@ -103,7 +103,7 @@ ifdef FIREFLY_MALLOC
 CFLAGS_COM += -D FIREFLY_MALLOC\(size\)=$(FIREFLY_MALLOC)
 endif
 ifdef FIREFLY_FREE
-CFLAGS_COMM += -D FIREFLY_FREE\(p\)=$(FIREFLY_FREE)
+CFLAGS_COM += -D FIREFLY_FREE\(p\)=$(FIREFLY_FREE)
 endif
 
 
@@ -512,8 +512,8 @@ $(BUILD_DIR)/test/test_resend_posix: $(patsubst %,$(BUILD_DIR)/test/%.o,test_res
 	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $^ $(LDLIBS_TEST) -o $@
 
 # Main test program for the memory management tests.
-$(BUILD_DIR)/test/test_proto_memman: $(patsubst %,$(BUILD_DIR)/test/%.o,test_proto_memman proto_helper test_labcomm_utils event_helper) $(patsubst %,$(BUILD_DIR)/%.o,utils/firefly_resend_posix gen/test) $(BUILD_DIR)/lib$(LIB_FIREFLY_NAME).a $(LABCOMMLIBPATH)/liblabcomm.a
-	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) -l$(LIB_FIREFLY_NAME) -llabcomm -lcunit -lpthread -lrt -o $@
+$(BUILD_DIR)/test/test_proto_memman: $(patsubst %,$(BUILD_DIR)/test/%.o,test_proto_memman proto_helper test_labcomm_utils error_helper event_helper) $(patsubst %,$(BUILD_DIR)/%.o,gen/test) $(BUILD_DIR)/lib$(LIB_FIREFLY_NAME).a $(LABCOMMLIBPATH)/liblabcomm.a
+	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) -l$(LIB_FIREFLY_NAME) $(LDLIBS_TEST) -o $@
 
 # UDP System tests
 $(BUILD_DIR)/test/system/udp_posix: $(patsubst %,$(BUILD_DIR)/test/%.o,system/udp_posix test_labcomm_utils error_helper event_helper) $(patsubst %,$(BUILD_DIR)/%.o,utils/firefly_resend_posix gen/test) $(patsubst %,$(BUILD_DIR)/lib%.a,$(LIB_TRANSPORT_UDP_POSIX_NAME) $(LIB_FIREFLY_NAME)) $(LABCOMMLIBPATH)/liblabcomm.a

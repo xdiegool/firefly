@@ -8,19 +8,20 @@
 #include <stdbool.h>
 
 #include <utils/firefly_errors.h>
+#include "protocol/firefly_protocol_private.h"
 
 struct firefly_event_queue *firefly_event_queue_new(
 		firefly_offer_event offer_cb, size_t pool_size, void *context)
 {
 	struct firefly_event_queue *q = NULL;
 
-	if ((q = malloc(sizeof(struct firefly_event_queue))) != NULL) {
+	if ((q = FIREFLY_MALLOC(sizeof(struct firefly_event_queue))) != NULL) {
 		q->head = NULL;
 		q->offer_event_cb = offer_cb;
 		q->context = context;
-		q->event_pool = malloc(sizeof(struct firefly_event *)*pool_size);
+		q->event_pool = FIREFLY_MALLOC(sizeof(struct firefly_event *)*pool_size);
 		for (size_t i = 0; i < pool_size; i++) {
-			q->event_pool[i] = malloc(sizeof(struct firefly_event));
+			q->event_pool[i] = FIREFLY_MALLOC(sizeof(struct firefly_event));
 		}
 		q->event_pool_size = pool_size;
 		q->event_pool_in_use = 0;
@@ -39,8 +40,8 @@ void firefly_event_queue_free(struct firefly_event_queue **q)
 	for (size_t i = 0; i < (*q)->event_pool_size; i++) {
 		firefly_event_free((*q)->event_pool[i]);
 	}
-	free((*q)->event_pool);
-	free(*q);
+	FIREFLY_FREE((*q)->event_pool);
+	FIREFLY_FREE(*q);
 	*q = NULL;
 }
 
@@ -55,7 +56,7 @@ struct firefly_event *firefly_event_new(unsigned char prio,
 {
 	struct firefly_event *ev;
 
-	if ((ev = malloc(sizeof(struct firefly_event))) != NULL) {
+	if ((ev = FIREFLY_MALLOC(sizeof(struct firefly_event))) != NULL) {
 		ev->prio = prio;
 		ev->execute = execute;
 		ev->context = context;
@@ -66,7 +67,7 @@ struct firefly_event *firefly_event_new(unsigned char prio,
 
 void firefly_event_free(struct firefly_event *ev)
 {
-	free(ev);
+	FIREFLY_FREE(ev);
 }
 
 void firefly_event_init(struct firefly_event *ev, unsigned char prio,
@@ -92,12 +93,12 @@ struct firefly_event *firefly_event_take(struct firefly_event_queue *q)
 			// Double the size of the new pool
 			size_t new_size = q->event_pool_size*2;
 			struct firefly_event **new_pool =
-				malloc(sizeof(struct firefly_event*)*new_size);
+				FIREFLY_MALLOC(sizeof(struct firefly_event*)*new_size);
 			memcpy(new_pool, q->event_pool, q->event_pool_size);
 			for (size_t i = q->event_pool_in_use; i < new_size; i++) {
-				new_pool[i] = malloc(sizeof(struct firefly_event));
+				new_pool[i] = FIREFLY_MALLOC(sizeof(struct firefly_event));
 			}
-			free(q->event_pool);
+			FIREFLY_FREE(q->event_pool);
 			q->event_pool = new_pool;
 			q->event_pool_size = new_size;
 		}

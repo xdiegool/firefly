@@ -57,7 +57,9 @@ void memman_list_remove(void *p, bool runtime)
 	bool found = false;
 	while (*sought != NULL) {
 		if ((*sought)->p == p) {
-			CU_ASSERT_EQUAL((*sought)->runtime, runtime);
+			if ((*sought)->runtime != runtime) {
+				printf("ERROR: freeing from incorrent context: %d\n", runtime);
+			}
 			struct memman_list *tmp = *sought;
 			*sought = (*sought)->next;
 			free(tmp);
@@ -67,40 +69,38 @@ void memman_list_remove(void *p, bool runtime)
 			sought = &(*sought)->next;
 		}
 	}
-	CU_ASSERT_TRUE(found);
 }
 
 int init_suit_proto_memman()
 {
 	init_labcomm_test_enc_dec();
-	eq = firefly_event_queue_new(firefly_event_add, NULL);
-	if (eq == NULL) {
-		return 1;
-	}
 	return 0;
 }
 
 int clean_suit_proto_memman()
 {
 	clean_labcomm_test_enc_dec();
-	firefly_event_queue_free(&eq);
 	return 0;
 }
 
-static bool test_malloc_called = false;
+static int nbr_mallocs = 0;
 void *test_malloc(size_t size)
 {
-	test_malloc_called = true;
+	nbr_mallocs++;
 	void *p = malloc(size);
 	memman_list_add(p, false);
 	CU_ASSERT_FALSE(firefly_runtime);
+	if (firefly_runtime) {
+		printf("ERROR: malloc during runtime\n");
+		return NULL;
+	}
 	return p;
 }
 
-static bool test_free_called = false;
+static int nbr_frees = 0;
 void test_free(void *p)
 {
-	test_free_called = true;
+	nbr_frees++;
 	if (p != NULL) {
 		memman_list_remove(p, false);
 	}
@@ -109,6 +109,7 @@ void test_free(void *p)
 
 void *test_runtime_malloc(struct firefly_connection *conn, size_t size)
 {
+	nbr_mallocs++;
 	UNUSED_VAR(conn);
 	void *p = malloc(size);
 	memman_list_add(p, true);
@@ -117,6 +118,7 @@ void *test_runtime_malloc(struct firefly_connection *conn, size_t size)
 
 void test_runtime_free(struct firefly_connection *conn, void *p)
 {
+	nbr_frees++;
 	UNUSED_VAR(conn);
 	if (p != NULL) {
 		memman_list_remove(p, true);
@@ -148,6 +150,8 @@ void handle_test_test_var(test_test_var *v, void *ctx)
 
 void test_memory_management_one_chan()
 {
+	eq = firefly_event_queue_new(firefly_event_add, 10, NULL);
+	CU_ASSERT_PTR_NOT_NULL_FATAL(eq);
 	struct firefly_memory_funcs memfuncs;
 	memfuncs.alloc_replacement = test_runtime_malloc;
 	memfuncs.free_replacement = test_runtime_free;
@@ -169,13 +173,6 @@ void test_memory_management_one_chan()
 	event_execute_all_test(eq);
 	CU_ASSERT_TRUE_FATAL(received_channel_ack);
 	CU_ASSERT_PTR_NOT_NULL_FATAL(open_chan);
-
-	if (!test_free_called || !test_malloc_called) {
-		printf("compile with:\n");
-		printf("FIREFLY_MALLOC=test_malloc(size) FIREFLY_FREE=test_free(p)\n");
-	}
-	CU_ASSERT_TRUE_FATAL(test_malloc_called);
-	CU_ASSERT_TRUE_FATAL(test_free_called);
 
 	// --- END SETUP PHASE
 	// --- RUNTIME PHASE
@@ -231,6 +228,15 @@ void test_memory_management_one_chan()
 
 	firefly_connection_free(&conn);
 	event_execute_all_test(eq);
+	firefly_event_queue_free(&eq);
+	printf("\nnbr mallocs: %d\nnbr frees: %d\n", nbr_mallocs, nbr_frees);
+
+	if (nbr_frees == 0|| nbr_mallocs == 0) {
+		printf("compile with:\n");
+		printf("FIREFLY_MALLOC=test_malloc(size) FIREFLY_FREE=test_free(p)\n");
+	}
+	CU_ASSERT_NOT_EQUAL(nbr_mallocs, 0);
+	CU_ASSERT_NOT_EQUAL(nbr_frees, 0);
 }
 
 int main()
