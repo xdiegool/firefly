@@ -145,7 +145,6 @@ int main()
 		return 1;
 	}
 	int res;
-	struct event_queue_signals eq_s;
 	struct reader_thread_args rtarg;
 	pthread_t reader_thread;
 

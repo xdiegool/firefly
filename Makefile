@@ -310,8 +310,10 @@ TEST_SRC = $(shell find $(SRC_DIR)/test/ -type f -name '*.c' | sed 's/^$(SRC_DIR
 TEST_OBJS = $(patsubst %.c,$(BUILD_DIR)/%.o,$(TEST_SRC))
 TEST_UNIT_PROGS = $(patsubst %,$(BUILD_DIR)/test/%,test_event_main test_protocol_main test_transport_eth_posix_main test_transport_main test_resend_posix)
 TEST_UNIT_ROOT_PROGS = $(patsubst %,$(BUILD_DIR)/test/%,test_transport_eth_posix_main)
-TEST_SYSTEM_PROGS = $(patsubst %,$(BUILD_DIR)/test/%,pingpong/pingpong_main pingpong/pingpong_eth_main pingpong/pingpong_multi_main system/udp_posix)
-TEST_SYSTEM_ROOT_PROGS = $(patsubst %,$(BUILD_DIR)/test/%,pingpong/pingpong_eth_main pingpong/pingpong_multi_main)
+TEST_SYSTEM_PROGS = $(patsubst %,$(BUILD_DIR)/test/%,pingpong/pingpong_main pingpong/pong_eth_main pingpong/ping_eth_main pingpong/pingpong_multi_main system/udp_posix)
+TEST_SYSTEM_ROOT_PROGS =
+TEST_SYSTEM_NORUN_PROGS = $(patsubst %,$(BUILD_DIR)/test/%,pingpong/pong_eth_main pingpong/ping_eth_main pingpong/pingpong_multi_main)
+
 TEST_PROGS = $(TEST_UNIT_PROGS) $(TEST_SYSTEM_PROGS)
 
 ### }
@@ -592,7 +594,7 @@ ifdef WITH_ROOT
 endif
 
 test-system: $(TEST_SYSTEM_PROGS)
-	@for prog in $(filter-out $(TEST_SYSTEM_ROOT_PROGS),$^); do \
+	@for prog in $(filter-out $(TEST_SYSTEM_ROOT_PROGS) $(TEST_SYSTEM_NORUN_PROGS),$^); do \
 		echo "=========================>BEGIN TEST: $${prog}"; \
 		valgrind --quiet --error-exitcode=1 --leak-check=full --show-reachable=yes ./$$prog; \
 		test "$$?" -ne 0 && \
