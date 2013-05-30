@@ -509,7 +509,7 @@ $(BUILD_DIR)/test/pingpong/pong_eth_main: $(patsubst %,$(BUILD_DIR)/test/pingpon
 	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) -l$(LIB_FIREFLY_WERR_NAME) -l$(LIB_TRANSPORT_ETH_POSIX_NAME) $(LDLIBS_TEST) -o $@ 
 
 # Main test program for the multiple transport layer functionality.
-$(BUILD_DIR)/test/pingpong/pingpong_multi_main: $(patsubst %,$(BUILD_DIR)/test/pingpong/%.o,pingpong_main pingpong pong_pmulti ping_pmulti) $(BUILD_DIR)/$(GEN_DIR)/pingpong.o $(patsubst %,$(BUILD_DIR)/lib%.a,$(LIB_FIREFLY_WERR_NAME) $(LIB_TRANSPORT_UDP_POSIX_NAME) $(LIB_TRANSPORT_ETH_POSIX_NAME))
+$(BUILD_DIR)/test/pingpong/pingpong_multi_main: $(patsubst %,$(BUILD_DIR)/test/pingpong/%.o,pingpong_main pingpong pong_pmulti ping_pmulti) $(patsubst %,$(BUILD_DIR)/%.o,$(GEN_DIR)/pingpong utils/firefly_event_queue_posix) $(patsubst %,$(BUILD_DIR)/lib%.a,$(LIB_FIREFLY_WERR_NAME) $(LIB_TRANSPORT_UDP_POSIX_NAME) $(LIB_TRANSPORT_ETH_POSIX_NAME))
 	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) -l$(LIB_FIREFLY_WERR_NAME) -l$(LIB_TRANSPORT_UDP_POSIX_NAME) -l$(LIB_TRANSPORT_ETH_POSIX_NAME) $(LDLIBS_TEST) -o $@ 
 
 # Main test program for the resend posix queue tests.

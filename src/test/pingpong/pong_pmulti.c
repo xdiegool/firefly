@@ -7,6 +7,7 @@
 #include <transport/firefly_transport_udp_posix.h>
 #include <transport/firefly_transport_eth_posix.h>
 #include <utils/firefly_event_queue.h>
+#include <utils/firefly_event_queue_posix.h>
 #include <gen/pingpong.h>
 
 #include "test/pingpong/pingpong.h"
@@ -221,11 +222,10 @@ static void *eth_reader_thread_main(void *args)
 void *pong_main_thread(void *arg)
 {
 	UNUSED_VAR(arg);
+	int res;
 	uid_t uid;
-	pthread_t event_thread;
 	pthread_t reader_thread;
 	struct thread_arg *ta;
-	struct event_queue_signals eq_s;
 	struct firefly_transport_llp *eth_llp;
 	struct firefly_transport_llp *llp;
 
@@ -242,11 +242,11 @@ void *pong_main_thread(void *arg)
 
 	printf("Multipong started.\n");
 	pong_init_tests();
-	pthread_mutex_init(&eq_s.eq_lock, NULL);
-	pthread_cond_init(&eq_s.eq_cond, NULL);
-	eq_s.event_exec_finish = false;
-	event_queue = firefly_event_queue_new(event_add_mutex, 20, &eq_s);
-	pthread_create(&event_thread, NULL, event_thread_main, event_queue);
+	event_queue = firefly_event_queue_posix_new(20);
+	res = firefly_event_queue_posix_run(event_queue, NULL);
+	if (res) {
+		fprintf(stderr, "ERROR: starting event thread.\n");
+	}
 
 	/* Signal to pingpong_main that pong is started so ping can start now.
 	 * (Not testable w/o two eth if:s)
@@ -286,12 +286,7 @@ void *pong_main_thread(void *arg)
 	pthread_join(reader_thread, NULL);
 
 	firefly_transport_llp_udp_posix_free(llp);
-	pthread_mutex_lock(&eq_s.eq_lock);
-	eq_s.event_exec_finish = true;
-	pthread_cond_signal(&eq_s.eq_cond);
-	pthread_mutex_unlock(&eq_s.eq_lock);
-	pthread_join(event_thread, NULL);
-	firefly_event_queue_free(&event_queue);
+	firefly_event_queue_posix_free(&event_queue);
 
 	pingpong_test_print_results(pong_tests, PONG_NBR_TESTS, "Pong");
 

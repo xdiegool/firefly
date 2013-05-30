@@ -154,7 +154,6 @@ void *send_data_and_close(void *args)
 void *pong_main_thread(void *arg)
 {
 	int res;
-	pthread_t event_thread;
 	pthread_t reader_thread;
 	pthread_t resend_thread;
 	struct thread_arg *ta = (struct thread_arg *) arg;

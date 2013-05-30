@@ -158,7 +158,6 @@ int main()
 	if (res) {
 		fprintf(stderr, "ERROR: starting event thread.\n");
 	}
-	pthread_attr_destroy(&thread_attrs);
 
 	struct firefly_transport_llp *llp =
 			firefly_transport_llp_eth_posix_new(PING_IFACE,
@@ -184,6 +183,7 @@ int main()
 	if (res) {
 		fprintf(stderr, "ERROR: starting reader thread.\n");
 	}
+	pthread_attr_destroy(&thread_attrs);
 
 	pthread_mutex_lock(&ping_done_lock);
 	while (!ping_done) {
