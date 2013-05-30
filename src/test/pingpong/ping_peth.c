@@ -6,6 +6,7 @@
 #include <protocol/firefly_protocol.h>
 #include <transport/firefly_transport_eth_posix.h>
 #include <utils/firefly_event_queue.h>
+#include <utils/firefly_event_queue_posix.h>
 #include <gen/pingpong.h>
 
 #include "test/pingpong/pingpong_peth.h"
@@ -135,38 +136,30 @@ void ping_handle_pingpong_data(pingpong_data *data, void *ctx)
 	}
 }
 
-void *ping_main_thread(void *arg)
+int main()
 {
 	uid_t uid;
 	uid = geteuid();
 	if (uid != 0) {
 		fprintf(stderr, "Need root to run these tests\n");
-		return NULL;
+		return 1;
 	}
-	UNUSED_VAR(arg);
 	int res;
 	struct event_queue_signals eq_s;
 	struct reader_thread_args rtarg;
 	pthread_t reader_thread;
-	pthread_t event_thread;
 
 	printf("Hello, Firefly Ethernet from Ping!\n");
 	ping_init_tests();
 
-	res = pthread_mutex_init(&eq_s.eq_lock, NULL);
-	if (res) {
-		fprintf(stderr, "ERROR: init mutex.\n");
-	}
-	res = pthread_cond_init(&eq_s.eq_cond, NULL);
-	if (res) {
-		fprintf(stderr, "ERROR: init cond variable.\n");
-	}
-	eq_s.event_exec_finish = false;
-	event_queue = firefly_event_queue_new(event_add_mutex, 20, &eq_s);
-	res = pthread_create(&event_thread, NULL, event_thread_main, event_queue);
+	event_queue = firefly_event_queue_posix_new(20);
+	pthread_attr_t thread_attrs;
+	pthread_attr_init(&thread_attrs);
+	res = firefly_event_queue_posix_run(event_queue, &thread_attrs);
 	if (res) {
 		fprintf(stderr, "ERROR: starting event thread.\n");
 	}
+	pthread_attr_destroy(&thread_attrs);
 
 	struct firefly_transport_llp *llp =
 			firefly_transport_llp_eth_posix_new(PING_IFACE,
@@ -188,7 +181,7 @@ void *ping_main_thread(void *arg)
 	rtarg.finish = false;
 	rtarg.llp = llp;
 
-	res = pthread_create(&reader_thread, NULL, reader_thread_main, &rtarg);
+	res = pthread_create(&reader_thread, &thread_attrs, reader_thread_main, &rtarg);
 	if (res) {
 		fprintf(stderr, "ERROR: starting reader thread.\n");
 	}
@@ -205,16 +198,11 @@ void *ping_main_thread(void *arg)
 	pthread_join(reader_thread, NULL);
 
 	firefly_transport_llp_eth_posix_free(llp);
-	pthread_mutex_lock(&eq_s.eq_lock);
-	eq_s.event_exec_finish = true;
-	pthread_cond_signal(&eq_s.eq_cond);
-	pthread_mutex_unlock(&eq_s.eq_lock);
 
-	pthread_join(event_thread, NULL);
-	firefly_event_queue_free(&event_queue);
+	firefly_event_queue_posix_free(&event_queue);
 
 	ping_pass_test(TEST_DONE);
 	pingpong_test_print_results(ping_tests, PING_NBR_TESTS, "Ping");
 
-	return NULL;
+	return 0;
 }

@@ -496,11 +496,14 @@ $(BUILD_DIR)/test/test_event_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_event
 	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) $(LDLIBS_TEST) -o $@
 
 # Main test program for the pingpong udp program.
-$(BUILD_DIR)/test/pingpong/pingpong_main: $(patsubst %,$(BUILD_DIR)/test/pingpong/%.o,pingpong_main pingpong_pudp pingpong pong_pudp ping_pudp) $(BUILD_DIR)/$(GEN_DIR)/pingpong.o $(patsubst %,$(BUILD_DIR)/lib%.a,$(LIB_FIREFLY_WERR_NAME) $(LIB_TRANSPORT_UDP_POSIX_NAME))
+$(BUILD_DIR)/test/pingpong/pingpong_main: $(patsubst %,$(BUILD_DIR)/test/pingpong/%.o,pingpong_main pingpong_pudp pingpong pong_pudp ping_pudp) $(patsubst %,$(BUILD_DIR)/%.o,$(GEN_DIR)/pingpong utils/firefly_event_queue_posix) $(patsubst %,$(BUILD_DIR)/lib%.a,$(LIB_FIREFLY_WERR_NAME) $(LIB_TRANSPORT_UDP_POSIX_NAME))
 	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) -l$(LIB_FIREFLY_WERR_NAME) -l$(LIB_TRANSPORT_UDP_POSIX_NAME) $(LDLIBS_TEST) -o $@ 
 
 # Main test program for the pingpong ethernet program.
-$(BUILD_DIR)/test/pingpong/pingpong_eth_main: $(patsubst %,$(BUILD_DIR)/test/pingpong/%.o,pingpong_main pingpong pingpong_peth pong_peth ping_peth) $(BUILD_DIR)/$(GEN_DIR)/pingpong.o $(patsubst %,$(BUILD_DIR)/lib%.a,$(LIB_FIREFLY_WERR_NAME) $(LIB_TRANSPORT_ETH_POSIX_NAME))
+$(BUILD_DIR)/test/pingpong/ping_eth_main: $(patsubst %,$(BUILD_DIR)/test/pingpong/%.o,pingpong pingpong_peth ping_peth) $(patsubst %,$(BUILD_DIR)/%.o,$(GEN_DIR)/pingpong utils/firefly_event_queue_posix) $(patsubst %,$(BUILD_DIR)/lib%.a,$(LIB_FIREFLY_WERR_NAME) $(LIB_TRANSPORT_ETH_POSIX_NAME))
+	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) -l$(LIB_FIREFLY_WERR_NAME) -l$(LIB_TRANSPORT_ETH_POSIX_NAME) $(LDLIBS_TEST) -o $@ 
+
+$(BUILD_DIR)/test/pingpong/pong_eth_main: $(patsubst %,$(BUILD_DIR)/test/pingpong/%.o,pingpong pingpong_peth pong_peth) $(patsubst %,$(BUILD_DIR)/%.o,$(GEN_DIR)/pingpong utils/firefly_event_queue_posix) $(patsubst %,$(BUILD_DIR)/lib%.a,$(LIB_FIREFLY_WERR_NAME) $(LIB_TRANSPORT_ETH_POSIX_NAME))
 	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) -l$(LIB_FIREFLY_WERR_NAME) -l$(LIB_TRANSPORT_ETH_POSIX_NAME) $(LDLIBS_TEST) -o $@ 
 
 # Main test program for the multiple transport layer functionality.

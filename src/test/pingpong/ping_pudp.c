@@ -4,6 +4,7 @@
 #include <protocol/firefly_protocol.h>
 #include <transport/firefly_transport_udp_posix.h>
 #include <utils/firefly_event_queue.h>
+#include <utils/firefly_event_queue_posix.h>
 #include <gen/pingpong.h>
 
 #include "test/pingpong/pingpong_pudp.h"
@@ -140,23 +141,12 @@ void *ping_main_thread(void *arg)
 	int res;
 	pthread_t reader_thread;
 	pthread_t resend_thread;
-	pthread_t event_thread;
 
 	printf("Hello, Firefly from Ping!\n");
 	ping_init_tests();
 
-	struct event_queue_signals eq_s;
-	res = pthread_mutex_init(&eq_s.eq_lock, NULL);
-	if (res) {
-		fprintf(stderr, "ERROR: init mutex.\n");
-	}
-	res = pthread_cond_init(&eq_s.eq_cond, NULL);
-	if (res) {
-		fprintf(stderr, "ERROR: init cond variable.\n");
-	}
-	eq_s.event_exec_finish = false;
-	event_queue = firefly_event_queue_new(event_add_mutex, 20, &eq_s);
-	res = pthread_create(&event_thread, NULL, event_thread_main, event_queue);
+	event_queue = firefly_event_queue_posix_new(20);
+	res = firefly_event_queue_posix_run(event_queue, NULL);
 	if (res) {
 		fprintf(stderr, "ERROR: starting event thread.\n");
 	}
@@ -192,13 +182,8 @@ void *ping_main_thread(void *arg)
 	firefly_transport_udp_posix_stop(llp, &reader_thread, &resend_thread);
 
 	firefly_transport_llp_udp_posix_free(llp);
-	pthread_mutex_lock(&eq_s.eq_lock);
-	eq_s.event_exec_finish = true;
-	pthread_cond_signal(&eq_s.eq_cond);
-	pthread_mutex_unlock(&eq_s.eq_lock);
 
-	pthread_join(event_thread, NULL);
-	firefly_event_queue_free(&event_queue);
+	firefly_event_queue_posix_free(&event_queue);
 
 	ping_pass_test(TEST_DONE);
 	pingpong_test_print_results(ping_tests, PING_NBR_TESTS, "Ping");
