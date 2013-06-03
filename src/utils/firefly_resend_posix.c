@@ -42,11 +42,14 @@ void firefly_resend_queue_free(struct resend_queue *rq)
 
 static inline void timespec_add_ms(struct timespec *t, long d)
 {
-	t->tv_nsec += d * 1000000;
-	if (t->tv_nsec >= 1000000000) {
-		t->tv_sec += t->tv_nsec / 1000000000;
-		t->tv_nsec = t->tv_nsec % 1000000000;
+	long long tmp;
+
+	tmp = t->tv_nsec + d * 1000000LL;
+	if (tmp >= 1000000000) {
+		t->tv_sec += tmp / 1000000000;
+		tmp %= 1000000000;
 	}
+	t->tv_nsec = tmp;
 }
 
 unsigned char firefly_resend_add(struct resend_queue *rq,

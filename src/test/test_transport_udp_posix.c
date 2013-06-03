@@ -699,16 +699,20 @@ void test_llp_free_mult_conns_w_chans()
 	execute_events(eq, 7);
 }
 
-unsigned int time_ms_diff(struct timespec *from, struct timespec *to)
+int time_ms_diff(struct timespec *from, struct timespec *to)
 {
-	unsigned int diff = (to->tv_sec - from->tv_sec) * 1000;
+	int diff;
+
+	diff = (to->tv_sec - from->tv_sec) * 1000;
 	diff += (to->tv_nsec - from->tv_nsec) / 1000000;
+
 	return diff;
 }
 
 void print_timepsec(struct timespec t)
 {
-	printf("%ld:%ld", t.tv_sec, t.tv_nsec);
+	//printf("%ld:%ld", t.tv_sec, t.tv_nsec);
+	printf("%f", t.tv_sec + t.tv_nsec / 1000000000.0);
 }
 
 void test_send_important()
@@ -824,7 +828,7 @@ void test_send_important_id_null()
 
 void test_send_important_long_timeout()
 {
-	unsigned int long_timeout = 1999;
+	int long_timeout = 1999;
 	struct firefly_transport_llp *llp = firefly_transport_llp_udp_posix_new(
 							local_port, NULL, eq);
 	struct transport_llp_udp_posix *llp_udp =
