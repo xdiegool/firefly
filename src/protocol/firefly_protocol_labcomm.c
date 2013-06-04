@@ -13,6 +13,11 @@
 
 #include "utils/firefly_event_queue_private.h"
 
+struct protocol_writer_context {
+	struct firefly_channel *chan;
+	bool important;
+};
+
 static int proto_reader_alloc(struct labcomm_reader *r, void *context,
 		    struct labcomm_decoder *decoder,
 		    char *version)
@@ -95,85 +100,135 @@ struct labcomm_reader *transport_labcomm_reader_new()
 }
 
 static int proto_writer_alloc(struct labcomm_writer *w, void *context,
-		     struct labcomm_encoder *encoder,
-		     char *labcomm_version)
+		struct labcomm_encoder *encoder, char *labcomm_version)
 {
-  w->data_size = BUFFER_SIZE;
-  w->count = w->data_size;
-  w->data = malloc(w->data_size);
-  if (w->data == NULL) {
-    w->error = -ENOMEM;
-  }
-  w->pos = 0;
+	w->data_size = BUFFER_SIZE;
+	w->count = w->data_size;
+	w->data = FIREFLY_MALLOC(w->data_size);
+	if (w->data == NULL) {
+		w->error = -ENOMEM;
+	}
+	w->pos = 0;
 
-  return w->error;
+	return w->error;
 }
 
 static int proto_writer_free(struct labcomm_writer *w, void *context)
 {
-  free(w->data);
-  w->data = 0;
-  w->data_size = 0;
-  w->count = 0;
-  w->pos = 0;
+	FIREFLY_FREE(w->data);
+	w->data = 0;
+	w->data_size = 0;
+	w->count = 0;
+	w->pos = 0;
 
-  return 0;
+	return 0;
 }
 
 static int proto_writer_start(struct labcomm_writer *w, void *context,
-		     struct labcomm_encoder *encoder,
-		     int index,
-		     struct labcomm_signature *signature,
-		     void *value)
+		struct labcomm_encoder *encoder, int index,
+		struct labcomm_signature *signature, void *value)
 {
-  w->pos = 0;
-  return 0;
+	struct protocol_writer_context *ctx;
+
+	ctx = (struct protocol_writer_context *) context;
+	ctx->important = (value == NULL);
+	w->pos = 0;
+
+	return 0;
 }
 
 static int proto_writer_end(struct labcomm_writer *w, void *context)
 {
-  return 0;
+	struct protocol_writer_context *ctx;
+	struct firefly_channel *chan;
+	struct firefly_connection *conn;
+
+	ctx = (struct protocol_writer_context *) context;
+	chan = (struct firefly_channel *) ctx->chan;
+	conn = (struct firefly_connection *) chan->conn;
+
+	if (conn->open != FIREFLY_CONNECTION_OPEN) {
+		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
+				"Cannot send data on a closed connection.\n");
+		return -EINVAL;
+	}
+
+	// create protocol packet and encode it
+	struct firefly_event_send_sample *fess =
+		FIREFLY_RUNTIME_MALLOC(conn, sizeof(struct firefly_event_send_sample));
+
+	unsigned char *a = FIREFLY_RUNTIME_MALLOC(conn, w->pos);
+	if (fess == NULL || a == NULL) {
+		// TODO: Check if Labcomm reports error
+		firefly_error(FIREFLY_ERROR_ALLOC, 1,
+				"Protocol writer could not allocate send event\n");
+		FIREFLY_FREE(fess);
+		FIREFLY_FREE(a);
+
+		return -ENOMEM;
+	}
+
+	fess->chan                  = chan;
+	fess->data.dest_chan_id     = chan->remote_id;
+	fess->data.src_chan_id      = chan->local_id;
+	fess->data.seqno            = 0;
+	fess->data.important        = ctx->important;
+	fess->data.app_enc_data.n_0 = w->pos;
+	fess->data.app_enc_data.a   = a;
+	memcpy(fess->data.app_enc_data.a, w->data, w->pos);
+
+	conn->event_queue->offer_event_cb(conn->event_queue, FIREFLY_PRIORITY_HIGH,
+			send_data_sample_event, fess);
+	w->pos = 0;
+
+	return 0;
 }
 
 static int proto_writer_flush(struct labcomm_writer *w, void *context)
 {
-  int result = w->count - w->pos;
-  return result < 0 ? -ENOMEM : result;
+	int result = w->count - w->pos;
+	return result < 0 ? -ENOMEM : result;
 }
 
-static int proto_writer_ioctl(struct labcomm_writer *w, void *context, 
-		     int action, 
-		     struct labcomm_signature *signature,
-		     va_list arg)
+static int proto_writer_ioctl(struct labcomm_writer *w, void *context,
+		int action, struct labcomm_signature *signature, va_list arg)
 {
-  int result = -ENOTSUP;
-  switch (action) {
-    case 0: {
-      result = 0;
-    } break;
-  }
-  return result;
+	int result = -ENOTSUP;
+	switch (action) {
+	case 0: {
+		result = 0;
+	} break;
+	}
+	return result;
 }
 
 static const struct labcomm_writer_action proto_writer_action = {
-  .alloc = proto_writer_alloc,
-  .free = proto_writer_free,
-  .start = proto_writer_start,
-  .end = proto_writer_end,
-  .flush = proto_writer_flush,
-  .ioctl = proto_writer_ioctl
+	.alloc = proto_writer_alloc,
+	.free = proto_writer_free,
+	.start = proto_writer_start,
+	.end = proto_writer_end,
+	.flush = proto_writer_flush,
+	.ioctl = proto_writer_ioctl
 };
 
-struct labcomm_writer *protocol_labcomm_writer_new()
+struct labcomm_writer *protocol_labcomm_writer_new(struct firefly_channel *chan)
 {
-  struct labcomm_writer *result;
+	struct labcomm_writer *result;
+	struct protocol_writer_context *context;
 
-  result = malloc(sizeof(*result));
-  if (result != NULL) {
-    result->context = NULL;
-    result->action = &proto_writer_action;
-  }
-  return result;
+	result = malloc(sizeof(*result));
+	context = malloc(sizeof(*context));
+	if (result != NULL && context != NULL) {
+		context->chan = chan;
+		result->context = context;
+		result->action = &proto_writer_action;
+	} else {
+		FIREFLY_FREE(result);
+		result = NULL;
+		FIREFLY_FREE(context);
+	}
+
+	return result;
 }
 
 static int copy_to_writer_data(struct ff_transport_data *writer_data,
