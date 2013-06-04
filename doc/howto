@@ -1,0 +1,220 @@
+How to use the Firefly library for easy communication over various
+transport media.
+
+Terms:
+	Transport layer - Smaller libraries implementing different
+		transport layers. Existing examples are udp and
+		ethernet for posix and freeRTOS. Multiple transport
+		layers may be used in parallell.
+
+	LLP - A transport layer specific link layer port. When created
+		the system can be agnostic to the underlying method of
+		communication. One could for example easily move a
+		program from udp to ethernet if requirements change.
+
+	Connection - A general, transport layer agnostic abstraction
+		symboizing a connection between two instances.
+
+	Channel - A two way commuincation channel for exchange of data
+		on a connection.
+
+	Labcomm - The foundation of firefly. It is a tool which
+		generates marshalling routines for user specified data
+		structures in various languages.
+
+Simply put Firefly adds functionality for two-way exchange of data
+encoded with labcomm.
+
+The following walk through uses the 'ping' and 'pong' programs which
+are used as sytem tests as part of the automated test suite.
+Examples using multiple layers in parallell exists but we will lok at
+the simplest one, posix udp.
+
+The example consists of two programs, ping and pong which constitutes
+a simple back and forth of data.
+
+1. Ping opens a connection to pong.
+2. Ping opens a channel to pong.
+3. Ping sends data to pong.
+4. Pong responds by sending data back to ping.
+5. Pong closes channel.
+
+For the purpose of this discussion a slightly cleaned up version of
+the ping program is shown below. A number of things, among which are
+the passing of callbacks as arguments to various functions, are
+currently beeing reconsidered and might be improved in the future.
+All external error handling has been removed for clarity.
+
+Another noteworthy detail is that while most things except the
+transport layers are meant to be generic, the frequency of certain
+operations has led to the creation of helper functions.
+
+The main function creates threads and a connection and then waits
+until data has been exchanged.
+
+----------------------------------------------------------------------
+void ping_main(void)
+{
+	int		 res;
+	pthread_t	 reader_thread;
+	pthread_t	 resend_thread;
+	struct		 firefly_transport_llp *llp
+	struct		 firefly_connection *conn;
+
+	event_queue = firefly_event_queue_posix_new(20);
+	firefly_event_queue_posix_run(event_queue, NULL);
+
+	llp = firefly_transport_llp_udp_posix_new(PING_PORT,
+						  ping_connection_received,
+						  event_queue);
+
+	conn = firefly_transport_connection_udp_posix_open(ping_chan_opened,
+				   ping_chan_closed,
+				   ping_chan_received,
+				   PONG_ADDR,
+				   PONG_PORT,
+				   FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT,
+				   llp);
+
+	firefly_channel_open(conn, ping_channel_rejected);
+	firefly_transport_udp_posix_run(llp, &reader_thread, &resend_thread);
+
+	/* Block on signal for test done. */
+	pthread_mutex_lock(&ping_done_lock);
+	while (!ping_done) {
+		pthread_cond_wait(&ping_done_signal, &ping_done_lock);
+	}
+	pthread_mutex_unlock(&ping_done_lock);
+
+	firefly_transport_udp_posix_stop(llp, &reader_thread, &resend_thread);
+
+	firefly_transport_llp_udp_posix_free(llp);
+
+	firefly_event_queue_posix_free(&event_queue);
+
+	return NULL;
+}
+----------------------------------------------------------------------
+
+The following function is called when a remote tries to open a
+connection. To open a connection one should return a newly created
+connection to the remote. To reject the connection NULL should be
+returned.
+
+----------------------------------------------------------------------
+struct firefly_connection *ping_connection_received(
+       struct firefly_transport_llp *llp,
+       const char *ip_addr, unsigned short port)
+{
+	struct firefly_connection *conn = NULL;
+
+	/* If address is correct, open a connection. */
+	if (strncmp(ip_addr, PONG_ADDR, strlen(PONG_ADDR)) == 0 &&
+			port == PONG_PORT) {
+		printf("PING: Connection accepted.\n");
+		conn = firefly_transport_connection_udp_posix_open(
+				ping_chan_opened, ping_chan_closed, ping_chan_received,
+				ip_addr, port, FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT, llp);
+	}
+
+	return conn;
+}
+----------------------------------------------------------------------
+
+This function is called when a connection has been opened. Here
+labcomm types are registered on both the encoder and the decoder.
+For the decoder a callback and context are specified to be used
+when the specified type is received.
+
+----------------------------------------------------------------------
+void ping_chan_opened(struct firefly_channel *chan)
+{
+	struct labcomm_encoder *enc;
+	struct labcomm_decoder *dec;
+	pthread_t sender;
+	pthread_attr_t tattr;
+
+	enc = firefly_protocol_get_output_stream(chan);
+	dec = firefly_protocol_get_input_stream(chan);
+
+	labcomm_decoder_register_pingpong_data(dec,
+					       ping_handle_pingpong_data,
+					       chan);
+	labcomm_encoder_register_pingpong_data(enc);
+
+	pthread_attr_init(&tattr);
+	pthread_attr_setdetachstate(&tattr, PTHREAD_CREATE_DETACHED);
+	pthread_create(&sender, &tattr, send_data, chan);
+}
+----------------------------------------------------------------------
+
+The following function is called when a channel has been closed. In
+this case the connection is closed and the main thread is signalled to
+continue the shutdown.
+
+----------------------------------------------------------------------
+void ping_chan_closed(struct firefly_channel *chan)
+{
+	firefly_connection_close(firefly_channel_get_connection(chan));
+
+	pthread_mutex_lock(&ping_done_lock);
+	ping_done = true;
+	pthread_cond_signal(&ping_done_signal);
+	pthread_mutex_unlock(&ping_done_lock);
+}
+----------------------------------------------------------------------
+
+The following callback is used then a remote tries to open a
+channel on a connection. In this case we blindly accept everything and
+simple returns true.
+
+----------------------------------------------------------------------
+bool ping_chan_received(struct firefly_channel *chan)
+{
+	return true;
+}
+----------------------------------------------------------------------
+
+If false were to be returned in the above function the instance at the
+other end of the connection would have the following function
+called. Is informs us about the rejection.
+
+----------------------------------------------------------------------
+void ping_channel_rejected(struct firefly_connection *conn)
+{
+	fprintf(stderr, "ERROR: Channel was rejected.\n");
+}
+----------------------------------------------------------------------
+
+The following function is used in the labcomm decoder when a specific
+type is received. One connection can have many channels and one
+channel can have many types registered.
+
+The second parameter 'ctx' contains a pointer to the receiving channel.
+
+----------------------------------------------------------------------
+void ping_handle_pingpong_data(pingpong_data *data, void *ctx)
+{
+	/* Handle recv'd data. */
+}
+----------------------------------------------------------------------
+
+The last function is specific to this application and used by the
+pthreads library. It is passed a pointer to a channel on which to send
+a sample. The channel has had the type 'pingpong_data' registered
+above in the 'ping_channel_opened()' callback.
+
+----------------------------------------------------------------------
+void *send_data(void *args)
+{
+	struct firefly_channel *chan;
+	struct labcomm_encoder *enc;
+
+	chan = (struct firefly_channel *) args;
+	pingpong_data data = PING_DATA;
+	enc = firefly_protocol_get_output_stream(chan);
+	labcomm_encode_pingpong_data(enc, &data);
+
+	return NULL;
+}
+----------------------------------------------------------------------
