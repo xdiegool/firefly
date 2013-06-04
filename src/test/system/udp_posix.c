@@ -33,7 +33,7 @@
 
 #define NBR_TIME_SAMPLES (100)
 #define RESEND_TIMEOUT (500)
-#define TIME_MAX_DIFF (20)
+#define TIME_MAX_DIFF (30)
 
 #define MOCK_RECEIVED (-1)
 #define MOCK_SENT (1)
