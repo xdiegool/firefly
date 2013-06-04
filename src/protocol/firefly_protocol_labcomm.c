@@ -77,7 +77,7 @@ static const struct labcomm_reader_action proto_reader_action = {
 	.ioctl = proto_reader_ioctl
 };
 
-struct labcomm_reader *protocol_labcomm_reader_new(struct firefly_channel *chan)
+struct labcomm_reader *protocol_labcomm_reader_new()
 {
 	struct labcomm_reader *result;
 
@@ -87,6 +87,11 @@ struct labcomm_reader *protocol_labcomm_reader_new(struct firefly_channel *chan)
 		result->action = &proto_reader_action;
 	}
 	return result;
+}
+
+struct labcomm_reader *transport_labcomm_reader_new()
+{
+	return protocol_labcomm_reader_new();
 }
 
 static int proto_writer_alloc(struct labcomm_writer *w, void *context,
@@ -190,60 +195,6 @@ static int copy_to_writer_data(struct ff_transport_data *writer_data,
 	return 0;
 }
 
-int firefly_labcomm_reader(labcomm_reader_t *r, labcomm_reader_action_t action,
-		struct ff_transport_data *reader_data)
-{
-	int result = -EINVAL;
-	switch (action) {
-	case labcomm_reader_alloc: {
-		r->data = FIREFLY_MALLOC(BUFFER_SIZE);
-		if (r->data == NULL) {
-			result = -ENOMEM;
-		} else {
-			r->data_size = BUFFER_SIZE;
-			r->pos = 0;
-			r->count = 0;
-		}
-	} break;
-	case labcomm_reader_free: {
-		FIREFLY_FREE(r->data);
-		r->data = NULL;
-		r->data_size = 0;
-		r->pos = 0;
-		r->count = 0;
-	} break;
-	case labcomm_reader_start:
-	case labcomm_reader_continue: {
-		r->pos = 0;
-		size_t data_left = reader_data->data_size - reader_data->pos;
-		if (data_left <= 0) {
-			result = -1; // Stop.
-		} else {
-			size_t reader_avail = r->data_size;
-			size_t mem_to_cpy = (data_left < reader_avail) ?
-						data_left : reader_avail;
-			memcpy(r->data, &reader_data->data[reader_data->pos],
-					mem_to_cpy);
-			reader_data->pos += mem_to_cpy;
-			r->count = mem_to_cpy;
-			result = mem_to_cpy;
-		}
-	} break;
-	case labcomm_reader_end: {
-		size_t data_left = reader_data->data_size - reader_data->pos;
-		if (data_left <= 0) {
-			result = -1;
-		} else {
-			result = 0;
-		}
-	} break;
-	case labcomm_reader_ioctl: {
-		break;
-	}
-	}
-	return result;
-}
-
 int ff_transport_writer(labcomm_writer_t *w, labcomm_writer_action_t action, ...)
 {
 	struct firefly_connection  *conn =
@@ -307,14 +258,6 @@ int ff_transport_writer(labcomm_writer_t *w, labcomm_writer_action_t action, ...
 	} break;
 	}
 	return result;
-}
-
-int ff_transport_reader(labcomm_reader_t *r, labcomm_reader_action_t action)
-{
-	struct firefly_connection *conn =
-			(struct firefly_connection *) r->context;
-	struct ff_transport_data *reader_data = conn->reader_data;
-	return firefly_labcomm_reader(r, action, reader_data);
 }
 
 int protocol_writer(labcomm_writer_t *w, labcomm_writer_action_t action, ...)
@@ -443,12 +386,4 @@ int send_data_sample_event(void *event_arg)
 		FIREFLY_RUNTIME_FREE(fess->chan->conn, event_arg);
 	}
 	return 0;
-}
-
-int protocol_reader(labcomm_reader_t *r, labcomm_reader_action_t action)
-{
-	struct firefly_channel *chan =
-			(struct firefly_channel *) r->context;
-	struct ff_transport_data *reader_data = chan->reader_data;
-	return firefly_labcomm_reader(r, action, reader_data);
 }
