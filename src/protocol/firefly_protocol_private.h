@@ -32,6 +32,9 @@
 		conn->memory_replacements.free_replacement(conn, ptr) :		\
 		FIREFLY_FREE(ptr)
 
+#define FIREFLY_LABCOMM_IOCTL_READER_SET_BUFFER \
+  LABCOMM_IOW('f',0,void*)
+
 void reg_proto_sigs(struct labcomm_encoder *enc,
 					struct labcomm_decoder *dec,
 					struct firefly_connection *conn);

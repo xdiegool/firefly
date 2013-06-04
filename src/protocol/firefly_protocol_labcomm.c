@@ -13,80 +13,80 @@
 
 #include "utils/firefly_event_queue_private.h"
 
-static int proto_reader_alloc(struct labcomm_reader *r, void *context, 
+static int proto_reader_alloc(struct labcomm_reader *r, void *context,
 		    struct labcomm_decoder *decoder,
 		    char *version)
 {
-  r->data = NULL;
-  r->data_size = 0;
-  r->count = 0;
-  r->pos = 0;
-  return 0;
+	r->data = NULL;
+	r->data_size = 0;
+	r->count = 0;
+	r->pos = 0;
+	return 0;
 }
 
 static int proto_reader_free(struct labcomm_reader *r, void *context)
 {
-  r->data = NULL;
-  r->data_size = 0;
-  r->count = 0;
-  r->pos = 0;
-  return 0;
+	r->data = NULL;
+	r->data_size = 0;
+	r->count = 0;
+	r->pos = 0;
+	return 0;
 }
 
 static int proto_reader_fill(struct labcomm_reader *r, void *context)
 {
-  int result = r->count - r->pos;
-  return result < 0 || r->data == NULL ? -ENOMEM : result;
+	int result = r->count - r->pos;
+	return result < 0 || r->data == NULL ? -ENOMEM : result;
 }
 
 static int proto_reader_start(struct labcomm_reader *r, void *context)
 {
-  return proto_reader_fill(r, context);
+	return proto_reader_fill(r, context);
 }
 
 static int proto_reader_end(struct labcomm_reader *r, void *context)
 {
-  r->data = NULL;
-  r->data_size = 0;
-  r->count = 0;
-  return 0;
+	return 0;
 }
 
 static int proto_reader_ioctl(struct labcomm_reader *r, void *context, 
-		     int action, 
-		     struct labcomm_signature *signature,
-		     va_list arg)
+								int action,
+								struct labcomm_signature *signature,
+								va_list arg)
 {
-  int result = -ENOTSUP;
-  switch (action) {
-    case 1: {
-      result = 0;
-    } break;
-  }
-  return result;
+	int result = -ENOTSUP;
+	switch (action) {
+	case FIREFLY_LABCOMM_IOCTL_READER_SET_BUFFER: {
+		void *buffer = va_arg(arg, void*);
+		int size = va_arg(arg, int);
+		r->data = buffer;
+		r->data_size = size;
+		r->count = size;
+		r->pos = 0;
+		} break;
+	}
+	return result;
 }
 
-static const struct labcomm_reader_action protoc_reader_action = {
-  .alloc = proto_reader_alloc,
-  .free = proto_reader_free,
-  .start = proto_reader_start,
-  .fill = proto_reader_fill,
-  .end = proto_reader_end,
-  .ioctl = proto_reader_ioctl
+static const struct labcomm_reader_action proto_reader_action = {
+	.alloc = proto_reader_alloc,
+	.free = proto_reader_free,
+	.start = proto_reader_start,
+	.fill = proto_reader_fill,
+	.end = proto_reader_end,
+	.ioctl = proto_reader_ioctl
 };
 
-struct labcomm_reader *protocol_labcomm_reader_new()
+struct labcomm_reader *protocol_labcomm_reader_new(struct firefly_channel *chan)
 {
-  struct labcomm_reader *result;
+	struct labcomm_reader *result;
 
-  result = malloc(sizeof(*result));
-  if (result == NULL) {
-    return NULL;
-  } else {
-    result->context = result;
-    result->action = &protoc_reader_action;
-    return result;
-  }
+	result = FIREFLY_MALLOC(sizeof(*result));
+	if (result != NULL) {
+		result->context = NULL;
+		result->action = &proto_reader_action;
+	}
+	return result;
 }
 
 static int proto_writer_alloc(struct labcomm_writer *w, void *context,
