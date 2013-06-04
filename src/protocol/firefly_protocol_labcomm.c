@@ -5,11 +5,171 @@
 #include <stdlib.h>
 
 #include <labcomm.h>
+#include <labcomm_ioctl.h>
+#include <labcomm_private.h>
 
 #include <utils/firefly_errors.h>
 #include <utils/firefly_event_queue.h>
 
 #include "utils/firefly_event_queue_private.h"
+
+static int proto_reader_alloc(struct labcomm_reader *r, void *context, 
+		    struct labcomm_decoder *decoder,
+		    char *version)
+{
+  r->data = NULL;
+  r->data_size = 0;
+  r->count = 0;
+  r->pos = 0;
+  return 0;
+}
+
+static int proto_reader_free(struct labcomm_reader *r, void *context)
+{
+  r->data = NULL;
+  r->data_size = 0;
+  r->count = 0;
+  r->pos = 0;
+  return 0;
+}
+
+static int proto_reader_fill(struct labcomm_reader *r, void *context)
+{
+  int result = r->count - r->pos;
+  return result < 0 || r->data == NULL ? -ENOMEM : result;
+}
+
+static int proto_reader_start(struct labcomm_reader *r, void *context)
+{
+  return proto_reader_fill(r, context);
+}
+
+static int proto_reader_end(struct labcomm_reader *r, void *context)
+{
+  r->data = NULL;
+  r->data_size = 0;
+  r->count = 0;
+  return 0;
+}
+
+static int proto_reader_ioctl(struct labcomm_reader *r, void *context, 
+		     int action, 
+		     struct labcomm_signature *signature,
+		     va_list arg)
+{
+  int result = -ENOTSUP;
+  switch (action) {
+    case 1: {
+      result = 0;
+    } break;
+  }
+  return result;
+}
+
+static const struct labcomm_reader_action protoc_reader_action = {
+  .alloc = proto_reader_alloc,
+  .free = proto_reader_free,
+  .start = proto_reader_start,
+  .fill = proto_reader_fill,
+  .end = proto_reader_end,
+  .ioctl = proto_reader_ioctl
+};
+
+struct labcomm_reader *protocol_labcomm_reader_new()
+{
+  struct labcomm_reader *result;
+
+  result = malloc(sizeof(*result));
+  if (result == NULL) {
+    return NULL;
+  } else {
+    result->context = result;
+    result->action = &protoc_reader_action;
+    return result;
+  }
+}
+
+static int proto_writer_alloc(struct labcomm_writer *w, void *context,
+		     struct labcomm_encoder *encoder,
+		     char *labcomm_version)
+{
+  w->data_size = BUFFER_SIZE;
+  w->count = w->data_size;
+  w->data = malloc(w->data_size);
+  if (w->data == NULL) {
+    w->error = -ENOMEM;
+  }
+  w->pos = 0;
+
+  return w->error;
+}
+
+static int proto_writer_free(struct labcomm_writer *w, void *context)
+{
+  free(w->data);
+  w->data = 0;
+  w->data_size = 0;
+  w->count = 0;
+  w->pos = 0;
+
+  return 0;
+}
+
+static int proto_writer_start(struct labcomm_writer *w, void *context,
+		     struct labcomm_encoder *encoder,
+		     int index,
+		     struct labcomm_signature *signature,
+		     void *value)
+{
+  w->pos = 0;
+  return 0;
+}
+
+static int proto_writer_end(struct labcomm_writer *w, void *context)
+{
+  return 0;
+}
+
+static int proto_writer_flush(struct labcomm_writer *w, void *context)
+{
+  int result = w->count - w->pos;
+  return result < 0 ? -ENOMEM : result;
+}
+
+static int proto_writer_ioctl(struct labcomm_writer *w, void *context, 
+		     int action, 
+		     struct labcomm_signature *signature,
+		     va_list arg)
+{
+  int result = -ENOTSUP;
+  switch (action) {
+    case 0: {
+      result = 0;
+    } break;
+  }
+  return result;
+}
+
+static const struct labcomm_writer_action proto_writer_action = {
+  .alloc = proto_writer_alloc,
+  .free = proto_writer_free,
+  .start = proto_writer_start,
+  .end = proto_writer_end,
+  .flush = proto_writer_flush,
+  .ioctl = proto_writer_ioctl
+};
+
+struct labcomm_writer *protocol_labcomm_writer_new()
+{
+  struct labcomm_writer *result;
+
+  result = malloc(sizeof(*result));
+  if (result != NULL) {
+    result->context = NULL;
+    result->action = &proto_writer_action;
+  }
+  return result;
+}
 
 static int copy_to_writer_data(struct ff_transport_data *writer_data,
 		unsigned char *data, size_t size)
