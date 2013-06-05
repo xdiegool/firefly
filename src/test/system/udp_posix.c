@@ -70,6 +70,9 @@ static int mock_firefly_reader_alloc(struct labcomm_reader *r, void *context,
 		    struct labcomm_decoder *decoder,
 		    char *version)
 {
+	UNUSED_VAR(context);
+	UNUSED_VAR(decoder);
+	UNUSED_VAR(version);
 	int result = 0;
 	r->data = malloc(MOCK_FIREFLY_BUFFER_SIZE);
 	if (r->data == NULL) {
@@ -84,6 +87,7 @@ static int mock_firefly_reader_alloc(struct labcomm_reader *r, void *context,
 
 static int mock_firefly_reader_free(struct labcomm_reader *r, void *context)
 {
+	UNUSED_VAR(context);
 	free(r->data);
 	free(r);
 	return 0;
@@ -123,6 +127,8 @@ static int mock_firefly_reader_start(struct labcomm_reader *r, void *context)
 
 static int mock_firefly_reader_end(struct labcomm_reader *r, void *context)
 {
+	UNUSED_VAR(r);
+	UNUSED_VAR(context);
 	return 0;
 }
 
@@ -131,6 +137,12 @@ static int mock_firefly_reader_ioctl(struct labcomm_reader *r, void *context,
 								struct labcomm_signature *signature,
 								va_list arg)
 {
+	UNUSED_VAR(r);
+	UNUSED_VAR(context);
+	UNUSED_VAR(action);
+	UNUSED_VAR(signature);
+	UNUSED_VAR(arg);
+
 	int result = -ENOTSUP;
 	return result;
 }
@@ -166,6 +178,9 @@ void *mock_reader_run(void *args)
 static int mock_firefly_writer_alloc(struct labcomm_writer *w, void *context,
 		struct labcomm_encoder *encoder, char *labcomm_version)
 {
+	UNUSED_VAR(context);
+	UNUSED_VAR(encoder);
+	UNUSED_VAR(labcomm_version);
 	w->error = 0;
 	w->data = malloc(MOCK_FIREFLY_BUFFER_SIZE);
 	if (w->data == NULL) {
@@ -191,6 +206,7 @@ static int mock_firefly_writer_free(struct labcomm_writer *w, void *context)
 
 static int mock_firefly_writer_flush(struct labcomm_writer *w, void *context)
 {
+	UNUSED_VAR(context);
 	int result = w->count - w->pos;
 	return result < 0 ? -ENOMEM : result;
 }
@@ -199,6 +215,12 @@ static int mock_firefly_writer_start(struct labcomm_writer *w, void *context,
 		struct labcomm_encoder *encoder, int index,
 		struct labcomm_signature *signature, void *value)
 {
+	UNUSED_VAR(w);
+	UNUSED_VAR(context);
+	UNUSED_VAR(encoder);
+	UNUSED_VAR(index);
+	UNUSED_VAR(signature);
+	UNUSED_VAR(value);
 	struct mock_firefly_writer_context *ctx = context;
 	ctx->signature = (value == NULL);
 	w->pos = 0;
@@ -219,9 +241,12 @@ static int mock_firefly_writer_end(struct labcomm_writer *w, void *context)
 static int mock_firefly_writer_ioctl(struct labcomm_writer *w, void *context,
 		int action, struct labcomm_signature *signature, va_list arg)
 {
+	UNUSED_VAR(w);
+	UNUSED_VAR(context);
+	UNUSED_VAR(action);
+	UNUSED_VAR(signature);
+	UNUSED_VAR(arg);
 	int result = -ENOTSUP;
-	switch (action) {
-	}
 	return result;
 }
 
@@ -362,6 +387,9 @@ static int mock_firefly_app_reader_alloc(struct labcomm_reader *r, void *context
 		    struct labcomm_decoder *decoder,
 		    char *version)
 {
+	UNUSED_VAR(context);
+	UNUSED_VAR(decoder);
+	UNUSED_VAR(version);
 	int result = 0;
 	r->data = NULL;
 	r->data_size = 0;
@@ -372,6 +400,7 @@ static int mock_firefly_app_reader_alloc(struct labcomm_reader *r, void *context
 
 static int mock_firefly_app_reader_free(struct labcomm_reader *r, void *context)
 {
+	UNUSED_VAR(context);
 	free(r);
 	return 0;
 }
@@ -381,7 +410,7 @@ static int mock_firefly_app_reader_fill(struct labcomm_reader *r, void *context)
 	int result = 0;
 	static struct mock_data_collector *last_decoded_packet;
 	struct mock_data_collector *packet =
-		*((struct mock_data_collector **) r->context);
+		*((struct mock_data_collector **) context);
 	if (packet->type == DATA_SAMPLE_TYPE && packet != last_decoded_packet) {
 		firefly_protocol_data_sample *d =
 			((firefly_protocol_data_sample *) packet->packet);
@@ -798,6 +827,7 @@ void test_something()
 	CU_ASSERT_EQUAL(current_packet->type, ACK_TYPE);
 	prev_packet = current_packet;
 
+	struct mock_data_collector *tmp_packet = current_packet;
 	// Receive data sample
 	test_time_sample t;
 	struct timespec now;
@@ -807,10 +837,16 @@ void test_something()
 		t.nsec = now.tv_nsec;
 		labcomm_encode_test_time_sample(
 				firefly_protocol_get_output_stream(firefly_chan), &t);
+		/*printf("send %d...", i);*/
+		tmp_packet = next_packet_wait(tmp_packet);
+		CU_ASSERT_EQUAL(tmp_packet->type, DATA_SAMPLE_TYPE);
+		/*printf("done\n");*/
 	}
 
 	for (int i = 0; i < NBR_TIME_SAMPLES; i++) {
+		/*printf("wait %d...", i);*/
 		current_packet = next_packet_wait(prev_packet);
+		/*printf("done\n");*/
 		CU_ASSERT_EQUAL(current_packet->type, DATA_SAMPLE_TYPE);
 		pthread_mutex_lock(&mock_data_lock);
 		labcomm_decoder_decode_one(mock_data_in);

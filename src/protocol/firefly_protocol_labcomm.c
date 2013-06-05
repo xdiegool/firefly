@@ -10,6 +10,7 @@
 
 #include <utils/firefly_errors.h>
 #include <utils/firefly_event_queue.h>
+#include <utils/cppmacros.h>
 
 #include "utils/firefly_event_queue_private.h"
 
@@ -27,6 +28,9 @@ static int proto_reader_alloc(struct labcomm_reader *r, void *context,
 		    struct labcomm_decoder *decoder,
 		    char *version)
 {
+	UNUSED_VAR(context);
+	UNUSED_VAR(decoder);
+	UNUSED_VAR(version);
 	r->data = NULL;
 	r->data_size = 0;
 	r->count = 0;
@@ -36,6 +40,7 @@ static int proto_reader_alloc(struct labcomm_reader *r, void *context,
 
 static int proto_reader_free(struct labcomm_reader *r, void *context)
 {
+	UNUSED_VAR(context);
 	r->data = NULL;
 	r->data_size = 0;
 	r->count = 0;
@@ -46,6 +51,7 @@ static int proto_reader_free(struct labcomm_reader *r, void *context)
 
 static int proto_reader_fill(struct labcomm_reader *r, void *context)
 {
+	UNUSED_VAR(context);
 	int result = r->count - r->pos;
 	return result < 0 || r->data == NULL ? -ENOMEM : result;
 }
@@ -57,6 +63,8 @@ static int proto_reader_start(struct labcomm_reader *r, void *context)
 
 static int proto_reader_end(struct labcomm_reader *r, void *context)
 {
+	UNUSED_VAR(r);
+	UNUSED_VAR(context);
 	return 0;
 }
 
@@ -65,6 +73,8 @@ static int proto_reader_ioctl(struct labcomm_reader *r, void *context,
 								struct labcomm_signature *signature,
 								va_list arg)
 {
+	UNUSED_VAR(context);
+	UNUSED_VAR(signature);
 	int result = -ENOTSUP;
 	switch (action) {
 	case FIREFLY_LABCOMM_IOCTL_READER_SET_BUFFER: {
@@ -118,6 +128,9 @@ void transport_labcomm_reader_free(struct labcomm_reader *r)
 static int comm_writer_alloc(struct labcomm_writer *w, void *context,
 		struct labcomm_encoder *encoder, char *labcomm_version)
 {
+	UNUSED_VAR(context);
+	UNUSED_VAR(encoder);
+	UNUSED_VAR(labcomm_version);
 	w->data_size = BUFFER_SIZE;
 	w->count = w->data_size;
 	w->data = FIREFLY_MALLOC(w->data_size);
@@ -141,6 +154,7 @@ static int comm_writer_free(struct labcomm_writer *w, void *context)
 
 static int comm_writer_flush(struct labcomm_writer *w, void *context)
 {
+	UNUSED_VAR(context);
 	int result = w->count - w->pos;
 	return result < 0 ? -ENOMEM : result;
 }
@@ -149,6 +163,9 @@ static int proto_writer_start(struct labcomm_writer *w, void *context,
 		struct labcomm_encoder *encoder, int index,
 		struct labcomm_signature *signature, void *value)
 {
+	UNUSED_VAR(encoder);
+	UNUSED_VAR(index);
+	UNUSED_VAR(signature);
 	struct protocol_writer_context *ctx;
 
 	ctx = (struct protocol_writer_context *) context;
@@ -208,12 +225,12 @@ static int proto_writer_end(struct labcomm_writer *w, void *context)
 static int proto_writer_ioctl(struct labcomm_writer *w, void *context,
 		int action, struct labcomm_signature *signature, va_list arg)
 {
+	UNUSED_VAR(w);
+	UNUSED_VAR(context);
+	UNUSED_VAR(action);
+	UNUSED_VAR(signature);
+	UNUSED_VAR(arg);
 	int result = -ENOTSUP;
-	switch (action) {
-	case 0: {
-		result = 0;
-	} break;
-	}
 	return result;
 }
 
@@ -256,6 +273,12 @@ static int trans_writer_start(struct labcomm_writer *w, void *context,
 		struct labcomm_encoder *encoder, int index,
 		struct labcomm_signature *signature, void *value)
 {
+	UNUSED_VAR(w);
+	UNUSED_VAR(context);
+	UNUSED_VAR(encoder);
+	UNUSED_VAR(index);
+	UNUSED_VAR(signature);
+	UNUSED_VAR(value);
 	return 0;
 }
 
@@ -273,6 +296,8 @@ static int trans_writer_end(struct labcomm_writer *w, void *context)
 static int trans_writer_ioctl(struct labcomm_writer *w, void *context,
 		int action, struct labcomm_signature *signature, va_list arg)
 {
+	UNUSED_VAR(w);
+	UNUSED_VAR(signature);
 	int result = -ENOTSUP;
 	struct transport_writer_context *ctx;
 	ctx = (struct transport_writer_context *) context;
