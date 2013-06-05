@@ -1,43 +1,60 @@
-How to use the Firefly library for easy communication over various
-transport media.
+INTRO
+This document aims to explain how the Firefly library is used for
+communication over various transport media. For a brief explanation
+of what Firefly is conceptually, see firefly/doc/INFO in the Firefly
+repository.
 
-Terms:
-	Transport layer - Smaller libraries implementing different
-		transport layers. Existing examples are udp and
-		ethernet for posix and FreeRTOS. Multiple transport
-		layers may be used in parallell.
+TERMS
+	Host - A computer of some form running an application.
 
-	LLP - A transport layer specific "Link Level Port". Using this
-		the system can be agnostic to the underlying method of
-		communication. One could for example easily move a
-		program from udp to ethernet if requirements change.
+	Application - An implementation of a program using the Firefly
+		library for communication.
+
+	Transport layer - Smaller sub-libraries (or modules) implementing
+		different means of communication. Implementations exist for
+		UDP (Posix and FreeRTOS) and Ethernet (Posix and the
+		Stellaris Ethernet driver).  Multiple transport layers may be
+		used in parallel (e.g. to let an application accept
+		connections on both UDP and raw Ethernet).
+
+	LLP - A transport layer agnostic "Link Level Port". This is used
+		to decouple the application from the transport layer used.
+		One could for example easily (by including a different header
+		file, changing a function call as well as some callback
+		functions' signatures) move a program from UDP to Ethernet if
+		requirements change.
 
 	Connection - A general, transport layer agnostic abstraction
-		symboizing a connection between two instances.
+		symbolizing a connection between two Firefly instances.
 
-	Channel - A two way communication channel for exchange of data
-		on a connection.
+	Channel - A two way communication channel for exchanging data on
+		a connection. Channels live inside a connection and there can
+		be multiple channels between two hosts.
 
-	Labcomm - The foundation of firefly. It is a tool which
-		generates marshalling routines for user specified data
-		structures in various languages.
+	Labcomm - The foundation which Firefly builds upon. Labcomm is a
+		tool which generates marshalling (serialization and
+		de-serialization) routines for user specified data structures
+		in various languages.
 
-Simply put Firefly implements functionality for two-way exchange of data
-encoded with Labcomm. This makes it easier to write flexible applications.
+Simply put Firefly implements functionality for two-way exchange of
+data encoded with Labcomm. This makes it easier to write flexible
+applications.
 
+CODE EXAMPLE
 The following walk through uses the 'ping' and 'pong' programs which
-are used as sytem tests as part of the automated test suite.
-Examples using multiple layers in parallell exists but we will look at
-the simplest one, posix udp.
+are used as system tests as part of the automated test suite.
+Examples using multiple layers in parallel exists but we will look at
+the simplest one; Posix UDP.
 
-This example consists of two programs, ping  and pong. They simply
+This example consists of two programs, ping and pong. They simply
 pass data back and forth once:
 
-1. Ping opens a connection to pong.
-2. Ping opens a channel on the newly created conneciton to pong.
-3. Ping sends data via the new channel to pong.
-4. Pong responds by sending data back to ping.
-5. Pong closes channel.
+1. Pong sits and waits for connections.
+2. Ping opens a connection to pong.
+3. Ping opens a channel on the newly created connection to pong.
+4. Ping sends data via the new channel to pong.
+5. Pong responds by sending data back to ping.
+6. Pong closes channel.
 
 For the purpose of this discussion a slightly cleaned up version of
 the ping program is shown below. All external error handling has been
@@ -50,10 +67,15 @@ transport layers are meant to be generic, the frequency of certain
 operations has led to the creation of helper functions.
 
 The main function creates threads and a connection and then waits
-until data has been exchanged.
+until data has been exchanged. The library is event driven which
+means that the first thing you should do is to start an event thread.
+An implementation for Posix (with pthreads) is provided out of the
+box but if you want to run the library on a platform not conforming
+to Posix, you need to implement a thread running the event loop
+yourself.
 
 ----------------------------------------------------------------------
-void ping_main(void)
+void *ping_main(void)
 {
 	pthread_t	 reader_thread;
 	pthread_t	 resend_thread;
@@ -188,7 +210,8 @@ The following function is used by the Labcomm decoder when a certain
 type is received. One connection can have many channels and one
 channel can have many types registered.
 
-The second parameter 'ctx' contains a pointer to the receiving channel.
+The second parameter 'ctx' contains a pointer to the receiving channel
+in this case (since we set it in the ping_chan_opened function above).
 
 ----------------------------------------------------------------------
 void ping_handle_pingpong_data(pingpong_data *data, void *ctx)
@@ -218,4 +241,4 @@ void *send_data(void *args)
 ----------------------------------------------------------------------
 
 The 'pong' program i similar. The original code can be found in
-firefly/src/test/pinpong/
+firefly/src/test/pinpong/ in the Firefly repository.
