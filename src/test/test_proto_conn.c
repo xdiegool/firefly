@@ -3,25 +3,31 @@
 #include "CUnit/Basic.h"
 #include <gen/test.h>
 #include <gen/firefly_protocol.h>
-#include <test/labcomm_mem_writer.h>
 
 #include <stdbool.h>
+#include <labcomm.h>
+#include <labcomm_ioctl.h>
+#include <labcomm_static_buffer_writer.h>
 
 #include "test/test_labcomm_utils.h"
+#include "test/proto_helper.h"
 #include "protocol/firefly_protocol_private.h"
 #include <utils/firefly_errors.h>
 #include "utils/cppmacros.h"
 
 static struct firefly_event_queue *eq = NULL;
+extern struct labcomm_encoder *test_enc;
 
 int init_suit_proto_conn()
 {
+	init_labcomm_test_enc_dec();
 	eq = firefly_event_queue_new(firefly_event_add, 14, NULL);
 	return 0;
 }
 
 int clean_suit_proto_conn()
 {
+	clean_labcomm_test_enc_dec();
 	firefly_event_queue_free(&eq);
 	return 0;
 }
@@ -265,40 +271,29 @@ bool channel_accept_test(struct firefly_channel *ch)
 
 void test_conn_close_recv_chan_req_first()
 {
+	unsigned char *buf;
+	size_t buf_size;
 	struct firefly_connection *conn = firefly_connection_new(NULL, NULL,
 			channel_accept_test, transport_write_mock, NULL, NULL, eq,
 			NULL, NULL);
 
 	/* First add close connection event */
 	firefly_connection_close(conn);
-	unsigned char buf[128];
-	labcomm_mem_writer_context_t *test_enc_ctx =
-		labcomm_mem_writer_context_t_new(0, 128, buf);
-	struct labcomm_encoder *test_enc =
-		labcomm_encoder_new(labcomm_mem_writer, test_enc_ctx);
-	labcomm_register_error_handler_encoder(test_enc, handle_labcomm_error);
-	labcomm_encoder_register_firefly_protocol_data_sample(test_enc);
-	protocol_data_received(conn, test_enc_ctx->buf, test_enc_ctx->write_pos);
-	test_enc_ctx->write_pos = 0;
-	labcomm_encoder_register_firefly_protocol_channel_request(test_enc);
-	protocol_data_received(conn, test_enc_ctx->buf, test_enc_ctx->write_pos);
-	test_enc_ctx->write_pos = 0;
 
 	/* Without executing the event receive a channel request */
 	firefly_protocol_channel_request chan_req;
 	chan_req.source_chan_id = 0;
 	chan_req.dest_chan_id = CHANNEL_ID_NOT_SET;
 	labcomm_encode_firefly_protocol_channel_request(test_enc, &chan_req);
-	protocol_data_received(conn, test_enc_ctx->buf, test_enc_ctx->write_pos);
-	test_enc_ctx->write_pos = 0;
+	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
+			&buf, &buf_size);
+	protocol_data_received(conn, buf, buf_size);
 
 	/* Execute all events */
 	execute_remaining_events(eq);
 	CU_ASSERT_FALSE(was_in_error);
 	CU_ASSERT_TRUE(chan_accept_called);
 
-	labcomm_encoder_free(test_enc);
-	labcomm_mem_writer_context_t_free(&test_enc_ctx);
 	chan_accept_called = false;
 	was_in_error = false;
 }

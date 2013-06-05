@@ -13,6 +13,7 @@
 #include <transport/firefly_transport_eth_posix.h>
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <errno.h>
 #include <string.h>
 

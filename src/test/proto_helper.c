@@ -1,6 +1,7 @@
 #include "test/proto_helper.h"
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <labcomm.h>
 #include <labcomm_ioctl.h>
 #include <labcomm_static_buffer_writer.h>
@@ -247,7 +248,35 @@ int init_labcomm_test_enc_dec()
 	labcomm_decoder_ioctl(test_dec, LABCOMM_IOCTL_READER_SET_BUFFER,
 			buffer, buffer_size);
 	labcomm_decoder_decode_one(test_dec);
-	return 0;
+
+	int error = 0;
+	firefly_protocol_channel_request chan_req;
+	chan_req.source_chan_id = 1;
+	chan_req.dest_chan_id = 2;
+	// Give channel request data to protocol layer.
+	error = labcomm_encode_firefly_protocol_channel_request(test_enc, &chan_req);
+	if (error) {
+		return error;
+	}
+	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
+			&buffer, &buffer_size);
+	labcomm_decoder_ioctl(test_dec, LABCOMM_IOCTL_READER_SET_BUFFER,
+			buffer, buffer_size);
+	labcomm_decoder_decode_one(test_dec);
+	if (!received_channel_request ||
+			channel_request.source_chan_id != 1 ||
+			channel_request.dest_chan_id != 2) {
+		error = 1;
+		return error;
+	}
+	received_channel_request = false;
+	/*firefly_protocol_channel_response chan_resp;*/
+	/*chan_resp.source_chan_id = 1;*/
+	/*chan_resp.dest_chan_id = 2;*/
+	/*chan_resp.ack = true;*/
+	/*labcomm_encode_firefly_protocol_channel_response(test_enc, &chan_resp);*/
+	
+	return error;
 }
 
 int clean_labcomm_test_enc_dec()

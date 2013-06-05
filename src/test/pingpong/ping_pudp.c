@@ -1,5 +1,8 @@
 #include <pthread.h>
 
+#include <string.h>
+#include <stdio.h>
+
 #include <labcomm.h>
 #include <protocol/firefly_protocol.h>
 #include <transport/firefly_transport_udp_posix.h>

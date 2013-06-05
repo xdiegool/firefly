@@ -4,6 +4,7 @@
 #include <labcomm.h>
 #include <signal.h>
 
+#include <labcomm_ioctl.h>
 #include <protocol/firefly_protocol.h>
 #include <gen/firefly_protocol.h>
 
@@ -33,7 +34,9 @@
 		FIREFLY_FREE(ptr)
 
 #define FIREFLY_LABCOMM_IOCTL_READER_SET_BUFFER \
-  LABCOMM_IOW('f',0,void*)
+  LABCOMM_IOW('f', 0, void*)
+#define FIREFLY_LABCOMM_IOCTL_TRANS_SET_IMPORTANT_ID \
+  LABCOMM_IOW('f', 1, unsigned char*)
 
 void reg_proto_sigs(struct labcomm_encoder *enc,
 					struct labcomm_decoder *dec,
@@ -97,16 +100,6 @@ struct firefly_memory_funcs {
 };
 
 /**
- * @brief Structure describing a buffer where transport data is stored.
- */
-struct ff_transport_data {
-	unsigned char *data;	/**< Buffer where transport data is written. */
-	size_t data_size;	/**< The size of \a data buffer. */
-	size_t pos;		/**< The next position to write to. */
-	unsigned char *important_id; /**< This value will be given to tranport when writing data */
-};
-
-/**
  * @brief A structure for representing a node in a linked list of channels.
  */
 struct channel_list_node {
@@ -124,10 +117,6 @@ struct firefly_connection {
 	transport_connection_free transport_conn_platspec_free;
 	sig_atomic_t open; /**< The flag indicating the opened state of a
 						 connection. */
-	struct ff_transport_data *writer_data; /**< Where the writer data is
-								saved. */
-	struct ff_transport_data *reader_data; /**< Where the reader data is
-								saved. */
 	transport_write_f transport_write; /**< Write bytes to the transport
 							layer. */
 	transport_ack_f transport_ack; /**< Inform transport that a packet is acked
@@ -191,15 +180,21 @@ struct firefly_channel {
 					   			channel.*/
 	struct labcomm_decoder *proto_decoder; /**< LabComm decoder for this
 					   			channel. */
-	struct ff_transport_data *writer_data; /**< Where the writer data is
-								saved. */
-	struct ff_transport_data *reader_data; /**< Where the reader data is
-								saved. */
 	firefly_channel_rejected_f on_chan_rejected; /**< Callback called if this
 												   channel could not be opened
 												   due to remote node rejected
 												   it. */
 };
+struct labcomm_writer *protocol_labcomm_writer_new(
+		struct firefly_channel *chan);
+struct labcomm_writer *transport_labcomm_writer_new(
+		struct firefly_connection *conn);
+struct labcomm_reader *transport_labcomm_reader_new();
+struct labcomm_reader *protocol_labcomm_reader_new();
+void protocol_labcomm_reader_free(struct labcomm_reader *r);
+void transport_labcomm_reader_free(struct labcomm_reader *r);
+void protocol_labcomm_writer_free(struct labcomm_writer *w);
+void transport_labcomm_writer_free(struct labcomm_writer *w);
 
 /**
  * Initializes a connection with protocol specific stuff.
@@ -537,52 +532,5 @@ int next_channel_id(struct firefly_connection *conn);
  * @return The next sequence number.
  */
 int firefly_channel_next_seqno(struct firefly_channel *chan);
-
-/**
- * @brief A general LabComm reader used to feed a decoder with data from
- * memory.
- *
- * @param r The labcomm reader that requests data.
- * @param action What action is requested.
- * @param reader_data The data struct containing the encoded data.
- * @return Value indicating how the action could be handled.
- */
-int firefly_labcomm_reader(labcomm_reader_t *r, labcomm_reader_action_t action,
-		struct ff_transport_data *reader_data);
-
-/**
- * @brief Feeds LabComm decoder with bytes from the transport layer.
- * @param r The labcomm reader that requests data.
- * @param action What action is requested.
- * @return Value indicating how the action could be handled.
- * TODO rename this. prefix ff_ is nonstandard. No need to prefix with firefly for private functions. probalby prefix "labcomm_" should be neought so we know that it has with labcomm to do.
- */
-int ff_transport_reader(labcomm_reader_t *r, labcomm_reader_action_t action);
-
-/**
- * @brief Write bytes that LabComm has encoded to a memory and is then sent to
- * the transport layer.
- * @param w The labcomm writer that encodes the data.
- * @param action What action is requested.
- * @return Value indicating how the action could be handled.
- * TODO rename this. prefix ff_ is nonstandard. No need to prefix with firefly for private functions. probalby prefix "labcomm_" should be neought so we know that it has with labcomm to do.
- */
-int ff_transport_writer(labcomm_writer_t *w, labcomm_writer_action_t action, ...);
-
-/**
- * @brief Feeds LabComm decoder with bytes from the protocol layer.
- * @param r The labcomm reader that requests data.
- * @param action What action is requested.
- * @return Value indicating how the action could be handled.
- */
-int protocol_reader(labcomm_reader_t *r, labcomm_reader_action_t action);
-
-/**
- * @brief Encode application specific LabComm samples.
- * @param w The labcomm writer that encodes the data.
- * @param action What action is requested.
- * @return Value indicating how the action could be handled.
- */
-int protocol_writer(labcomm_writer_t *w, labcomm_writer_action_t action, ...);
 
 #endif

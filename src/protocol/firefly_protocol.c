@@ -2,6 +2,7 @@
 #include "protocol/firefly_protocol_private.h"
 
 #include <string.h>
+#include <stdio.h>
 #include <errno.h>
 #include <stdbool.h>
 
@@ -117,11 +118,11 @@ int firefly_channel_open_event(void *event_arg)
 	chan_req.source_chan_id = chan->local_id;
 	chan_req.dest_chan_id   = chan->remote_id;
 
-
-	conn->writer_data->important_id = &chan->important_id;
+	labcomm_encoder_ioctl(conn->transport_encoder,
+			FIREFLY_LABCOMM_IOCTL_TRANS_SET_IMPORTANT_ID,
+			&chan->important_id);
 	labcomm_encode_firefly_protocol_channel_request(conn->transport_encoder,
 													&chan_req);
-	conn->writer_data->important_id = NULL;
 	FIREFLY_FREE(event_arg);
 	return 0;
 }
@@ -189,13 +190,10 @@ void protocol_data_received(struct firefly_connection *conn,
 		unsigned char *data, size_t size)
 {
 	if (conn->open == FIREFLY_CONNECTION_OPEN) {
-		conn->reader_data->data = data;
-		conn->reader_data->data_size = size;
-		conn->reader_data->pos = 0;
+		labcomm_decoder_ioctl(conn->transport_decoder,
+				FIREFLY_LABCOMM_IOCTL_READER_SET_BUFFER,
+				data, size);
 		labcomm_decoder_decode_one(conn->transport_decoder);
-		conn->reader_data->data = NULL;
-		conn->reader_data->data_size = 0;
-		conn->reader_data->pos = 0;
 	}
 }
 
@@ -263,11 +261,12 @@ int handle_channel_request_event(void *event_arg)
 				res.source_chan_id = CHANNEL_ID_NOT_SET;
 				firefly_channel_free(remove_channel_from_connection(chan, conn));
 			} else {
-				fecrr->conn->writer_data->important_id = &chan->important_id;
+				labcomm_encoder_ioctl(fecrr->conn->transport_encoder,
+						FIREFLY_LABCOMM_IOCTL_TRANS_SET_IMPORTANT_ID,
+						&chan->important_id);
 			}
 			labcomm_encode_firefly_protocol_channel_response(
 					conn->transport_encoder, &res);
-			fecrr->conn->writer_data->important_id = NULL;
 		}
 	}
 
@@ -455,13 +454,15 @@ int handle_data_sample_event(void *event_arg)
 			expected_seqno = 1;
 		}
 		if (!fers->data.important || expected_seqno == fers->data.seqno) {
-			chan->reader_data->data = fers->data.app_enc_data.a;
-			chan->reader_data->data_size = fers->data.app_enc_data.n_0;
-			chan->reader_data->pos = 0;
+
+			size_t size = 0;
+			size = fers->data.app_enc_data.n_0;
+			labcomm_decoder_ioctl(chan->proto_decoder,
+					FIREFLY_LABCOMM_IOCTL_READER_SET_BUFFER,
+					fers->data.app_enc_data.a,
+					size);
+
 			labcomm_decoder_decode_one(chan->proto_decoder);
-			chan->reader_data->data = NULL;
-			chan->reader_data->data_size = 0;
-			chan->reader_data->pos = 0;
 			if (fers->data.important) {
 				chan->remote_seqno = fers->data.seqno;
 			}

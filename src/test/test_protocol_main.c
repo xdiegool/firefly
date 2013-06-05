@@ -6,8 +6,7 @@
 #include "CUnit/Basic.h"
 #include "CUnit/Console.h"
 
-#include "test/test_proto_translc.h"
-#include "test/test_proto_protolc.h"
+#include "test/test_proto_labcomm.h"
 #include "test/test_proto_chan.h"
 #include "test/test_proto_conn.h"
 #include "test/test_proto_important.h"
@@ -16,8 +15,7 @@
 
 int main()
 {
-	CU_pSuite translc_suite = NULL;
-	CU_pSuite protolc_suite = NULL;
+	CU_pSuite labcomm_suite = NULL;
 	CU_pSuite chan_suite = NULL;
 	CU_pSuite conn_suite = NULL;
 	CU_pSuite important_suite = NULL;
@@ -29,15 +27,9 @@ int main()
 	}
 
 	// Add our test suites.
-	translc_suite = CU_add_suite("transport_enc_dec",
-			init_suit_translc, clean_suit_translc);
-	if (translc_suite == NULL) {
-		CU_cleanup_registry();
-		return CU_get_error();
-	}
-	protolc_suite = CU_add_suite("protocol_enc_dec",
-			init_suit_protolc, clean_suit_protolc);
-	if (protolc_suite == NULL) {
+	labcomm_suite = CU_add_suite("transport_enc_dec",
+			init_suit_labcomm, clean_suit_labcomm);
+	if (labcomm_suite == NULL) {
 		CU_cleanup_registry();
 		return CU_get_error();
 	}
@@ -68,35 +60,13 @@ int main()
 
 	// Transport encoding and decoding tests.
 	if (
-			(CU_add_test(translc_suite, "test_encode_protocol",
-					test_encode_protocol) == NULL)
-			||
-			(CU_add_test(translc_suite, "test_decode_protocol",
-					test_decode_protocol) == NULL)
-			||
-			(CU_add_test(translc_suite,
+			(CU_add_test(labcomm_suite,
 					"test_encode_decode_protocol",
 					test_encode_decode_protocol) == NULL)
 			||
-			(CU_add_test(translc_suite,
-					"test_decode_protocol_multiple_times",
-					test_decode_protocol_multiple_times) == NULL)
-			||
-			(CU_add_test(translc_suite,
-					"test_encode_protocol_multiple_times",
-					test_encode_protocol_multiple_times) == NULL)
-		) {
-		CU_cleanup_registry();
-		return CU_get_error();
-	}
-
-	// Protocol writer/reader tests.
-	if (
-			(CU_add_test(protolc_suite, "test_proto_writer",
-					test_proto_writer) == NULL)
-			||
-			(CU_add_test(protolc_suite, "test_proto_reader",
-					test_proto_reader) == NULL)
+			(CU_add_test(labcomm_suite,
+					"test_encode_decode_app",
+					test_encode_decode_app) == NULL)
 		) {
 		CU_cleanup_registry();
 		return CU_get_error();
@@ -129,11 +99,8 @@ int main()
 		return CU_get_error();
 	}
 
-	// Channel tests.
+	/*// Channel tests.*/
 	if (
-			(CU_add_test(chan_suite, "test_get_streams",
-					test_get_streams) == NULL)
-			||
 			(CU_add_test(chan_suite, "test_next_channel_id",
 					test_next_channel_id) == NULL)
 			||
@@ -178,7 +145,7 @@ int main()
 				CU_cleanup_registry();
 				return CU_get_error();
 			}
-	// Protocol important tests.
+	/*// Protocol important tests.*/
 	if (
 			(CU_add_test(important_suite, "test_important_signature",
 					test_important_signature) == NULL)
@@ -217,7 +184,7 @@ int main()
 		return CU_get_error();
 	}
 
-	// Errors tests.
+	/*// Errors tests.*/
 	if (
 			(CU_add_test(chan_suite, "test_unexpected_ack",
 					test_unexpected_ack) == NULL)
@@ -240,7 +207,6 @@ int main()
 
 	// Set verbosity.
 	CU_basic_set_mode(CU_BRM_VERBOSE);
-	/*CU_console_run_tests();*/
 
 	// Run all test suites.
 	CU_basic_run_tests();

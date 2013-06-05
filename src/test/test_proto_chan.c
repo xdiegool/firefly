@@ -3,10 +3,12 @@
 #include "CUnit/Basic.h"
 
 #include <labcomm.h>
-#include <test/labcomm_mem_writer.h>
-#include <test/labcomm_mem_reader.h>
+#include <labcomm_ioctl.h>
+#include <labcomm_static_buffer_reader.h>
+#include <labcomm_static_buffer_writer.h>
 
 #include <stdbool.h>
+#include <stdio.h>
 
 #include <gen/firefly_protocol.h>
 #include <gen/test.h>
@@ -25,10 +27,7 @@
 static struct firefly_event_queue *eq = NULL;
 
 extern struct labcomm_decoder *test_dec;
-extern labcomm_mem_reader_context_t *test_dec_ctx;
-
 extern struct labcomm_encoder *test_enc;
-extern labcomm_mem_writer_context_t *test_enc_ctx;
 
 extern unsigned char data_sample_data[DATA_SAMPLE_DATA_SIZE];
 extern firefly_protocol_data_sample data_sample;
@@ -45,10 +44,11 @@ extern bool received_channel_close;
 
 int init_suit_proto_chan()
 {
-	init_labcomm_test_enc_dec();
+	int error = init_labcomm_test_enc_dec();
 
 	eq = firefly_event_queue_new(firefly_event_add, 10, NULL);
-	return 0; // Success.
+	error = eq == NULL ? 1 : error;
+	return error; // Success.
 }
 
 int clean_suit_proto_chan()
@@ -74,43 +74,6 @@ void test_next_channel_id()
 	firefly_connection_free(&conn);
 }
 
-void test_get_streams()
-{
-	// Construct encoder.
-	labcomm_mem_writer_context_t *wmcontext =
-			labcomm_mem_writer_context_t_new(0, 0, NULL);
-	struct labcomm_encoder *e_encoder = labcomm_encoder_new(
-			labcomm_mem_writer, wmcontext);
-	if (e_encoder == NULL) {
-		CU_FAIL("Could not allocate LabComm encoder.");
-	}
-	labcomm_register_error_handler_encoder(e_encoder, handle_labcomm_error);
-
-	// Construct decoder.
-	struct labcomm_mem_reader_context_t rmcontext;
-	struct labcomm_decoder *e_decoder = labcomm_decoder_new(
-			labcomm_mem_reader, &rmcontext);
-	if (e_decoder == NULL) {
-		CU_FAIL("Could not allocate LabComm decoder.");
-	}
-	labcomm_register_error_handler_decoder(e_decoder, handle_labcomm_error);
-
-	struct firefly_channel chan;
-	chan.proto_encoder = e_encoder;
-	chan.proto_decoder = e_decoder;
-
-	struct labcomm_encoder *a_encoder = firefly_protocol_get_output_stream(
-									&chan);
-	struct labcomm_decoder *a_decoder = firefly_protocol_get_input_stream(
-									&chan);
-	CU_ASSERT_PTR_EQUAL(e_encoder, a_encoder);
-	CU_ASSERT_PTR_EQUAL(e_decoder, a_decoder);
-
-	labcomm_encoder_free(e_encoder);
-	labcomm_decoder_free(e_decoder);
-	labcomm_mem_writer_context_t_free(&wmcontext);
-}
-
 void test_get_conn()
 {
 	// Init connection and register error handler on encoder and decoder
@@ -127,6 +90,8 @@ void test_get_conn()
 
 void test_chan_open()
 {
+	unsigned char *buf;
+	size_t buf_size;
 	// Init connection and register error handler on encoder and decoder
 	struct firefly_connection *conn =
 		setup_test_conn_new(chan_opened_mock, NULL, NULL, eq);
@@ -151,8 +116,10 @@ void test_chan_open()
 	chan_resp.dest_chan_id = conn->chan_list->chan->local_id;
 	chan_resp.ack = true;
 	labcomm_encode_firefly_protocol_channel_response(test_enc, &chan_resp);
-	protocol_data_received(conn, test_enc_ctx->buf, test_enc_ctx->write_pos);
-	test_enc_ctx->write_pos = 0;
+	int res = labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
+			&buf, &buf_size);
+	CU_ASSERT_EQUAL_FATAL(0, res);
+	protocol_data_received(conn, buf, buf_size);
 
 	ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
@@ -185,6 +152,8 @@ static bool chan_recv_accept_chan(struct firefly_channel *chan)
 
 void test_chan_recv_accept()
 {
+	unsigned char *buf;
+	size_t buf_size;
 	// Init connection and register error handler on encoder and decoder
 	struct firefly_connection *conn =
 		setup_test_conn_new(chan_opened_mock, NULL,
@@ -196,8 +165,9 @@ void test_chan_recv_accept()
 	chan_req.dest_chan_id = CHANNEL_ID_NOT_SET;
 	// Give channel request data to protocol layer.
 	labcomm_encode_firefly_protocol_channel_request(test_enc, &chan_req);
-	protocol_data_received(conn, test_enc_ctx->buf, test_enc_ctx->write_pos);
-	test_enc_ctx->write_pos = 0;
+	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
+			&buf, &buf_size);
+	protocol_data_received(conn, buf, buf_size);
 
 	struct firefly_event *ev = firefly_event_pop(eq);
 	firefly_event_execute(ev);
@@ -221,8 +191,9 @@ void test_chan_recv_accept()
 	ack.ack = true;
 	// Recieving end and got an ack
 	labcomm_encode_firefly_protocol_channel_ack(test_enc, &ack);
-	protocol_data_received(conn, test_enc_ctx->buf, test_enc_ctx->write_pos);
-	test_enc_ctx->write_pos = 0;
+	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
+			&buf, &buf_size);
+	protocol_data_received(conn, buf, buf_size);
 	ev = firefly_event_pop(eq);
 	firefly_event_execute(ev);
 	firefly_event_return(eq, &ev);
@@ -242,6 +213,8 @@ static bool chan_recv_reject_chan(struct firefly_channel *chan)
 
 void test_chan_recv_reject()
 {
+	unsigned char *buf;
+	size_t buf_size;
 	// Setup connection
 	struct firefly_connection *conn =
 		setup_test_conn_new(chan_opened_mock, NULL,
@@ -252,8 +225,9 @@ void test_chan_recv_reject()
 	chan_req.dest_chan_id = CHANNEL_ID_NOT_SET;
 	chan_req.source_chan_id = REMOTE_CHAN_ID;
 	labcomm_encode_firefly_protocol_channel_request(test_enc, &chan_req);
-	protocol_data_received(conn, test_enc_ctx->buf, test_enc_ctx->write_pos);
-	test_enc_ctx->write_pos = 0;
+	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
+			&buf, &buf_size);
+	protocol_data_received(conn, buf, buf_size);
 
 	struct firefly_event *ev = firefly_event_pop(eq);
 	firefly_event_execute(ev);
@@ -289,6 +263,8 @@ void chan_open_chan_rejected(struct firefly_connection *conn)
 
 void test_chan_open_rejected()
 {
+	unsigned char *buf;
+	size_t buf_size;
 	// Setup connection
 	struct firefly_connection *conn =
 		setup_test_conn_new(chan_opened_mock, NULL,
@@ -313,8 +289,9 @@ void test_chan_open_rejected()
 
 	labcomm_encode_firefly_protocol_channel_response(test_enc, &chan_res);
 	// send response
-	protocol_data_received(conn, test_enc_ctx->buf, test_enc_ctx->write_pos);
-	test_enc_ctx->write_pos = 0;
+	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
+			&buf, &buf_size);
+	protocol_data_received(conn, buf, buf_size);
 	ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	firefly_event_execute(ev);
@@ -448,6 +425,8 @@ void test_chan_close()
 
 void test_chan_recv_close()
 {
+	unsigned char *buf;
+	size_t buf_size;
 	// Setup connection
 	struct firefly_connection *conn =
 		setup_test_conn_new(NULL, chan_closed_cb, NULL, eq);
@@ -464,8 +443,9 @@ void test_chan_recv_close()
 	labcomm_encode_firefly_protocol_channel_close(test_enc, &chan_close);
 
 	// give packet to protocol
-	protocol_data_received(conn, test_enc_ctx->buf, test_enc_ctx->write_pos);
-	test_enc_ctx->write_pos = 0;
+	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
+			&buf, &buf_size);
+	protocol_data_received(conn, buf, buf_size);
 	// pop and execute event
 	struct firefly_event *ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL_FATAL(ev);
@@ -493,6 +473,7 @@ void test_send_app_data()
 {
 	test_test_var app_test_data = 1;
 	struct firefly_event *ev;
+	struct labcomm_decoder *test_dec_2;
 
 	// Setup connection
 	struct firefly_connection *conn =
@@ -502,13 +483,7 @@ void test_send_app_data()
 	ch->remote_id = REMOTE_CHAN_ID;
 	add_channel_to_connection(ch, conn);
 
-	struct labcomm_mem_reader_context_t *test_dec_ctx_2;
-	test_dec_ctx_2 = malloc(sizeof(labcomm_mem_reader_context_t));
-	if (test_dec_ctx_2 == NULL) {
-		CU_FAIL("Test decoder context was null\n");
-	}
-	struct labcomm_decoder *test_dec_2 =
-		labcomm_decoder_new(labcomm_mem_reader, test_dec_ctx_2);
+	test_dec_2 = labcomm_decoder_new(labcomm_static_buffer_reader_new(), NULL);
 	labcomm_register_error_handler_decoder(test_dec_2,
 			handle_labcomm_error);
 	labcomm_decoder_register_test_test_var(test_dec_2,
@@ -526,8 +501,9 @@ void test_send_app_data()
 	CU_ASSERT_EQUAL(ch->local_id, data_sample.src_chan_id);
 	CU_ASSERT_EQUAL(ch->remote_id, data_sample.dest_chan_id);
 
-	test_dec_ctx_2->enc_data = data_sample.app_enc_data.a;
-	test_dec_ctx_2->size = data_sample.app_enc_data.n_0;
+	labcomm_decoder_ioctl(test_dec_2, LABCOMM_IOCTL_READER_SET_BUFFER,
+			data_sample.app_enc_data.a,
+			data_sample.app_enc_data.n_0);
 	labcomm_decoder_decode_one(test_dec_2);
 
 	labcomm_encode_test_test_var(ch_enc, &app_test_data);
@@ -538,8 +514,9 @@ void test_send_app_data()
 	CU_ASSERT_TRUE(received_data_sample);
 	received_data_sample = false;
 
-	test_dec_ctx_2->enc_data = data_sample.app_enc_data.a;
-	test_dec_ctx_2->size = data_sample.app_enc_data.n_0;
+	labcomm_decoder_ioctl(test_dec_2, LABCOMM_IOCTL_READER_SET_BUFFER,
+			data_sample.app_enc_data.a,
+			data_sample.app_enc_data.n_0);
 	labcomm_decoder_decode_one(test_dec_2);
 
 	CU_ASSERT_TRUE(sent_app_data);
@@ -547,12 +524,16 @@ void test_send_app_data()
 
 	firefly_connection_free(&conn);
 	labcomm_decoder_free(test_dec_2);
-	free(test_dec_ctx_2);
 }
 
 void test_recv_app_data()
 {
+	unsigned char *buf;
+	size_t buf_size;
 	struct firefly_event *ev;
+
+	struct labcomm_encoder *data_encoder;
+	data_encoder = labcomm_encoder_new(labcomm_static_buffer_writer_new(), NULL);
 
 	// Setup connection
 	struct firefly_connection *conn =
@@ -570,9 +551,9 @@ void test_recv_app_data()
 	// Create app data packet
 	test_test_var app_pkt;
 	app_pkt = 1;
-	struct encoded_packet *ep_app = create_encoded_packet(
-			labcomm_encoder_register_test_test_var,
-			(lc_encode_f) labcomm_encode_test_test_var, &app_pkt);
+	labcomm_encoder_register_test_test_var(data_encoder);
+	labcomm_encoder_ioctl(data_encoder, LABCOMM_IOCTL_WRITER_GET_BUFFER,
+			&buf, &buf_size);
 
 	// create protocol sample with app signature
 	firefly_protocol_data_sample proto_sign_pkt;
@@ -580,12 +561,13 @@ void test_recv_app_data()
 	proto_sign_pkt.dest_chan_id = ch->local_id;
 	proto_sign_pkt.important = true;
 	proto_sign_pkt.seqno = 1;
-	proto_sign_pkt.app_enc_data.a = ep_app->sign;
-	proto_sign_pkt.app_enc_data.n_0 = ep_app->ssize;
+	proto_sign_pkt.app_enc_data.a = buf;
+	proto_sign_pkt.app_enc_data.n_0 = buf_size;
 
 	labcomm_encode_firefly_protocol_data_sample(test_enc, &proto_sign_pkt);
-	protocol_data_received(conn, test_enc_ctx->buf, test_enc_ctx->write_pos);
-	test_enc_ctx->write_pos = 0;
+	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
+			&buf, &buf_size);
+	protocol_data_received(conn, buf, buf_size);
 	// execute the generated events
 	ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
@@ -593,17 +575,21 @@ void test_recv_app_data()
 	firefly_event_return(eq, &ev);
 
 	// create protocol sample with app data
+	labcomm_encode_test_test_var(data_encoder, &app_pkt);
+	labcomm_encoder_ioctl(data_encoder, LABCOMM_IOCTL_WRITER_GET_BUFFER,
+			&buf, &buf_size);
 	firefly_protocol_data_sample proto_data_pkt;
 	proto_data_pkt.src_chan_id = REMOTE_CHAN_ID;
 	proto_data_pkt.dest_chan_id = ch->local_id;
 	proto_data_pkt.important = true;
 	proto_data_pkt.seqno = 2;
-	proto_data_pkt.app_enc_data.a = ep_app->data;
-	proto_data_pkt.app_enc_data.n_0 = ep_app->dsize;
+	proto_data_pkt.app_enc_data.a = buf;
+	proto_data_pkt.app_enc_data.n_0 = buf_size;
 
 	labcomm_encode_firefly_protocol_data_sample(test_enc, &proto_data_pkt);
-	protocol_data_received(conn, test_enc_ctx->buf, test_enc_ctx->write_pos);
-	test_enc_ctx->write_pos = 0;
+	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
+			&buf, &buf_size);
+	protocol_data_received(conn, buf, buf_size);
 	// execute the generated events
 	ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
@@ -615,7 +601,7 @@ void test_recv_app_data()
 	sent_app_data = false;
 
 	// clean up
-	encoded_packet_free(ep_app);
+	labcomm_encoder_free(data_encoder);
 	firefly_connection_free(&conn);
 }
 

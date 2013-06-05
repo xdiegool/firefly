@@ -364,7 +364,7 @@ $(LABCOMMLIBPATH)/liblabcomm-arm.a:
 
 $(LABCOMMLIBPATH)/liblabcomm.a:
 	@echo "======Building LabComm======"
-	$(MAKE) -C $(LABCOMMLIBPATH) -e CC=$(CC) CFLAGS="$(filter-out -Werror -Wextra,$(CFLAGS)) -D MEM_WRITER_ENCODED_BUFFER=1" -e LABCOMM_NO_EXPERIMENTAL=true liblabcomm.a
+	$(MAKE) -C $(LABCOMMLIBPATH) -e CC=$(CC) CFLAGS="$(filter-out -Werror -Wextra,$(CFLAGS)) -DLABCOMM_ENCODER_LINEAR_SEARCH" -e LABCOMM_NO_EXPERIMENTAL=true liblabcomm.a
 	@echo "======End building LabComm======"
 
 # Generate labcomm files. 
@@ -482,7 +482,7 @@ $(TEST_PROGS): $(LABCOMMLIBPATH)/liblabcomm.a |$(TESTFILES_DIR)
 
 # Main test program for the protocol tests.
 # Filter-out libraries since those are not "in-files" but the still depend on them so they can be used for linking.
-$(BUILD_DIR)/test/test_protocol_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_protocol_main test_labcomm_utils test_proto_chan test_proto_conn test_proto_important test_proto_translc test_proto_protolc test_proto_errors error_helper proto_helper event_helper) $(BUILD_DIR)/$(GEN_DIR)/test.o $(BUILD_DIR)/lib$(LIB_FIREFLY_NAME).a
+$(BUILD_DIR)/test/test_protocol_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_protocol_main test_proto_labcomm test_labcomm_utils test_proto_chan test_proto_conn test_proto_important test_proto_errors error_helper proto_helper event_helper) $(BUILD_DIR)/$(GEN_DIR)/test.o $(BUILD_DIR)/lib$(LIB_FIREFLY_NAME).a
 	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) -L/tmp/ $(filter-out %.a,$^) -l$(LIB_FIREFLY_NAME) $(LDLIBS_TEST) -o $@
 
 # Main test program for the transport tests.

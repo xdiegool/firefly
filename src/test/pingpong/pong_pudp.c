@@ -2,6 +2,8 @@
 
 #include <pthread.h>
 #include <unistd.h>
+#include <string.h>
+#include <stdio.h>
 
 #include <labcomm.h>
 #include <protocol/firefly_protocol.h>
