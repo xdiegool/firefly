@@ -4,24 +4,36 @@
 
 struct firefly_channel *firefly_channel_new(struct firefly_connection *conn)
 {
-	struct firefly_channel   *chan;
-	struct labcomm_decoder   *proto_decoder;
-	struct labcomm_encoder   *proto_encoder;
-	struct ff_transport_data *writer_data;
-	struct ff_transport_data *reader_data;
-	unsigned char            *writer_data_data;
+	struct firefly_channel *chan;
+	struct labcomm_decoder *proto_decoder;
+	struct labcomm_encoder *proto_encoder;
+	struct labcomm_reader  *reader;
+	struct labcomm_writer  *writer;
 
 	chan             = FIREFLY_MALLOC(sizeof(struct firefly_channel));
-	proto_decoder    = labcomm_decoder_new(protocol_reader, chan);
-	proto_encoder    = labcomm_encoder_new(protocol_writer, chan);
-	reader_data      = FIREFLY_MALLOC(sizeof(struct ff_transport_data));
-	writer_data      = FIREFLY_MALLOC(sizeof(struct ff_transport_data));
-	writer_data_data = FIREFLY_MALLOC(BUFFER_SIZE);
+	if (chan == NULL) {
 
-	if (chan          == NULL || proto_decoder    == NULL ||
-	    proto_encoder == NULL || reader_data      == NULL ||
-	    writer_data   == NULL || writer_data_data == NULL)
-	{
+		firefly_error(FIREFLY_ERROR_ALLOC, 1,
+				"memory allocation failed");
+
+		FIREFLY_FREE(chan);
+		return NULL;
+	}
+	reader = protocol_labcomm_reader_new();
+	writer = protocol_labcomm_writer_new(chan);
+	if (reader == NULL || writer == NULL) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 1,
+				"memory allocation failed");
+		protocol_labcomm_reader_free(reader);
+		protocol_labcomm_writer_free(writer);
+		FIREFLY_FREE(chan);
+		return NULL;
+	}
+
+	proto_decoder    = labcomm_decoder_new(reader, NULL);
+	proto_encoder    = labcomm_encoder_new(writer, NULL);
+
+	if (proto_decoder == NULL || proto_encoder == NULL) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1,
 				"memory allocation failed");
 
@@ -29,13 +41,9 @@ struct firefly_channel *firefly_channel_new(struct firefly_connection *conn)
 			labcomm_decoder_free(chan->proto_decoder);
 		if (chan->proto_encoder)
 			labcomm_encoder_free(chan->proto_encoder);
-		FIREFLY_FREE(reader_data);
-		FIREFLY_FREE(writer_data);
-		FIREFLY_FREE(writer_data_data);
 		FIREFLY_FREE(chan);
 		return NULL;
 	}
-
 	chan->local_id			= next_channel_id(conn);
 	chan->remote_id			= CHANNEL_ID_NOT_SET;
 	chan->important_queue	= NULL;
@@ -44,18 +52,7 @@ struct firefly_channel *firefly_channel_new(struct firefly_connection *conn)
 	chan->remote_seqno		= 0;
 	chan->proto_decoder		= proto_decoder;
 	chan->proto_encoder		= proto_encoder;
-
-	chan->reader_data            = reader_data;
-	chan->reader_data->data      = NULL;
-	chan->reader_data->data_size = 0;
-	chan->reader_data->pos       = 0;
-
-	chan->writer_data            = writer_data;
-	chan->writer_data->data      = writer_data_data;
-	chan->writer_data->data_size = BUFFER_SIZE;
-	chan->writer_data->pos       = 0;
-
-	chan->conn = conn;
+	chan->conn              = conn;
 
 	return chan;
 }
@@ -71,14 +68,6 @@ void firefly_channel_free(struct firefly_channel *chan)
 	}
 	if (chan->proto_encoder != NULL) {
 		labcomm_encoder_free(chan->proto_encoder);
-	}
-	if (chan->reader_data != NULL) {
-		FIREFLY_FREE(chan->reader_data->data);
-		FIREFLY_FREE(chan->reader_data);
-	}
-	if (chan->writer_data != NULL) {
-		FIREFLY_FREE(chan->writer_data->data);
-		FIREFLY_FREE(chan->writer_data);
 	}
 	FIREFLY_FREE(chan);
 }

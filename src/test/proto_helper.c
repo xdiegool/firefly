@@ -1,10 +1,11 @@
 #include "test/proto_helper.h"
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <labcomm.h>
-#include <test/labcomm_mem_writer.h>
-#include <test/labcomm_mem_reader.h>
-#include <labcomm_fd_reader_writer.h>
+#include <labcomm_ioctl.h>
+#include <labcomm_static_buffer_writer.h>
+#include <labcomm_static_buffer_reader.h>
 #include "CUnit/Basic.h"
 #include <stdbool.h>
 
@@ -16,10 +17,8 @@
 #include "test/test_labcomm_utils.h"
 #include "utils/cppmacros.h"
 
-labcomm_mem_reader_context_t *test_dec_ctx = NULL;
 struct labcomm_decoder *test_dec = NULL;
 struct labcomm_encoder *test_enc;
-labcomm_mem_writer_context_t *test_enc_ctx;
 
 unsigned char data_sample_data[DATA_SAMPLE_DATA_SIZE];
 firefly_protocol_data_sample data_sample;
@@ -79,11 +78,9 @@ void transport_write_test_decoder(unsigned char *data, size_t size,
 	UNUSED_VAR(conn);
 	UNUSED_VAR(important);
 	UNUSED_VAR(id);
-	test_dec_ctx->enc_data = data;
-	test_dec_ctx->size = size;
+	labcomm_decoder_ioctl(test_dec, LABCOMM_IOCTL_READER_SET_BUFFER,
+			data, size);
 	labcomm_decoder_decode_one(test_dec);
-	test_dec_ctx->enc_data = NULL;
-	test_dec_ctx->size = 0;
 	if (important) {
 		CU_ASSERT_PTR_NOT_NULL_FATAL(id);
 		*id = 1;
@@ -181,27 +178,15 @@ void test_handle_ack(firefly_protocol_ack *d, void *ctx)
 
 int init_labcomm_test_enc_dec()
 {
-	test_enc_ctx = malloc(sizeof(labcomm_mem_writer_context_t));
-	if (test_enc_ctx == NULL) {
-		return 1;
-	}
-	test_enc_ctx->buf = malloc(ENCODER_WRITE_BUF_SIZE);
-	if (test_enc_ctx->buf == NULL) {
-		return 1;
-	}
-	test_enc_ctx->length = ENCODER_WRITE_BUF_SIZE;
-	test_enc_ctx->write_pos = 0;
-	test_enc = labcomm_encoder_new(labcomm_mem_writer, test_enc_ctx);
+	struct labcomm_writer *test_w = labcomm_static_buffer_writer_new();
+	test_enc = labcomm_encoder_new(test_w, NULL);
 	if (test_enc == NULL) {
 		return 1;
 	}
 	labcomm_register_error_handler_encoder(test_enc, handle_labcomm_error);
 
-	test_dec_ctx = malloc(sizeof(labcomm_mem_reader_context_t));
-	if (test_dec_ctx == NULL) {
-		CU_FAIL("Test decoder context was null\n");
-	}
-	test_dec = labcomm_decoder_new(labcomm_mem_reader, test_dec_ctx);
+	struct labcomm_reader *test_r = labcomm_static_buffer_reader_new();
+	test_dec = labcomm_decoder_new(test_r, NULL);
 	if (test_dec == NULL) {
 		CU_FAIL("Test decoder was null\n");
 	}
@@ -220,52 +205,84 @@ int init_labcomm_test_enc_dec()
 	labcomm_decoder_register_firefly_protocol_ack(test_dec,
 						test_handle_ack, NULL);
 
+	void *buffer;
+	size_t buffer_size;
 	labcomm_encoder_register_firefly_protocol_data_sample(test_enc);
-	test_dec_ctx->enc_data = test_enc_ctx->buf;
-	test_dec_ctx->size = test_enc_ctx->write_pos;
+	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
+			&buffer, &buffer_size);
+	labcomm_decoder_ioctl(test_dec, LABCOMM_IOCTL_READER_SET_BUFFER,
+			buffer, buffer_size);
 	labcomm_decoder_decode_one(test_dec);
-	test_enc_ctx->write_pos = 0;
 
 	labcomm_encoder_register_firefly_protocol_channel_request(test_enc);
-	test_dec_ctx->enc_data = test_enc_ctx->buf;
-	test_dec_ctx->size = test_enc_ctx->write_pos;
+	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
+			&buffer, &buffer_size);
+	labcomm_decoder_ioctl(test_dec, LABCOMM_IOCTL_READER_SET_BUFFER,
+			buffer, buffer_size);
 	labcomm_decoder_decode_one(test_dec);
-	test_enc_ctx->write_pos = 0;
 
 	labcomm_encoder_register_firefly_protocol_channel_response(test_enc);
-	test_dec_ctx->enc_data = test_enc_ctx->buf;
-	test_dec_ctx->size = test_enc_ctx->write_pos;
+	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
+			&buffer, &buffer_size);
+	labcomm_decoder_ioctl(test_dec, LABCOMM_IOCTL_READER_SET_BUFFER,
+			buffer, buffer_size);
 	labcomm_decoder_decode_one(test_dec);
-	test_enc_ctx->write_pos = 0;
 
 	labcomm_encoder_register_firefly_protocol_channel_ack(test_enc);
-	test_dec_ctx->enc_data = test_enc_ctx->buf;
-	test_dec_ctx->size = test_enc_ctx->write_pos;
+	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
+			&buffer, &buffer_size);
+	labcomm_decoder_ioctl(test_dec, LABCOMM_IOCTL_READER_SET_BUFFER,
+			buffer, buffer_size);
 	labcomm_decoder_decode_one(test_dec);
-	test_enc_ctx->write_pos = 0;
 
 	labcomm_encoder_register_firefly_protocol_channel_close(test_enc);
-	test_dec_ctx->enc_data = test_enc_ctx->buf;
-	test_dec_ctx->size = test_enc_ctx->write_pos;
+	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
+			&buffer, &buffer_size);
+	labcomm_decoder_ioctl(test_dec, LABCOMM_IOCTL_READER_SET_BUFFER,
+			buffer, buffer_size);
 	labcomm_decoder_decode_one(test_dec);
-	test_enc_ctx->write_pos = 0;
 
 	labcomm_encoder_register_firefly_protocol_ack(test_enc);
-	test_dec_ctx->enc_data = test_enc_ctx->buf;
-	test_dec_ctx->size = test_enc_ctx->write_pos;
+	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
+			&buffer, &buffer_size);
+	labcomm_decoder_ioctl(test_dec, LABCOMM_IOCTL_READER_SET_BUFFER,
+			buffer, buffer_size);
 	labcomm_decoder_decode_one(test_dec);
-	test_enc_ctx->write_pos = 0;
-	return 0;
+
+	int error = 0;
+	firefly_protocol_channel_request chan_req;
+	chan_req.source_chan_id = 1;
+	chan_req.dest_chan_id = 2;
+	// Give channel request data to protocol layer.
+	error = labcomm_encode_firefly_protocol_channel_request(test_enc, &chan_req);
+	if (error) {
+		return error;
+	}
+	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
+			&buffer, &buffer_size);
+	labcomm_decoder_ioctl(test_dec, LABCOMM_IOCTL_READER_SET_BUFFER,
+			buffer, buffer_size);
+	labcomm_decoder_decode_one(test_dec);
+	if (!received_channel_request ||
+			channel_request.source_chan_id != 1 ||
+			channel_request.dest_chan_id != 2) {
+		error = 1;
+		return error;
+	}
+	received_channel_request = false;
+	/*firefly_protocol_channel_response chan_resp;*/
+	/*chan_resp.source_chan_id = 1;*/
+	/*chan_resp.dest_chan_id = 2;*/
+	/*chan_resp.ack = true;*/
+	/*labcomm_encode_firefly_protocol_channel_response(test_enc, &chan_resp);*/
+	
+	return error;
 }
 
 int clean_labcomm_test_enc_dec()
 {
 	labcomm_encoder_free(test_enc);
 	test_enc = NULL;
-	free(test_enc_ctx->buf);
-	free(test_enc_ctx);
-	test_enc_ctx = NULL;
-	free(test_dec_ctx);
 	labcomm_decoder_free(test_dec);
 	return 0;
 }

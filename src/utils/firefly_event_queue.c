@@ -6,6 +6,7 @@
 
 #include <stdlib.h>
 #include <stdbool.h>
+#include <string.h>
 
 #include <utils/firefly_errors.h>
 #include "protocol/firefly_protocol_private.h"

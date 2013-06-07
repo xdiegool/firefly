@@ -20,49 +20,47 @@ struct firefly_connection *firefly_connection_new(
 		void *plat_spec, transport_connection_free plat_spec_free)
 {
 	struct firefly_connection *conn;
-	struct ff_transport_data *writer_data;
-	unsigned char *writer_data_data;
-	struct ff_transport_data *reader_data;
 	struct labcomm_encoder *transport_encoder;
 	struct labcomm_decoder *transport_decoder;
+	struct labcomm_reader  *reader;
+	struct labcomm_writer  *writer;
 
 	conn = FIREFLY_MALLOC(sizeof(struct firefly_connection));
-	writer_data = FIREFLY_MALLOC(sizeof(struct ff_transport_data));
-	writer_data_data = FIREFLY_MALLOC(BUFFER_SIZE);
-	reader_data = FIREFLY_MALLOC(sizeof(struct ff_transport_data));
-	transport_encoder = labcomm_encoder_new(ff_transport_writer, conn);
-	transport_decoder = labcomm_decoder_new(ff_transport_reader, conn);
+	if (conn == NULL) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 1,
+				"memory allocation failed");
+		FIREFLY_FREE(conn);
+		return NULL;
+	}
+	reader = transport_labcomm_reader_new();
+	writer = transport_labcomm_writer_new(conn);
+	if (reader == NULL || writer == NULL) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 1,
+				"memory allocation failed");
+		transport_labcomm_reader_free(reader);
+		transport_labcomm_writer_free(writer);
+		FIREFLY_FREE(conn);
+		return NULL;
+	}
+	transport_encoder = labcomm_encoder_new(writer, NULL);
+	transport_decoder = labcomm_decoder_new(reader, NULL);
 
-	if (conn == NULL || writer_data == NULL || writer_data_data == NULL ||
-			reader_data == NULL || transport_encoder == NULL ||
-			transport_decoder == NULL)
-	{
-		firefly_error(FIREFLY_ERROR_ALLOC, 1, "malloc failed\n");
-
+	if (transport_encoder == NULL || transport_decoder == NULL) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 1,
+				"memory allocation failed");
 		if (transport_encoder)
 			labcomm_encoder_free(transport_encoder);
+		else
+			transport_labcomm_writer_free(writer);
 		if (transport_decoder)
 			labcomm_decoder_free(transport_decoder);
-		FIREFLY_FREE(writer_data_data);
-		FIREFLY_FREE(writer_data);
-		FIREFLY_FREE(reader_data);
+		else
+			transport_labcomm_reader_free(reader);
 		FIREFLY_FREE(conn);
 		return NULL;
 	}
 
 	conn->event_queue = event_queue;
-
-	writer_data->data = writer_data_data;
-	writer_data->data_size = BUFFER_SIZE;
-	writer_data->pos = 0;
-	writer_data->important_id = NULL;
-	conn->writer_data = writer_data;
-
-	// Init reader data
-	reader_data->data = NULL;
-	reader_data->data_size = 0;
-	reader_data->pos = 0;
-	conn->reader_data = reader_data;
 
 	conn->on_channel_opened = on_channel_opened;
 	conn->on_channel_closed = on_channel_closed;
@@ -160,9 +158,6 @@ void firefly_connection_free(struct firefly_connection **conn)
 	if ((*conn)->transport_decoder != NULL) {
 		labcomm_decoder_free((*conn)->transport_decoder);
 	}
-	FIREFLY_FREE((*conn)->reader_data);
-	FIREFLY_FREE((*conn)->writer_data->data);
-	FIREFLY_FREE((*conn)->writer_data);
 	FIREFLY_FREE((*conn));
 	*conn = NULL;
 }

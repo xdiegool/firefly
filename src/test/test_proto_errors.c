@@ -188,8 +188,6 @@ void test_unexpected_data_sample()
 	conn_open->chan_list->chan->local_id = 15;
 	conn_open->chan_list->chan->remote_id = 14;
 
-	firefly_protocol_channel_close close_msg;
-
 	protocol_data_received(conn_open, conn_recv_write.data,
 						   conn_recv_write.size);
 	CU_ASSERT_FALSE(was_in_error);
