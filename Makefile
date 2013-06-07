@@ -358,7 +358,7 @@ $(LABCOMMC):
 # $(LABCOMMLIBPATH/liblabconn.a) - Build static LabComm library.
 $(LABCOMMLIBPATH)/liblabcomm-arm.a:
 	@echo "======Building LabComm======"
-	$(MAKE) -C $(LABCOMMLIBPATH) -e CC=$(CC_ARM) CFLAGS="$(filter-out -Werror -Wextra,$(CFLAGS_ARM)) -D MEM_WRITER_ENCODED_BUFFER=1" -e LABCOMM_NO_EXPERIMENTAL=true liblabcomm.a
+	$(MAKE) -C $(LABCOMMLIBPATH) -e CC=$(CC_ARM) CFLAGS="$(filter-out -Werror -Wextra,$(CFLAGS_ARM))  -DLABCOMM_ENCODER_LINEAR_SEARCH -D MEM_WRITER_ENCODED_BUFFER=1" -e LABCOMM_NO_EXPERIMENTAL=true liblabcomm.a
 	mv $(LABCOMMLIBPATH)/liblabcomm.a $(LABCOMMLIBPATH)/liblabcomm-arm.a
 	@echo "======End building LabComm======"
 
