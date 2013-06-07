@@ -89,12 +89,37 @@ struct firefly_connection *firefly_transport_connection_udp_posix_open(
 				struct firefly_transport_llp *llp);
 
 /**
- * @brief TODO
+ * @brief Start reader and resend thread. Both will run until stopped with
+ * firefly_transport_udp_posix_stop(). If either pthread_t argument is NULL the
+ * corresponding thread will not be started.
  *
- * Run resend and reader, if NULL dont run
+ * @param llp The LLP to run.
+ * @param reader The handle to the reader thread. If NULL the reader thread will
+ * not be started.
+ * @param resend The handle to the resend thread. If NULL the resend thread will
+ * not be started.
+ * @return Zero or an error code.
  */
 int firefly_transport_udp_posix_run(struct firefly_transport_llp *llp,
 		pthread_t *reader, pthread_t *resend);
+
+/**
+ * @brief Stop reader and resend thread. Any thread to be stopped must have been
+ * started with firefly_transport_udp_posix_run(), if not the result id
+ * undefined. If either pthread_t argument is NULL the corresponding thread
+ * will not be stopped.
+ *
+ * In other words, if for example the resend thread is started manually the idea
+ * is to set the resend parameter to NULL and use these utilities to control the
+ * reader thread.
+ *
+ * @param llp The LLP to stop.
+ * @param reader The handle to the reader thread. If NULL the reader thread will
+ * not be stopped.
+ * @param resend The handle to the resend thread. If NULL the resend thread will
+ * not be stopped.
+ * @return Zero or an error code.
+ */
 int firefly_transport_udp_posix_stop(struct firefly_transport_llp *llp,
 		pthread_t *reader, pthread_t *resend);
 

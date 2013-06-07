@@ -9,6 +9,16 @@
 #include <utils/firefly_event_queue_posix.h>
 #include <utils/firefly_event_queue.h>
 
+struct firefly_event_queue_posix_context {
+	pthread_mutex_t lock;
+	pthread_cond_t signal;
+	pthread_t event_loop;
+	bool event_loop_stop;
+};
+
+int firefly_event_queue_posix_add(struct firefly_event_queue *eq,
+		unsigned char prio, firefly_event_execute_f execute, void *context);
+
 struct firefly_event_queue *firefly_event_queue_posix_new(size_t pool_size)
 {
 	int res;
