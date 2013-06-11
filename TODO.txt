@@ -1,12 +1,24 @@
+# EVENT CHAINING
+Should implement some sort of chaining of events, e.g. through next
+pointer on events or through on_complete callback functions. This would
+allow us to close channels when a connection is closed, e.g:
+
+    conn_close -> chan_close_ev -> chan_close_ev -> conn_close_ev
+
+This would save us from relying on event priority to synchronize the
+order of execution of events.
+
+# TEST STUFF
 The eth_posix test suite fails infrequently on a ubu10.04 32b vm with
 incorrect sender etc. Not reproducible on ubu12.04 64b.
 
 Try limiting the pingpong suite to first open channel and then continue.
 
+# EVENTIFY CONN OPEN
 fix event driven connection open, at least add connection to llp
  - Make add conn to llp an event with highest priority
 
-Fix reliability of signatures:
+# FIX RELIABILITY OF SIGNATURES
  - Suggestion, force user to specify the types when opening the channel and
    disallow adding new types after channel is opened. This may be done by
    setting a callback that is called when the types can be registered. The
@@ -25,7 +37,8 @@ Fix reliability of signatures:
    and specify the callback. 3. The protocol will call the callback when it is
    ready to send the signatures.
 
-Decease runtime malloc, ignore any malloc during setup setup:
+# DECEASE RUNTIME MALLOC
+    Ignore any malloc during setup setup:
 	- The transport layer makes sure to have mem alvailable to read the data.
 	  (no changes, 1 malloc)
 	- transport_read creates the read event and sets the data pointer. (may
@@ -52,11 +65,12 @@ Decease runtime malloc, ignore any malloc during setup setup:
 	  memory instead of allocing a new mem and copying the reader data to it.
 	  Only usable with variable length arrays. Other types have much easier
 	  solutions.
-Reliability:
+
+# RELIABILITY
 	- Ack transport packets when closing a channel.
 	- conn->transport_ack == NULL should be interpreted as reliability ensured
 
-Prepare for Xenomai:
+# PREPARE FOR XENOMAI
 	- App layer must be notified before change from pure state to inpure state
 	  (using Haskell terminology). Pure would mean a state where nothing is
 	  uncertain, no unacked packets, no new connections or channels, no closing
