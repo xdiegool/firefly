@@ -1,22 +1,31 @@
 # EVENT CHAINING
-Should implement some sort of chaining of events, e.g. through next
-pointer on events or through on_complete callback functions. This would
-allow us to close channels when a connection is closed, e.g:
+    Should implement some sort of chaining of events, e.g. through next
+    pointer on events or through on_complete callback functions. This
+    would allow us to close channels when a connection is closed, e.g:
 
-    conn_close -> chan_close_ev -> chan_close_ev -> conn_close_ev
+	conn_close -> chan_close_ev -> chan_close_ev -> conn_close_ev
 
-This would save us from relying on event priority to synchronize the
-order of execution of events.
+    This would save us from relying on event priority to synchronize the
+    order of execution of events.
+
+# HALF OPEN CONNECTION
+    Impl. half open on connections, can send but not receive on a half
+    open.  When closing a connection, it should be set to HALF_OPEN to
+    disallow receiving new stuff on it while allowing channel close
+    packets to be sent.
+
+    Possibly also implement an ERROR state on the connection.
 
 # TEST STUFF
-The eth_posix test suite fails infrequently on a ubu10.04 32b vm with
-incorrect sender etc. Not reproducible on ubu12.04 64b.
+    The eth_posix test suite fails infrequently on a ubu10.04 32b vm
+    with incorrect sender etc. Not reproducible on ubu12.04 64b.
 
-Try limiting the pingpong suite to first open channel and then continue.
+    Try limiting the pingpong suite to first open channel and then
+    continue.
 
 # EVENTIFY CONN OPEN
-fix event driven connection open, at least add connection to llp
- - Make add conn to llp an event with highest priority
+    fix event driven connection open, at least add connection to llp
+	- Make add conn to llp an event with highest priority
 
 # FIX RELIABILITY OF SIGNATURES
  - Suggestion, force user to specify the types when opening the channel and
