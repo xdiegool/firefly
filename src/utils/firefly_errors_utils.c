@@ -23,7 +23,7 @@ const char *firefly_error_strings[] = {
 	"Binding LLP failed.",
 	"Failed to prase IP address.",
 	"Error writing data to transport medium.",
-	"LabComm error has occured.",
+	"LabComm error.",
 	"Invalid protocol state occured.",
 	"User defined error.",
 	"User has not set callback.",
@@ -46,6 +46,7 @@ void labcomm_error_to_ff_error(enum labcomm_error error_id, size_t nbr_va_args,
 									...)
 {
 	char *err_msg = malloc(MAX_ERR_LEN);
+	char *err_msg_pos = err_msg;
 	if (err_msg == NULL) {
 		err_msg = "Failed to allocate memory for error message.";
 		firefly_error(FIREFLY_ERROR_ALLOC, 1, err_msg);
@@ -62,39 +63,26 @@ void labcomm_error_to_ff_error(enum labcomm_error error_id, size_t nbr_va_args,
 
 	size_t chars_left = MAX_ERR_LEN;
 	int chars_written;
-	chars_written = snprintf(err_msg, chars_left, "%s\n", lc_err_msg);
+	chars_written = snprintf(err_msg_pos, chars_left, "%s\n", lc_err_msg);
 	if (chars_written == -1) {
 		return; // Error in error function. We're screwed.
 	} 
 	chars_left -= chars_written;
+	err_msg_pos += chars_written;
 
 	if (nbr_va_args > 0) {
 		va_list arg_pointer;
 		va_start(arg_pointer, nbr_va_args);
 
-		chars_written = snprintf(err_msg, chars_left, "%s\n",
-					"Extra info {");
-		if (chars_written == -1) {
-			// Error in error function. We're screwed.
-			return;
-		} 
-		chars_left -= chars_written;
-
 		char *print_format = va_arg(arg_pointer, char *);
-		chars_written = vsnprintf(err_msg, chars_left, print_format,
+		chars_written = vsnprintf(err_msg_pos, chars_left, print_format,
 				arg_pointer);
 		if (chars_written < 0) {
 			// Error in error function. We're screwed.
 			return;
 		}
 		chars_left -= chars_written;
-
-		chars_written = snprintf(err_msg, chars_left, "}\n");
-		if (chars_written == -1) {
-			// Error in error function. We're screwed.
-			return;
-		} 
-		chars_left -= chars_written;
+		err_msg_pos += chars_written;
 
 		va_end(arg_pointer);
 	}

@@ -44,6 +44,12 @@ struct firefly_channel *firefly_channel_new(struct firefly_connection *conn)
 		FIREFLY_FREE(chan);
 		return NULL;
 	}
+
+	labcomm_register_error_handler_encoder(proto_encoder,
+			labcomm_error_to_ff_error);
+	labcomm_register_error_handler_decoder(proto_decoder,
+			labcomm_error_to_ff_error);
+
 	chan->local_id			= next_channel_id(conn);
 	chan->remote_id			= CHANNEL_ID_NOT_SET;
 	chan->important_queue	= NULL;

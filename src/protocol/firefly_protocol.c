@@ -15,15 +15,12 @@
 #include "utils/firefly_event_queue_private.h"
 #include "utils/cppmacros.h"
 
-struct firefly_connection *tmp_conn;
-
-void mock_trans_write(unsigned char *data, size_t size,
+static void signature_trans_write(unsigned char *data, size_t size,
 			struct firefly_connection *conn, bool important, unsigned char *id)
 {
-	UNUSED_VAR(conn);
 	UNUSED_VAR(important);
 	UNUSED_VAR(id);
-	protocol_data_received(tmp_conn, data, size);
+	protocol_data_received(conn, data, size);
 }
 
 void reg_proto_sigs(struct labcomm_encoder *enc,
@@ -31,8 +28,7 @@ void reg_proto_sigs(struct labcomm_encoder *enc,
 					struct firefly_connection *conn)
 {
 	transport_write_f orig_twf = conn->transport_write;
-	conn->transport_write = mock_trans_write;
-	tmp_conn = conn;
+	conn->transport_write = signature_trans_write;
 
 	labcomm_decoder_register_firefly_protocol_data_sample(dec,
 					  	  handle_data_sample, conn);
@@ -60,7 +56,6 @@ void reg_proto_sigs(struct labcomm_encoder *enc,
 	labcomm_encoder_register_firefly_protocol_ack(enc);
 
 	conn->transport_write = orig_twf;
-	tmp_conn = NULL;
 }
 
 void firefly_channel_open(struct firefly_connection *conn,
@@ -175,11 +170,8 @@ int firefly_channel_close_event(void *event_arg)
 	fecc = (struct firefly_event_chan_close *) event_arg;
 	conn = fecc->conn;
 
-	// TODO add unit test
-	if (conn->open == FIREFLY_CONNECTION_OPEN) {
 	labcomm_encode_firefly_protocol_channel_close(conn->transport_encoder,
 												  &fecc->chan_close);
-	}
 	FIREFLY_FREE(event_arg);
 
 	return 0;

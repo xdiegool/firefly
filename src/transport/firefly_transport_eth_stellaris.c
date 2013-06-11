@@ -297,7 +297,6 @@ void firefly_transport_eth_stellaris_read(struct firefly_transport_llp *llp)
 	short proto = get_ethernet_proto(eth_packet);
 	if (proto != FIREFLY_ETH_PROTOCOL) {
 		free(eth_packet);
-		firefly_error(FIREFLY_ERROR_USER_DEF, 1, "Not Firefly data.\n");
 		return;
 	}
 

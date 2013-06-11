@@ -77,7 +77,7 @@ CC_ARM = arm-none-eabi-gcc
 ERRFLAGS = -Wall -Wextra
 
 # Common flags to the compiler.
-CFLAGS_COM = -std=c99 $(ERRFLAGS) $(INC_COMMON) -D DEBUG
+CFLAGS_COM = -std=c99 $(ERRFLAGS) $(INC_COMMON) -D DEBUG -D LABCOMM_ENCODER_LINEAR_SEARCH
 
 # x86 specific compiler flags
 CFLAGS = $(CFLAGS_COM)
@@ -87,6 +87,7 @@ CFLAGS_ARM = $(CFLAGS_COM) -Wfloat-equal -Werror-implicit-function-declaration \
 		  -mthumb -mcpu=cortex-m3 -T$(LDSCRIPT) \
 		  -ffunction-sections -fdata-sections \
 		  $(INC_TRANSPORT_UDP_LWIP) \
+		  -D UART_BUFFERED \
 		  -D sprintf=usprintf \
 		  -D snprintf=usnprintf \
 		  -D vsnprintf=uvsnprintf \
@@ -96,6 +97,7 @@ CFLAGS_ARM = $(CFLAGS_COM) -Wfloat-equal -Werror-implicit-function-declaration \
 		  -D free=vPortFree \
 		  -D ARM_CORTEXM3_CODESOURCERY \
 		  -D LABCOMM_NO_STDIO \
+		  -DLABCOMM_COMPAT=\"labcomm_compat_arm_cortexm3.h\" \
 		  -D GCC_ARMCM3=1
 
 # Specify alternative memory allocation/deallocation functions
@@ -358,7 +360,9 @@ $(LABCOMMC):
 # $(LABCOMMLIBPATH/liblabconn.a) - Build static LabComm library.
 $(LABCOMMLIBPATH)/liblabcomm-arm.a:
 	@echo "======Building LabComm======"
-	$(MAKE) -C $(LABCOMMLIBPATH) -e CC=$(CC_ARM) CFLAGS="$(filter-out -Werror -Wextra,$(CFLAGS_ARM))  -DLABCOMM_ENCODER_LINEAR_SEARCH -D MEM_WRITER_ENCODED_BUFFER=1" -e LABCOMM_NO_EXPERIMENTAL=true liblabcomm.a
+	$(MAKE) -C $(LABCOMMLIBPATH) -e CC=$(CC_ARM) \
+		CFLAGS="$(filter-out -Werror -Wextra,$(CFLAGS_ARM)) -DLABCOMM_ENCODER_LINEAR_SEARCH" \
+		-e LABCOMM_NO_EXPERIMENTAL=true liblabcomm.a
 	mv $(LABCOMMLIBPATH)/liblabcomm.a $(LABCOMMLIBPATH)/liblabcomm-arm.a
 	@echo "======End building LabComm======"
 
