@@ -318,6 +318,8 @@ TEST_SYSTEM_NORUN_PROGS = $(patsubst %,$(BUILD_DIR)/test/%,pingpong/pong_eth_mai
 
 TEST_PROGS = $(TEST_UNIT_PROGS) $(TEST_SYSTEM_PROGS)
 
+TEST_FF_MEM_OBJS = $(patsubst %.c,$(BUILD_DIR)/%-tmem.o,$(TRANSPORT_COMMON_SRC) $(FIREFLY_SRC))
+
 ### }
 
 ## }
@@ -521,8 +523,22 @@ $(BUILD_DIR)/test/test_resend_posix: $(patsubst %,$(BUILD_DIR)/test/%.o,test_res
 	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $^ $(LDLIBS_TEST) -o $@
 
 # Main test program for the memory management tests.
-$(BUILD_DIR)/test/test_proto_memman: $(patsubst %,$(BUILD_DIR)/test/%.o,test_proto_memman proto_helper test_labcomm_utils error_helper event_helper) $(patsubst %,$(BUILD_DIR)/%.o,gen/test) $(BUILD_DIR)/lib$(LIB_FIREFLY_NAME).a $(LABCOMMLIBPATH)/liblabcomm.a
-	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) -l$(LIB_FIREFLY_NAME) $(LDLIBS_TEST) -o $@
+$(BUILD_DIR)/test/test_proto_memman: $(patsubst %,$(BUILD_DIR)/test/%.o,test_proto_memman proto_helper test_labcomm_utils error_helper event_helper) $(patsubst %,$(BUILD_DIR)/%.o,gen/test) $(BUILD_DIR)/libfirefly-tmem.a $(BUILD_DIR)/liblabcomm-tmem.a
+	$(CC) $(LDFLAGS) -Wl,--wrap,malloc,--wrap,realloc $(LDFLAGS_TEST) $(filter-out %.a,$^) -lfirefly-tmem $(filter-out %labcomm,$(LDLIBS_TEST)) -llabcomm-tmem -o $@
+
+$(BUILD_DIR)/liblabcomm-tmem.a:
+	-mv $(LABCOMMLIBPATH)/liblabcomm.a $(LABCOMMLIBPATH)/liblabcomm-tmp.a
+	@echo "======Building LabComm======"
+	$(MAKE) -C $(LABCOMMLIBPATH) -e CC=$(CC) CFLAGS="$(filter-out -Werror -Wextra,$(CFLAGS)) -DLABCOMM_MALLOC=test_malloc -DLABCOMM_REALLOC=test_realloc -DLABCOMM_FREE=test_free -DLABCOMM_ENCODER_LINEAR_SEARCH" -e LABCOMM_NO_EXPERIMENTAL=true liblabcomm.a
+	@echo "======End building LabComm======"
+	-mv $(LABCOMMLIBPATH)/liblabcomm.a $(BUILD_DIR)/liblabcomm-tmem.a
+	-mv $(LABCOMMLIBPATH)/liblabcomm-tmp.a $(LABCOMMLIBPATH)/liblabcomm.a
+
+$(BUILD_DIR)/libfirefly-tmem.a: $(TEST_FF_MEM_OBJS)
+	ar -rc $@ $^
+
+$(TEST_FF_MEM_OBJS): $$(patsubst $$(BUILD_DIR)/%-tmem.o,%.c,$$@) |$$(@D)
+	$(CC) -c $(CFLAGS) -DLABCOMM_MALLOC=test_malloc -DLABCOMM_REALLOC=test_realloc -DLABCOMM_FREE=test_free -DFIREFLY_MALLOC=test_malloc -DFIREFLY_FREE=test_free $(INC_FIREFLY) -o $@ $<
 
 # UDP System tests
 $(BUILD_DIR)/test/system/udp_posix: $(patsubst %,$(BUILD_DIR)/test/%.o,system/udp_posix test_labcomm_utils error_helper event_helper) $(patsubst %,$(BUILD_DIR)/%.o,utils/firefly_resend_posix gen/test) $(patsubst %,$(BUILD_DIR)/lib%.a,$(LIB_TRANSPORT_UDP_POSIX_NAME) $(LIB_FIREFLY_NAME)) $(LABCOMMLIBPATH)/liblabcomm.a

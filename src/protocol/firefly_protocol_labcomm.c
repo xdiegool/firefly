@@ -89,22 +89,38 @@ static int proto_reader_ioctl(struct labcomm_reader *r, void *context,
 	return result;
 }
 
+static void *proto_reader_mem_malloc(struct labcomm_reader *r, void *context,
+		size_t size)
+{
+	struct firefly_connection *conn = (struct firefly_connection *) context;
+	return FIREFLY_RUNTIME_MALLOC(conn, size);
+}
+
+static void proto_reader_mem_free(struct labcomm_reader *r, void *context,
+		void *ptr)
+{
+	return FIREFLY_RUNTIME_FREE(((struct firefly_connection *) context), ptr);
+}
+
 static const struct labcomm_reader_action proto_reader_action = {
 	.alloc = proto_reader_alloc,
 	.free = proto_reader_free,
 	.start = proto_reader_start,
 	.fill = proto_reader_fill,
 	.end = proto_reader_end,
-	.ioctl = proto_reader_ioctl
+	.ioctl = proto_reader_ioctl,
+	.mem_malloc = proto_reader_mem_malloc,
+	.mem_free = proto_reader_mem_free
 };
 
-struct labcomm_reader *protocol_labcomm_reader_new()
+struct labcomm_reader *protocol_labcomm_reader_new(
+		struct firefly_connection *conn)
 {
 	struct labcomm_reader *result;
 
 	result = FIREFLY_MALLOC(sizeof(*result));
 	if (result != NULL) {
-		result->context = NULL;
+		result->context = conn;
 		result->action = &proto_reader_action;
 	}
 	return result;
@@ -115,9 +131,10 @@ void protocol_labcomm_reader_free(struct labcomm_reader *r)
 	FIREFLY_FREE(r);
 }
 
-struct labcomm_reader *transport_labcomm_reader_new()
+struct labcomm_reader *transport_labcomm_reader_new(
+		struct firefly_connection *conn)
 {
-	return protocol_labcomm_reader_new();
+	return protocol_labcomm_reader_new(conn);
 }
 
 void transport_labcomm_reader_free(struct labcomm_reader *r)
@@ -248,8 +265,8 @@ struct labcomm_writer *protocol_labcomm_writer_new(struct firefly_channel *chan)
 	struct labcomm_writer *result;
 	struct protocol_writer_context *context;
 
-	result = malloc(sizeof(*result));
-	context = malloc(sizeof(*context));
+	result = FIREFLY_MALLOC(sizeof(*result));
+	context = FIREFLY_MALLOC(sizeof(*context));
 	if (result != NULL && context != NULL) {
 		context->chan = chan;
 		result->context = context;
@@ -265,7 +282,9 @@ struct labcomm_writer *protocol_labcomm_writer_new(struct firefly_channel *chan)
 
 void protocol_labcomm_writer_free(struct labcomm_writer *w)
 {
-	FIREFLY_FREE(w->context);
+	if (w != NULL) {
+		FIREFLY_FREE(w->context);
+	}
 	FIREFLY_FREE(w);
 }
 
@@ -343,7 +362,9 @@ struct labcomm_writer *transport_labcomm_writer_new(
 
 void transport_labcomm_writer_free(struct labcomm_writer *w)
 {
-	FIREFLY_FREE(w->context);
+	if (w != NULL) {
+		FIREFLY_FREE(w->context);
+	}
 	FIREFLY_FREE(w);
 }
 

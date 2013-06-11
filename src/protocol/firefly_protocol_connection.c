@@ -32,7 +32,7 @@ struct firefly_connection *firefly_connection_new(
 		FIREFLY_FREE(conn);
 		return NULL;
 	}
-	reader = transport_labcomm_reader_new();
+	reader = transport_labcomm_reader_new(conn);
 	writer = transport_labcomm_writer_new(conn);
 	if (reader == NULL || writer == NULL) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1,

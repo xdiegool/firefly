@@ -189,8 +189,10 @@ struct labcomm_writer *protocol_labcomm_writer_new(
 		struct firefly_channel *chan);
 struct labcomm_writer *transport_labcomm_writer_new(
 		struct firefly_connection *conn);
-struct labcomm_reader *transport_labcomm_reader_new();
-struct labcomm_reader *protocol_labcomm_reader_new();
+struct labcomm_reader *transport_labcomm_reader_new(
+		struct firefly_connection *conn);
+struct labcomm_reader *protocol_labcomm_reader_new(
+		struct firefly_connection *conn);
 void protocol_labcomm_reader_free(struct labcomm_reader *r);
 void transport_labcomm_reader_free(struct labcomm_reader *r);
 void protocol_labcomm_writer_free(struct labcomm_writer *w);

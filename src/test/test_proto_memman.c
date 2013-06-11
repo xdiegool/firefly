@@ -1,9 +1,11 @@
+#include <stdio.h>
 #include <CUnit/Basic.h>
 #include "CUnit/Console.h"
 
 #include <labcomm.h>
-#include <test/labcomm_mem_writer.h>
-#include <test/labcomm_mem_reader.h>
+#include <labcomm_ioctl.h>
+#include <labcomm_static_buffer_writer.h>
+#include <labcomm_static_buffer_reader.h>
 #include <utils/cppmacros.h>
 #include "gen/test.h"
 #include "test/proto_helper.h"
@@ -16,10 +18,8 @@ struct memman_list {
 };
 
 extern struct labcomm_decoder *test_dec;
-extern labcomm_mem_reader_context_t *test_dec_ctx;
 
 extern struct labcomm_encoder *test_enc;
-extern labcomm_mem_writer_context_t *test_enc_ctx;
 
 extern firefly_protocol_data_sample data_sample;
 extern firefly_protocol_ack ack;
@@ -35,12 +35,16 @@ extern bool received_ack;
 
 struct firefly_event_queue *eq;
 static bool firefly_runtime = false;
+static bool memtest_started = false;
+
+void *__real_malloc(size_t s);
+void *__real_realloc(void *ptr, size_t s);
 
 static struct memman_list *mem_allocs = NULL;
 
 void memman_list_add(void *p, bool runtime)
 {
-	struct memman_list *new_mem = malloc(sizeof(*new_mem));
+	struct memman_list *new_mem = __real_malloc(sizeof(*new_mem));
 	new_mem->p = p;
 	new_mem->runtime = runtime;
 	new_mem->next = NULL;
@@ -83,16 +87,48 @@ int clean_suit_proto_memman()
 	return 0;
 }
 
+static int nbr_rouge_mallocs = 0;
+void *__wrap_malloc(size_t s)
+{
+	if (memtest_started) {
+		nbr_rouge_mallocs++;
+	}
+	return __real_malloc(s);
+}
+
+void *__wrap_realloc(void *p, size_t s)
+{
+	if (memtest_started) {
+		nbr_rouge_mallocs++;
+	}
+	return __real_realloc(p, s);
+}
+
 static int nbr_mallocs = 0;
 void *test_malloc(size_t size)
 {
-	nbr_mallocs++;
-	void *p = malloc(size);
-	memman_list_add(p, false);
-	CU_ASSERT_FALSE(firefly_runtime);
-	if (firefly_runtime) {
-		printf("ERROR: malloc during runtime\n");
-		return NULL;
+	void *p = __real_malloc(size);
+	if (memtest_started) {
+		nbr_mallocs++;
+		memman_list_add(p, false);
+		CU_ASSERT_FALSE(firefly_runtime);
+		if (firefly_runtime) {
+			printf("ERROR: malloc during runtime\n");
+		}
+	}
+	return p;
+}
+
+void *test_realloc(void *ptr, size_t size)
+{
+	void *p = __real_realloc(ptr, size);
+	if (memtest_started) {
+		memman_list_remove(ptr, false);
+		memman_list_add(p, false);
+		CU_ASSERT_FALSE(firefly_runtime);
+		if (firefly_runtime) {
+			printf("ERROR: realloc during runtime\n");
+		}
 	}
 	return p;
 }
@@ -100,9 +136,11 @@ void *test_malloc(size_t size)
 static int nbr_frees = 0;
 void test_free(void *p)
 {
-	nbr_frees++;
-	if (p != NULL) {
-		memman_list_remove(p, false);
+	if (memtest_started) {
+		if (p != NULL) {
+			nbr_frees++;
+			memman_list_remove(p, false);
+		}
 	}
 	free(p);
 }
@@ -111,7 +149,7 @@ void *test_runtime_malloc(struct firefly_connection *conn, size_t size)
 {
 	nbr_mallocs++;
 	UNUSED_VAR(conn);
-	void *p = malloc(size);
+	void *p = __real_malloc(size);
 	memman_list_add(p, true);
 	return p;
 }
@@ -124,6 +162,16 @@ void test_runtime_free(struct firefly_connection *conn, void *p)
 		memman_list_remove(p, true);
 	}
 	free(p);
+}
+
+void *test_reader_runtime_malloc(struct labcomm_reader *r, void *c, size_t size)
+{
+	test_runtime_malloc(c, size);
+}
+
+void test_reader_runtime_free(struct labcomm_reader *r, void *c, void *p)
+{
+	test_runtime_free(c, p);
 }
 
 static struct firefly_channel *open_chan = NULL;
@@ -150,6 +198,12 @@ void handle_test_test_var(test_test_var *v, void *ctx)
 
 void test_memory_management_one_chan()
 {
+	memtest_started = true;
+	labcomm_decoder_ioctl(test_dec, LABCOMM_IOCTL_READER_SET_MEM_FUNC,
+			test_reader_runtime_malloc, test_reader_runtime_free);
+
+	void *buffer;
+	size_t buffer_size;
 	eq = firefly_event_queue_new(firefly_event_add, 10, NULL);
 	CU_ASSERT_PTR_NOT_NULL_FATAL(eq);
 	struct firefly_memory_funcs memfuncs;
@@ -168,15 +222,12 @@ void test_memory_management_one_chan()
 	resp.dest_chan_id = channel_request.source_chan_id;
 	resp.ack = true;
 	labcomm_encode_firefly_protocol_channel_response(test_enc, &resp);
-	protocol_data_received(conn, test_enc_ctx->buf, test_enc_ctx->write_pos);
-	test_enc_ctx->write_pos = 0;
+	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
+			&buffer, &buffer_size);
+	protocol_data_received(conn, buffer, buffer_size);
 	event_execute_all_test(eq);
 	CU_ASSERT_TRUE_FATAL(received_channel_ack);
 	CU_ASSERT_PTR_NOT_NULL_FATAL(open_chan);
-
-	// --- END SETUP PHASE
-	// --- RUNTIME PHASE
-	firefly_runtime = true;
 
 	struct labcomm_encoder *chan_out =
 		firefly_protocol_get_output_stream(open_chan);
@@ -190,24 +241,31 @@ void test_memory_management_one_chan()
 	CU_ASSERT_TRUE(received_data_sample);
 	received_data_sample = false;
 
+
 	data_sample.src_chan_id = open_chan->remote_id;
 	data_sample.dest_chan_id = open_chan->local_id;
 	labcomm_encode_firefly_protocol_data_sample(test_enc, &data_sample);
-	protocol_data_received(conn, test_enc_ctx->buf, test_enc_ctx->write_pos);
-	test_enc_ctx->write_pos = 0;
+	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
+			&buffer, &buffer_size);
+	protocol_data_received(conn, buffer, buffer_size);
 	event_execute_all_test(eq);
 	CU_ASSERT_TRUE_FATAL(received_ack);
 	received_ack = false;
-
 
 	ack.src_chan_id = open_chan->remote_id;
 	ack.dest_chan_id = open_chan->local_id;
 	labcomm_encode_firefly_protocol_ack(test_enc, &ack);
 	CU_ASSERT_NOT_EQUAL(open_chan->important_id, 0);
-	protocol_data_received(conn, test_enc_ctx->buf, test_enc_ctx->write_pos);
+	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
+			&buffer, &buffer_size);
+	protocol_data_received(conn, buffer, buffer_size);
 	event_execute_all_test(eq);
-	test_enc_ctx->write_pos = 0;
 	CU_ASSERT_EQUAL(open_chan->important_id, 0);
+
+	// --- END SETUP PHASE
+	// --- RUNTIME PHASE
+
+	firefly_runtime = true;
 
 	test_test_var var;
 	for (int i = 1; i < 10; i++) {
@@ -219,8 +277,9 @@ void test_memory_management_one_chan()
 		data_sample.src_chan_id = open_chan->remote_id;
 		data_sample.dest_chan_id = open_chan->local_id;
 		labcomm_encode_firefly_protocol_data_sample(test_enc, &data_sample);
-		protocol_data_received(conn, test_enc_ctx->buf, test_enc_ctx->write_pos);
-		test_enc_ctx->write_pos = 0;
+		labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
+				&buffer, &buffer_size);
+		protocol_data_received(conn, buffer, buffer_size);
 		event_execute_all_test(eq);
 	}
 
@@ -237,6 +296,11 @@ void test_memory_management_one_chan()
 	}
 	CU_ASSERT_NOT_EQUAL(nbr_mallocs, 0);
 	CU_ASSERT_NOT_EQUAL(nbr_frees, 0);
+	CU_ASSERT_EQUAL(nbr_rouge_mallocs, 0);
+	if (nbr_rouge_mallocs != 0) {
+		printf("nbr illegal mallocs: %d\n", nbr_rouge_mallocs);
+	}
+	memtest_started = false;
 }
 
 int main()

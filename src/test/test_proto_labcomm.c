@@ -81,7 +81,7 @@ void test_encode_decode_protocol()
 
 	// Construct decoder.
 	struct labcomm_decoder *decoder =
-		labcomm_decoder_new(transport_labcomm_reader_new(), NULL);
+		labcomm_decoder_new(transport_labcomm_reader_new(&conn), NULL);
 	if (decoder == NULL) {
 		CU_FAIL("Could not allocate LabComm encoder or decoder.");
 	}
@@ -129,7 +129,7 @@ void test_encode_decode_app()
 
 	// Construct decoder.
 	conn.transport_decoder =
-		labcomm_decoder_new(transport_labcomm_reader_new(), NULL);
+		labcomm_decoder_new(transport_labcomm_reader_new(&conn), NULL);
 	if (conn.transport_decoder == NULL) {
 		CU_FAIL("Could not allocate LabComm encoder or decoder.");
 	}
@@ -147,7 +147,7 @@ void test_encode_decode_app()
 	struct firefly_channel chan;
 
 	chan.proto_decoder =
-		labcomm_decoder_new(protocol_labcomm_reader_new(), NULL);
+		labcomm_decoder_new(protocol_labcomm_reader_new(&conn), NULL);
 	chan.proto_encoder =
 		labcomm_encoder_new(protocol_labcomm_writer_new(&chan), NULL);
 	chan.local_id			= 1;

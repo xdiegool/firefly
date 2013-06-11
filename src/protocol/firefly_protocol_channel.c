@@ -19,7 +19,7 @@ struct firefly_channel *firefly_channel_new(struct firefly_connection *conn)
 		FIREFLY_FREE(chan);
 		return NULL;
 	}
-	reader = protocol_labcomm_reader_new();
+	reader = protocol_labcomm_reader_new(conn);
 	writer = protocol_labcomm_writer_new(chan);
 	if (reader == NULL || writer == NULL) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1,
