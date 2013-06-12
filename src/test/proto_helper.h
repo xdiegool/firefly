@@ -39,6 +39,8 @@ void chan_open_recv_write_recv(unsigned char *data, size_t size,
 void free_tmp_data(struct tmp_data *td);
 
 int init_labcomm_test_enc_dec();
+int init_labcomm_test_enc_dec_custom(struct labcomm_reader *test_r,
+		struct labcomm_writer *test_w);
 int clean_labcomm_test_enc_dec();
 
 void test_handle_channel_close(firefly_protocol_channel_close *d, void *ctx);

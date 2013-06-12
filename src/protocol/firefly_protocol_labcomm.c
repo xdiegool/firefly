@@ -92,6 +92,7 @@ static int proto_reader_ioctl(struct labcomm_reader *r, void *context,
 static void *proto_reader_mem_malloc(struct labcomm_reader *r, void *context,
 		size_t size)
 {
+	UNUSED_VAR(r);
 	struct firefly_connection *conn = (struct firefly_connection *) context;
 	return FIREFLY_RUNTIME_MALLOC(conn, size);
 }
@@ -99,6 +100,7 @@ static void *proto_reader_mem_malloc(struct labcomm_reader *r, void *context,
 static void proto_reader_mem_free(struct labcomm_reader *r, void *context,
 		void *ptr)
 {
+	UNUSED_VAR(r);
 	return FIREFLY_RUNTIME_FREE(((struct firefly_connection *) context), ptr);
 }
 

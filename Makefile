@@ -523,8 +523,13 @@ $(BUILD_DIR)/test/test_resend_posix: $(patsubst %,$(BUILD_DIR)/test/%.o,test_res
 	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $^ $(LDLIBS_TEST) -o $@
 
 # Main test program for the memory management tests.
-$(BUILD_DIR)/test/test_proto_memman: $(patsubst %,$(BUILD_DIR)/test/%.o,test_proto_memman proto_helper test_labcomm_utils error_helper event_helper) $(patsubst %,$(BUILD_DIR)/%.o,gen/test) $(BUILD_DIR)/libfirefly-tmem.a $(BUILD_DIR)/liblabcomm-tmem.a
-	$(CC) $(LDFLAGS) -Wl,--wrap,malloc,--wrap,realloc $(LDFLAGS_TEST) $(filter-out %.a,$^) -lfirefly-tmem $(filter-out %labcomm,$(LDLIBS_TEST)) -llabcomm-tmem -o $@
+$(BUILD_DIR)/test/test_proto_memman: $(patsubst %,$(BUILD_DIR)/test/%.o,test_proto_memman proto_helper test_labcomm_utils error_helper event_helper) \
+	$(patsubst %,$(BUILD_DIR)/%.o,gen/test-tman) $(BUILD_DIR)/libfirefly-tmem.a $(BUILD_DIR)/liblabcomm-tmem.a
+	$(CC) $(LDFLAGS) \
+		-Wl,--wrap,malloc,--wrap,realloc,--wrap,free \
+		$(LDFLAGS_TEST) $(filter-out %.a,$^) \
+		-lfirefly-tmem $(filter-out %labcomm,$(LDLIBS_TEST)) -llabcomm-tmem \
+		-o $@
 
 $(BUILD_DIR)/liblabcomm-tmem.a:
 	-mv $(LABCOMMLIBPATH)/liblabcomm.a $(LABCOMMLIBPATH)/liblabcomm-tmp.a
@@ -536,6 +541,9 @@ $(BUILD_DIR)/liblabcomm-tmem.a:
 
 $(BUILD_DIR)/libfirefly-tmem.a: $(TEST_FF_MEM_OBJS)
 	ar -rc $@ $^
+
+$(BUILD_DIR)/gen/test-tman.o: $(GEN_DIR)/test.c
+	$(CC) -c $(CFLAGS) -DLABCOMM_MALLOC=test_malloc -DLABCOMM_REALLOC=test_realloc -DLABCOMM_FREE=test_free -DFIREFLY_MALLOC=test_malloc -DFIREFLY_FREE=test_free $(INC_FIREFLY) -o $@ $<
 
 $(TEST_FF_MEM_OBJS): $$(patsubst $$(BUILD_DIR)/%-tmem.o,%.c,$$@) |$$(@D)
 	$(CC) -c $(CFLAGS) -DLABCOMM_MALLOC=test_malloc -DLABCOMM_REALLOC=test_realloc -DLABCOMM_FREE=test_free -DFIREFLY_MALLOC=test_malloc -DFIREFLY_FREE=test_free $(INC_FIREFLY) -o $@ $<

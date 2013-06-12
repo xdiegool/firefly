@@ -17,10 +17,14 @@
 
 #ifndef FIREFLY_MALLOC
 	#define FIREFLY_MALLOC(size) malloc(size)
+#else
+void *FIREFLY_MALLOC(size_t s);
 #endif
 
 #ifndef FIREFLY_FREE
 	#define FIREFLY_FREE(ptr) free(ptr)
+#else
+void FIREFLY_FREE(void *ptr);
 #endif
 
 #define FIREFLY_RUNTIME_MALLOC(conn, size)							\
