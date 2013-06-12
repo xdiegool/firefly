@@ -101,6 +101,7 @@ void *__wrap_malloc(size_t s)
 	if (memtest_started) {
 		memman_stats.dirty_malloc++;
 		memman_stats.dirty_size += s;
+		/*return NULL;*/
 	} else {
 		memman_stats.pre_malloc++;
 		memman_stats.pre_size += s;
@@ -113,6 +114,7 @@ void *__wrap_realloc(void *p, size_t s)
 	if (memtest_started) {
 		memman_stats.dirty_realloc++;
 		memman_stats.dirty_size += s;
+		/*return NULL;*/
 	} else {
 		memman_stats.pre_realloc++;
 		memman_stats.pre_size += s;
@@ -262,6 +264,7 @@ void test_memory_management_one_chan()
 			memman_chan_open, memman_chan_closed, memman_chan_accept,
 			transport_write_test_decoder, transport_ack_test,
 			&memfuncs, eq, NULL, NULL);
+	CU_ASSERT_PTR_NOT_NULL_FATAL(conn);
 	// --- SETUP PHASE ---
 	firefly_channel_open(conn, NULL);
 	event_execute_all_test(eq);
@@ -343,7 +346,7 @@ void test_memory_management_one_chan()
 	}
 	CU_ASSERT_EQUAL(memman_stats.dirty_malloc, 0);
 	char *stats_format = "\t%d\t%d\t\t%d\t%zu\n";
-	printf("Memory management statistics:\n");
+	printf("\nMemory management statistics:\n");
 	printf("\t\tMallocs\tReallocs\tFrees\tAccumulated size\n");
 	printf("Outside tets:");
 	printf(stats_format,

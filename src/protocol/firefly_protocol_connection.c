@@ -27,16 +27,16 @@ struct firefly_connection *firefly_connection_new(
 
 	conn = FIREFLY_MALLOC(sizeof(struct firefly_connection));
 	if (conn == NULL) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 1,
-				"memory allocation failed");
+		firefly_error(FIREFLY_ERROR_ALLOC, 3,
+				"memory allocation failed %s:%d", __FUNCTION__, __LINE__);
 		FIREFLY_FREE(conn);
 		return NULL;
 	}
 	reader = transport_labcomm_reader_new(conn);
 	writer = transport_labcomm_writer_new(conn);
 	if (reader == NULL || writer == NULL) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 1,
-				"memory allocation failed");
+		firefly_error(FIREFLY_ERROR_ALLOC, 3,
+				"memory allocation failed %s:%d", __FUNCTION__, __LINE__);
 		transport_labcomm_reader_free(reader);
 		transport_labcomm_writer_free(writer);
 		FIREFLY_FREE(conn);
@@ -46,8 +46,8 @@ struct firefly_connection *firefly_connection_new(
 	transport_decoder = labcomm_decoder_new(reader, NULL);
 
 	if (transport_encoder == NULL || transport_decoder == NULL) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 1,
-				"memory allocation failed");
+		firefly_error(FIREFLY_ERROR_ALLOC, 3,
+				"memory allocation failed %s:%d", __FUNCTION__, __LINE__);
 		if (transport_encoder)
 			labcomm_encoder_free(transport_encoder);
 		else

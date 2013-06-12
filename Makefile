@@ -534,7 +534,9 @@ $(BUILD_DIR)/test/test_proto_memman: $(patsubst %,$(BUILD_DIR)/test/%.o,test_pro
 $(BUILD_DIR)/liblabcomm-tmem.a:
 	-mv $(LABCOMMLIBPATH)/liblabcomm.a $(LABCOMMLIBPATH)/liblabcomm-tmp.a
 	@echo "======Building LabComm======"
+	$(MAKE) -C $(LABCOMMLIBPATH) clean
 	$(MAKE) -C $(LABCOMMLIBPATH) -e CC=$(CC) CFLAGS="$(filter-out -Werror -Wextra,$(CFLAGS)) -DLABCOMM_MALLOC=test_malloc -DLABCOMM_REALLOC=test_realloc -DLABCOMM_FREE=test_free -DLABCOMM_ENCODER_LINEAR_SEARCH" -e LABCOMM_NO_EXPERIMENTAL=true liblabcomm.a
+	$(MAKE) -C $(LABCOMMLIBPATH) clean
 	@echo "======End building LabComm======"
 	-mv $(LABCOMMLIBPATH)/liblabcomm.a $(BUILD_DIR)/liblabcomm-tmem.a
 	-mv $(LABCOMMLIBPATH)/liblabcomm-tmp.a $(LABCOMMLIBPATH)/liblabcomm.a
