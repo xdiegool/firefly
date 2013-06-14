@@ -169,6 +169,25 @@ enum restriction_transition {
 typedef void (* firefly_channel_restrict_info_f)(struct firefly_channel *chan,
 						 enum restriction_transition rinfo);
 
+
+/**
+ * @brief Set callbacks for use when restricting channels.
+ *
+ * @param conn The connection to set callbacks for.
+ *
+ * @param on_channel_restrict Callback for incoming request.
+ *        Can be null to ignore incoming requests.
+ *
+ * @param on_channel_restrict_info Callback used to pass information
+ *        about mode changes.
+ *
+ * @return -1 on invalid configuration.
+ */
+int firefly_connection_enable_restricted_channels(
+		struct firefly_connection *conn,
+		firefly_channel_restrict_f on_channel_restrict,
+		firefly_channel_restrict_info_f on_channel_restrict_info);
+
 /**
  * @brief Request restriction of reliability and type registration
  *        on encoders on channel. The agreement is not in effect until

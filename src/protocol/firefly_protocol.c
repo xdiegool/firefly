@@ -616,11 +616,13 @@ int channel_restrict_request_event(void *context)
 	chan = find_channel_by_local_id(conn, earg->rreq->dest_chan_id);
 	if (!chan) {
 		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1, "Unknown id");
+		FIREFLY_FREE(context);
 		return -1;
 	}
 	resp = FIREFLY_MALLOC(sizeof(*resp));
 	if (!resp) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Restrict. response.");
+		FIREFLY_FREE(context);
 		return -1;
 	}
 	resp->dest_chan_id   = chan->remote_id;
@@ -630,7 +632,10 @@ int channel_restrict_request_event(void *context)
 	if (chan->restricted_remote) {
 		if (!chan->restricted_local) {
 			/* Remotely initiated restrict. */
-			chan->restricted_local = conn->on_channel_restrict(chan);
+			if (conn->on_channel_restrict)
+				chan->restricted_local =
+					conn->on_channel_restrict(chan);
+			/* Otherwise deny incoming requests. */
 		} else {
 			/* Should not get dup. with reliable trans. */
 			firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
@@ -639,7 +644,6 @@ int channel_restrict_request_event(void *context)
 	} else {
 		if (chan->restricted_local) {
 			/* Remotely initiated unrestrict. */
-			/* TODO: Force down */
 			conn->on_channel_restrict_info(chan, UNRESTRICTED);
 			chan->restricted_local = 0;
 		} else {
@@ -655,6 +659,7 @@ int channel_restrict_request_event(void *context)
 	labcomm_encode_firefly_protocol_channel_restrict_request(
 			conn->transport_encoder,
 			resp);
+	FIREFLY_FREE(context);
 
 	return 0;
 }
@@ -694,7 +699,7 @@ int channel_restrict_ack_event(void *context)
 	struct firefly_connection *conn;
 	struct firefly_channel *chan;
 
-	earg = (__typeof__(earg)) context;
+	earg = (struct firefly_event_chan_restrict_ack *) context;
 	conn = earg->conn;
 	chan = find_channel_by_local_id(conn, earg->rack->dest_chan_id);
 	if (earg->rack->restricted) {
@@ -713,6 +718,7 @@ int channel_restrict_ack_event(void *context)
 		chan->restricted_local = 0;
 	}
 	chan->restricted_remote = earg->rack->restricted;
+	FIREFLY_FREE(context);
 
 	return 0;
 }

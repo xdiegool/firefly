@@ -95,6 +95,19 @@ int firefly_channel_next_seqno(struct firefly_channel *chan)
 	return chan->current_seqno;
 }
 
+int firefly_connection_enable_restricted_channels(
+		struct firefly_connection *conn,
+		firefly_channel_restrict_f on_channel_restrict,
+		firefly_channel_restrict_info_f on_channel_restrict_info)
+{
+	if (!on_channel_restrict_info)
+		return -1;	/* Always required. */
+	conn->on_channel_restrict      = on_channel_restrict;
+	conn->on_channel_restrict_info = on_channel_restrict_info;
+
+	return 0;
+}
+
 int firefly_channel_closed_event(void *event_arg)
 {
 	struct firefly_channel *chan = (struct firefly_channel *) event_arg;
