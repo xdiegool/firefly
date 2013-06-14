@@ -148,4 +148,39 @@ struct firefly_event_queue *firefly_connection_get_event_queue(
 	       struct firefly_connection *conn);
 
 
+/**
+ * @brief Type of callback used to determine how to handle request for restricted mode.
+ *
+ * @param chan The channel to be restricted.
+ */
+typedef bool (* firefly_channel_restrict_f)(struct firefly_channel *chan);
+
+enum restriction_transition {
+	UNRESTRICTED,
+	RESTRICTED,
+	RESTRICTION_DENIED
+};
+
+/**
+ * @brief Type of callback used to inform about changes from/to restricted mode.
+ *
+ * @param chan The channel that has been [un]restricted.
+ */
+typedef void (* firefly_channel_restrict_info_f)(struct firefly_channel *chan,
+						 enum restriction_transition rinfo);
+
+/**
+ * @brief Request restriction of reliability and type registration
+ *        on encoders on channel. The agreement is not in effect until
+ *        the application receives the callback confirming this.
+ * @param chan Channel to agree restriction upon.
+ */
+void firefly_channel_restrict(struct firefly_channel *chan);
+
+/**
+ * @brief Rise channel from restricted mode. In effect after confirmation.
+ * @param chan Channel to agree restriction upon.
+ */
+void firefly_channel_unrestrict(struct firefly_channel *chan);
+
 #endif

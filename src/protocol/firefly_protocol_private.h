@@ -135,6 +135,10 @@ struct firefly_connection {
 							channel is received to
 							decide if it is accepted or
 							rejected. */
+	firefly_channel_restrict_f on_channel_restrict; /**< Callback, called
+							   in restrict. neg. */
+	firefly_channel_restrict_info_f on_channel_restrict_info; /**< Callback,
+								  status change */
 	struct labcomm_encoder *transport_encoder; /**< The transport layer
 							encoder for this
 							connection. */
@@ -188,6 +192,8 @@ struct firefly_channel {
 												   channel could not be opened
 												   due to remote node rejected
 												   it. */
+	int restricted_local:1;		/**< Neg. initiated locally.   */
+	int restricted_remote:1;	/**< Neg. initiated remotely.  */
 };
 struct labcomm_writer *protocol_labcomm_writer_new(
 		struct firefly_channel *chan);
@@ -476,6 +482,30 @@ int handle_data_sample_event(void *event_arg);
 //TODO comments
 void handle_ack(firefly_protocol_ack *ack, void *context);
 
+struct firefly_event_channel_restrict_request {
+	struct firefly_connection *conn; /**< The connection the request was
+						received on. */
+	firefly_protocol_channel_restrict_request *rreq; /**< The request.*/
+};
+
+void handle_channel_restrict_request(
+		firefly_protocol_channel_restrict_request *data,
+		void *context);
+
+int channel_restrict_request_event(void *context);
+
+struct firefly_event_chan_restrict_ack {
+	struct firefly_connection *conn; /**< The connection the request was
+						received on. */
+	firefly_protocol_channel_restrict_request *rack; /**< The request.*/
+};
+
+void handle_channel_restrict_ack(
+		firefly_protocol_channel_restrict_ack *data,
+		void *context);
+
+int channel_restrict_ack_event(void *context);
+
 /**
  * @brief The event argument of handle_channel_ack_event.
  */
@@ -538,5 +568,17 @@ int next_channel_id(struct firefly_connection *conn);
  * @return The next sequence number.
  */
 int firefly_channel_next_seqno(struct firefly_channel *chan);
+
+/**
+ * @brief The event couterpart to the user accessible function.
+ * @param earg The channel.
+ */
+int firefly_channel_restrict_event(void *earg);
+
+/**
+ * @brief The event couterpart to the user accessible function.
+ * @param earg The channel.
+ */
+int firefly_channel_unrestrict_event(void *earg);
 
 #endif
