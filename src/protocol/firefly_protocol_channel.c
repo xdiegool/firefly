@@ -97,8 +97,8 @@ int firefly_channel_next_seqno(struct firefly_channel *chan)
 
 int firefly_connection_enable_restricted_channels(
 		struct firefly_connection *conn,
-		firefly_channel_restrict_f on_channel_restrict,
-		firefly_channel_restrict_info_f on_channel_restrict_info)
+		firefly_channel_restrict_info_f on_channel_restrict_info,
+		firefly_channel_restrict_f on_channel_restrict)
 {
 	if (!on_channel_restrict_info)
 		return -1;	/* Always required. */
@@ -193,7 +193,7 @@ int firefly_channel_unrestrict_event(void *earg)
 
 	req.dest_chan_id   = chan->remote_id;
 	req.source_chan_id = chan->local_id;
-	req.restricted     = 1;
+	req.restricted     = 0;
 
 	tenc = chan->conn->transport_encoder;
 	labcomm_encoder_ioctl(tenc,

@@ -4,7 +4,7 @@
 #include <pthread.h>
 #include <stdbool.h>
 
-#define PONG_NBR_TESTS (7)
+#define PONG_NBR_TESTS (9)
 
 struct thread_arg {
 	pthread_mutex_t m;

@@ -65,6 +65,8 @@ struct firefly_connection *firefly_connection_new(
 	conn->on_channel_opened = on_channel_opened;
 	conn->on_channel_closed = on_channel_closed;
 	conn->on_channel_recv = on_channel_recv;
+	conn->on_channel_restrict = NULL;
+	conn->on_channel_restrict_info = NULL;
 	conn->chan_list = NULL;
 	conn->channel_id_counter = 0;
 

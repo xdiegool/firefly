@@ -175,18 +175,18 @@ typedef void (* firefly_channel_restrict_info_f)(struct firefly_channel *chan,
  *
  * @param conn The connection to set callbacks for.
  *
- * @param on_channel_restrict Callback for incoming request.
- *        Can be null to ignore incoming requests.
- *
  * @param on_channel_restrict_info Callback used to pass information
  *        about mode changes.
+ *
+ * @param on_channel_restrict Callback for incoming request.
+ *        Can be null to ignore incoming requests.
  *
  * @return -1 on invalid configuration.
  */
 int firefly_connection_enable_restricted_channels(
 		struct firefly_connection *conn,
-		firefly_channel_restrict_f on_channel_restrict,
-		firefly_channel_restrict_info_f on_channel_restrict_info);
+		firefly_channel_restrict_info_f on_channel_restrict_info,
+		firefly_channel_restrict_f on_channel_restrict);
 
 /**
  * @brief Request restriction of reliability and type registration

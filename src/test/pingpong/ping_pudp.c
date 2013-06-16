@@ -2,6 +2,7 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <err.h>
 
 #include <labcomm.h>
 #include <protocol/firefly_protocol.h>
@@ -23,20 +24,25 @@ void ping_handle_pingpong_data(pingpong_data *data, void *ctx);
 
 static char *ping_test_names[] = {
 	"Open connection",
-	"Open channel",
+	"Open channel (requesting party)",
+	"Restrict channel (requesting party)",
 	"Send data",
 	"Receive data",
+	"Unrestrict channel (requesting party)",
 	"Close channel",
 	"Ping done"
 };
 
 static struct pingpong_test ping_tests[PING_NBR_TESTS];
 
+/* Corresponds to indexes to the above arrays. Note the order. */
 enum ping_test_id {
 	CONNECTION_OPEN,
 	CHAN_OPEN,
+	CHAN_RESTRICTED,
 	DATA_SEND,
 	DATA_RECEIVE,
+	CHAN_UNRESTRICTED,
 	CHAN_CLOSE,
 	TEST_DONE
 };
@@ -59,24 +65,46 @@ static pthread_mutex_t ping_done_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t ping_done_signal = PTHREAD_COND_INITIALIZER;
 static bool ping_done = false;
 
+/* Restr. state change. */
+void ping_chan_restr_info(struct firefly_channel *chan,
+			  enum restriction_transition restr)
+{
+	UNUSED_VAR(chan);
+	switch (restr) {
+	case UNRESTRICTED:
+		/* Done */
+		ping_pass_test(CHAN_UNRESTRICTED);
+		break;
+	case RESTRICTED: {
+		/* Send data */
+		pthread_t sender;
+		pthread_attr_t tattr;
+
+		ping_pass_test(CHAN_RESTRICTED);
+		pthread_attr_init(&tattr);
+		pthread_attr_setdetachstate(&tattr, PTHREAD_CREATE_DETACHED);
+		if (pthread_create(&sender, &tattr, send_data, chan))
+			err(1, "Could not create sender thread for channel.\n");
+	}
+		break;
+	case RESTRICTION_DENIED:
+		/* Fail */
+		warnx("ping restriction denied");
+		break;
+	}
+}
+
 void ping_chan_opened(struct firefly_channel *chan)
 {
+	ping_pass_test(CHAN_OPEN);
+
 	struct labcomm_encoder *enc = firefly_protocol_get_output_stream(chan);
 	struct labcomm_decoder *dec = firefly_protocol_get_input_stream(chan);
 
 	labcomm_decoder_register_pingpong_data(dec, ping_handle_pingpong_data, chan);
 	labcomm_encoder_register_pingpong_data(enc);
 
-	pthread_t sender;
-	pthread_attr_t tattr;
-	pthread_attr_init(&tattr);
-	pthread_attr_setdetachstate(&tattr, PTHREAD_CREATE_DETACHED);
-	int err = pthread_create(&sender, &tattr, send_data, chan);
-	if (err) {
-		fprintf(stderr, "channel_received: Could not create sender thread"
-				" for channel.\n");
-	}
-	ping_pass_test(CHAN_OPEN);
+	firefly_channel_restrict(chan);
 }
 
 void ping_chan_closed(struct firefly_channel *chan)
@@ -103,29 +131,17 @@ void ping_channel_rejected(struct firefly_connection *conn)
 	fprintf(stderr, "ERROR: Channel was rejected.\n");
 }
 
-struct firefly_connection *ping_connection_received(
-		struct firefly_transport_llp *llp, const char *ip_addr, unsigned short port)
-{
-	printf("PING: Connection received.\n");
-	struct firefly_connection *conn = NULL;
-	/* If address is correct, open a connection. */
-	if (strncmp(ip_addr, PONG_ADDR, strlen(PONG_ADDR)) == 0 &&
-			port == PONG_PORT) {
-		printf("PING: Connection accepted.\n");
-		conn = firefly_transport_connection_udp_posix_open(
-				ping_chan_opened, ping_chan_closed, ping_chan_received,
-				ip_addr, port, FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT, llp);
-	}
-	return conn;
-}
-
 void *send_data(void *args)
 {
-	struct firefly_channel *chan = (struct firefly_channel *) args;
+	struct firefly_channel *chan;
+	struct labcomm_encoder *enc;
 	pingpong_data data = PING_DATA;
-	struct labcomm_encoder *enc = firefly_protocol_get_output_stream(chan);
+
+	chan = (struct firefly_channel *) args;
+	enc = firefly_protocol_get_output_stream(chan);
 	labcomm_encode_pingpong_data(enc, &data);
 	ping_pass_test(DATA_SEND);
+
 	return NULL;
 }
 
@@ -136,6 +152,8 @@ void ping_handle_pingpong_data(pingpong_data *data, void *ctx)
 	if (*data == PONG_DATA) {
 		ping_pass_test(DATA_RECEIVE);
 	}
+	firefly_channel_unrestrict(ctx);
+
 }
 
 void *ping_main_thread(void *arg)
@@ -156,7 +174,7 @@ void *ping_main_thread(void *arg)
 
 	struct firefly_transport_llp *llp =
 			firefly_transport_llp_udp_posix_new(PING_PORT,
-					ping_connection_received, event_queue);
+					NULL, event_queue);
 
 
 	struct firefly_connection *conn =
@@ -167,11 +185,15 @@ void *ping_main_thread(void *arg)
 	if (conn != NULL) {
 		ping_pass_test(CONNECTION_OPEN);
 	}
+	/*
+	 * Install callback for restriction request results.
+	 * There will be no incoming requests.
+	 */
+	firefly_connection_enable_restricted_channels(conn,
+			ping_chan_restr_info, NULL);
 
 	firefly_channel_open(conn, ping_channel_rejected);
-
 	res = firefly_transport_udp_posix_run(llp, &reader_thread, &resend_thread);
-	/*res = pthread_create(&reader_thread, NULL, reader_thread_main, llp);*/
 	if (res) {
 		fprintf(stderr, "ERROR: starting reader/resend thread.\n");
 	}

@@ -591,6 +591,13 @@ void handle_channel_restrict_request(
 			      "Could not allocate event arg.\n");
 		return;
 	}
+	earg->rreq = FIREFLY_MALLOC(sizeof(*(earg->rreq)));
+	if (!earg->rreq) {
+		FIREFLY_FREE(earg);
+		firefly_error(FIREFLY_ERROR_ALLOC, 1,
+			      "Could not copy arg.\n");
+		return;
+	}
 	memcpy(earg->rreq, data, sizeof(*data));
 	earg->conn = conn;
 	ret = conn->event_queue->offer_event_cb(conn->event_queue,
@@ -600,6 +607,7 @@ void handle_channel_restrict_request(
 	if (ret) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1,
 			      "Could not add event to queue");
+		FIREFLY_FREE(earg->rreq);
 		FIREFLY_FREE(earg);
 	}
 }
@@ -609,24 +617,18 @@ int channel_restrict_request_event(void *context)
 	struct firefly_event_channel_restrict_request *earg;
 	struct firefly_connection *conn;
 	struct firefly_channel *chan;
-	firefly_protocol_channel_restrict_request *resp;
+	firefly_protocol_channel_restrict_ack resp;
 
 	earg = context;
 	conn = earg->conn;
 	chan = find_channel_by_local_id(conn, earg->rreq->dest_chan_id);
 	if (!chan) {
 		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1, "Unknown id");
-		FIREFLY_FREE(context);
+		FIREFLY_FREE(earg);
 		return -1;
 	}
-	resp = FIREFLY_MALLOC(sizeof(*resp));
-	if (!resp) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Restrict. response.");
-		FIREFLY_FREE(context);
-		return -1;
-	}
-	resp->dest_chan_id   = chan->remote_id;
-	resp->source_chan_id = chan->local_id;
+	resp.dest_chan_id   = chan->remote_id;
+	resp.source_chan_id = chan->local_id;
 
 	chan->restricted_remote = earg->rreq->restricted;
 	if (chan->restricted_remote) {
@@ -636,10 +638,16 @@ int channel_restrict_request_event(void *context)
 				chan->restricted_local =
 					conn->on_channel_restrict(chan);
 			/* Otherwise deny incoming requests. */
+
+			/*
+			 * Here it might be appropriate to call the info
+			 * callback too, despite beeing redundant...
+			 */
 		} else {
 			/* Should not get dup. with reliable trans. */
-			firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
-				      "Got unneccessary restr. req.");
+			firefly_error(FIREFLY_ERROR_PROTO_STATE, 3,
+				      "Got unneccessary restr. req. "
+				      "(at %s:%d)", __FILE__, __LINE__);
 		}
 	} else {
 		if (chan->restricted_local) {
@@ -648,18 +656,22 @@ int channel_restrict_request_event(void *context)
 			chan->restricted_local = 0;
 		} else {
 			/* Should not get dup. with reliable trans. */
-			firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
-				      "Got unneccessary unrestr. req.");
+			firefly_error(FIREFLY_ERROR_PROTO_STATE, 3,
+				      "Got unneccessary restr. req. "
+				      "(at %s:%d)", __FILE__, __LINE__);
 		}
 	}
-	resp->restricted = chan->restricted_local;
+	resp.restricted = chan->restricted_local;
+
 	labcomm_encoder_ioctl(conn->transport_encoder,
-			FIREFLY_LABCOMM_IOCTL_TRANS_SET_IMPORTANT_ID,
-			&chan->important_id);
-	labcomm_encode_firefly_protocol_channel_restrict_request(
+			      FIREFLY_LABCOMM_IOCTL_TRANS_SET_IMPORTANT_ID,
+			      &chan->important_id);
+
+	labcomm_encode_firefly_protocol_channel_restrict_ack(
 			conn->transport_encoder,
-			resp);
-	FIREFLY_FREE(context);
+			&resp);
+	FIREFLY_FREE(earg->rreq);
+	FIREFLY_FREE(earg);
 
 	return 0;
 }
@@ -671,12 +683,19 @@ void handle_channel_restrict_ack(firefly_protocol_channel_restrict_ack *data,
 	struct firefly_event_chan_restrict_ack *earg;
 	int ret;
 
-	conn = (struct firefly_connection *) context;
+	conn = context;
 
 	earg = FIREFLY_MALLOC(sizeof(*earg));
 	if (!earg) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1,
 			      "Could not allocate event arg.\n");
+		return;
+	}
+	earg->rack = FIREFLY_MALLOC(sizeof(*data));
+	if (!earg->rack) {
+		FIREFLY_FREE(earg);
+		firefly_error(FIREFLY_ERROR_ALLOC, 1,
+			      "Could not copy arg.\n");
 		return;
 	}
 	memcpy(earg->rack, data, sizeof(*data));
@@ -690,7 +709,6 @@ void handle_channel_restrict_ack(firefly_protocol_channel_restrict_ack *data,
 			      "Could not add event to queue");
 		FIREFLY_FREE(earg);
 	}
-
 }
 
 int channel_restrict_ack_event(void *context)
@@ -699,9 +717,14 @@ int channel_restrict_ack_event(void *context)
 	struct firefly_connection *conn;
 	struct firefly_channel *chan;
 
-	earg = (struct firefly_event_chan_restrict_ack *) context;
+	earg = context;
 	conn = earg->conn;
 	chan = find_channel_by_local_id(conn, earg->rack->dest_chan_id);
+	if (!chan) {
+		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1, "Unknown id");
+		FIREFLY_FREE(context);
+		return -1;
+	}
 	if (earg->rack->restricted) {
 		if (chan->restricted_local) {
 			conn->on_channel_restrict_info(chan, RESTRICTED);
@@ -718,7 +741,8 @@ int channel_restrict_ack_event(void *context)
 		chan->restricted_local = 0;
 	}
 	chan->restricted_remote = earg->rack->restricted;
-	FIREFLY_FREE(context);
+	FIREFLY_FREE(earg->rack);
+	FIREFLY_FREE(earg);
 
 	return 0;
 }

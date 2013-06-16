@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdio.h>
+#include <err.h>
 
 #include <labcomm.h>
 #include <protocol/firefly_protocol.h>
@@ -20,21 +21,26 @@
 static char *pong_test_names[] = {
 	"Open connection",
 	"Received channel",
-	"Opened channel",
-	"Send data",
+	"Opened channel (responding party)",
+	"Restricted channel (responding party)",
 	"Receive data",
+	"Send data",
+	"Unrestrict channel (responding party)",
 	"Close channel",
-	"Ping done"
+	"Pong done"
 };
 
 static struct pingpong_test pong_tests[PONG_NBR_TESTS];
 
+/* Corresponds to indexes to the above arrays. Note the order. */
 enum pong_test_id {
 	CONNECTION_OPEN,
 	CHAN_RECEIVE,
 	CHAN_OPENED,
-	DATA_SEND,
+	CHAN_RESTRICTED,
 	DATA_RECEIVE,
+	DATA_SEND,
+	CHAN_UNRESTRICTED,
 	CHAN_CLOSE,
 	TEST_DONE
 };
@@ -62,6 +68,36 @@ bool pong_chan_received(struct firefly_channel *chan);
 void pong_handle_pingpong_data(pingpong_data *data, void *ctx);
 void *send_data_and_close(void *args);
 
+/* Restr. state change. */
+void pong_chan_restr_info(struct firefly_channel *chan,
+			  enum restriction_transition restr)
+{
+	UNUSED_VAR(chan);
+	switch (restr) {
+	case UNRESTRICTED:
+		pong_pass_test(CHAN_UNRESTRICTED);
+		break;
+	case RESTRICTED: {
+		warnx("pong restricted. Should no happen "
+		     "this way, pong is passive!");
+		break;
+	}
+	case RESTRICTION_DENIED:
+		warnx("Pong restriction denied. Pong should be passive!");
+		break;
+	}
+}
+
+/* Incoming restr. req. */
+bool pong_chan_restr(struct firefly_channel *chan)
+{
+	UNUSED_VAR(chan);
+
+	pong_pass_test(CHAN_RESTRICTED);
+
+	return true;
+}
+
 struct firefly_connection *pong_connection_received(
 		struct firefly_transport_llp *llp, const char *ip_addr, unsigned short port)
 {
@@ -73,6 +109,9 @@ struct firefly_connection *pong_connection_received(
 				pong_chan_opened, pong_chan_closed, pong_chan_received,
 				ip_addr, port, FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT, llp);
 		pong_pass_test(CONNECTION_OPEN);
+		firefly_connection_enable_restricted_channels(conn,
+				pong_chan_restr_info, pong_chan_restr);
+
 	} else {
 		fprintf(stderr, "ERROR: Received unknown connection: %s:%hu\n",
 				ip_addr, port);

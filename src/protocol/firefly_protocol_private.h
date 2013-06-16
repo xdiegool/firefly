@@ -192,8 +192,8 @@ struct firefly_channel {
 												   channel could not be opened
 												   due to remote node rejected
 												   it. */
-	int restricted_local:1;		/**< Neg. initiated locally.   */
-	int restricted_remote:1;	/**< Neg. initiated remotely.  */
+	bool restricted_local;		/**< Neg. initiated locally.   */
+	bool restricted_remote;	/**< Neg. initiated remotely.  */
 };
 struct labcomm_writer *protocol_labcomm_writer_new(
 		struct firefly_channel *chan);
