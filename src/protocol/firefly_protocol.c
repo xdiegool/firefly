@@ -16,7 +16,8 @@
 #include "utils/cppmacros.h"
 
 static void signature_trans_write(unsigned char *data, size_t size,
-			struct firefly_connection *conn, bool important, unsigned char *id)
+				  struct firefly_connection *conn,
+				  bool important, unsigned char *id)
 {
 	UNUSED_VAR(important);
 	UNUSED_VAR(id);
@@ -24,10 +25,12 @@ static void signature_trans_write(unsigned char *data, size_t size,
 }
 
 void reg_proto_sigs(struct labcomm_encoder *enc,
-					struct labcomm_decoder *dec,
-					struct firefly_connection *conn)
+		    struct labcomm_decoder *dec,
+		    struct firefly_connection *conn)
 {
-	transport_write_f orig_twf = conn->transport_write;
+	transport_write_f orig_twf;
+
+	orig_twf = conn->transport_write;
 	conn->transport_write = signature_trans_write;
 
 	labcomm_decoder_register_firefly_protocol_data_sample(dec,
@@ -75,14 +78,14 @@ void firefly_channel_open(struct firefly_connection *conn,
 
 	if (conn->open != FIREFLY_CONNECTION_OPEN) {
 		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
-					  "Can't open new channel on closed connection.\n");
+			      "Can't open new channel on closed connection.\n");
 		return;
 	}
 
 	feco = FIREFLY_MALLOC(sizeof(struct firefly_event_chan_open));
-	if (feco == NULL) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Could not allocate event.\n");
-		FIREFLY_FREE(feco);
+	if (!feco) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 1,
+			      "Could not allocate event.\n");
 		return;
 	}
 
@@ -92,7 +95,8 @@ void firefly_channel_open(struct firefly_connection *conn,
 	ret = conn->event_queue->offer_event_cb(conn->event_queue,
 			FIREFLY_PRIORITY_HIGH, firefly_channel_open_event, feco);
 	if (ret) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Could not add event to queue");
+		firefly_error(FIREFLY_ERROR_ALLOC, 1,
+			      "Could not add event to queue");
 		FIREFLY_FREE(feco);
 	}
 }
@@ -104,12 +108,13 @@ int firefly_channel_open_event(void *event_arg)
 	struct firefly_channel           *chan;
 	firefly_protocol_channel_request chan_req;
 
-	feco = (struct firefly_event_chan_open *) event_arg;
+	feco = event_arg;
 	conn = feco->conn;
 
 	chan = firefly_channel_new(conn);
-	if (chan == NULL) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Could not allocate channel.\n");
+	if (!chan) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 1,
+			      "Could not allocate channel.\n");
 		FIREFLY_FREE(event_arg);
 
 		return -1;
@@ -128,17 +133,22 @@ int firefly_channel_open_event(void *event_arg)
 	labcomm_encode_firefly_protocol_channel_request(conn->transport_encoder,
 													&chan_req);
 	FIREFLY_FREE(event_arg);
+
 	return 0;
 }
 
 static void create_channel_closed_event(struct firefly_channel *chan)
 {
-	int ret = chan->conn->event_queue->offer_event_cb(chan->conn->event_queue,
-							FIREFLY_PRIORITY_HIGH, firefly_channel_closed_event,
-							chan);
+	int ret;
+
+	ret = chan->conn->event_queue->offer_event_cb(chan->conn->event_queue,
+			FIREFLY_PRIORITY_HIGH, firefly_channel_closed_event,
+			chan);
 	if (ret) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Could not add event to queue.");
+		firefly_error(FIREFLY_ERROR_ALLOC, 1,
+			      "Could not add event to queue.");
 	}
+
 }
 
 void firefly_channel_close(struct firefly_channel *chan)
@@ -148,9 +158,8 @@ void firefly_channel_close(struct firefly_channel *chan)
 	int ret;
 
 	fecc = FIREFLY_MALLOC(sizeof(struct firefly_event_chan_close));
-	if (fecc == NULL) {
+	if (!fecc) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Could not create event.");
-		FIREFLY_FREE(fecc);
 		return;
 	}
 
@@ -159,13 +168,16 @@ void firefly_channel_close(struct firefly_channel *chan)
 	fecc->conn = conn;
 	fecc->chan_close.dest_chan_id = chan->remote_id;
 	fecc->chan_close.source_chan_id = chan->local_id;
-	ret = conn->event_queue->offer_event_cb(
-						conn->event_queue, FIREFLY_PRIORITY_HIGH,
-						firefly_channel_close_event, fecc);
+	ret = conn->event_queue->offer_event_cb(conn->event_queue,
+						FIREFLY_PRIORITY_HIGH,
+						firefly_channel_close_event,
+						fecc);
 	if (ret) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Could not add event to queue.");
+		firefly_error(FIREFLY_ERROR_ALLOC, 1,
+			      "Could not add event to queue.");
 		FIREFLY_FREE(fecc);
-		return; // We don't want to call the function below if we failed here
+		 // We don't want to call the function below if we failed here
+		return;
 	}
 
 	create_channel_closed_event(chan);
@@ -176,7 +188,7 @@ int firefly_channel_close_event(void *event_arg)
 	struct firefly_event_chan_close *fecc;
 	struct firefly_connection       *conn;
 
-	fecc = (struct firefly_event_chan_close *) event_arg;
+	fecc = event_arg;
 	conn = fecc->conn;
 
 	labcomm_encode_firefly_protocol_channel_close(conn->transport_encoder,
@@ -186,7 +198,6 @@ int firefly_channel_close_event(void *event_arg)
 	return 0;
 }
 
-// TODO: Add const to data?
 void protocol_data_received(struct firefly_connection *conn,
 		unsigned char *data, size_t size)
 {
@@ -195,6 +206,12 @@ void protocol_data_received(struct firefly_connection *conn,
 				FIREFLY_LABCOMM_IOCTL_READER_SET_BUFFER,
 				data, size);
 		labcomm_decoder_decode_one(conn->transport_decoder);
+	} else {
+		/* TODO: This breaks tests. Why? */
+#if 0
+		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
+			      "received data on closed conneciton.\n");
+#endif
 	}
 }
 
@@ -205,23 +222,25 @@ void handle_channel_request(firefly_protocol_channel_request *chan_req,
 	struct firefly_event_chan_req_recv *fecrr;
 	int ret;
 
-	conn = (struct firefly_connection *) context;
+	conn = context;
 
-	fecrr = FIREFLY_MALLOC(sizeof(struct firefly_event_chan_req_recv));
+	fecrr = FIREFLY_MALLOC(sizeof(*fecrr));
 	if (fecrr == NULL) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Could not allocate event.\n");
-		FIREFLY_FREE(fecrr);
+		firefly_error(FIREFLY_ERROR_ALLOC, 1,
+			      "Could not allocate event.\n");
 		return;
 	}
 
 	fecrr->conn = conn;
-	memcpy(&fecrr->chan_req, chan_req,
-				sizeof(firefly_protocol_channel_request));
+	memcpy(&fecrr->chan_req, chan_req, sizeof(*chan_req));
 
 	ret = conn->event_queue->offer_event_cb(conn->event_queue,
-			FIREFLY_PRIORITY_HIGH, handle_channel_request_event, fecrr);
+						FIREFLY_PRIORITY_HIGH,
+						handle_channel_request_event,
+						fecrr);
 	if (ret) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 1, "could not add event to queue");
+		firefly_error(FIREFLY_ERROR_ALLOC, 1,
+			      "could not add event to queue");
 		FIREFLY_FREE(fecrr);
 	}
 }
@@ -233,26 +252,24 @@ int handle_channel_request_event(void *event_arg)
 	struct firefly_connection *conn;
 	int res = 0;
 
-	fecrr = (struct firefly_event_chan_req_recv *) event_arg;
+	fecrr = event_arg;
 	conn  = fecrr->conn;
-
 	chan  = find_channel_by_local_id(conn, fecrr->chan_req.dest_chan_id);
 	if (chan != NULL) {
-		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1, "Received open"
-					  "channel on existing channel.\n");
+		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
+			      "Received open channel on existing channel.\n");
 		res = -1;
 	} else {
 		// Received Channel request.
 		chan = firefly_channel_new(conn);
 		if (chan == NULL) {
 			firefly_error(FIREFLY_ERROR_ALLOC, 1,
-						  "Could not allocate channel.\n");
+				      "Could not allocate channel.\n");
 			res = -1;
 		} else {
 			firefly_protocol_channel_response res;
 
 			chan->remote_id = fecrr->chan_req.source_chan_id;
-
 			add_channel_to_connection(chan, conn);
 
 			res.dest_chan_id   = chan->remote_id;
@@ -283,36 +300,37 @@ void handle_channel_response(firefly_protocol_channel_response *chan_res,
 	struct firefly_event_chan_res_recv *fecrr;
 	int ret;
 
-	conn = (struct firefly_connection *) context;
+	conn = context;
 
-	fecrr = FIREFLY_MALLOC(sizeof(struct firefly_event_chan_res_recv));
+	fecrr = FIREFLY_MALLOC(sizeof(*fecrr));
 	if (fecrr == NULL) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Could not allocate event.\n");
-		FIREFLY_FREE(fecrr);
+		firefly_error(FIREFLY_ERROR_ALLOC, 1,
+			      "Could not allocate event.\n");
 		return;
 	}
-
 	fecrr->conn = conn;
-	memcpy(&fecrr->chan_res, chan_res,
-		   sizeof(firefly_protocol_channel_response));
-
+	memcpy(&fecrr->chan_res, chan_res, sizeof(*chan_res));
 	ret = conn->event_queue->offer_event_cb(conn->event_queue,
-			FIREFLY_PRIORITY_HIGH, handle_channel_response_event, fecrr);
+						FIREFLY_PRIORITY_HIGH,
+						handle_channel_response_event,
+						fecrr);
 	if (ret) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 1, "could not add event to queue");
+		firefly_error(FIREFLY_ERROR_ALLOC, 1,
+			      "could not add event to queue");
 		FIREFLY_FREE(fecrr);
 	}
 }
 
 int handle_channel_response_event(void *event_arg)
 {
-	struct firefly_event_chan_res_recv *fecrr =
-		(struct firefly_event_chan_res_recv *) event_arg;
-	int local_chan_id = fecrr->chan_res.dest_chan_id;
-	struct firefly_channel *chan = find_channel_by_local_id(fecrr->conn,
-			local_chan_id);
-
+	struct firefly_event_chan_res_recv *fecrr;
+	struct firefly_channel *chan;
 	firefly_protocol_channel_ack ack;
+
+	fecrr = event_arg;
+	chan = find_channel_by_local_id(fecrr->conn,
+					fecrr->chan_res.dest_chan_id);
+
 	ack.dest_chan_id = fecrr->chan_res.source_chan_id;
 	if (chan != NULL) {
 		// Received Channel request ack.
@@ -322,16 +340,16 @@ int handle_channel_response_event(void *event_arg)
 	} else {
 		ack.source_chan_id = CHANNEL_ID_NOT_SET;
 		ack.ack = false;
-		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1, "Received open"
-						"channel on non-existing"
-						"channel");
+		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
+			      "Received open channel on non-existing channel");
 	}
 	if (fecrr->chan_res.ack) {
 		labcomm_encode_firefly_protocol_channel_ack(
 					fecrr->conn->transport_encoder, &ack);
 		// Should be done after encode above.
 		if (chan != NULL) {
-			fecrr->conn->transport_ack(chan->important_id, fecrr->conn);
+			fecrr->conn->transport_ack(chan->important_id,
+						   fecrr->conn);
 			chan->important_id = 0;
 			fecrr->conn->on_channel_opened(chan);
 		}
@@ -351,40 +369,41 @@ void handle_channel_ack(firefly_protocol_channel_ack *chan_ack, void *context)
 	struct firefly_event_chan_ack_recv *fecar;
 	int ret;
 
-	conn = (struct firefly_connection *) context;
-
+	conn = context;
 	fecar = FIREFLY_MALLOC(sizeof(struct firefly_event_chan_ack_recv));
 	if (fecar == NULL) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Could not allocate event.\n");
-		FIREFLY_FREE(fecar);
+		firefly_error(FIREFLY_ERROR_ALLOC, 1,
+			      "Could not allocate event.\n");
 		return;
 	}
 
 	fecar->conn = conn;
-	memcpy(&fecar->chan_ack, chan_ack, sizeof(firefly_protocol_channel_ack));
+	memcpy(&fecar->chan_ack, chan_ack, sizeof(*chan_ack));
 
 	ret = conn->event_queue->offer_event_cb(conn->event_queue,
 			FIREFLY_PRIORITY_HIGH, handle_channel_ack_event, fecar);
 	if (ret) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 1, "could not add event to queue");
+		firefly_error(FIREFLY_ERROR_ALLOC, 1,
+			      "could not add event to queue");
 		FIREFLY_FREE(fecar);
 	}
 }
 
 int handle_channel_ack_event(void *event_arg)
 {
-	struct firefly_event_chan_ack_recv *fecar =
-		(struct firefly_event_chan_ack_recv *) event_arg;
-	int local_chan_id = fecar->chan_ack.dest_chan_id;
-	struct firefly_channel *chan = find_channel_by_local_id(fecar->conn,
-			local_chan_id);
+	struct firefly_event_chan_ack_recv *fecar;
+	struct firefly_channel *chan;
+
+	fecar = event_arg;
+	chan = find_channel_by_local_id(fecar->conn,
+					fecar->chan_ack.dest_chan_id);
 	if (chan != NULL) {
 		fecar->conn->transport_ack(chan->important_id, fecar->conn);
 		chan->important_id = 0;
 		fecar->conn->on_channel_opened(chan);
 	} else {
-		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1, "Received ack"
-						"on non-existing channel.\n");
+		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
+			      "Received ack on non-existing channel.\n");
 	}
 	FIREFLY_FREE(event_arg);
 
@@ -397,13 +416,13 @@ void handle_channel_close(firefly_protocol_channel_close *chan_close,
 	struct firefly_connection *conn;
 	struct firefly_channel *chan;
 
-	conn = (struct firefly_connection *) context;
+	conn = context;
 	chan = find_channel_by_local_id(conn, chan_close->dest_chan_id);
 	if (chan != NULL){
 		create_channel_closed_event(chan);
 	} else {
 		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
-					  "Received closed on non-existing channel.\n");
+			      "Received closed on non-existing channel.\n");
 	}
 }
 
@@ -414,29 +433,27 @@ void handle_data_sample(firefly_protocol_data_sample *data, void *context)
 	unsigned char *fers_data;
 	int ret;
 
-	conn = (struct firefly_connection *) context;
-
-	fers      = FIREFLY_RUNTIME_MALLOC(conn,
-			sizeof(struct firefly_event_recv_sample));
+	conn = context;
+	fers = FIREFLY_RUNTIME_MALLOC(conn, sizeof(*fers));
 	fers_data = FIREFLY_RUNTIME_MALLOC(conn, data->app_enc_data.n_0);
 	if (fers == NULL || fers_data == NULL) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Could not allocate event.\n");
+		firefly_error(FIREFLY_ERROR_ALLOC, 1,
+			      "Could not allocate event.\n");
 		FIREFLY_RUNTIME_FREE(conn, fers_data);
 		FIREFLY_RUNTIME_FREE(conn, fers);
 		return;
 	}
 
 	fers->conn = conn;
-
-	memcpy(&fers->data, data, sizeof(firefly_protocol_data_sample));
-
+	memcpy(&fers->data, data, sizeof(*data));
 	memcpy(fers_data, data->app_enc_data.a, data->app_enc_data.n_0);
 	fers->data.app_enc_data.a = fers_data;
 
 	ret = conn->event_queue->offer_event_cb(conn->event_queue,
 			FIREFLY_PRIORITY_LOW, handle_data_sample_event, fers);
 	if (ret) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 1, "could not add event to queue");
+		firefly_error(FIREFLY_ERROR_ALLOC, 1,
+			      "could not add event to queue");
 		FIREFLY_RUNTIME_FREE(conn, fers->data.app_enc_data.a);
 		FIREFLY_RUNTIME_FREE(conn, fers);
 	}
@@ -444,19 +461,23 @@ void handle_data_sample(firefly_protocol_data_sample *data, void *context)
 
 int handle_data_sample_event(void *event_arg)
 {
-	struct firefly_event_recv_sample *fers =
-		(struct firefly_event_recv_sample *) event_arg;
-	struct firefly_channel *chan = find_channel_by_local_id(fers->conn,
-			fers->data.dest_chan_id);
+	struct firefly_event_recv_sample *fers;
+	struct firefly_channel *chan;
+
+	fers = event_arg;
+	chan = find_channel_by_local_id(fers->conn, fers->data.dest_chan_id);
 
 	if (chan != NULL) {
 		int expected_seqno = chan->remote_seqno + 1;
+
 		if (expected_seqno <= 0) {
 			expected_seqno = 1;
 		}
-		if (!fers->data.important || expected_seqno == fers->data.seqno) {
+		if (!fers->data.important ||
+		    expected_seqno == fers->data.seqno)
+		{
+			size_t size;
 
-			size_t size = 0;
 			size = fers->data.app_enc_data.n_0;
 			labcomm_decoder_ioctl(chan->proto_decoder,
 					FIREFLY_LABCOMM_IOCTL_READER_SET_BUFFER,
@@ -470,23 +491,26 @@ int handle_data_sample_event(void *event_arg)
 		}
 		if (fers->data.important) {
 			firefly_protocol_ack ack_pkt;
+
 			ack_pkt.dest_chan_id = chan->local_id;
 			ack_pkt.src_chan_id = chan->remote_id;
 			ack_pkt.seqno = fers->data.seqno;
-			labcomm_encode_firefly_protocol_ack(chan->conn->transport_encoder,
+			labcomm_encode_firefly_protocol_ack(
+					chan->conn->transport_encoder,
 					&ack_pkt);
 		}
 	} else {
 		firefly_protocol_channel_close chan_close;
 
 		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
-					  "Received data sample on non-existing channel.\n");
+			      "Received data sample on non-existing channel.\n");
 
 		/* Notify the other party of their mistake. */
 		chan_close.dest_chan_id   = fers->data.src_chan_id;
 		chan_close.source_chan_id = fers->data.dest_chan_id;
-		labcomm_encode_firefly_protocol_channel_close(fers->conn->transport_encoder,
-													  &chan_close);
+		labcomm_encode_firefly_protocol_channel_close(
+				fers->conn->transport_encoder,
+				&chan_close);
 	}
 
 	FIREFLY_RUNTIME_FREE(fers->conn, fers->data.app_enc_data.a);
@@ -497,21 +521,29 @@ int handle_data_sample_event(void *event_arg)
 
 void handle_ack(firefly_protocol_ack *ack, void *context)
 {
-	struct firefly_connection *conn = (struct firefly_connection *) context;
-	struct firefly_channel *chan =
-		find_channel_by_local_id(conn, ack->dest_chan_id);
+	struct firefly_connection *conn;
+	struct firefly_channel *chan;
+
+	conn = context;
+	chan = find_channel_by_local_id(conn, ack->dest_chan_id);
 	if (chan != NULL && chan->current_seqno == ack->seqno && ack->seqno > 0) {
 		conn->transport_ack(chan->important_id, conn);
 		chan->important_id = 0;
 		if (chan->important_queue != NULL) {
-			// If there are queued important packets, send the next one
 			struct firefly_event_send_sample *fess;
+			struct firefly_channel_important_queue *tmp;
+
+			/*
+			 * If there are queued important packets,
+			 * send the next one.
+			 */
 			fess = chan->important_queue->fess;
-			struct firefly_channel_important_queue *tmp = chan->important_queue;
+			tmp = chan->important_queue;
 			chan->important_queue = tmp->next;
 			FIREFLY_FREE(tmp);
 			conn->event_queue->offer_event_cb(conn->event_queue,
-					FIREFLY_PRIORITY_HIGH, send_data_sample_event, fess);
+					FIREFLY_PRIORITY_HIGH,
+					send_data_sample_event, fess);
 		}
 	} else if (chan->current_seqno > ack->seqno) {
 		// Do nothing, old ack
@@ -546,7 +578,7 @@ void add_channel_to_connection(struct firefly_channel *chan,
 		conn->chan_list = new_node;
 	} else {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1,
-					  "Failed to allocate new channel list note\n");
+			      "Failed to allocate new channel list note\n");
 	}
 }
 
