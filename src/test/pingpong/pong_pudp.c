@@ -1,7 +1,6 @@
 #include "test/pingpong/pong_pudp.h"
 
 #include <pthread.h>
-#include <unistd.h>
 #include <string.h>
 #include <stdio.h>
 #include <err.h>

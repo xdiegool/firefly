@@ -1,5 +1,6 @@
-#include <pthread.h>
+#include "test/pingpong/ping_pudp.h"
 
+#include <pthread.h>
 #include <string.h>
 #include <stdio.h>
 #include <err.h>
@@ -14,8 +15,6 @@
 #include "test/pingpong/pingpong_pudp.h"
 #include "test/pingpong/pingpong.h"
 #include "utils/cppmacros.h"
-
-#define PING_NBR_TESTS (6)
 
 void *event_thread_main(void *args);
 void *send_data(void *args);
