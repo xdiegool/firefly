@@ -11,13 +11,10 @@ struct firefly_channel *firefly_channel_new(struct firefly_connection *conn)
 	struct labcomm_reader  *reader;
 	struct labcomm_writer  *writer;
 
-	chan             = FIREFLY_MALLOC(sizeof(struct firefly_channel));
+	chan = FIREFLY_MALLOC(sizeof(*chan));
 	if (chan == NULL) {
-
 		firefly_error(FIREFLY_ERROR_ALLOC, 1,
 				"memory allocation failed");
-
-		FIREFLY_FREE(chan);
 		return NULL;
 	}
 	reader = protocol_labcomm_reader_new(conn);
@@ -53,13 +50,13 @@ struct firefly_channel *firefly_channel_new(struct firefly_connection *conn)
 
 	chan->local_id			= next_channel_id(conn);
 	chan->remote_id			= CHANNEL_ID_NOT_SET;
-	chan->important_queue	= NULL;
+	chan->important_queue		= NULL;
 	chan->important_id		= 0;
 	chan->current_seqno		= 0;
 	chan->remote_seqno		= 0;
 	chan->proto_decoder		= proto_decoder;
 	chan->proto_encoder		= proto_encoder;
-	chan->conn              = conn;
+	chan->conn			= conn;
 	chan->restricted_local		= 0;
 	chan->restricted_remote		= 0;
 
@@ -71,7 +68,6 @@ void firefly_channel_free(struct firefly_channel *chan)
 	if (chan == NULL) {
 		return;
 	}
-
 	if (chan->proto_decoder != NULL) {
 		labcomm_decoder_free(chan->proto_decoder);
 	}
@@ -110,7 +106,9 @@ int firefly_connection_enable_restricted_channels(
 
 int firefly_channel_closed_event(void *event_arg)
 {
-	struct firefly_channel *chan = (struct firefly_channel *) event_arg;
+	struct firefly_channel *chan;
+
+	chan = event_arg;
 
 	remove_channel_from_connection(chan, chan->conn);
 	if (chan->conn->on_channel_closed != NULL) {
@@ -142,7 +140,7 @@ int firefly_channel_restrict_event(void *earg)
 	firefly_protocol_channel_restrict_request req;
 	struct labcomm_encoder *tenc;
 
-	chan = (struct firefly_channel *) earg;
+	chan = earg;
 	if (chan->restricted_local)
 		return -1; /* Already [in the process of beeing] restricted */
 	if (chan->restricted_remote)
