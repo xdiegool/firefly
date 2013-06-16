@@ -130,12 +130,11 @@ void pong_chan_opened(struct firefly_channel *chan)
 
 void pong_chan_closed(struct firefly_channel *chan)
 {
-	firefly_connection_close(
-			firefly_channel_get_connection(chan));
+	pong_pass_test(CHAN_CLOSE);
+	firefly_connection_close(firefly_channel_get_connection(chan));
 	pthread_mutex_lock(&pong_done_lock);
 	pong_done = true;
 	pthread_cond_signal(&pong_done_signal);
-	pong_pass_test(CHAN_CLOSE);
 	pthread_mutex_unlock(&pong_done_lock);
 }
 
@@ -175,18 +174,6 @@ void *send_data_and_close(void *args)
 	struct labcomm_encoder *enc = firefly_protocol_get_output_stream(chan);
 	labcomm_encode_pingpong_data(enc, &data);
 	pong_pass_test(DATA_SEND);
-
-	/* The protocol events takes precedence over the ones spawned above.
-	 * If we want to test in this fashion we will have to simulate
-	 * using the channel for arbitrary length of time. This will
-	 * give the system time to send the application data before closing
-	 * the channel. For this kind of short bursts a synchronous mode *might*
-	 * be a feature in the future. This, however, is not likely. Should the
-	 * application need to keep track of state above the protocol level,
-	 * *it* should probably do so.
-	 */
-	sleep(1);
-	firefly_channel_close(chan);
 
 	return NULL;
 }

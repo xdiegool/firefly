@@ -73,6 +73,7 @@ void ping_chan_restr_info(struct firefly_channel *chan,
 	case UNRESTRICTED:
 		/* Done */
 		ping_pass_test(CHAN_UNRESTRICTED);
+		firefly_channel_close(chan);
 		break;
 	case RESTRICTED: {
 		/* Send data */
