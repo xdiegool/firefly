@@ -16,6 +16,19 @@
 #include "test/pingpong/pingpong.h"
 #include "utils/cppmacros.h"
 
+/* Corresponds to indexes of the arrays below. Note the order. */
+enum pong_test_id {
+	CONNECTION_OPEN,
+	CHAN_RECEIVE,
+	CHAN_OPENED,
+	CHAN_RESTRICTED,
+	DATA_RECEIVE,
+	DATA_SEND,
+	CHAN_UNRESTRICTED,
+	CHAN_CLOSE,
+	TEST_DONE,
+	PONG_NBR_TESTS
+};
 
 static char *pong_test_names[] = {
 	"Open connection",
@@ -31,24 +44,10 @@ static char *pong_test_names[] = {
 
 static struct pingpong_test pong_tests[PONG_NBR_TESTS];
 
-/* Corresponds to indexes to the above arrays. Note the order. */
-enum pong_test_id {
-	CONNECTION_OPEN,
-	CHAN_RECEIVE,
-	CHAN_OPENED,
-	CHAN_RESTRICTED,
-	DATA_RECEIVE,
-	DATA_SEND,
-	CHAN_UNRESTRICTED,
-	CHAN_CLOSE,
-	TEST_DONE
-};
-
 void pong_init_tests()
 {
-	for (int i = 0; i < PONG_NBR_TESTS; i++) {
+	for (int i = 0; i < PONG_NBR_TESTS; i++)
 		pingpong_test_init(&pong_tests[i], pong_test_names[i]);
-	}
 }
 
 void pong_pass_test(enum pong_test_id test_id)
@@ -59,7 +58,7 @@ void pong_pass_test(enum pong_test_id test_id)
 static struct firefly_event_queue *event_queue;
 static pthread_mutex_t pong_done_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t pong_done_signal = PTHREAD_COND_INITIALIZER;
-static bool pong_done = false;
+static bool pong_done;
 
 void pong_chan_opened(struct firefly_channel *chan);
 void pong_chan_closed(struct firefly_channel *chan);
@@ -98,32 +97,41 @@ bool pong_chan_restr(struct firefly_channel *chan)
 }
 
 struct firefly_connection *pong_connection_received(
-		struct firefly_transport_llp *llp, const char *ip_addr, unsigned short port)
+		struct firefly_transport_llp *llp,
+		const char *ip_addr,
+		unsigned short port)
 {
 	struct firefly_connection *conn = NULL;
+
 	/* If address is correct, open a connection. */
 	if (strncmp(ip_addr, PING_ADDR, strlen(PING_ADDR)) == 0 &&
-			port == PING_PORT) {
+			port == PING_PORT)
+	{
 		conn = firefly_transport_connection_udp_posix_open(
-				pong_chan_opened, pong_chan_closed, pong_chan_received,
-				ip_addr, port, FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT, llp);
+				pong_chan_opened, pong_chan_closed,
+				pong_chan_received, ip_addr, port,
+				FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT, llp);
 		pong_pass_test(CONNECTION_OPEN);
 		firefly_connection_enable_restricted_channels(conn,
 				pong_chan_restr_info, pong_chan_restr);
 
 	} else {
 		fprintf(stderr, "ERROR: Received unknown connection: %s:%hu\n",
-				ip_addr, port);
+			ip_addr, port);
 	}
+
 	return conn;
 }
 
 void pong_chan_opened(struct firefly_channel *chan)
 {
-	struct labcomm_encoder *enc = firefly_protocol_get_output_stream(chan);
-	struct labcomm_decoder *dec = firefly_protocol_get_input_stream(chan);
+	struct labcomm_encoder *enc;
+	struct labcomm_decoder *dec;
 
-	labcomm_decoder_register_pingpong_data(dec, pong_handle_pingpong_data, chan);
+	enc = firefly_protocol_get_output_stream(chan);
+	dec = firefly_protocol_get_input_stream(chan);
+	labcomm_decoder_register_pingpong_data(dec, pong_handle_pingpong_data,
+					       chan);
 	labcomm_encoder_register_pingpong_data(enc);
 	pong_pass_test(CHAN_OPENED);
 }
@@ -142,6 +150,7 @@ bool pong_chan_received(struct firefly_channel *chan)
 {
 	UNUSED_VAR(chan);
 	pong_pass_test(CHAN_RECEIVE);
+
 	return true;
 }
 
@@ -153,18 +162,16 @@ void pong_channel_rejected(struct firefly_connection *conn)
 
 void pong_handle_pingpong_data(pingpong_data *data, void *ctx)
 {
-	UNUSED_VAR(data);
-	UNUSED_VAR(ctx);
 	pthread_t sender;
-	pthread_attr_t tattr;
-	pthread_attr_init(&tattr);
-	pthread_attr_setdetachstate(&tattr, PTHREAD_CREATE_DETACHED);
-	int err = pthread_create(&sender, &tattr, send_data_and_close, ctx);
-	if (err) {
-		fprintf(stderr, "channel_received: Could not create sender thread"
-				" for channel.\n");
-	}
+
+	UNUSED_VAR(data);
 	pong_pass_test(DATA_RECEIVE);
+	if (pthread_create(&sender, NULL, send_data_and_close, ctx)) {
+		fprintf(stderr, "channel_received: Could not create sender "
+			"thread for channel.\n");
+	} else {
+		pthread_detach(sender);
+	}
 }
 
 void *send_data_and_close(void *args)
@@ -183,26 +190,21 @@ void *pong_main_thread(void *arg)
 	int res;
 	pthread_t reader_thread;
 	pthread_t resend_thread;
-	struct thread_arg *ta = (struct thread_arg *) arg;
+	struct thread_arg *ta;
+	struct firefly_transport_llp *llp;
 
+	ta = arg;
 	printf("Hello, Firefly from Pong!\n");
 	pong_init_tests();
 
 	event_queue = firefly_event_queue_posix_new(20);
 	res = firefly_event_queue_posix_run(event_queue, NULL);
-	if (res) {
-		fprintf(stderr, "ERROR: starting event thread.\n");
-	}
+	if (res) fprintf(stderr, "ERROR: starting event thread.\n");
 
-	struct firefly_transport_llp *llp =
-			firefly_transport_llp_udp_posix_new(PONG_PORT,
-					pong_connection_received, event_queue);
-
+	llp = firefly_transport_llp_udp_posix_new(PONG_PORT,
+			pong_connection_received, event_queue);
 	res = firefly_transport_udp_posix_run(llp, &reader_thread, &resend_thread);
-	/*res = pthread_create(&reader_thread, NULL, reader_thread_main, llp);*/
-	if (res) {
-		fprintf(stderr, "ERROR: starting reader thread.\n");
-	}
+	if (res) fprintf(stderr, "ERROR: starting reader thread.\n");
 
 	// Signal to pingpong_main that pong is started so ping can start now.
 	pthread_mutex_lock(&ta->m);
@@ -211,17 +213,12 @@ void *pong_main_thread(void *arg)
 	pthread_mutex_unlock(&ta->m);
 
 	pthread_mutex_lock(&pong_done_lock);
-	while (!pong_done) {
-		pthread_cond_wait(&pong_done_signal, &pong_done_lock);
-	}
+	while (!pong_done) pthread_cond_wait(&pong_done_signal, &pong_done_lock);
 	pthread_mutex_unlock(&pong_done_lock);
 
 	firefly_transport_udp_posix_stop(llp, &reader_thread, &resend_thread);
-
 	firefly_transport_llp_udp_posix_free(llp);
-
 	firefly_event_queue_posix_free(&event_queue);
-
 	pong_pass_test(TEST_DONE);
 	pingpong_test_print_results(pong_tests, PONG_NBR_TESTS, "Pong");
 

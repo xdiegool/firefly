@@ -18,8 +18,20 @@
 
 void *event_thread_main(void *args);
 void *send_data(void *args);
-
 void ping_handle_pingpong_data(pingpong_data *data, void *ctx);
+
+/* Corresponds to indexes of the arrays below. Note the order. */
+enum ping_test_id {
+	CONNECTION_OPEN,
+	CHAN_OPEN,
+	CHAN_RESTRICTED,
+	DATA_SEND,
+	DATA_RECEIVE,
+	CHAN_UNRESTRICTED,
+	CHAN_CLOSE,
+	TEST_DONE,
+	PING_NBR_TESTS
+};
 
 static char *ping_test_names[] = {
 	"Open connection",
@@ -34,23 +46,10 @@ static char *ping_test_names[] = {
 
 static struct pingpong_test ping_tests[PING_NBR_TESTS];
 
-/* Corresponds to indexes to the above arrays. Note the order. */
-enum ping_test_id {
-	CONNECTION_OPEN,
-	CHAN_OPEN,
-	CHAN_RESTRICTED,
-	DATA_SEND,
-	DATA_RECEIVE,
-	CHAN_UNRESTRICTED,
-	CHAN_CLOSE,
-	TEST_DONE
-};
-
 void ping_init_tests()
 {
-	for (int i = 0; i < PING_NBR_TESTS; i++) {
+	for (int i = 0; i < PING_NBR_TESTS; i++)
 		pingpong_test_init(&ping_tests[i], ping_test_names[i]);
-	}
 }
 
 void ping_pass_test(enum ping_test_id test_id)
@@ -62,13 +61,14 @@ void ping_pass_test(enum ping_test_id test_id)
 static struct firefly_event_queue *event_queue;
 static pthread_mutex_t ping_done_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t ping_done_signal = PTHREAD_COND_INITIALIZER;
-static bool ping_done = false;
+static bool ping_done;
 
 /* Restr. state change. */
 void ping_chan_restr_info(struct firefly_channel *chan,
 			  enum restriction_transition restr)
 {
 	UNUSED_VAR(chan);
+
 	switch (restr) {
 	case UNRESTRICTED:
 		/* Done */
@@ -78,13 +78,13 @@ void ping_chan_restr_info(struct firefly_channel *chan,
 	case RESTRICTED: {
 		/* Send data */
 		pthread_t sender;
-		pthread_attr_t tattr;
 
 		ping_pass_test(CHAN_RESTRICTED);
-		pthread_attr_init(&tattr);
-		pthread_attr_setdetachstate(&tattr, PTHREAD_CREATE_DETACHED);
-		if (pthread_create(&sender, &tattr, send_data, chan))
-			err(1, "Could not create sender thread for channel.\n");
+		if (pthread_create(&sender, NULL, send_data, chan))
+			warn("Could not create sender thread for channel.");
+		else
+			pthread_detach(sender);
+
 	}
 		break;
 	case RESTRICTION_DENIED:
@@ -96,39 +96,32 @@ void ping_chan_restr_info(struct firefly_channel *chan,
 
 void ping_chan_opened(struct firefly_channel *chan)
 {
+	struct labcomm_encoder *enc;
+	struct labcomm_decoder *dec;
+
 	ping_pass_test(CHAN_OPEN);
-
-	struct labcomm_encoder *enc = firefly_protocol_get_output_stream(chan);
-	struct labcomm_decoder *dec = firefly_protocol_get_input_stream(chan);
-
-	labcomm_decoder_register_pingpong_data(dec, ping_handle_pingpong_data, chan);
+	enc = firefly_protocol_get_output_stream(chan);
+	dec = firefly_protocol_get_input_stream(chan);
+	labcomm_decoder_register_pingpong_data(dec, ping_handle_pingpong_data,
+					       chan);
 	labcomm_encoder_register_pingpong_data(enc);
-
 	firefly_channel_restrict(chan);
 }
 
 void ping_chan_closed(struct firefly_channel *chan)
 {
-	firefly_connection_close(
-			firefly_channel_get_connection(chan));
+	ping_pass_test(CHAN_CLOSE);
+	firefly_connection_close(firefly_channel_get_connection(chan));
 	pthread_mutex_lock(&ping_done_lock);
 	ping_done = true;
 	pthread_cond_signal(&ping_done_signal);
 	pthread_mutex_unlock(&ping_done_lock);
-	ping_pass_test(CHAN_CLOSE);
-}
-
-bool ping_chan_received(struct firefly_channel *chan)
-{
-	UNUSED_VAR(chan);
-	printf("PING: Channel received\n");
-	return true;
 }
 
 void ping_channel_rejected(struct firefly_connection *conn)
 {
 	UNUSED_VAR(conn);
-	fprintf(stderr, "ERROR: Channel was rejected.\n");
+	warnx("Channel was rejected.");
 }
 
 void *send_data(void *args)
@@ -148,68 +141,52 @@ void *send_data(void *args)
 void ping_handle_pingpong_data(pingpong_data *data, void *ctx)
 {
 	UNUSED_VAR(ctx);
-	/*struct firefly_channel *chan = (struct firefly_channel *) ctx;*/
-	if (*data == PONG_DATA) {
+
+	if (*data == PONG_DATA)
 		ping_pass_test(DATA_RECEIVE);
-	}
 	firefly_channel_unrestrict(ctx);
 
 }
 
 void *ping_main_thread(void *arg)
 {
-	UNUSED_VAR(arg);
 	int res;
 	pthread_t reader_thread;
 	pthread_t resend_thread;
+	struct firefly_transport_llp *llp;
+	struct firefly_connection *conn;
 
+	UNUSED_VAR(arg);
 	printf("Hello, Firefly from Ping!\n");
 	ping_init_tests();
-
 	event_queue = firefly_event_queue_posix_new(20);
 	res = firefly_event_queue_posix_run(event_queue, NULL);
-	if (res) {
-		fprintf(stderr, "ERROR: starting event thread.\n");
-	}
+	if (res) fprintf(stderr, "ERROR: starting event thread.");
 
-	struct firefly_transport_llp *llp =
-			firefly_transport_llp_udp_posix_new(PING_PORT,
-					NULL, event_queue);
+	llp = firefly_transport_llp_udp_posix_new(PING_PORT, NULL, event_queue);
 
-
-	struct firefly_connection *conn =
-			firefly_transport_connection_udp_posix_open(ping_chan_opened,
-					ping_chan_closed, ping_chan_received,
-					PONG_ADDR, PONG_PORT,
-					FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT, llp);
-	if (conn != NULL) {
-		ping_pass_test(CONNECTION_OPEN);
-	}
+	conn = firefly_transport_connection_udp_posix_open(ping_chan_opened,
+			ping_chan_closed, NULL, PONG_ADDR, PONG_PORT,
+			FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT, llp);
+	if (conn) ping_pass_test(CONNECTION_OPEN);
 	/*
 	 * Install callback for restriction request results.
 	 * There will be no incoming requests.
 	 */
 	firefly_connection_enable_restricted_channels(conn,
 			ping_chan_restr_info, NULL);
-
 	firefly_channel_open(conn, ping_channel_rejected);
-	res = firefly_transport_udp_posix_run(llp, &reader_thread, &resend_thread);
-	if (res) {
-		fprintf(stderr, "ERROR: starting reader/resend thread.\n");
-	}
+	res = firefly_transport_udp_posix_run(llp, &reader_thread,
+					      &resend_thread);
+	if (res) fprintf(stderr, "ERROR: starting reader/resend thread.\n");
 
 	pthread_mutex_lock(&ping_done_lock);
-	while (!ping_done) {
+	while (!ping_done)
 		pthread_cond_wait(&ping_done_signal, &ping_done_lock);
-	}
 	pthread_mutex_unlock(&ping_done_lock);
-
 	firefly_transport_udp_posix_stop(llp, &reader_thread, &resend_thread);
-
 	firefly_transport_llp_udp_posix_free(llp);
-
 	firefly_event_queue_posix_free(&event_queue);
-
 	ping_pass_test(TEST_DONE);
 	pingpong_test_print_results(ping_tests, PING_NBR_TESTS, "Ping");
 

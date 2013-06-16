@@ -16,12 +16,20 @@
 #include "test/pingpong/pingpong.h"
 #include "utils/cppmacros.h"
 
-#define PING_NBR_TESTS (6)
-
 void *event_thread_main(void *args);
 void *send_data(void *args);
 
 void ping_handle_pingpong_data(pingpong_data *data, void *ctx);
+
+enum ping_test_id {
+	CONNECTION_OPEN,
+	CHAN_OPEN,
+	DATA_SEND,
+	DATA_RECEIVE,
+	CHAN_CLOSE,
+	TEST_DONE,
+	PING_NBR_TESTS
+};
 
 static char *ping_test_names[] = {
 	"Open connection",
@@ -33,15 +41,6 @@ static char *ping_test_names[] = {
 };
 
 static struct pingpong_test ping_tests[PING_NBR_TESTS];
-
-enum ping_test_id {
-	CONNECTION_OPEN,
-	CHAN_OPEN,
-	DATA_SEND,
-	DATA_RECEIVE,
-	CHAN_CLOSE,
-	TEST_DONE
-};
 
 void ping_init_tests()
 {

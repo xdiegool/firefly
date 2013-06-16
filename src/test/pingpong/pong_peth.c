@@ -17,6 +17,17 @@
 #include "test/pingpong/pingpong.h"
 #include "utils/cppmacros.h"
 
+enum pong_test_id {
+	CONNECTION_OPEN,
+	CHAN_RECEIVE,
+	CHAN_OPENED,
+	DATA_SEND,
+	DATA_RECEIVE,
+	CHAN_CLOSE,
+	TEST_DONE,
+	PONG_NBR_TESTS
+};
+
 static char *pong_test_names[] = {
 	"Open connection",
 	"Received channel",
@@ -28,16 +39,6 @@ static char *pong_test_names[] = {
 };
 
 static struct pingpong_test pong_tests[PONG_NBR_TESTS];
-
-enum pong_test_id {
-	CONNECTION_OPEN,
-	CHAN_RECEIVE,
-	CHAN_OPENED,
-	DATA_SEND,
-	DATA_RECEIVE,
-	CHAN_CLOSE,
-	TEST_DONE
-};
 
 void pong_init_tests()
 {
