@@ -15,6 +15,10 @@
 #include "utils/firefly_event_queue_private.h"
 #include "utils/cppmacros.h"
 
+/*
+ * Used by reg_proto_sigs() below to "short circuit" the connection during
+ * the initial registration of protocol types.
+ */
 static void signature_trans_write(unsigned char *data, size_t size,
 				  struct firefly_connection *conn,
 				  bool important, unsigned char *id)
