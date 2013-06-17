@@ -57,8 +57,8 @@ struct firefly_channel *firefly_channel_new(struct firefly_connection *conn)
 	chan->proto_decoder		= proto_decoder;
 	chan->proto_encoder		= proto_encoder;
 	chan->conn			= conn;
-	chan->restricted_local		= 0;
-	chan->restricted_remote		= 0;
+	chan->restricted_local		= false;
+	chan->restricted_remote		= false;
 
 	return chan;
 }

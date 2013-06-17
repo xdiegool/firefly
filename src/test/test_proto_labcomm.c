@@ -144,7 +144,7 @@ void test_encode_decode_app()
 
 	conn.event_queue = eq;
 
-	struct firefly_channel chan;
+	struct firefly_channel chan = {0};
 
 	chan.proto_decoder =
 		labcomm_decoder_new(protocol_labcomm_reader_new(&conn), NULL);

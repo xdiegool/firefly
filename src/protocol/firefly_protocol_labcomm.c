@@ -84,6 +84,7 @@ static int proto_reader_ioctl(struct labcomm_reader *r, void *context,
 		r->data_size = size;
 		r->count = size;
 		r->pos = 0;
+		result = 0;
 		} break;
 	}
 	return result;
@@ -372,17 +373,24 @@ void transport_labcomm_writer_free(struct labcomm_writer *w)
 
 int send_data_sample_event(void *event_arg)
 {
-	struct firefly_event_send_sample *fess =
-		(struct firefly_event_send_sample *) event_arg;
+	struct firefly_event_send_sample *fess;
+	bool restr;
 
+	fess = event_arg;
+	restr = fess->chan->restricted_local && fess->chan->restricted_remote;
+	if (restr && fess->data.important) {
+		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
+		       "Important sample sent on restricted channel");
+	}
 	if (fess->data.important && fess->chan->important_id != 0) {
 		// Queue the important packet
-		struct firefly_channel_important_queue **last =
-			&fess->chan->important_queue;
+		struct firefly_channel_important_queue **last;
+
+		last = &fess->chan->important_queue;
 		while (*last != NULL) {
 			last = &(*last)->next;
 		}
-		*last = FIREFLY_MALLOC(sizeof(struct firefly_channel_important_queue));
+		*last = FIREFLY_MALLOC(sizeof(**last));
 		(*last)->next = NULL;
 		(*last)->fess = fess;
 	} else {
