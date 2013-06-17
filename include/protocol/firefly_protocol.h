@@ -69,8 +69,7 @@ typedef void (* firefly_channel_rejected_f)(struct firefly_connection *conn);
  * @param on_chan_rejected A callback called if this channel request was
  * rejected by the remote node.
  */
-void firefly_channel_open(struct firefly_connection *conn,
-		firefly_channel_rejected_f on_chan_rejected);
+void firefly_channel_open(struct firefly_connection *conn);
 
 /**
  * @brief Offers an event to close the channel. The event will send a
@@ -161,6 +160,26 @@ enum restriction_transition {
 	RESTRICTION_DENIED
 };
 
+/* struct firefly_connection *firefly_connection_new( */
+/* 		firefly_channel_is_open_f on_channel_opened, */
+/* 		firefly_channel_closed_f on_channel_closed, */
+/* 		firefly_channel_accept_f on_channel_recv, */
+/* 		transport_write_f transport_write, */
+/* 		transport_ack_f transport_ack, */
+/* 		struct firefly_memory_funcs *memory_replacements, */
+/* 		struct firefly_event_queue *event_queue, */
+/* 		void *plat_spec, transport_connection_free plat_spec_free) */
+
+/* struct firefly_connection_actions conn_actions = { */
+/* 	.channel_opened		= NULL, */
+/* 	.channel_closed		= NULL, */
+/* 	.channel_recv		= NULL, */
+/*	// New -v			*/
+/* 	.channel_rejected	= NULL, */
+/* 	.channel_restrict	= NULL, */
+/* 	.channel_restrict_info	= NULL */
+/* }; */
+
 /**
  * @brief Type of callback used to inform about changes from/to restricted mode.
  *
@@ -169,6 +188,14 @@ enum restriction_transition {
 typedef void (* firefly_channel_restrict_info_f)(struct firefly_channel *chan,
 						 enum restriction_transition rinfo);
 
+struct firefly_connection_actions {
+	firefly_channel_accept_f	channel_recv;
+	firefly_channel_is_open_f	channel_opened;		/**< Called when a channel has been opened. */
+	firefly_channel_rejected_f	channel_rejected;	/**< Called if this  channel could not be opened due to remote node rejected it. */
+	firefly_channel_closed_f	channel_closed;		/**< Called when a channel has been closed. */
+	firefly_channel_restrict_f	channel_restrict;	/**< Called on incoming restriction request. */
+	firefly_channel_restrict_info_f	channel_restrict_info;	/**< Called on restriction status change. */
+};
 
 /**
  * @brief Set callbacks for use when restricting channels.

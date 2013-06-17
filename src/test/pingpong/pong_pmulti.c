@@ -63,6 +63,16 @@ bool pong_chan_received(struct firefly_channel *chan);
 void pong_handle_pingpong_data(pingpong_data *data, void *ctx);
 void *send_data_and_close(void *args);
 
+struct firefly_connection_actions pong_udp_conn_actions = {
+	.channel_opened		= pong_chan_opened,
+	.channel_closed		= pong_udp_chan_closed,
+	.channel_recv		= pong_chan_received,
+	// New -v
+	.channel_rejected	= NULL,
+	.channel_restrict	= NULL,
+	.channel_restrict_info	= NULL
+};
+
 struct firefly_connection *pong_udp_connection_received(
 							struct firefly_transport_llp *llp,
 							const char *ip_addr,
@@ -73,13 +83,10 @@ struct firefly_connection *pong_udp_connection_received(
 	if (strncmp(ip_addr, PING_ADDR, strlen(PING_ADDR)) == 0 &&
 		port == PING_PORT)
 	{
-		conn = firefly_transport_connection_udp_posix_open(pong_chan_opened,
-								   pong_udp_chan_closed,
-								   pong_chan_received,
-								   ip_addr,
-								   port,
-								   FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT,
-								   llp);
+		conn = firefly_transport_connection_udp_posix_open(llp,
+				ip_addr, port,
+				FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT,
+				&pong_udp_conn_actions);
 	} else {
 		fprintf(stderr, "ERROR: Received unknown connection: %s:%hu\n",
 				ip_addr, port);
@@ -180,6 +187,16 @@ void pong_eth_chan_closed(struct firefly_channel *chan)
 	pthread_mutex_unlock(&pong_done_lock);
 }
 
+struct firefly_connection_actions pong_eth_conn_actions = {
+	.channel_opened		= pong_chan_opened,
+	.channel_closed		= pong_eth_chan_closed,
+	.channel_recv		= pong_chan_received,
+	// New -v
+	.channel_rejected	= NULL,
+	.channel_restrict	= NULL,
+	.channel_restrict_info	= NULL
+};
+
 struct firefly_connection *pong_eth_connection_received(struct firefly_transport_llp *llp,
 							char *mac_addr)
 {
@@ -188,12 +205,8 @@ struct firefly_connection *pong_eth_connection_received(struct firefly_transport
 	/* If address is correct, open a connection. */
 	if (strncmp(mac_addr, PING_MAC_ADDR, strlen(PING_MAC_ADDR)) == 0) {
 		printf("Recieved connection on %s!\n", PONG_IFACE);
-		conn = firefly_transport_connection_eth_posix_open(pong_chan_opened,
-								   pong_eth_chan_closed,
-								   pong_chan_received,
-								   mac_addr,
-								   PONG_IFACE,
-								   llp);
+		conn = firefly_transport_connection_eth_posix_open(llp,
+				mac_addr, PONG_IFACE, &pong_eth_conn_actions);
 	} else {
 		fprintf(stderr, "ERROR: Received unknown connection: %s\n", mac_addr);
 	}

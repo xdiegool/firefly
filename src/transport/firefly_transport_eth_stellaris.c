@@ -175,11 +175,9 @@ void firefly_transport_connection_eth_stellaris_free(
 }
 
 struct firefly_connection *firefly_transport_connection_eth_stellaris_open(
-				firefly_channel_is_open_f on_channel_opened,
-				firefly_channel_closed_f on_channel_closed,
-				firefly_channel_accept_f on_channel_recv,
-				unsigned char *mac_address,
-				struct firefly_transport_llp *llp)
+		struct firefly_transport_llp *llp,
+		unsigned char *mac_address,
+		struct firefly_connection_actions *actions)
 {
 	struct transport_llp_eth_stellaris *llp_eth =
 		(struct transport_llp_eth_stellaris *) llp->llp_platspec;
@@ -188,7 +186,7 @@ struct firefly_connection *firefly_transport_connection_eth_stellaris_open(
 		malloc(sizeof(struct protocol_connection_eth_stellaris));
 
 	struct firefly_connection *conn = firefly_connection_new(
-			on_channel_opened, on_channel_closed, on_channel_recv,
+			actions,
 			firefly_transport_eth_stellaris_write,
 			firefly_transport_eth_stellaris_ack, NULL,
 			llp_eth->event_queue, conn_eth,
@@ -219,6 +217,9 @@ void firefly_transport_eth_stellaris_write(unsigned char *data, size_t data_size
 	int res;
 	unsigned char *frame;
 
+	UNUSED_VAR(important);
+	UNUSED_VAR(id);
+
 	conn_eth = (struct protocol_connection_eth_stellaris *)
 		conn->transport_conn_platspec;
 
@@ -244,7 +245,8 @@ void firefly_transport_eth_stellaris_write(unsigned char *data, size_t data_size
 void firefly_transport_eth_stellaris_ack(unsigned char pkg_id,
 		struct firefly_connection *conn)
 {
-
+	UNUSED_VAR(pkg_id);
+	UNUSED_VAR(conn);
 }
 
 bool connection_eq_remmac(struct firefly_connection *conn, void *context)

@@ -148,6 +148,16 @@ void ping_handle_pingpong_data(pingpong_data *data, void *ctx)
 
 }
 
+struct firefly_connection_actions ping_actions = {
+	.channel_opened		= ping_chan_opened,
+	.channel_closed		= ping_chan_closed,
+	.channel_recv		= NULL,
+	// New -v
+	.channel_rejected	= ping_channel_rejected,
+	.channel_restrict	= NULL,
+	.channel_restrict_info	= ping_chan_restr_info
+};
+
 void *ping_main_thread(void *arg)
 {
 	int res;
@@ -165,17 +175,13 @@ void *ping_main_thread(void *arg)
 
 	llp = firefly_transport_llp_udp_posix_new(PING_PORT, NULL, event_queue);
 
-	conn = firefly_transport_connection_udp_posix_open(ping_chan_opened,
-			ping_chan_closed, NULL, PONG_ADDR, PONG_PORT,
-			FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT, llp);
+	conn = firefly_transport_connection_udp_posix_open(llp,
+			PONG_ADDR, PONG_PORT,
+			FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT,
+			&ping_actions);
 	if (conn) ping_pass_test(CONNECTION_OPEN);
-	/*
-	 * Install callback for restriction request results.
-	 * There will be no incoming requests.
-	 */
-	firefly_connection_enable_restricted_channels(conn,
-			ping_chan_restr_info, NULL);
-	firefly_channel_open(conn, ping_channel_rejected);
+
+	firefly_channel_open(conn);
 	res = firefly_transport_udp_posix_run(llp, &reader_thread,
 					      &resend_thread);
 	if (res) fprintf(stderr, "ERROR: starting reader/resend thread.\n");

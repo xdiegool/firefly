@@ -92,25 +92,19 @@ int firefly_transport_llp_udp_posix_free_event(void *event_arg);
  * @brief Allocates and initializes a new connection with udp posix specific
  * data.
  *
- * @param on_channel_opened Callback for when a channel has been opened.
- * @param on_channel_closed Callback for when a channel has been closed.
- * @param on_channel_recv Callback for when a channel has been recveived.
- * @param event_queue The event queue all events relating to this connection is
- * offered to.
  * @param llp The link layer port this connection receives data from.
- * @param timeout The time in ms between resends.
  * @param remote_addr The address of the remote node.
+ * @param timeout The time in ms between resends.
+ * @param actions Callbacks.
  *
  * @return A new firefly_connection with udp posix specific data.
  * @retval NULL on error.
  */
 struct firefly_connection *firefly_connection_udp_posix_new(
-					firefly_channel_is_open_f on_channel_opened,
-					firefly_channel_closed_f on_channel_closed,
-					firefly_channel_accept_f on_channel_recv,
-					struct firefly_transport_llp *llp,
-					unsigned int timeout,
-					struct sockaddr_in *remote_addr);
+		struct firefly_transport_llp *llp,
+		struct sockaddr_in *remote_addr,
+		unsigned int timeout,
+		struct firefly_connection_actions *actions);
 
 /**
  * @brief Free the connection and any resources associated with it.

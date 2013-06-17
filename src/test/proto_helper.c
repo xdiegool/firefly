@@ -39,14 +39,27 @@ struct tmp_data conn_open_write;
 struct tmp_data conn_recv_write;
 bool conn_recv_accept_called = false;
 
-struct firefly_connection *setup_test_conn_new(firefly_channel_is_open_f ch_op,
-		firefly_channel_closed_f ch_cl, firefly_channel_accept_f ch_acc,
-		struct firefly_event_queue *eq)
+/* struct firefly_connection_actions conn_actions = { */
+/* 	.channel_recv		= ch_ac, */
+/* 	.channel_opened		= ch_op, */
+/* 	.channel_rejected	= NULL, */
+/* 	.channel_closed		= ch_cl, */
+/* 	.channel_restrict	= NULL, */
+/* 	.channel_restrict_info	= NULL */
+/* }; */
+
+/* firefly_channel_is_open_f ch_op,
+firefly_channel_closed_f ch_cl,
+firefly_channel_accept_f ch_acc, */
+struct firefly_connection *setup_test_conn_new(
+	       struct firefly_connection_actions *conn_actions,
+	       struct firefly_event_queue *eq)
 {
 	struct firefly_connection *conn =
-		firefly_connection_new(ch_op, ch_cl, ch_acc,
-				transport_write_test_decoder, transport_ack_test, NULL,
-				eq, NULL, NULL);
+		firefly_connection_new(conn_actions,
+				       transport_write_test_decoder,
+				       transport_ack_test, NULL,
+				       eq, NULL, NULL);
 	if (conn == NULL) {
 		CU_FAIL("Could not create connection.\n");
 	}

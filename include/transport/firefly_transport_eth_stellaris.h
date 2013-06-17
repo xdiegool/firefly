@@ -46,14 +46,17 @@ void firefly_transport_llp_eth_stellaris_free(struct firefly_transport_llp *llp)
  * @return A pointer to the new \c firefly_connection that is opened.
  * @retval NULL Returns \c NULL upon failure.
  */
+/* struct firefly_connection *firefly_transport_connection_eth_stellaris_open( */
+/* 				firefly_channel_is_open_f on_channel_opened, */
+/* 				firefly_channel_closed_f on_channel_closed, */
+/* 				firefly_channel_accept_f on_channel_recv, */
+/* 				unsigned char *mac_address, */
+/* 				struct firefly_transport_llp *llp); */
 struct firefly_connection *firefly_transport_connection_eth_stellaris_open(
-				firefly_channel_is_open_f on_channel_opened,
-				firefly_channel_closed_f on_channel_closed,
-				firefly_channel_accept_f on_channel_recv,
-				unsigned char *mac_address,
-				struct firefly_transport_llp *llp);
+		struct firefly_transport_llp *llp,
+		unsigned char *mac_address,
+		struct firefly_connection_actions *actions);
 
 void firefly_transport_eth_stellaris_read(struct firefly_transport_llp *llp);
 
 #endif
-

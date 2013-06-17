@@ -779,12 +779,22 @@ void test_something()
 	if (res) {
 		fprintf(stderr, "ERROR: starting reader/resend thread.\n");
 	}
+
+	struct firefly_connection_actions conn_actions = {
+		.channel_opened		= firefly_channel_opened,
+		.channel_closed		= firefly_channel_closed,
+		.channel_recv		= firefly_channel_received,
+		// New -v
+		.channel_rejected	= NULL,
+		.channel_restrict	= NULL,
+		.channel_restrict_info	= NULL
+	};
+
 	struct firefly_connection *conn =
-		firefly_transport_connection_udp_posix_open(
-				firefly_channel_opened, firefly_channel_closed,
-				firefly_channel_received,
-				IP_ADDR, MOCK_UDP_PORT, RESEND_TIMEOUT, llp);
-	firefly_channel_open(conn, NULL);
+		firefly_transport_connection_udp_posix_open(llp,
+				IP_ADDR, MOCK_UDP_PORT, RESEND_TIMEOUT,
+				&conn_actions);
+	firefly_channel_open(conn);
 
 	// Receive ingored request
 	current_packet = next_packet_wait(prev_packet);

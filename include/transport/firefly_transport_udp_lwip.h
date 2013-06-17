@@ -75,13 +75,18 @@ void firefly_transport_llp_udp_lwip_free(struct firefly_transport_llp *llp);
  * @return The newly opened connection.
  * @retval NULL Returns \c NULL upon failure.
  */
+/* struct firefly_connection *firefly_transport_connection_udp_lwip_open( */
+/* 		firefly_channel_is_open_f on_channel_opened, */
+/* 		firefly_channel_closed_f on_channel_closed, */
+/* 		firefly_channel_accept_f on_channel_recv, */
+/* 		char *ip_addr, */
+/* 		unsigned short port, */
+/* 		struct firefly_transport_llp *llp); */
 struct firefly_connection *firefly_transport_connection_udp_lwip_open(
-		firefly_channel_is_open_f on_channel_opened,
-		firefly_channel_closed_f on_channel_closed,
-		firefly_channel_accept_f on_channel_recv,
-		char *ip_addr,
-		unsigned short port,
-		struct firefly_transport_llp *llp);
+		struct firefly_transport_llp *llp,
+		char *remote_ip_addr,
+		unsigned short remote_port,
+		struct firefly_connection_actions *actions);
 
 /**
  * @brief Free the connection and any resources associated with it.

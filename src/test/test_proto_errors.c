@@ -53,6 +53,15 @@ static void mk_lc_and_reg_sigs_free(struct firefly_connection *conn_open,
 	firefly_event_queue_free(&eq);
 }
 
+static struct firefly_connection_actions conn_open_actions = {
+	.channel_opened = chan_opened_mock,
+	.channel_recv	= chan_open_recv_accept_open
+};
+
+static struct firefly_connection_actions conn_recv_actions = {
+	.channel_opened = chan_opened_mock,
+	.channel_recv	= chan_open_recv_accept_recv
+};
 
 static void mk_lc_and_reg_sigs(struct firefly_connection **conn_open,
 				   struct firefly_connection **conn_recv,
@@ -63,14 +72,11 @@ static void mk_lc_and_reg_sigs(struct firefly_connection **conn_open,
 		CU_FAIL("Could not create queue.\n");
 	}
 	// Init connection to open channel
-	*conn_open = setup_test_conn_new(chan_opened_mock, NULL,
-						chan_open_recv_accept_open,
-						*eq);
+	*conn_open = setup_test_conn_new(&conn_open_actions, *eq);
 	(*conn_open)->transport_write = chan_open_recv_write_open;
 
 	// Init connection to receive channel
-	*conn_recv = setup_test_conn_new(chan_opened_mock, NULL,
-					chan_open_recv_accept_recv, *eq);
+	*conn_recv = setup_test_conn_new(&conn_recv_actions, *eq);
 	(*conn_recv)->transport_write = chan_open_recv_write_recv;
 }
 

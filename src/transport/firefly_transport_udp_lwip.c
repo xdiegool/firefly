@@ -182,12 +182,10 @@ void firefly_transport_connection_udp_lwip_free(
 }
 
 struct firefly_connection *firefly_transport_connection_udp_lwip_open(
-				firefly_channel_is_open_f on_channel_opened,
-				firefly_channel_closed_f on_channel_closed,
-				firefly_channel_accept_f on_channel_recv,
-				char *remote_ip_addr,
-				unsigned short remote_port,
-				struct firefly_transport_llp *llp)
+		struct firefly_transport_llp *llp,
+		char *remote_ip_addr,
+		unsigned short remote_port,
+		struct firefly_connection_actions *actions)
 {
 	struct protocol_connection_udp_lwip *conn_udp =
 		malloc(sizeof(struct protocol_connection_udp_lwip));
@@ -196,8 +194,9 @@ struct firefly_connection *firefly_transport_connection_udp_lwip_open(
 	conn_udp->upcb = llp_lwip->upcb;
 
 	struct firefly_connection *conn = firefly_connection_new(
-			on_channel_opened, on_channel_closed, on_channel_recv,
-			firefly_transport_udp_lwip_write, firefly_transport_udp_lwip_ack,
+			actions,
+			firefly_transport_udp_lwip_write,
+			firefly_transport_udp_lwip_ack,
 			NULL,
 			llp_lwip->event_queue, conn_udp,
 			firefly_transport_connection_udp_lwip_free);
@@ -253,7 +252,8 @@ void firefly_transport_udp_lwip_write(unsigned char *data, size_t data_size,
 void firefly_transport_udp_lwip_ack(unsigned char pkt_id,
 		struct firefly_connection *conn)
 {
-
+	UNUSED_VAR(pkt_id);
+	UNUSED_VAR(conn);
 }
 
 bool transport_udp_lwip_conn_eq_ipaddr(struct firefly_connection *conn,

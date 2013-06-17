@@ -83,7 +83,7 @@ void test_important_signature()
 {
 	struct test_conn_platspec ps;
 	ps.important = true;
-	struct firefly_connection *conn = firefly_connection_new(NULL, NULL, NULL,
+	struct firefly_connection *conn = firefly_connection_new(NULL,
 			mock_transport_write_important, NULL, NULL, eq, &ps, NULL);
 	struct firefly_channel *chan = firefly_channel_new(conn);
 	add_channel_to_connection(chan, conn);
@@ -107,7 +107,7 @@ void test_important_recv_ack()
 	size_t buf_size;
 	struct test_conn_platspec ps;
 	ps.important = true;
-	struct firefly_connection *conn = firefly_connection_new(NULL, NULL, NULL,
+	struct firefly_connection *conn = firefly_connection_new(NULL,
 			mock_transport_write_important, mock_transport_ack,
 			NULL, eq, &ps, NULL);
 	struct firefly_channel *chan = firefly_channel_new(conn);
@@ -137,7 +137,7 @@ void test_important_signatures_mult()
 {
 	struct test_conn_platspec ps;
 	ps.important = true;
-	struct firefly_connection *conn = firefly_connection_new(NULL, NULL, NULL,
+	struct firefly_connection *conn = firefly_connection_new(NULL,
 			mock_transport_write_important, NULL, NULL, eq, &ps, NULL);
 	struct firefly_channel *chan = firefly_channel_new(conn);
 	add_channel_to_connection(chan, conn);
@@ -171,7 +171,7 @@ void test_important_seqno_overflow()
 {
 	struct test_conn_platspec ps;
 	ps.important = true;
-	struct firefly_connection *conn = firefly_connection_new(NULL, NULL, NULL,
+	struct firefly_connection *conn = firefly_connection_new(NULL,
 			mock_transport_write_important, NULL, NULL, eq, &ps, NULL);
 	struct firefly_channel *chan = firefly_channel_new(conn);
 	add_channel_to_connection(chan, conn);
@@ -195,7 +195,7 @@ void test_important_send_ack()
 	size_t buf_size;
 	struct test_conn_platspec ps;
 	ps.important = true;
-	struct firefly_connection *conn = firefly_connection_new(NULL, NULL, NULL,
+	struct firefly_connection *conn = firefly_connection_new(NULL,
 			transport_write_test_decoder, NULL, NULL, eq, &ps, NULL);
 	struct firefly_channel *chan = firefly_channel_new(conn);
 	add_channel_to_connection(chan, conn);
@@ -227,7 +227,7 @@ void test_not_important_not_send_ack()
 	size_t buf_size;
 	struct test_conn_platspec ps;
 	ps.important = true;
-	struct firefly_connection *conn = firefly_connection_new(NULL, NULL, NULL,
+	struct firefly_connection *conn = firefly_connection_new(NULL,
 			transport_write_test_decoder, NULL, NULL, eq, &ps, NULL);
 	struct firefly_channel *chan = firefly_channel_new(conn);
 	add_channel_to_connection(chan, conn);
@@ -257,7 +257,7 @@ void test_important_mult_simultaneously()
 	size_t buf_size;
 	struct test_conn_platspec ps;
 	ps.important = true;
-	struct firefly_connection *conn = firefly_connection_new(NULL, NULL, NULL,
+	struct firefly_connection *conn = firefly_connection_new(NULL,
 			mock_transport_write_important, mock_transport_ack, NULL, eq, &ps, NULL);
 	struct firefly_channel *chan = firefly_channel_new(conn);
 	add_channel_to_connection(chan, conn);
@@ -334,7 +334,7 @@ void test_errorneous_ack()
 	size_t buf_size;
 	struct test_conn_platspec ps;
 	ps.important = false;
-	struct firefly_connection *conn = firefly_connection_new(NULL, NULL, NULL,
+	struct firefly_connection *conn = firefly_connection_new(NULL,
 			transport_write_test_decoder, NULL, NULL, eq, &ps, NULL);
 	struct firefly_channel *chan = firefly_channel_new(conn);
 	add_channel_to_connection(chan, conn);
@@ -381,7 +381,7 @@ void test_important_recv_duplicate()
 	size_t buf_size;
 	struct test_conn_platspec ps;
 	ps.important = false;
-	struct firefly_connection *conn = firefly_connection_new(NULL, NULL, NULL,
+	struct firefly_connection *conn = firefly_connection_new(NULL,
 			transport_write_test_decoder, NULL, NULL, eq, &ps, NULL);
 	struct firefly_channel *chan = firefly_channel_new(conn);
 	add_channel_to_connection(chan, conn);
@@ -457,12 +457,20 @@ bool important_handshake_chan_acc(struct firefly_channel *chan)
 
 void test_important_handshake_recv()
 {
+	struct firefly_connection_actions conn_actions = {
+		.channel_recv		= important_handshake_chan_acc,
+		.channel_opened		= important_handshake_chan_open,
+		.channel_rejected	= NULL,
+		.channel_closed		= NULL,
+		.channel_restrict	= NULL,
+		.channel_restrict_info	= NULL
+	};
 	unsigned char *buf;
 	size_t buf_size;
 	struct test_conn_platspec ps;
 	ps.important = true;
 	struct firefly_connection *conn = firefly_connection_new(
-			important_handshake_chan_open, NULL, important_handshake_chan_acc,
+			&conn_actions,
 			mock_transport_write_important, mock_transport_ack, NULL, eq, &ps, NULL);
 
 	firefly_protocol_channel_request req_pkt;
@@ -498,15 +506,23 @@ void test_important_handshake_recv()
 
 void test_important_handshake_open()
 {
+	struct firefly_connection_actions conn_actions = {
+		.channel_recv		= important_handshake_chan_acc,
+		.channel_opened		= important_handshake_chan_open,
+		.channel_rejected	= NULL,
+		.channel_closed		= NULL,
+		.channel_restrict	= NULL,
+		.channel_restrict_info	= NULL
+	};
 	unsigned char *buf;
 	size_t buf_size;
 	struct test_conn_platspec ps;
 	ps.important = true;
 	struct firefly_connection *conn = firefly_connection_new(
-			important_handshake_chan_open, NULL, important_handshake_chan_acc,
+			&conn_actions,
 			mock_transport_write_important, mock_transport_ack, NULL, eq, &ps, NULL);
 
-	firefly_channel_open(conn, NULL);
+	firefly_channel_open(conn);
 	event_execute_test(eq, 1);
 
 	CU_ASSERT_TRUE(mock_transport_written);

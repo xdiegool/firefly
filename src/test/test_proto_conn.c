@@ -84,8 +84,8 @@ void test_conn_close_empty()
 		dummy_data[i] = i;
 	}
 	struct firefly_connection *conn = firefly_connection_new(
-			NULL, NULL, NULL, NULL,
-			NULL, NULL, eq, dummy_data, free_plat_conn_test);
+			NULL, NULL, NULL, NULL, eq,
+			dummy_data, free_plat_conn_test);
 
 	CU_ASSERT_EQUAL(conn->open, FIREFLY_CONNECTION_OPEN);
 	firefly_connection_close(conn);
@@ -105,9 +105,9 @@ void test_conn_close_mult_chans()
 	for (int i = 0; i < 5; i++) {
 		dummy_data[i] = i;
 	}
-	struct firefly_connection *conn = firefly_connection_new(NULL, NULL, NULL,
-			transport_write_mock, NULL, NULL, eq, dummy_data,
-			free_plat_conn_test);
+	struct firefly_connection *conn = firefly_connection_new(
+			NULL, transport_write_mock, NULL, NULL,
+			eq, dummy_data, free_plat_conn_test);
 
 	struct firefly_channel *ch = firefly_channel_new(conn);
 	ch->remote_id = 0;
@@ -133,8 +133,7 @@ void test_conn_close_mult_chans()
 void test_conn_close_open_chan()
 {
 	struct firefly_connection *conn = firefly_connection_new(
-			NULL, NULL, NULL,
-			transport_write_mock, NULL, NULL, eq, NULL, NULL);
+			NULL, transport_write_mock, NULL, NULL, eq, NULL, NULL);
 
 	struct firefly_channel *ch = firefly_channel_new(conn);
 	ch->remote_id = 0;
@@ -146,7 +145,7 @@ void test_conn_close_open_chan()
 	CU_ASSERT_PTR_NOT_NULL(close_ev);
 
 	expected_error = FIREFLY_ERROR_PROTO_STATE;
-	firefly_channel_open(conn, NULL);
+	firefly_channel_open(conn);
 	CU_ASSERT_TRUE(was_in_error);
 	struct firefly_event *ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NULL(ev);
@@ -163,8 +162,7 @@ void test_conn_close_open_chan()
 void test_conn_close_send_data()
 {
 	struct firefly_connection *conn = firefly_connection_new(
-			NULL, NULL, NULL,
-			transport_write_mock, NULL, NULL, eq, NULL, NULL);
+			NULL, transport_write_mock, NULL, NULL, eq, NULL, NULL);
 
 	struct firefly_channel *ch = firefly_channel_new(conn);
 	ch->remote_id = 0;
@@ -209,8 +207,8 @@ void test_conn_close_send_data()
 
 void test_conn_close_send_first()
 {
-	struct firefly_connection *conn = firefly_connection_new(NULL, NULL, NULL,
-			transport_write_mock, NULL, NULL, eq, NULL, NULL);
+	struct firefly_connection *conn = firefly_connection_new(
+			NULL, transport_write_mock, NULL, NULL, eq, NULL, NULL);
 
 	struct firefly_channel *ch = firefly_channel_new(conn);
 	ch->remote_id = 0;
@@ -234,8 +232,8 @@ void test_conn_close_send_first()
 
 void test_conn_close_recv_any()
 {
-	struct firefly_connection *conn = firefly_connection_new(NULL, NULL, NULL,
-			transport_write_mock, NULL, NULL, eq, NULL, NULL);
+	struct firefly_connection *conn = firefly_connection_new(
+			NULL, transport_write_mock, NULL, NULL, eq, NULL, NULL);
 
 	struct firefly_channel *ch = firefly_channel_new(conn);
 	ch->remote_id = 0;
@@ -273,8 +271,17 @@ void test_conn_close_recv_chan_req_first()
 {
 	unsigned char *buf;
 	size_t buf_size;
-	struct firefly_connection *conn = firefly_connection_new(NULL, NULL,
-			channel_accept_test, transport_write_mock, NULL, NULL, eq,
+	struct firefly_connection_actions conn_actions = {
+		.channel_recv		= channel_accept_test,
+		.channel_opened		= NULL,
+		.channel_rejected	= NULL,
+		.channel_closed		= NULL,
+		.channel_restrict	= NULL,
+		.channel_restrict_info	= NULL
+	};
+	struct firefly_connection *conn = firefly_connection_new(
+			&conn_actions,
+			transport_write_mock, NULL, NULL, eq,
 			NULL, NULL);
 
 	/* First add close connection event */

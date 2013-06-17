@@ -28,8 +28,8 @@ struct firefly_channel *firefly_channel_new(struct firefly_connection *conn)
 		return NULL;
 	}
 
-	proto_decoder    = labcomm_decoder_new(reader, NULL);
-	proto_encoder    = labcomm_encoder_new(writer, NULL);
+	proto_decoder = labcomm_decoder_new(reader, NULL);
+	proto_encoder = labcomm_encoder_new(writer, NULL);
 
 	if (proto_decoder == NULL || proto_encoder == NULL) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1,
@@ -91,28 +91,16 @@ int firefly_channel_next_seqno(struct firefly_channel *chan)
 	return chan->current_seqno;
 }
 
-int firefly_connection_enable_restricted_channels(
-		struct firefly_connection *conn,
-		firefly_channel_restrict_info_f on_channel_restrict_info,
-		firefly_channel_restrict_f on_channel_restrict)
-{
-	if (!on_channel_restrict_info)
-		return -1;	/* Always required. */
-	conn->on_channel_restrict      = on_channel_restrict;
-	conn->on_channel_restrict_info = on_channel_restrict_info;
-
-	return 0;
-}
-
 int firefly_channel_closed_event(void *event_arg)
 {
 	struct firefly_channel *chan;
 
 	chan = event_arg;
-
 	remove_channel_from_connection(chan, chan->conn);
-	if (chan->conn->on_channel_closed != NULL) {
-		chan->conn->on_channel_closed(chan);
+	if (chan->conn->actions &&
+	    chan->conn->actions->channel_closed)
+	{
+		chan->conn->actions->channel_closed(chan);
 	}
 	firefly_channel_free(chan);
 

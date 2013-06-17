@@ -108,51 +108,26 @@ struct firefly_memory_funcs {
  */
 struct channel_list_node {
 	struct channel_list_node *next;	/**< A pointer to the next list node. */
-	struct firefly_channel *chan;	/**< A pointer the the channel struct
-							for this node. */
+	struct firefly_channel *chan;	/**< A pointer the the channel struct for this node. */
 };
 
 /**
  * @brief A structure representing a connection.
  */
 struct firefly_connection {
-	void *transport_conn_platspec; /**< Pointer to transport specific
-						connection data. */
-	transport_connection_free transport_conn_platspec_free;
-	sig_atomic_t open; /**< The flag indicating the opened state of a
-						 connection. */
-	transport_write_f transport_write; /**< Write bytes to the transport
-							layer. */
-	transport_ack_f transport_ack; /**< Inform transport that a packet is acked
-									 or should not be resent anymore. */
-	firefly_channel_is_open_f on_channel_opened; /**< Callback, called when
-							a channel has been
-							opened */
-	firefly_channel_closed_f on_channel_closed; /**< Callback, called when
-							a channel has been
-							closed */
-	firefly_channel_accept_f on_channel_recv; /**< Callback, called when a
-							channel is received to
-							decide if it is accepted or
-							rejected. */
-	firefly_channel_restrict_f on_channel_restrict; /**< Callback, called
-							   in restrict. neg. */
-	firefly_channel_restrict_info_f on_channel_restrict_info; /**< Callback,
-								  status change */
-	struct labcomm_encoder *transport_encoder; /**< The transport layer
-							encoder for this
-							connection. */
-	struct labcomm_decoder *transport_decoder; /**< The transport layer
-							decoder for this
-							connection. */
-	struct channel_list_node *chan_list; /**< The list of channels
-							associated with this
-							connection. */
-	struct firefly_event_queue *event_queue; /**< The queue to which spawned events are added. */
-	int channel_id_counter; /**< The unique id reserved to the next opened
-								channel on the connection. */
-	struct firefly_memory_funcs memory_replacements;
-	void *context; /**< A reference to an optional, user defined context.  */
+	void					*transport_conn_platspec;	/**< Transport specific connection data. */
+	transport_connection_free		transport_conn_platspec_free;
+	sig_atomic_t				open;				/**< State of the connection. */
+	transport_write_f			transport_write;
+	transport_ack_f				transport_ack;			/**< Inform transport that a packet is acked or should not be resent anymore. */
+	struct labcomm_encoder			*transport_encoder;		/**< The transport layer encoder for this connection. */
+	struct labcomm_decoder			*transport_decoder;		/**< The transport layer decoder for this connection. */
+	struct channel_list_node		*chan_list;			/**< The list of channels associated with this connection. */
+	struct firefly_event_queue		*event_queue;			/**< The queue to which spawned events are added. */
+	int 					channel_id_counter;		/**< The unique id reserved to the next opened channel on the connection. */
+	struct firefly_memory_funcs		memory_replacements;
+	void					*context;			/**< A reference to an optional, user defined context.  */
+	struct firefly_connection_actions 	*actions;			/**< Callbacks to the applicaiton. */
 };
 
 /**
@@ -172,11 +147,9 @@ struct firefly_channel {
 	int local_id; /**< The local ID used to identify this channel */
 	int remote_id; /**< The ID used by the remote node to identify
 				this channel */
-	struct firefly_channel_important_queue *important_queue; /**< The queue used
-															   to queue
-															   important packets
-															   when sending
-															   another. */
+	struct firefly_channel_important_queue *important_queue; /**< The
+	queue used to queue important packets when sending another. */
+
 	unsigned char important_id; /**< The identifier used to reference the packet
 								  to the transport layer. If 0 no packet is
 								  resent. */
@@ -188,10 +161,6 @@ struct firefly_channel {
 					   			channel.*/
 	struct labcomm_decoder *proto_decoder; /**< LabComm decoder for this
 					   			channel. */
-	firefly_channel_rejected_f on_chan_rejected; /**< Callback called if this
-												   channel could not be opened
-												   due to remote node rejected
-												   it. */
 	bool restricted_local;		/**< Neg. initiated locally.   */
 	bool restricted_remote;	/**< Neg. initiated remotely.  */
 };
@@ -228,9 +197,7 @@ void transport_labcomm_writer_free(struct labcomm_writer *w);
  * @retval NULL on error.
  */
 struct firefly_connection *firefly_connection_new(
-		firefly_channel_is_open_f on_channel_opened,
-		firefly_channel_closed_f on_channel_closed,
-		firefly_channel_accept_f on_channel_recv,
+		struct firefly_connection_actions *actions,
 		transport_write_f transport_write,
 		transport_ack_f transport_ack,
 		struct firefly_memory_funcs *memory_replacements,
@@ -297,9 +264,6 @@ void firefly_channel_free(struct firefly_channel *chan);
 struct firefly_event_chan_open {
 	struct firefly_connection *conn; /**< The connection the channel is
 						opened on. */
-	firefly_channel_rejected_f rejected_cb; /**< The callback called if the
-							request was rejected by
-							the remote node. */
 };
 
 /**

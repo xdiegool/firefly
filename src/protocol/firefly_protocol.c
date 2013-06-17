@@ -74,8 +74,7 @@ void reg_proto_sigs(struct labcomm_encoder *enc,
 	conn->transport_write = orig_twf;
 }
 
-void firefly_channel_open(struct firefly_connection *conn,
-		firefly_channel_rejected_f on_chan_rejected)
+void firefly_channel_open(struct firefly_connection *conn)
 {
 	struct firefly_event_chan_open *feco;
 	int ret;
@@ -86,7 +85,7 @@ void firefly_channel_open(struct firefly_connection *conn,
 		return;
 	}
 
-	feco = FIREFLY_MALLOC(sizeof(struct firefly_event_chan_open));
+	feco = FIREFLY_MALLOC(sizeof(*feco));
 	if (!feco) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1,
 			      "Could not allocate event.\n");
@@ -94,7 +93,6 @@ void firefly_channel_open(struct firefly_connection *conn,
 	}
 
 	feco->conn        = conn;
-	feco->rejected_cb = on_chan_rejected;
 
 	ret = conn->event_queue->offer_event_cb(conn->event_queue,
 			FIREFLY_PRIORITY_HIGH, firefly_channel_open_event, feco);
@@ -123,8 +121,6 @@ int firefly_channel_open_event(void *event_arg)
 
 		return -1;
 	}
-
-	chan->on_chan_rejected = feco->rejected_cb;
 
 	add_channel_to_connection(chan, conn);
 
@@ -278,7 +274,7 @@ int handle_channel_request_event(void *event_arg)
 
 			res.dest_chan_id   = chan->remote_id;
 			res.source_chan_id = chan->local_id;
-			res.ack            = conn->on_channel_recv(chan);
+			res.ack = conn->actions->channel_recv(chan);
 			if (!res.ack) {
 				res.source_chan_id = CHANNEL_ID_NOT_SET;
 				firefly_channel_free(remove_channel_from_connection(chan, conn));
@@ -355,10 +351,10 @@ int handle_channel_response_event(void *event_arg)
 			fecrr->conn->transport_ack(chan->important_id,
 						   fecrr->conn);
 			chan->important_id = 0;
-			fecrr->conn->on_channel_opened(chan);
+			fecrr->conn->actions->channel_opened(chan);
 		}
 	} else {
-		chan->on_chan_rejected(fecrr->conn);
+		chan->conn->actions->channel_rejected(fecrr->conn);
 		firefly_channel_free(remove_channel_from_connection(chan,
 								fecrr->conn));
 	}
@@ -404,7 +400,7 @@ int handle_channel_ack_event(void *event_arg)
 	if (chan != NULL) {
 		fecar->conn->transport_ack(chan->important_id, fecar->conn);
 		chan->important_id = 0;
-		fecar->conn->on_channel_opened(chan);
+		fecar->conn->actions->channel_opened(chan);
 	} else {
 		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
 			      "Received ack on non-existing channel.\n");
@@ -670,9 +666,9 @@ int channel_restrict_request_event(void *context)
 	if (chan->restricted_remote) {
 		if (!chan->restricted_local) {
 			/* Remotely initiated restrict. */
-			if (conn->on_channel_restrict)
+			if (conn->actions->channel_restrict)
 				chan->restricted_local =
-					conn->on_channel_restrict(chan);
+					conn->actions->channel_restrict(chan);
 			/* Otherwise deny incoming requests. */
 
 			/*
@@ -688,7 +684,7 @@ int channel_restrict_request_event(void *context)
 	} else {
 		if (chan->restricted_local) {
 			/* Remotely initiated unrestrict. */
-			conn->on_channel_restrict_info(chan, UNRESTRICTED);
+			conn->actions->channel_restrict_info(chan, UNRESTRICTED);
 			chan->restricted_local = 0;
 		} else {
 			/* Should not get dup. with reliable trans. */
@@ -763,17 +759,16 @@ int channel_restrict_ack_event(void *context)
 	}
 	if (earg->rack->restricted) {
 		if (chan->restricted_local) {
-			conn->on_channel_restrict_info(chan, RESTRICTED);
+			conn->actions->channel_restrict_info(chan, RESTRICTED);
 		} else {
 			firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
 				      "Got impossible restr. req.");
 		}
 	} else {
-		if (chan->restricted_local) {
-			conn->on_channel_restrict_info(chan, RESTRICTION_DENIED);
-		} else {
-			conn->on_channel_restrict_info(chan, UNRESTRICTED);
-		}
+		enum restriction_transition t;
+
+		t = chan->restricted_local ? RESTRICTION_DENIED : UNRESTRICTED;
+		conn->actions->channel_restrict_info(chan, t);
 		chan->restricted_local = 0;
 	}
 	chan->restricted_remote = earg->rack->restricted;

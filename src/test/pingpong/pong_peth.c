@@ -63,6 +63,17 @@ bool pong_chan_received(struct firefly_channel *chan);
 void pong_handle_pingpong_data(pingpong_data *data, void *ctx);
 void *send_data_and_close(void *args);
 
+struct firefly_connection_actions conn_actions = {
+	.channel_opened		= pong_chan_opened,
+	.channel_closed		= pong_chan_closed,
+	.channel_recv		= pong_chan_received,
+	// New -v
+	.channel_rejected	= NULL,
+	.channel_restrict	= NULL,
+	.channel_restrict_info	= NULL
+};
+
+
 struct firefly_connection *pong_connection_received(
 		struct firefly_transport_llp *llp, char *mac_addr)
 {
@@ -70,8 +81,7 @@ struct firefly_connection *pong_connection_received(
 	/* If address is correct, open a connection. */
 	if (strncmp(mac_addr, PING_MAC_ADDR, strlen(PING_MAC_ADDR)) == 0) {
 		conn = firefly_transport_connection_eth_posix_open(
-				pong_chan_opened, pong_chan_closed, pong_chan_received,
-				mac_addr, PING_IFACE, llp);
+				llp, mac_addr, PING_IFACE, &conn_actions);
 		pong_pass_test(CONNECTION_OPEN);
 	} else {
 		fprintf(stderr, "ERROR: Received unknown connection: %s\n",

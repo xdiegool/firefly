@@ -105,6 +105,16 @@ void ping_channel_rejected(struct firefly_connection *conn)
 	fprintf(stderr, "ERROR: Channel was rejected.\n");
 }
 
+struct firefly_connection_actions ping_eth_conn_actions = {
+	.channel_opened		= ping_chan_opened,
+	.channel_closed		= ping_chan_closed,
+	.channel_recv		= ping_chan_received,
+	// New -v
+	.channel_rejected	= NULL,
+	.channel_restrict	= NULL,
+	.channel_restrict_info	= NULL
+};
+
 struct firefly_connection *ping_eth_connection_received(
 		struct firefly_transport_llp *llp, char *mac_addr)
 {
@@ -113,15 +123,21 @@ struct firefly_connection *ping_eth_connection_received(
 	/* If address is correct, open a connection. */
 	if (strncmp(mac_addr, PONG_MAC_ADDR, strlen(PONG_MAC_ADDR)) == 0) {
 		printf("PING: Connection accepted.\n");
-		conn = firefly_transport_connection_eth_posix_open(ping_chan_opened,
-								ping_chan_closed,
-								ping_chan_received,
-								mac_addr,
-								PING_IFACE,
-								llp);
+		conn = firefly_transport_connection_eth_posix_open(llp,
+				mac_addr, PING_IFACE, &ping_eth_conn_actions);
 	}
 	return conn;
 }
+
+struct firefly_connection_actions ping_udp_conn_actions = {
+	.channel_opened		= ping_chan_opened,
+	.channel_closed		= ping_chan_closed,
+	.channel_recv		= ping_chan_received,
+	// New -v
+	.channel_rejected	= NULL,
+	.channel_restrict	= NULL,
+	.channel_restrict_info	= NULL
+};
 
 struct firefly_connection *ping_udp_connection_received(
 						struct firefly_transport_llp *llp,
@@ -132,12 +148,13 @@ struct firefly_connection *ping_udp_connection_received(
 	struct firefly_connection *conn = NULL;
 	/* If address is correct, open a connection. */
 	if (strncmp(ip_addr, PONG_ADDR, strlen(PONG_ADDR)) == 0 &&
-			port == PONG_PORT) {
+			port == PONG_PORT)
+	{
 		printf("PING: Connection accepted.\n");
-		conn = firefly_transport_connection_udp_posix_open(
-				ping_chan_opened, ping_chan_closed, ping_chan_received,
-				ip_addr, port, FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT,
-				llp);
+		conn = firefly_transport_connection_udp_posix_open(llp,
+				ip_addr, port,
+				FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT,
+				&ping_udp_conn_actions);
 	}
 	return conn;
 }
@@ -222,15 +239,23 @@ void *ping_main_thread(void *arg)
 		printf("LLP open\n");
 	else
 		fprintf(stderr, "Failed to open llp!\n");
-	eth_conn = firefly_transport_connection_eth_posix_open(ping_chan_opened,
-							       ping_chan_closed,
-							       ping_chan_received,
-							       PONG_MAC_ADDR,
-							       PING_IFACE,
-							       eth_llp);
+
+	struct firefly_connection_actions ping_eth_conn_actions = {
+		.channel_opened		= ping_chan_opened,
+		.channel_closed		= ping_chan_closed,
+		.channel_recv		= ping_chan_received,
+		// New -v
+		.channel_rejected	= ping_channel_rejected,
+		.channel_restrict	= NULL,
+		.channel_restrict_info	= NULL
+	};
+
+
+	eth_conn = firefly_transport_connection_eth_posix_open(eth_llp,
+			PONG_MAC_ADDR, PING_IFACE, &ping_eth_conn_actions);
 	printf("Connection %sopen\n", (eth_conn) ? " " : "NOT ");
 
-	firefly_channel_open(eth_conn, ping_channel_rejected);
+	firefly_channel_open(eth_conn);
 
 	pthread_create(&reader_thread, NULL, eth_reader_thread_main, eth_llp);
 
@@ -249,17 +274,24 @@ void *ping_main_thread(void *arg)
 	current_test_phase = PHASE_UDP;
 
 	llp = firefly_transport_llp_udp_posix_new(PING_PORT,
-						  ping_udp_connection_received, event_queue);
+			ping_udp_connection_received, event_queue);
 
-	conn = firefly_transport_connection_udp_posix_open(ping_chan_opened,
-							   ping_chan_closed,
-							   ping_chan_received,
-							   PONG_ADDR,
-							   PONG_PORT,
-							   FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT,
-							   llp);
+	struct firefly_connection_actions conn_actions = {
+		.channel_opened		= ping_chan_opened,
+		.channel_closed		= ping_chan_closed,
+		.channel_recv		= ping_chan_received,
+		// New -v
+		.channel_rejected	= ping_channel_rejected,
+		.channel_restrict	= NULL,
+		.channel_restrict_info	= NULL
+	};
+
+	conn = firefly_transport_connection_udp_posix_open(llp,
+			PONG_ADDR, PONG_PORT,
+			FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT,
+			&conn_actions);
 	printf("Connection %sopen\n", (conn) ? "" : "NOT ");
-	firefly_channel_open(conn, ping_channel_rejected);
+	firefly_channel_open(conn);
 	pthread_create(&reader_thread, NULL, udp_reader_thread_main, llp);
 
 	pthread_mutex_lock(&ping_done_lock);

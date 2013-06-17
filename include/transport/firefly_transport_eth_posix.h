@@ -19,13 +19,19 @@ struct firefly_transport_llp *firefly_transport_llp_eth_posix_new(
 
 void firefly_transport_llp_eth_posix_free(struct firefly_transport_llp *llp);
 
+/* struct firefly_connection *firefly_transport_connection_eth_posix_open( */
+/* 				firefly_channel_is_open_f on_channel_opened, */
+/* 				firefly_channel_closed_f on_channel_closed, */
+/* 				firefly_channel_accept_f on_channel_recv, */
+/* 				char *mac_address, */
+/* 				char *if_name, */
+/* 				struct firefly_transport_llp *llp); */
+
 struct firefly_connection *firefly_transport_connection_eth_posix_open(
-				firefly_channel_is_open_f on_channel_opened,
-				firefly_channel_closed_f on_channel_closed,
-				firefly_channel_accept_f on_channel_recv,
-				char *mac_address,
-				char *if_name,
-				struct firefly_transport_llp *llp);
+		struct firefly_transport_llp *llp,
+		char *mac_address,
+		char *if_name,
+		struct firefly_connection_actions *actions);
 
 void firefly_transport_eth_posix_read(struct firefly_transport_llp *llp,
 		struct timeval *tv);

@@ -145,12 +145,11 @@ void firefly_transport_connection_eth_posix_free(struct firefly_connection *conn
 }
 
 struct firefly_connection *firefly_transport_connection_eth_posix_open(
-				firefly_channel_is_open_f on_channel_opened,
-				firefly_channel_closed_f on_channel_closed,
-				firefly_channel_accept_f on_channel_recv,
-				char *mac_address,
-				char *if_name,
-				struct firefly_transport_llp *llp)
+		struct firefly_transport_llp *llp,
+		char *mac_address,
+		char *if_name,
+		struct firefly_connection_actions *actions)
+
 {
 	/* Get ifindex first to avoid mem alloc if it fails. */
 	int err;
@@ -167,10 +166,11 @@ struct firefly_connection *firefly_transport_connection_eth_posix_open(
 
 	/* Alloc connection structs */
 	struct protocol_connection_eth_posix *conn_eth;
-	conn_eth = malloc(sizeof(struct protocol_connection_eth_posix));
+	conn_eth = malloc(sizeof(*conn_eth));
 	struct firefly_connection *conn = firefly_connection_new(
-			on_channel_opened, on_channel_closed, on_channel_recv,
-			firefly_transport_eth_posix_write, firefly_transport_eth_posix_ack,
+			actions,
+			firefly_transport_eth_posix_write,
+			firefly_transport_eth_posix_ack,
 			NULL,
 			((struct transport_llp_eth_posix *)llp->llp_platspec)->event_queue,
 			conn_eth, firefly_transport_connection_eth_posix_free);

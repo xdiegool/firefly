@@ -14,4 +14,11 @@
  */
 struct firefly_transport_llp;
 
+/**
+ * @brief A structure used to specify callbacks from the transport layer.
+ */
+struct firefly_transport_llp_actions {
+
+};
+
 #endif

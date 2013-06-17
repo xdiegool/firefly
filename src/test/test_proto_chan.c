@@ -64,8 +64,8 @@ extern bool chan_opened_called;
 
 void test_next_channel_id()
 {
-	struct firefly_connection *conn = setup_test_conn_new(NULL,
-			NULL, NULL, eq);
+	struct firefly_connection_actions ca = {0};
+	struct firefly_connection *conn = setup_test_conn_new(&ca, eq);
 	for (int i = 0; i < MAX_TESTED_ID; ++i) {
 		struct firefly_channel *ch = firefly_channel_new(conn);
 		CU_ASSERT_EQUAL(i, ch->local_id);
@@ -77,8 +77,11 @@ void test_next_channel_id()
 void test_get_conn()
 {
 	// Init connection and register error handler on encoder and decoder
+	struct firefly_connection_actions ca = {
+		.channel_opened = chan_opened_mock
+	};
 	struct firefly_connection *conn =
-		setup_test_conn_new(chan_opened_mock, NULL, NULL, eq);
+		setup_test_conn_new(&ca, eq);
 	struct firefly_channel *chan = firefly_channel_new(conn);
 
 	struct firefly_connection *get_conn = firefly_channel_get_connection(
@@ -92,12 +95,15 @@ void test_chan_open()
 {
 	unsigned char *buf;
 	size_t buf_size;
+	struct firefly_connection_actions ca = {
+		.channel_opened = chan_opened_mock
+	};
 	// Init connection and register error handler on encoder and decoder
 	struct firefly_connection *conn =
-		setup_test_conn_new(chan_opened_mock, NULL, NULL, eq);
+		setup_test_conn_new(&ca, eq);
 
 	// Open a new channel
-	firefly_channel_open(conn, NULL);
+	firefly_channel_open(conn);
 
 	struct firefly_event *ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
@@ -154,10 +160,13 @@ void test_chan_recv_accept()
 {
 	unsigned char *buf;
 	size_t buf_size;
+	struct firefly_connection_actions ca = {
+		.channel_opened = chan_opened_mock,
+		.channel_recv   = chan_recv_accept_chan
+	};
 	// Init connection and register error handler on encoder and decoder
 	struct firefly_connection *conn =
-		setup_test_conn_new(chan_opened_mock, NULL,
-				chan_recv_accept_chan, eq);
+		setup_test_conn_new(&ca, eq);
 
 	// Create channel request.
 	firefly_protocol_channel_request chan_req;
@@ -215,10 +224,13 @@ void test_chan_recv_reject()
 {
 	unsigned char *buf;
 	size_t buf_size;
+	struct firefly_connection_actions ca = {
+		.channel_opened = chan_opened_mock,
+		.channel_recv   = chan_recv_reject_chan
+	};
 	// Setup connection
 	struct firefly_connection *conn =
-		setup_test_conn_new(chan_opened_mock, NULL,
-				       chan_recv_reject_chan, eq);
+		setup_test_conn_new(&ca, eq);
 
 	// create temporary labcomm encoder to send request.
 	firefly_protocol_channel_request chan_req;
@@ -265,15 +277,17 @@ void test_chan_open_rejected()
 {
 	unsigned char *buf;
 	size_t buf_size;
-	// Setup connection
+	struct firefly_connection_actions ca = {
+		.channel_opened   = chan_opened_mock,
+		.channel_rejected = chan_open_chan_rejected
+	};	// Setup connection
 	struct firefly_connection *conn =
-		setup_test_conn_new(chan_opened_mock, NULL,
-				       NULL, eq);
+		setup_test_conn_new(&ca, eq);
 	if (conn == NULL) {
 		CU_FAIL("Could not create connection.\n");
 	}
 
-	firefly_channel_open(conn, chan_open_chan_rejected);
+	firefly_channel_open(conn);
 	struct firefly_event *ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	firefly_event_execute(ev);
@@ -319,18 +333,24 @@ void test_chan_open_recv()
 {
 	struct firefly_connection *conn_open;
 	struct firefly_connection *conn_recv;
+	struct firefly_connection_actions conn_open_ca = {
+		.channel_opened = chan_opened_mock,
+		.channel_recv   = chan_open_recv_accept_open
+	};
+	struct firefly_connection_actions conn_recv_ca = {
+		.channel_opened = chan_opened_mock,
+		.channel_recv   = chan_open_recv_accept_recv
+	};
 	// Init connection to open channel
-	conn_open = setup_test_conn_new(chan_opened_mock, NULL,
-				   	   chan_open_recv_accept_open, eq);
+	conn_open = setup_test_conn_new(&conn_open_ca, eq);
 	conn_open->transport_write = chan_open_recv_write_open;
 
 	// Init connection to receive channel
-	conn_recv = setup_test_conn_new(chan_opened_mock, NULL,
-					chan_open_recv_accept_recv, eq);
+	conn_recv = setup_test_conn_new(&conn_recv_ca, eq);
 	conn_recv->transport_write = chan_open_recv_write_recv;
 
 	// Init open channel from conn_open
-	firefly_channel_open(conn_open, NULL);
+	firefly_channel_open(conn_open);
 	struct firefly_event *ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	firefly_event_execute(ev);
@@ -387,8 +407,11 @@ void chan_closed_cb(struct firefly_channel *chan)
 void test_chan_close()
 {
 	// Setup connection
+	struct firefly_connection_actions ca = {
+		.channel_closed = chan_closed_cb
+	};
 	struct firefly_connection *conn =
-		setup_test_conn_new(NULL, chan_closed_cb, NULL, eq);
+		setup_test_conn_new(&ca, eq);
 
 	// create channel
 	struct firefly_channel *chan = firefly_channel_new(conn);
@@ -427,9 +450,12 @@ void test_chan_recv_close()
 {
 	unsigned char *buf;
 	size_t buf_size;
+	struct firefly_connection_actions ca = {
+		.channel_closed = chan_closed_cb
+	};
 	// Setup connection
 	struct firefly_connection *conn =
-		setup_test_conn_new(NULL, chan_closed_cb, NULL, eq);
+		setup_test_conn_new(&ca, eq);
 
 	// create channel
 	struct firefly_channel *chan = firefly_channel_new(conn);
@@ -474,10 +500,13 @@ void test_send_app_data()
 	test_test_var app_test_data = 1;
 	struct firefly_event *ev;
 	struct labcomm_decoder *test_dec_2;
+	struct firefly_connection_actions ca = {
+		.channel_closed = chan_closed_cb
 
+	};
 	// Setup connection
 	struct firefly_connection *conn =
-		setup_test_conn_new(NULL, chan_closed_cb, NULL, eq);
+		setup_test_conn_new(&ca, eq);
 
 	struct firefly_channel *ch = firefly_channel_new(conn);
 	ch->remote_id = REMOTE_CHAN_ID;
@@ -536,8 +565,9 @@ void test_recv_app_data()
 	data_encoder = labcomm_encoder_new(labcomm_static_buffer_writer_new(), NULL);
 
 	// Setup connection
+	struct firefly_connection_actions ca = {0};
 	struct firefly_connection *conn =
-		setup_test_conn_new(NULL, NULL, NULL, eq);
+		setup_test_conn_new(&ca, eq);
 	struct firefly_channel *ch = firefly_channel_new(conn);
 	if (ch == NULL)
 		CU_FAIL("Could not create channel");
@@ -736,7 +766,16 @@ void mock_ack(unsigned char id, struct firefly_connection *conn) {
 	UNUSED_VAR(conn);
 }
 
-/* we need two connections for this test */
+struct firefly_connection_actions conn_actions = {
+	.channel_recv = should_accept_chan,
+	.channel_opened = chan_was_opened,
+	.channel_rejected = NULL,
+	.channel_closed = chan_was_closed,
+	.channel_restrict = NULL,
+	.channel_restrict_info = NULL
+};
+
+/* We need two connections for this test */
 struct firefly_connection *setup_conn(int conn_n,
 		struct firefly_event_queue *eqs[])
 {
@@ -756,9 +795,8 @@ struct firefly_connection *setup_conn(int conn_n,
 		break;
 	}
 
-	tcon = firefly_connection_new(chan_was_opened, chan_was_closed,
-					   should_accept_chan, writer, mock_ack, NULL,
-					   eqs[conn_n], NULL, NULL);
+	tcon = firefly_connection_new(&conn_actions, writer, mock_ack, NULL,
+				      eqs[conn_n], NULL, NULL);
 
 	if (tcon == NULL) {
 		CU_FAIL("Could not create channel");
@@ -802,7 +840,7 @@ void test_transmit_app_data_over_mock_trans_layer()
 
 	/* Chan 0 wants to open a connection... */
 	/* TODO: Might want to check the callback too... */
-	firefly_channel_open(connections[0], NULL);
+	firefly_channel_open(connections[0]);
 	CU_ASSERT_EQUAL(firefly_event_queue_length(
 				connections[0]->event_queue), 1);
 	struct firefly_event *ev = firefly_event_pop(
@@ -1088,19 +1126,21 @@ void test_chan_open_close_multiple()
 {
 	struct firefly_connection *conn_open;
 	struct firefly_connection *conn_recv;
+	struct firefly_connection_actions ca = {
+		.channel_opened = chan_opened_mock,
+		.channel_recv = chan_accept_mock
+	};
 
 	// Init connection to open channel
-	conn_open = setup_test_conn_new(chan_opened_mock, NULL,
-							chan_accept_mock, eq);
+	conn_open = setup_test_conn_new(&ca, eq);
 	conn_open->transport_write = chan_open_recv_write_open;
 
 	// Init connection to receive channel
-	conn_recv = setup_test_conn_new(chan_opened_mock, NULL,
-							chan_accept_mock, eq);
+	conn_recv = setup_test_conn_new(&ca, eq);
 	conn_recv->transport_write = chan_open_recv_write_recv;
 
 	// Init open channel from conn_open
-	firefly_channel_open(conn_open, NULL);
+	firefly_channel_open(conn_open);
 	struct firefly_event *ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	firefly_event_execute(ev);
@@ -1146,7 +1186,7 @@ void test_chan_open_close_multiple()
 	int chan_id_conn_open = conn_open->chan_list->chan->local_id;
 
 	// Init open channel from conn_recv
-	firefly_channel_open(conn_recv, NULL);
+	firefly_channel_open(conn_recv);
 	ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	firefly_event_execute(ev);

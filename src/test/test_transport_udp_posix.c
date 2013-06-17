@@ -149,12 +149,13 @@ static bool good_conn_received = false;
 struct firefly_connection *recv_conn_recv_conn(
 		struct firefly_transport_llp *llp, const char *ip_addr, unsigned short port)
 {
+	struct firefly_connection *conn;
+
 	CU_ASSERT_STRING_EQUAL(ip_addr, "127.0.0.1");
 	CU_ASSERT_EQUAL(port, remote_port);
 	good_conn_received = true;
-	struct firefly_connection *conn =
-			firefly_transport_connection_udp_posix_open(NULL, NULL, NULL,
-					ip_addr, port, 0, llp);
+	conn = firefly_transport_connection_udp_posix_open(llp, ip_addr, port,
+							   0, NULL);
 	return conn;
 }
 
@@ -207,7 +208,7 @@ void test_recv_data()
 	conn_udp->remote_addr = malloc(sizeof(struct sockaddr_in));
 	memcpy(conn_udp->remote_addr, &remote_addr, sizeof(remote_addr));
 	conn_udp->llp = llp;
-	struct firefly_connection *conn = firefly_connection_new(NULL, NULL,
+	struct firefly_connection *conn = firefly_connection_new(
 			NULL, NULL, NULL, NULL, eq, conn_udp,
 			firefly_transport_connection_udp_posix_free);
 
@@ -312,8 +313,8 @@ struct firefly_connection *recv_conn_keep_two(
 {
 	good_conn_received = true;
 	struct firefly_connection *conn =
-			firefly_transport_connection_udp_posix_open(NULL, NULL, NULL,
-					ip_addr, port, 0, llp);
+			firefly_transport_connection_udp_posix_open(llp,
+					ip_addr, port, 0, NULL);
 	return conn;
 }
 
@@ -416,8 +417,8 @@ void test_conn_open_and_send()
 	struct firefly_transport_llp *llp = firefly_transport_llp_udp_posix_new(
 							local_port, NULL, eq);
 	struct firefly_connection *conn = 
-		firefly_transport_connection_udp_posix_open(NULL, NULL, NULL,
-				"127.0.0.1", 55550, 0, llp);
+		firefly_transport_connection_udp_posix_open(llp,
+				"127.0.0.1", 55550, 0, NULL);
 	CU_ASSERT_PTR_NOT_NULL_FATAL(conn);
 
 	struct sockaddr_in recv_addr;
@@ -442,8 +443,8 @@ void test_conn_open_and_recv()
 	replace_protocol_data_received_cb(llp, protocol_data_received_repl);
 
 	struct firefly_connection *conn =
-		firefly_transport_connection_udp_posix_open(NULL, NULL, NULL,
-				"127.0.0.1", 55550, 0, llp);
+		firefly_transport_connection_udp_posix_open(llp,
+				"127.0.0.1", 55550, 0, NULL);
 	CU_ASSERT_PTR_NOT_NULL_FATAL(conn);
 
 	struct sockaddr_in send_addr;
@@ -465,8 +466,8 @@ struct firefly_connection *open_and_recv_conn_recv_conn(
 		struct firefly_transport_llp *llp, const char *ip_addr, unsigned short port)
 {
 	good_conn_received = true;
-	conn_recv = firefly_transport_connection_udp_posix_open(NULL, NULL, NULL,
-			ip_addr, port, 0, llp);
+	conn_recv = firefly_transport_connection_udp_posix_open(llp,
+			ip_addr, port, 0, NULL);
 	return conn_recv;
 }
 
@@ -487,8 +488,8 @@ void test_open_and_recv_with_two_llp()
 	replace_protocol_data_received_cb(llp_send, protocol_data_received_repl);
 
 	struct firefly_connection *conn_send = 
-		firefly_transport_connection_udp_posix_open(NULL, NULL, NULL,
-				"127.0.0.1", local_port, 0, llp_send);
+		firefly_transport_connection_udp_posix_open(llp_send,
+				"127.0.0.1", local_port, 0, NULL);
 	CU_ASSERT_PTR_NOT_NULL(conn_send);
 
 	firefly_transport_udp_posix_write(send_buf, sizeof(send_buf),
@@ -584,7 +585,7 @@ void test_read_mult_threads()
 	conn_udp->remote_addr = malloc(sizeof(struct sockaddr_in));
 	memcpy(conn_udp->remote_addr, &remote_addr, sizeof(remote_addr));
 	conn_udp->llp = llp;
-	struct firefly_connection *conn = firefly_connection_new(NULL, NULL,
+	struct firefly_connection *conn = firefly_connection_new(
 			NULL, NULL, NULL, NULL, eq, conn_udp,
 			firefly_transport_connection_udp_posix_free);
 	add_connection_to_llp(conn, llp);
@@ -618,13 +619,13 @@ void test_llp_free_mult_conns()
 					local_port, recv_data_recv_conn, eq);
 	struct firefly_connection *conn;
 
-	conn = firefly_connection_udp_posix_new(NULL, NULL, NULL, llp, 0, NULL);
+	conn = firefly_connection_udp_posix_new(llp, NULL, 0, NULL);
 	add_connection_to_llp(conn, llp);
 
-	conn = firefly_connection_udp_posix_new(NULL, NULL, NULL, llp, 0, NULL);
+	conn = firefly_connection_udp_posix_new(llp, NULL, 0, NULL);
 	add_connection_to_llp(conn, llp);
 
-	conn = firefly_connection_udp_posix_new(NULL, NULL, NULL, llp, 0, NULL);
+	conn = firefly_connection_udp_posix_new(llp, NULL, 0, NULL);
 	add_connection_to_llp(conn, llp);
 
 	firefly_transport_llp_udp_posix_free(llp);
@@ -641,8 +642,8 @@ void test_llp_free_mult_conns_w_chans()
 	struct firefly_connection *conn;
 	struct firefly_channel *ch;
 
-	conn = firefly_transport_connection_udp_posix_open(NULL, NULL, NULL,
-			"127.0.0.1", 55550, 0, llp);
+	conn = firefly_transport_connection_udp_posix_open(llp,
+			"127.0.0.1", 55550, 0, NULL);
 
 	ch = firefly_channel_new(conn);
 	ch->remote_id = 0;
@@ -652,15 +653,15 @@ void test_llp_free_mult_conns_w_chans()
 	ch->remote_id = 1;
 	add_channel_to_connection(ch, conn);
 
-	conn = firefly_transport_connection_udp_posix_open(NULL, NULL, NULL,
-			"127.0.0.1", 55550, 0, llp);
+	conn = firefly_transport_connection_udp_posix_open(llp,
+			"127.0.0.1", 55550, 0, NULL);
 
 	ch = firefly_channel_new(conn);
 	ch->remote_id = 2;
 	add_channel_to_connection(ch, conn);
 
-	conn = firefly_transport_connection_udp_posix_open(NULL, NULL, NULL,
-			"127.0.0.1", 55550, 0, llp);
+	conn = firefly_transport_connection_udp_posix_open(llp,
+			"127.0.0.1", 55550, 0, NULL);
 
 	ch = firefly_channel_new(conn);
 	ch->remote_id = 3;
@@ -722,9 +723,8 @@ void test_send_important()
 	struct transport_llp_udp_posix *llp_udp =
 		(struct transport_llp_udp_posix *) llp->llp_platspec;
 	struct firefly_connection *conn =
-		firefly_transport_connection_udp_posix_open(NULL, NULL, NULL,
-				"127.0.0.1", 55550, FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT,
-				llp);
+		firefly_transport_connection_udp_posix_open(llp,
+							    "127.0.0.1", 55550, FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT, NULL);
 	CU_ASSERT_PTR_NOT_NULL_FATAL(conn);
 
 	unsigned char id;
@@ -782,9 +782,8 @@ void test_send_important_ack()
 	struct transport_llp_udp_posix *llp_udp =
 		(struct transport_llp_udp_posix *) llp->llp_platspec;
 	struct firefly_connection *conn =
-		firefly_transport_connection_udp_posix_open(NULL, NULL, NULL,
-				"127.0.0.1", 55550, FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT,
-				llp);
+		firefly_transport_connection_udp_posix_open(llp,
+							    "127.0.0.1", 55550, FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT, NULL);
 	CU_ASSERT_PTR_NOT_NULL_FATAL(conn);
 
 	unsigned char id;
@@ -809,9 +808,8 @@ void test_send_important_id_null()
 	struct transport_llp_udp_posix *llp_udp =
 		(struct transport_llp_udp_posix *) llp->llp_platspec;
 	struct firefly_connection *conn =
-		firefly_transport_connection_udp_posix_open(NULL, NULL, NULL,
-				"127.0.0.1", 55550, FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT,
-				llp);
+		firefly_transport_connection_udp_posix_open(llp,
+							    "127.0.0.1", 55550, FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT, NULL);
 	CU_ASSERT_PTR_NOT_NULL_FATAL(conn);
 
 	expected_error = FIREFLY_ERROR_TRANS_WRITE;
@@ -834,9 +832,9 @@ void test_send_important_long_timeout()
 	struct transport_llp_udp_posix *llp_udp =
 		(struct transport_llp_udp_posix *) llp->llp_platspec;
 	struct firefly_connection *conn =
-		firefly_transport_connection_udp_posix_open(NULL, NULL, NULL,
+		firefly_transport_connection_udp_posix_open(llp,
 				"127.0.0.1", 55550, long_timeout,
-				llp);
+				NULL);
 	CU_ASSERT_PTR_NOT_NULL_FATAL(conn);
 
 	unsigned char id;

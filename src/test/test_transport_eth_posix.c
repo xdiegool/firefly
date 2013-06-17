@@ -192,7 +192,7 @@ static struct firefly_connection *on_conn_recv_keep(
 	}
 	recv_conn_called = true;
 	return firefly_transport_connection_eth_posix_open(
-			NULL, NULL, NULL, mac_address, "lo", llp);
+			llp, mac_address, "lo", NULL);
 }
 
 static struct firefly_connection *on_conn_recv_keep_two(
@@ -201,7 +201,7 @@ static struct firefly_connection *on_conn_recv_keep_two(
 	UNUSED_VAR(llp);
 	recv_conn_called = true;
 	return firefly_transport_connection_eth_posix_open(
-			NULL, NULL, NULL, mac_address, "lo", llp);
+			llp, mac_address, "lo", NULL);
 }
 
 void test_eth_recv_connection()
@@ -233,7 +233,7 @@ void test_eth_recv_data()
 
 	send_data();
 	firefly_transport_connection_eth_posix_open(
-			NULL, NULL, NULL, remote_mac_addr, "lo", llp);
+			llp, remote_mac_addr, "lo", NULL);
 
 	firefly_transport_eth_posix_read(llp, NULL);
 	event_execute_test(eq, 1);
@@ -358,7 +358,7 @@ void test_eth_conn_open_and_send()
 	struct firefly_transport_llp *llp = firefly_transport_llp_eth_posix_new(
 			"lo", on_conn_recv, eq);
 	struct firefly_connection *conn = firefly_transport_connection_eth_posix_open(
-			NULL, NULL, NULL, remote_mac_addr, "lo", llp);
+			llp, remote_mac_addr, "lo", NULL);
 
 	int socket = open_socket();
 
@@ -427,9 +427,9 @@ void test_eth_recv_data_two_conn()
 	replace_protocol_data_received_cb(llp, protocol_data_received_repl);
 
 	struct firefly_connection *conn_1 = firefly_transport_connection_eth_posix_open(
-			NULL, NULL, NULL, remote_mac_addr, "lo", llp);
+											llp, remote_mac_addr, "lo", NULL);
 	struct firefly_connection *conn_2 = firefly_transport_connection_eth_posix_open(
-			NULL, NULL, NULL, remote_mac_addr_alt, "lo", llp);
+											llp, remote_mac_addr_alt, "lo", NULL);
 
 	data_recv_expected_conn = conn_1;
 	send_data_w_addr(remote_mac_addr);
@@ -457,7 +457,7 @@ void test_eth_conn_close_recv()
 	struct firefly_transport_llp *llp = firefly_transport_llp_eth_posix_new(
 			"lo", on_conn_recv, eq);
 	struct firefly_connection *conn = firefly_transport_connection_eth_posix_open(
-			NULL, NULL, NULL, remote_mac_addr, "lo", llp);
+			llp, remote_mac_addr, "lo", NULL);
 	firefly_connection_close(conn);
 	send_data();
 	firefly_transport_eth_posix_read(llp, NULL);
@@ -485,14 +485,14 @@ void test_eth_llp_free_mult_conns()
 					"lo", NULL, eq);
 	struct firefly_connection *conn;
 
-	conn = firefly_transport_connection_eth_posix_open(NULL, NULL, NULL,
-			"00:00:00:00:00:00", "lo", llp);
+	conn = firefly_transport_connection_eth_posix_open(llp,
+			"00:00:00:00:00:00", "lo", NULL);
 
-	conn = firefly_transport_connection_eth_posix_open(NULL, NULL, NULL,
-			"00:00:00:00:00:00", "lo", llp);
+	conn = firefly_transport_connection_eth_posix_open(llp,
+			"00:00:00:00:00:00", "lo", NULL);
 
-	conn = firefly_transport_connection_eth_posix_open(NULL, NULL, NULL,
-			"00:00:00:00:00:00", "lo", llp);
+	conn = firefly_transport_connection_eth_posix_open(llp,
+			"00:00:00:00:00:00", "lo", NULL);
 
 	firefly_transport_llp_eth_posix_free(llp);
 	event_execute_test(eq, 8);
@@ -507,8 +507,8 @@ void test_eth_llp_free_mult_conns_w_chans()
 	struct firefly_connection *conn;
 	struct firefly_channel *ch;
 
-	conn = firefly_transport_connection_eth_posix_open(NULL, NULL, NULL,
-			"00:00:00:00:00:00", "lo", llp);
+	conn = firefly_transport_connection_eth_posix_open(llp,
+			"00:00:00:00:00:00", "lo", NULL);
 
 	ch = firefly_channel_new(conn);
 	ch->remote_id = 0;
@@ -518,15 +518,15 @@ void test_eth_llp_free_mult_conns_w_chans()
 	ch->remote_id = 1;
 	add_channel_to_connection(ch, conn);
 
-	conn = firefly_transport_connection_eth_posix_open(NULL, NULL, NULL,
-			"00:00:00:00:00:00", "lo", llp);
+	conn = firefly_transport_connection_eth_posix_open(llp,
+			"00:00:00:00:00:00", "lo", NULL);
 
 	ch = firefly_channel_new(conn);
 	ch->remote_id = 2;
 	add_channel_to_connection(ch, conn);
 
-	conn = firefly_transport_connection_eth_posix_open(NULL, NULL, NULL,
-			"00:00:00:00:00:00", "lo", llp);
+	conn = firefly_transport_connection_eth_posix_open(llp,
+			"00:00:00:00:00:00", "lo", NULL);
 
 	ch = firefly_channel_new(conn);
 	ch->remote_id = 3;

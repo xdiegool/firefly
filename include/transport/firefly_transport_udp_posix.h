@@ -72,21 +72,20 @@ void firefly_transport_llp_udp_posix_free(struct firefly_transport_llp *llp);
  * To recieve data on this connection, a read operation should be performed on
  * the provided #firefly_transport_llp.
  *
+ * @param llp The \c #firefly_transport_llp to open a connection on.
  * @param remote_ip_addr The IP address to connect to.
  * @param remote_port The port to connect to.
  * @param timeout The time in ms between resends.
- * @param llp The \c #firefly_transport_llp to open a connection on.
+ * @param acitons The callbacks used.
  * @return The newly opened connection.
  * @retval NULL Returns \c NULL upon failure.
  */
 struct firefly_connection *firefly_transport_connection_udp_posix_open(
-				firefly_channel_is_open_f on_channel_opened,
-				firefly_channel_closed_f on_channel_closed,
-				firefly_channel_accept_f on_channel_recv,
-				const char *remote_ip_addr,
-				unsigned short remote_port,
-				unsigned int timeout,
-				struct firefly_transport_llp *llp);
+		struct firefly_transport_llp *llp,
+		const char *remote_ip_addr,
+		unsigned short remote_port,
+		unsigned int timeout,
+		struct firefly_connection_actions *actions);
 
 /**
  * @brief Start reader and resend thread. Both will run until stopped with

@@ -10,9 +10,7 @@
 #include "utils/firefly_event_queue_private.h"
 
 struct firefly_connection *firefly_connection_new(
-		firefly_channel_is_open_f on_channel_opened,
-		firefly_channel_closed_f on_channel_closed,
-		firefly_channel_accept_f on_channel_recv,
+		struct firefly_connection_actions *actions,
 		transport_write_f transport_write,
 		transport_ack_f transport_ack,
 		struct firefly_memory_funcs *memory_replacements,
@@ -33,6 +31,7 @@ struct firefly_connection *firefly_connection_new(
 		FIREFLY_FREE(conn);
 		return NULL;
 	}
+	conn->actions = actions;
 	reader = transport_labcomm_reader_new(conn);
 	writer = transport_labcomm_writer_new(conn);
 	if (reader == NULL || writer == NULL) {
@@ -65,11 +64,8 @@ struct firefly_connection *firefly_connection_new(
 
 	conn->event_queue = event_queue;
 
-	conn->on_channel_opened		= on_channel_opened;
-	conn->on_channel_closed		= on_channel_closed;
-	conn->on_channel_recv		= on_channel_recv;
-	conn->on_channel_restrict	= NULL;
-	conn->on_channel_restrict_info	= NULL;
+	/* TOOD: Actions. */
+
 	conn->chan_list			= NULL;
 	conn->channel_id_counter	= 0;
 

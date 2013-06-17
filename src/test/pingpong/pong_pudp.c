@@ -96,6 +96,16 @@ bool pong_chan_restr(struct firefly_channel *chan)
 	return true;
 }
 
+struct firefly_connection_actions pong_actions = {
+	.channel_opened		= pong_chan_opened,
+	.channel_closed		= pong_chan_closed,
+	.channel_recv		= pong_chan_received,
+	// New -v
+	.channel_rejected	= NULL,
+	.channel_restrict	= pong_chan_restr,
+	.channel_restrict_info	= pong_chan_restr_info
+};
+
 struct firefly_connection *pong_connection_received(
 		struct firefly_transport_llp *llp,
 		const char *ip_addr,
@@ -108,13 +118,10 @@ struct firefly_connection *pong_connection_received(
 			port == PING_PORT)
 	{
 		conn = firefly_transport_connection_udp_posix_open(
-				pong_chan_opened, pong_chan_closed,
-				pong_chan_received, ip_addr, port,
-				FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT, llp);
+				llp, ip_addr, port,
+				FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT,
+				&pong_actions);
 		pong_pass_test(CONNECTION_OPEN);
-		firefly_connection_enable_restricted_channels(conn,
-				pong_chan_restr_info, pong_chan_restr);
-
 	} else {
 		fprintf(stderr, "ERROR: Received unknown connection: %s:%hu\n",
 			ip_addr, port);
@@ -176,7 +183,7 @@ void pong_handle_pingpong_data(pingpong_data *data, void *ctx)
 
 void *send_data_and_close(void *args)
 {
-	struct firefly_channel *chan = (struct firefly_channel *) args;
+	struct firefly_channel *chan = args;
 	pingpong_data data = PONG_DATA;
 	struct labcomm_encoder *enc = firefly_protocol_get_output_stream(chan);
 	labcomm_encode_pingpong_data(enc, &data);

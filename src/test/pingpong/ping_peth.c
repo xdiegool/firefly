@@ -104,6 +104,16 @@ void ping_channel_rejected(struct firefly_connection *conn)
 	fprintf(stderr, "ERROR: Channel was rejected.\n");
 }
 
+struct firefly_connection_actions conn_actions = {
+	.channel_opened		= ping_chan_opened,
+	.channel_closed		= ping_chan_closed,
+	.channel_recv		= ping_chan_received,
+	// New -v
+	.channel_rejected	= ping_channel_rejected,
+	.channel_restrict	= NULL,
+	.channel_restrict_info	= NULL
+};
+
 struct firefly_connection *ping_connection_received(
 		struct firefly_transport_llp *llp, char *mac_addr)
 {
@@ -113,8 +123,7 @@ struct firefly_connection *ping_connection_received(
 	if (strncmp(mac_addr, PONG_MAC_ADDR, strlen(PONG_MAC_ADDR)) == 0) {
 		printf("PING: Connection accepted.\n");
 		conn = firefly_transport_connection_eth_posix_open(
-				ping_chan_opened, ping_chan_closed, ping_chan_received,
-				mac_addr, PING_IFACE, llp);
+				llp, mac_addr, PING_IFACE, &conn_actions);
 	}
 	return conn;
 }
@@ -166,13 +175,13 @@ int main()
 					ping_connection_received, event_queue);
 
 	struct firefly_connection *conn =
-			firefly_transport_connection_eth_posix_open(ping_chan_opened, ping_chan_closed,
-					ping_chan_received, PONG_MAC_ADDR, PONG_IFACE, llp);
+		firefly_transport_connection_eth_posix_open(llp,
+				PONG_MAC_ADDR, PONG_IFACE, &conn_actions);
 	if (conn != NULL) {
 		ping_pass_test(CONNECTION_OPEN);
 	}
 
-	firefly_channel_open(conn, ping_channel_rejected);
+	firefly_channel_open(conn);
 
 	res = pthread_mutex_init(&rtarg.lock, NULL);
 	if (res) {
