@@ -11,16 +11,17 @@
 
 struct resend_queue *firefly_resend_queue_new()
 {
-	struct resend_queue *rq = malloc(sizeof(struct resend_queue));
-	if (rq == NULL) {
-		// TODO error
-		return NULL;
+	struct resend_queue *rq;
+
+	rq = malloc(sizeof(*rq));
+	if (rq) {
+		rq->next_id = 1;
+		rq->first = NULL;
+		rq->last = NULL;
+		pthread_cond_init(&rq->sig, NULL);
+		pthread_mutex_init(&rq->lock, NULL);
 	}
-	rq->next_id = 1;
-	rq->first = NULL;
-	rq->last = NULL;
-	pthread_cond_init(&rq->sig, NULL);
-	pthread_mutex_init(&rq->lock, NULL);
+
 	return rq;
 }
 
@@ -56,7 +57,7 @@ unsigned char firefly_resend_add(struct resend_queue *rq,
 		unsigned char *data, size_t size, long timeout_ms,
 		unsigned char retries, struct firefly_connection *conn)
 {
-	struct resend_elem *re = malloc(sizeof(struct resend_elem));
+	struct resend_elem *re = malloc(sizeof(*re));
 	if (re == NULL) {
 		return 0;
 	}
@@ -167,12 +168,14 @@ static inline bool timespec_past(struct timespec *fixed, struct timespec *var)
 }
 
 int firefly_resend_wait(struct resend_queue *rq,
-		unsigned char **data, size_t *size, struct firefly_connection **conn,
+		unsigned char **data, size_t *size,
+		struct firefly_connection **conn,
 		unsigned char *id)
 {
 	int result;
 	struct resend_elem *res = NULL;
 	struct timespec now;
+
 	pthread_mutex_lock(&rq->lock);
 	clock_gettime(CLOCK_REALTIME, &now);
 	res = rq->first;

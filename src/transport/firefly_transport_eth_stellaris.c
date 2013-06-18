@@ -100,20 +100,16 @@ struct firefly_transport_llp *firefly_transport_llp_eth_stellaris_new(
 
 	llp_eth_stellaris = malloc(sizeof(*llp_eth_stellaris));
 	if (llp_eth_stellaris == NULL) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 3,
-				"Failed in %s() on line %d.\n", __FUNCTION__,
-				__LINE__);
+		FFL(FIREFLY_ERROR_ALLOC);
 		return NULL;
 	}
 	llp_eth_stellaris->on_conn_recv = on_conn_recv;
 	llp_eth_stellaris->event_queue  = event_queue;
 	memcpy(llp_eth_stellaris->src_addr, src_addr, ETH_ADDR_LEN);
 
-	llp = malloc(sizeof(struct firefly_transport_llp));
+	llp = malloc(sizeof(*llp));
 	if (llp == NULL) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 3,
-				"Failed in %s() on line %d.\n", __FUNCTION__,
-				__LINE__);
+		FFL(FIREFLY_ERROR_ALLOC);
 		free(llp_eth_stellaris);
 		return NULL;
 	}
@@ -126,20 +122,16 @@ struct firefly_transport_llp *firefly_transport_llp_eth_stellaris_new(
 void firefly_transport_llp_eth_stellaris_free(struct firefly_transport_llp *llp)
 {
 	struct transport_llp_eth_stellaris *llp_eth;
-	llp_eth = (struct transport_llp_eth_stellaris *) llp->llp_platspec;
+	llp_eth = llp->llp_platspec;
 	int ret = llp_eth->event_queue->offer_event_cb(llp_eth->event_queue,
 			FIREFLY_PRIORITY_LOW,
 			firefly_transport_llp_eth_stellaris_free_event, llp);
-	if (ret) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 1,
-					  "could not add event to queue");
-	}
+	FFLIF(ret, FIREFLY_ERROR_ALLOC)
 }
 
 int firefly_transport_llp_eth_stellaris_free_event(void *event_arg)
 {
-	struct firefly_transport_llp *llp =
-		(struct firefly_transport_llp *) event_arg;
+	struct firefly_transport_llp *llp = event_arg;
 
 	bool empty = true;
 	// Close all connections.
@@ -150,9 +142,7 @@ int firefly_transport_llp_eth_stellaris_free_event(void *event_arg)
 		head = head->next;
 	}
 	if (empty) {
-		struct transport_llp_eth_stellaris *llp_eth =
-			(struct transport_llp_eth_stellaris *)
-				llp->llp_platspec;
+		struct transport_llp_eth_stellaris *llp_eth = llp->llp_platspec;
 		free(llp_eth);
 		free(llp);
 	} else {
@@ -166,9 +156,7 @@ void firefly_transport_connection_eth_stellaris_free(
 		struct firefly_connection *conn)
 {
 	struct protocol_connection_eth_stellaris *conn_eth;
-	conn_eth =
-		(struct protocol_connection_eth_stellaris *)
-			conn->transport_conn_platspec;
+	conn_eth = conn->transport_conn_platspec;
 	remove_connection_from_llp(conn_eth->llp, conn,
 			firefly_connection_eq_ptr);
 	free(conn_eth);
@@ -179,22 +167,22 @@ struct firefly_connection *firefly_transport_connection_eth_stellaris_open(
 		unsigned char *mac_address,
 		struct firefly_connection_actions *actions)
 {
-	struct transport_llp_eth_stellaris *llp_eth =
-		(struct transport_llp_eth_stellaris *) llp->llp_platspec;
+	struct transport_llp_eth_stellaris *llp_eth;
+	struct protocol_connection_eth_stellaris *conn_eth;
+	struct firefly_connection *conn;
 
-	struct protocol_connection_eth_stellaris *conn_eth =
-		malloc(sizeof(struct protocol_connection_eth_stellaris));
+	llp_eth = llp->llp_platspec;
+	conn_eth = malloc(sizeof(*conn_eth));
 
-	struct firefly_connection *conn = firefly_connection_new(
+	conn = firefly_connection_new(
 			actions,
 			firefly_transport_eth_stellaris_write,
 			firefly_transport_eth_stellaris_ack, NULL,
 			llp_eth->event_queue, conn_eth,
 			firefly_transport_connection_eth_stellaris_free);
+
 	if (conn == NULL || conn_eth == NULL) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 3,
-				"Failed in %s() on line %d.\n", __FUNCTION__,
-				__LINE__);
+		FFL(FIREFLY_ERROR_ALLOC);
 		free(conn_eth);
 		free(conn);
 
@@ -203,7 +191,6 @@ struct firefly_connection *firefly_transport_connection_eth_stellaris_open(
 
 	memcpy(conn_eth->remote_addr, mac_address, ETH_ADDR_LEN);
 	conn_eth->llp = llp;
-
 	add_connection_to_llp(conn, llp);
 
 	return conn;
@@ -219,12 +206,8 @@ void firefly_transport_eth_stellaris_write(unsigned char *data, size_t data_size
 
 	UNUSED_VAR(important);
 	UNUSED_VAR(id);
-
-	conn_eth = (struct protocol_connection_eth_stellaris *)
-		conn->transport_conn_platspec;
-
-	llp_eth = (struct transport_llp_eth_stellaris *)
-			conn_eth->llp->llp_platspec;
+	conn_eth = conn->transport_conn_platspec;
+	llp_eth = conn_eth->llp->llp_platspec;
 
 	frame = build_ethernet_frame(llp_eth->src_addr, conn_eth->remote_addr,
 			data, data_size);
@@ -255,11 +238,10 @@ bool connection_eq_remmac(struct firefly_connection *conn, void *context)
 	unsigned char *addr1;
 	unsigned char *addr2;
 
-	conn_eth = (struct protocol_connection_eth_stellaris *)
-		conn->transport_conn_platspec;
+	conn_eth = conn->transport_conn_platspec;
 
 	addr1 = conn_eth->remote_addr;
-	addr2 = (unsigned char *) context;
+	addr2 = context;
 
 	return !memcmp(addr1, addr2, ETH_ADDR_LEN);
 }
@@ -302,8 +284,7 @@ void firefly_transport_eth_stellaris_read(struct firefly_transport_llp *llp)
 		return;
 	}
 
-	struct firefly_event_llp_read_eth_stellaris *ev_a =
-		malloc(sizeof(struct firefly_event_llp_read_eth_stellaris));
+	struct firefly_event_llp_read_eth_stellaris *ev_a = malloc(sizeof(*ev_a));
 	if (ev_a == NULL) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 3,
 			 "Could not alloc event struct! In %s() on"
@@ -314,7 +295,7 @@ void firefly_transport_eth_stellaris_read(struct firefly_transport_llp *llp)
 	ev_a->len = len;
 	ev_a->eth_packet = eth_packet;
 
-	llp_eth = (struct transport_llp_eth_stellaris *) llp->llp_platspec;
+	llp_eth = llp->llp_platspec;
 
 	llp_eth->event_queue->offer_event_cb(llp_eth->event_queue,
 			FIREFLY_PRIORITY_HIGH,
@@ -324,11 +305,9 @@ void firefly_transport_eth_stellaris_read(struct firefly_transport_llp *llp)
 
 int firefly_transport_eth_stellaris_read_event(void *event_args)
 {
-	struct firefly_event_llp_read_eth_stellaris *ev_a =
-		(struct firefly_event_llp_read_eth_stellaris *) event_args;
+	struct firefly_event_llp_read_eth_stellaris *ev_a = event_args;
 	struct firefly_transport_llp *llp = ev_a->llp;
-	struct transport_llp_eth_stellaris *llp_eth =
-		(struct transport_llp_eth_stellaris *) llp->llp_platspec;
+	struct transport_llp_eth_stellaris *llp_eth = llp->llp_platspec;
 	struct firefly_connection *conn;
 
 	// Find existing connection or create new.
@@ -360,4 +339,3 @@ int firefly_transport_eth_stellaris_read_event(void *event_args)
 
 	return 0;
 }
-

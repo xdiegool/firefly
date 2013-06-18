@@ -160,16 +160,6 @@ enum restriction_transition {
 	RESTRICTION_DENIED
 };
 
-/* struct firefly_connection *firefly_connection_new( */
-/* 		firefly_channel_is_open_f on_channel_opened, */
-/* 		firefly_channel_closed_f on_channel_closed, */
-/* 		firefly_channel_accept_f on_channel_recv, */
-/* 		transport_write_f transport_write, */
-/* 		transport_ack_f transport_ack, */
-/* 		struct firefly_memory_funcs *memory_replacements, */
-/* 		struct firefly_event_queue *event_queue, */
-/* 		void *plat_spec, transport_connection_free plat_spec_free) */
-
 /* struct firefly_connection_actions conn_actions = { */
 /* 	.channel_opened		= NULL, */
 /* 	.channel_closed		= NULL, */
@@ -188,6 +178,9 @@ enum restriction_transition {
 typedef void (* firefly_channel_restrict_info_f)(struct firefly_channel *chan,
 						 enum restriction_transition rinfo);
 
+typedef void (* firefly_channel_error_f)(struct firefly_channel *chan);
+typedef void (* firefly_connection_error_f)(struct firefly_connection *conn);
+
 struct firefly_connection_actions {
 	firefly_channel_accept_f	channel_recv;
 	firefly_channel_is_open_f	channel_opened;		/**< Called when a channel has been opened. */
@@ -195,6 +188,8 @@ struct firefly_connection_actions {
 	firefly_channel_closed_f	channel_closed;		/**< Called when a channel has been closed. */
 	firefly_channel_restrict_f	channel_restrict;	/**< Called on incoming restriction request. */
 	firefly_channel_restrict_info_f	channel_restrict_info;	/**< Called on restriction status change. */
+	firefly_channel_error_f		channel_error;
+	firefly_connection_error_f	connection_error;
 };
 
 /**

@@ -22,33 +22,28 @@ static void udp_lwip_recv_callback(void *recv_arg, struct udp_pcb *upcb,
 		u16_t remote_port)
 {
 	UNUSED_VAR(upcb);
-	struct firefly_transport_llp *llp =
-		(struct firefly_transport_llp *) recv_arg;
-	struct transport_llp_udp_lwip *llp_udp =
-		(struct transport_llp_udp_lwip *) llp->llp_platspec;
+	struct firefly_transport_llp *llp = recv_arg;
+	struct transport_llp_udp_lwip *llp_udp = llp->llp_platspec;
 
-	struct firefly_event_llp_read_udp_posix *ev_a =
-		malloc(sizeof(struct firefly_event_llp_read_udp_posix));
+	struct firefly_event_llp_read_udp_posix *ev_a = malloc(sizeof(*ev_a));
 	if (llp_udp == NULL) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 2,
-				"Failed in %s().\n", __FUNCTION__);
+		FFL(FIREFLY_ERROR_ALLOC);
 		return;
 	}
-	ev_a->llp = llp;
-	ev_a->ip_addr = remote_ip_addr;
-	ev_a->p = pbuf;
-	ev_a->port = remote_port;
+	ev_a->llp	= llp;
+	ev_a->ip_addr	= remote_ip_addr;
+	ev_a->p		= pbuf;
+	ev_a->port	= remote_port;
 
 	llp_udp->event_queue->offer_event_cb(llp_udp->event_queue,
-			FIREFLY_PRIORITY_HIGH, firefly_transport_udp_lwip_read_event, ev_a);
+			FIREFLY_PRIORITY_HIGH,
+			firefly_transport_udp_lwip_read_event, ev_a);
 }
 
 int firefly_transport_udp_lwip_read_event(void *event_arg)
 {
-	struct firefly_event_llp_read_udp_posix *ev_a =
-		(struct firefly_event_llp_read_udp_posix *) event_arg;
-	struct transport_llp_udp_lwip *llp_udp =
-		(struct transport_llp_udp_lwip *) ev_a->llp->llp_platspec;
+	struct firefly_event_llp_read_udp_posix *ev_a = event_arg;
+	struct transport_llp_udp_lwip *llp_udp = ev_a->llp->llp_platspec;
 
 	// Find existing connection or create new.
 	struct firefly_connection *conn = find_connection(ev_a->llp,
@@ -114,12 +109,8 @@ struct firefly_transport_llp *firefly_transport_llp_udp_lwip_new(
 	llp_udp->on_conn_recv = on_conn_recv;
 	llp_udp->event_queue = event_queue;
 
-	struct firefly_transport_llp *llp = malloc(sizeof(
-						struct firefly_transport_llp));
-	if (llp == NULL) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 2,
-					  "Failed in %s().\n", __FUNCTION__);
-	}
+	struct firefly_transport_llp *llp = malloc(sizeof(*llp));
+	FFLIF(!llp, FIREFLY_ERROR_ALLOC);
 
 	llp->llp_platspec = llp_udp;
 	llp->conn_list = NULL;
@@ -131,23 +122,18 @@ struct firefly_transport_llp *firefly_transport_llp_udp_lwip_new(
 
 void firefly_transport_llp_udp_lwip_free(struct firefly_transport_llp *llp)
 {
-	struct transport_llp_udp_lwip *llp_lwip =
-		(struct transport_llp_udp_lwip *) llp->llp_platspec;
+	struct transport_llp_udp_lwip *llp_lwip = llp->llp_platspec;
 
 	int ret = llp_lwip->event_queue->offer_event_cb(llp_lwip->event_queue,
-			FIREFLY_PRIORITY_LOW, firefly_transport_llp_udp_lwip_free_event, llp);
-	if (ret) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 1,
-					  "could not add event to queue");
-	}
+			FIREFLY_PRIORITY_LOW,
+			firefly_transport_llp_udp_lwip_free_event, llp);
+	FFLIF(ret, FIREFLY_ERROR_ALLOC);
 }
 
 int firefly_transport_llp_udp_lwip_free_event(void *event_arg)
 {
-	struct firefly_transport_llp *llp =
-		(struct firefly_transport_llp *) event_arg;
-	struct transport_llp_udp_lwip *llp_udp =
-		(struct transport_llp_udp_lwip *) llp->llp_platspec;
+	struct firefly_transport_llp *llp = event_arg;
+	struct transport_llp_udp_lwip *llp_udp = llp->llp_platspec;
 
 	// Delete all connections.
 	bool empty = true;
@@ -171,10 +157,9 @@ int firefly_transport_llp_udp_lwip_free_event(void *event_arg)
 void firefly_transport_connection_udp_lwip_free(
 		struct firefly_connection *conn)
 {
-	struct protocol_connection_udp_lwip *conn_udp =
-		(struct protocol_connection_udp_lwip *)
-		conn->transport_conn_platspec;
+	struct protocol_connection_udp_lwip *conn_udp;
 
+	conn_udp = conn->transport_conn_platspec;
 	remove_connection_from_llp(conn_udp->llp, conn,
 			firefly_connection_eq_ptr);
 	free(conn_udp->remote_ip_addr);
@@ -187,10 +172,8 @@ struct firefly_connection *firefly_transport_connection_udp_lwip_open(
 		unsigned short remote_port,
 		struct firefly_connection_actions *actions)
 {
-	struct protocol_connection_udp_lwip *conn_udp =
-		malloc(sizeof(struct protocol_connection_udp_lwip));
-	struct transport_llp_udp_lwip *llp_lwip =
-		(struct transport_llp_udp_lwip *) llp->llp_platspec;
+	struct protocol_connection_udp_lwip *conn_udp =malloc(sizeof(*conn_udp));
+	struct transport_llp_udp_lwip *llp_lwip = llp->llp_platspec;
 	conn_udp->upcb = llp_lwip->upcb;
 
 	struct firefly_connection *conn = firefly_connection_new(
@@ -226,9 +209,8 @@ struct firefly_connection *firefly_transport_connection_udp_lwip_open(
 void firefly_transport_udp_lwip_write(unsigned char *data, size_t data_size,
 		struct firefly_connection *conn, bool important, unsigned char *id)
 {
-	struct protocol_connection_udp_lwip *conn_udp =
-		(struct protocol_connection_udp_lwip *)
-		conn->transport_conn_platspec;
+	struct protocol_connection_udp_lwip *conn_udp;
+	conn_udp = conn->transport_conn_platspec;
 	struct pbuf *pbuf = pbuf_alloc(PBUF_TRANSPORT, data_size, PBUF_RAM);
 	if (pbuf == NULL) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 3,
@@ -239,11 +221,12 @@ void firefly_transport_udp_lwip_write(unsigned char *data, size_t data_size,
 
 	err_t err = udp_sendto(conn_udp->upcb, pbuf, conn_udp->remote_ip_addr,
 			conn_udp->remote_port);
-	pbuf_free(pbuf);
 	if (err != ERR_OK) {
-		firefly_error(FIREFLY_ERROR_TRANS_WRITE, 2,
-				"Failed in %s().\n", __FUNCTION__);
+		FFL(FIREFLY_ERROR_TRANS_WRITE);
+		if (conn->actions->connection_error)
+			conn->actions->connection_error(conn);
 	}
+	pbuf_free(pbuf);
 	if (important && id != NULL) {
 		// TODO
 	}
@@ -296,11 +279,9 @@ struct ip_addr *str_to_ip_addr(const char *ip_str)
 		}
 	}
 
-	struct ip_addr *ip_addr = malloc(sizeof(struct ip_addr));
+	struct ip_addr *ip_addr = malloc(sizeof(*ip_addr));
 	if (ip_addr == NULL) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 3,
-				"Failed in %s() on line %d.\n", __FUNCTION__,
-				__LINE__);
+		FFL(FIREFLY_ERROR_ALLOC);
 		return NULL;
 	}
 	IP4_ADDR(ip_addr,ip_parts[0],ip_parts[1],ip_parts[2],ip_parts[3]);

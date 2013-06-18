@@ -9,6 +9,19 @@
 #include <stdlib.h>
 #include <labcomm.h>
 
+		/* firefly_error(FIREFLY_ERROR_SOCKET, 3, */
+		/* 		"Failed in %s() on line %d.\n", __FUNCTION__, */
+		/* 		__LINE__); */
+
+#define FFL(fe)							\
+	do { firefly_error(fe, 3, ":%s() failed at %s:%04d\n",	\
+			   __func__, __FILE__, __LINE__);	\
+	} while (0)
+
+#define FFLIF(cond, fe)						\
+	do { if (cond) FFL(fe); } while (0);
+
+
 /**
  * @brief Error IDs
  */
