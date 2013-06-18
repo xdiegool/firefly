@@ -698,14 +698,7 @@ void handle_channel_restrict_ack(firefly_protocol_channel_restrict_ack *data,
 			      "Could not allocate event arg.\n");
 		return;
 	}
-	earg->rack = FIREFLY_MALLOC(sizeof(*data));
-	if (!earg->rack) {
-		FIREFLY_FREE(earg);
-		firefly_error(FIREFLY_ERROR_ALLOC, 1,
-			      "Could not copy arg.\n");
-		return;
-	}
-	memcpy(earg->rack, data, sizeof(*data));
+	memcpy(&earg->rack, data, sizeof(*data));
 	earg->conn = conn;
 	ret = conn->event_queue->offer_event_cb(conn->event_queue,
 						FIREFLY_PRIORITY_MEDIUM,
@@ -726,13 +719,13 @@ int channel_restrict_ack_event(void *context)
 
 	earg = context;
 	conn = earg->conn;
-	chan = find_channel_by_local_id(conn, earg->rack->dest_chan_id);
+	chan = find_channel_by_local_id(conn, earg->rack.dest_chan_id);
 	if (!chan) {
 		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1, "Unknown id");
 		FIREFLY_FREE(context);
 		return -1;
 	}
-	if (earg->rack->restricted) {
+	if (earg->rack.restricted) {
 		if (chan->restricted_local) {
 			conn->actions->channel_restrict_info(chan, RESTRICTED);
 		} else {
@@ -746,8 +739,7 @@ int channel_restrict_ack_event(void *context)
 		conn->actions->channel_restrict_info(chan, t);
 		chan->restricted_local = 0;
 	}
-	chan->restricted_remote = earg->rack->restricted;
-	FIREFLY_FREE(earg->rack);
+	chan->restricted_remote = earg->rack.restricted;
 	FIREFLY_FREE(earg);
 
 	return 0;

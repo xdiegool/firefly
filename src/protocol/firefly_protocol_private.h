@@ -462,7 +462,7 @@ int channel_restrict_request_event(void *context);
 struct firefly_event_chan_restrict_ack {
 	struct firefly_connection *conn; /**< The connection the request was
 						received on. */
-	firefly_protocol_channel_restrict_request *rack; /**< The request.*/
+	firefly_protocol_channel_restrict_request rack; /**< The request.*/
 };
 
 void handle_channel_restrict_ack(
