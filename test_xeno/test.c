@@ -368,9 +368,9 @@ int main(int argc, char **argv)
 		timeout.tv_nsec = timeout.tv_nsec % 1000000000;
 	}
 
-	if (argc >= 4) {
-		runserv = strncmp("recv", argv[3], 4) == 0 ? 'r' : 
-			(strncmp("send", argv[3], 4) == 0 ? 's' : 'b');
+	if (argc >= 5) {
+		runserv = strncmp("recv", argv[4], 4) == 0 ? 'r' : 
+			(strncmp("send", argv[4], 4) == 0 ? 's' : 'b');
 	}
 
 	pthread_mutex_init(&exit_mutex, NULL);
