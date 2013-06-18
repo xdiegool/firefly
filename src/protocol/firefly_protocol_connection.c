@@ -23,7 +23,7 @@ struct firefly_connection *firefly_connection_new(
 	struct labcomm_reader  *reader;
 	struct labcomm_writer  *writer;
 
-	conn = FIREFLY_MALLOC(sizeof(struct firefly_connection));
+	conn = FIREFLY_MALLOC(sizeof(*conn));
 	if (conn == NULL) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 3,
 			      "memory allocation failed %s:%d",
@@ -61,24 +61,19 @@ struct firefly_connection *firefly_connection_new(
 		FIREFLY_FREE(conn);
 		return NULL;
 	}
-
-	conn->event_queue = event_queue;
-
-	/* TOOD: Actions. */
-
+	conn->event_queue		= event_queue;
 	conn->chan_list			= NULL;
 	conn->channel_id_counter	= 0;
+	conn->transport_encoder		= transport_encoder;
+	conn->transport_decoder		= transport_decoder;
+	conn->transport_write		= transport_write;
+	conn->transport_ack		= transport_ack;
 
-	conn->transport_encoder = transport_encoder;
 	labcomm_register_error_handler_encoder(conn->transport_encoder,
 			labcomm_error_to_ff_error);
 
-	conn->transport_decoder = transport_decoder;
 	labcomm_register_error_handler_decoder(conn->transport_decoder,
 			labcomm_error_to_ff_error);
-
-	conn->transport_write = transport_write;
-	conn->transport_ack = transport_ack;
 
 	if (memory_replacements) {
 		conn->memory_replacements.alloc_replacement =
@@ -89,14 +84,13 @@ struct firefly_connection *firefly_connection_new(
 		conn->memory_replacements.alloc_replacement = NULL;
 		conn->memory_replacements.free_replacement = NULL;
 	}
-
 	conn->transport_conn_platspec = plat_spec;
 	conn->transport_conn_platspec_free = plat_spec_free;
 	conn->open = FIREFLY_CONNECTION_OPEN;
 
 	reg_proto_sigs(conn->transport_encoder,
-				   conn->transport_decoder,
-				   conn);
+		       conn->transport_decoder,
+		       conn);
 
 	return conn;
 }
@@ -145,6 +139,7 @@ int firefly_connection_close_event(void *event_arg)
 	} else {
 		firefly_connection_close(conn);
 	}
+
 	return 0;
 }
 
@@ -177,12 +172,17 @@ void firefly_connection_free(struct firefly_connection **conn)
 struct firefly_channel *remove_channel_from_connection(
 		struct firefly_channel *chan, struct firefly_connection *conn)
 {
-	struct firefly_channel *ret = NULL;
-	struct channel_list_node **head = &conn->chan_list;
+	struct firefly_channel *ret;
+	struct channel_list_node **head;
+
+	ret = NULL;
+	head = &conn->chan_list;
 	while (head != NULL && (*head) != NULL) {
 		if ((*head)->chan->local_id == chan->local_id) {
+			struct channel_list_node *tmp;
+
+			tmp = (*head)->next;
 			ret = chan;
-			struct channel_list_node *tmp = (*head)->next;
 			FIREFLY_FREE(*head);
 			*head = tmp;
 			head = NULL;

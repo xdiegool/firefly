@@ -12,26 +12,20 @@ struct firefly_channel *firefly_channel_new(struct firefly_connection *conn)
 	struct labcomm_writer  *writer;
 
 	chan = FIREFLY_MALLOC(sizeof(*chan));
-	if (chan == NULL) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 1,
-				"memory allocation failed");
-		return NULL;
-	}
 	reader = protocol_labcomm_reader_new(conn);
 	writer = protocol_labcomm_writer_new(chan);
-	if (reader == NULL || writer == NULL) {
+	if (!chan || !reader || !writer) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1,
 				"memory allocation failed");
 		protocol_labcomm_reader_free(reader);
 		protocol_labcomm_writer_free(writer);
 		FIREFLY_FREE(chan);
+
 		return NULL;
 	}
-
 	proto_decoder = labcomm_decoder_new(reader, NULL);
 	proto_encoder = labcomm_encoder_new(writer, NULL);
-
-	if (proto_decoder == NULL || proto_encoder == NULL) {
+	if (!proto_decoder || !proto_encoder) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1,
 				"memory allocation failed");
 
@@ -39,7 +33,10 @@ struct firefly_channel *firefly_channel_new(struct firefly_connection *conn)
 			labcomm_decoder_free(chan->proto_decoder);
 		if (chan->proto_encoder)
 			labcomm_encoder_free(chan->proto_encoder);
+		protocol_labcomm_reader_free(reader);
+		protocol_labcomm_writer_free(writer);
 		FIREFLY_FREE(chan);
+
 		return NULL;
 	}
 
@@ -65,15 +62,12 @@ struct firefly_channel *firefly_channel_new(struct firefly_connection *conn)
 
 void firefly_channel_free(struct firefly_channel *chan)
 {
-	if (chan == NULL) {
+	if (!chan)
 		return;
-	}
-	if (chan->proto_decoder != NULL) {
+	if (chan->proto_decoder)
 		labcomm_decoder_free(chan->proto_decoder);
-	}
-	if (chan->proto_encoder != NULL) {
+	if (chan->proto_encoder)
 		labcomm_encoder_free(chan->proto_encoder);
-	}
 	FIREFLY_FREE(chan);
 }
 
@@ -97,11 +91,8 @@ int firefly_channel_closed_event(void *event_arg)
 
 	chan = event_arg;
 	remove_channel_from_connection(chan, chan->conn);
-	if (chan->conn->actions &&
-	    chan->conn->actions->channel_closed)
-	{
+	if (chan->conn->actions && chan->conn->actions->channel_closed)
 		chan->conn->actions->channel_closed(chan);
-	}
 	firefly_channel_free(chan);
 
 	return 0;
@@ -169,12 +160,12 @@ int firefly_channel_unrestrict_event(void *earg)
 	firefly_protocol_channel_restrict_request req;
 	struct labcomm_encoder *tenc;
 
-	chan = (struct firefly_channel *) earg;
+	chan = earg;
 	if (!chan->restricted_local)
 		return -1; /* Tried to unrestrict unrestricted channel. */
 	if (!chan->restricted_remote)
 		return 0;  /* Previous request not completed.  */
-	/* TODO: Handle interrupted requests better. */
+
 	chan->restricted_local = 0;
 
 	req.dest_chan_id   = chan->remote_id;

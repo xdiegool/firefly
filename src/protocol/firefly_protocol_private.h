@@ -10,10 +10,10 @@
 
 #include "utils/firefly_event_queue.h"
 
-#define CHANNEL_ID_NOT_SET (-1)
-#define BUFFER_SIZE 128
+#define CHANNEL_ID_NOT_SET		(-1)
+#define BUFFER_SIZE			(128)
 #define FIREFLY_CONNECTION_CLOSED	(0)
-#define FIREFLY_CONNECTION_OPEN	(1)
+#define FIREFLY_CONNECTION_OPEN		(1)
 
 #ifndef FIREFLY_MALLOC
 	#define FIREFLY_MALLOC(size) malloc(size)
@@ -27,24 +27,25 @@ void *FIREFLY_MALLOC(size_t s);
 void FIREFLY_FREE(void *ptr);
 #endif
 
-#define FIREFLY_RUNTIME_MALLOC(conn, size)							\
-		conn->memory_replacements.alloc_replacement != NULL ?		\
-		conn->memory_replacements.alloc_replacement(conn, size) :	\
+#define FIREFLY_RUNTIME_MALLOC(conn, size)					\
+	(conn)->memory_replacements.alloc_replacement != NULL ?			\
+		(conn)->memory_replacements.alloc_replacement(conn, size) :	\
 		FIREFLY_MALLOC(size)
 
-#define FIREFLY_RUNTIME_FREE(conn, ptr)								\
-		conn->memory_replacements.free_replacement != NULL ?		\
-		conn->memory_replacements.free_replacement(conn, ptr) :		\
+#define FIREFLY_RUNTIME_FREE(conn, ptr)						\
+	(conn)->memory_replacements.free_replacement != NULL ?			\
+		(conn)->memory_replacements.free_replacement(conn, ptr) : 	\
 		FIREFLY_FREE(ptr)
 
-#define FIREFLY_LABCOMM_IOCTL_READER_SET_BUFFER \
+#define FIREFLY_LABCOMM_IOCTL_READER_SET_BUFFER					\
   LABCOMM_IOW('f', 0, void*)
-#define FIREFLY_LABCOMM_IOCTL_TRANS_SET_IMPORTANT_ID \
+
+#define FIREFLY_LABCOMM_IOCTL_TRANS_SET_IMPORTANT_ID				\
   LABCOMM_IOW('f', 1, unsigned char*)
 
 void reg_proto_sigs(struct labcomm_encoder *enc,
-					struct labcomm_decoder *dec,
-					struct firefly_connection *conn);
+		    struct labcomm_decoder *dec,
+		    struct firefly_connection *conn);
 
 /**
  * @brief Write data on the specified connection
@@ -449,7 +450,7 @@ void handle_ack(firefly_protocol_ack *ack, void *context);
 struct firefly_event_channel_restrict_request {
 	struct firefly_connection *conn; /**< The connection the request was
 						received on. */
-	firefly_protocol_channel_restrict_request *rreq; /**< The request.*/
+	firefly_protocol_channel_restrict_request rreq; /**< The request.*/
 };
 
 void handle_channel_restrict_request(

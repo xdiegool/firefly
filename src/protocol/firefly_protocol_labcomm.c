@@ -31,29 +31,37 @@ static int proto_reader_alloc(struct labcomm_reader *r, void *context,
 	UNUSED_VAR(context);
 	UNUSED_VAR(decoder);
 	UNUSED_VAR(version);
-	r->data = NULL;
-	r->data_size = 0;
-	r->count = 0;
-	r->pos = 0;
+
+	r->data		= NULL;
+	r->data_size	= 0;
+	r->count	= 0;
+	r->pos		= 0;
+
 	return 0;
 }
 
 static int proto_reader_free(struct labcomm_reader *r, void *context)
 {
 	UNUSED_VAR(context);
-	r->data = NULL;
-	r->data_size = 0;
-	r->count = 0;
-	r->pos = 0;
+
+	/* TODO: Why clear members? */
+	r->data		= NULL;
+	r->data_size	= 0;
+	r->count	= 0;
+	r->pos		= 0;
 	FIREFLY_FREE(r);
+
 	return 0;
 }
 
 static int proto_reader_fill(struct labcomm_reader *r, void *context)
 {
+	int result;
+
 	UNUSED_VAR(context);
-	int result = r->count - r->pos;
-	return result < 0 || r->data == NULL ? -ENOMEM : result;
+	result = r->count - r->pos;
+
+	return (result < 0 || r->data == NULL) ? -ENOMEM : result;
 }
 
 static int proto_reader_start(struct labcomm_reader *r, void *context)
@@ -65,27 +73,36 @@ static int proto_reader_end(struct labcomm_reader *r, void *context)
 {
 	UNUSED_VAR(r);
 	UNUSED_VAR(context);
+
 	return 0;
 }
 
-static int proto_reader_ioctl(struct labcomm_reader *r, void *context, 
-								int action,
-								struct labcomm_signature *signature,
-								va_list arg)
+static int proto_reader_ioctl(struct labcomm_reader *r, void *context,
+			      int action,
+			      struct labcomm_signature *signature,
+			      va_list arg)
 {
 	UNUSED_VAR(context);
 	UNUSED_VAR(signature);
-	int result = -ENOTSUP;
+
+	int result;
+
 	switch (action) {
 	case FIREFLY_LABCOMM_IOCTL_READER_SET_BUFFER: {
-		void *buffer = va_arg(arg, void*);
-		size_t size = va_arg(arg, size_t);
+		void *buffer;
+		size_t size;
+
+		buffer = va_arg(arg, void*);
+		size = va_arg(arg, size_t);
 		r->data = buffer;
 		r->data_size = size;
 		r->count = size;
 		r->pos = 0;
 		result = 0;
 		} break;
+	default:
+		result = -ENOTSUP;
+		break;
 	}
 	return result;
 }
@@ -94,15 +111,14 @@ static void *proto_reader_mem_malloc(struct labcomm_reader *r, void *context,
 		size_t size)
 {
 	UNUSED_VAR(r);
-	struct firefly_connection *conn = (struct firefly_connection *) context;
-	return FIREFLY_RUNTIME_MALLOC(conn, size);
+	return FIREFLY_RUNTIME_MALLOC((struct firefly_connection *) context, size);
 }
 
 static void proto_reader_mem_free(struct labcomm_reader *r, void *context,
 		void *ptr)
 {
 	UNUSED_VAR(r);
-	return FIREFLY_RUNTIME_FREE(((struct firefly_connection *) context), ptr);
+	return FIREFLY_RUNTIME_FREE((struct firefly_connection *) context, ptr);
 }
 
 static const struct labcomm_reader_action proto_reader_action = {
@@ -151,9 +167,11 @@ static int comm_writer_alloc(struct labcomm_writer *w, void *context,
 	UNUSED_VAR(context);
 	UNUSED_VAR(encoder);
 	UNUSED_VAR(labcomm_version);
-	w->data_size = BUFFER_SIZE;
-	w->count = w->data_size;
-	w->data = FIREFLY_MALLOC(w->data_size);
+
+	w->data_size	= BUFFER_SIZE;
+	w->count	= w->data_size;
+	w->data		= FIREFLY_MALLOC(w->data_size);
+
 	if (w->data == NULL) {
 		w->error = -ENOMEM;
 	} else {
@@ -169,26 +187,31 @@ static int comm_writer_free(struct labcomm_writer *w, void *context)
 	FIREFLY_FREE(w->data);
 	FIREFLY_FREE(context);
 	FIREFLY_FREE(w);
+
 	return 0;
 }
 
 static int comm_writer_flush(struct labcomm_writer *w, void *context)
 {
+	int result;
+
 	UNUSED_VAR(context);
-	int result = w->count - w->pos;
-	return result < 0 ? -ENOMEM : result;
+	result = w->count - w->pos;
+
+	return (result < 0) ? -ENOMEM : result;
 }
 
 static int proto_writer_start(struct labcomm_writer *w, void *context,
 		struct labcomm_encoder *encoder, int index,
 		struct labcomm_signature *signature, void *value)
 {
+	struct protocol_writer_context *ctx;
+
 	UNUSED_VAR(encoder);
 	UNUSED_VAR(index);
 	UNUSED_VAR(signature);
-	struct protocol_writer_context *ctx;
 
-	ctx = (struct protocol_writer_context *) context;
+	ctx = context;
 	ctx->important = (value == NULL);
 	w->pos = 0;
 
@@ -201,9 +224,9 @@ static int proto_writer_end(struct labcomm_writer *w, void *context)
 	struct firefly_channel *chan;
 	struct firefly_connection *conn;
 
-	ctx = (struct protocol_writer_context *) context;
-	chan = (struct firefly_channel *) ctx->chan;
-	conn = (struct firefly_connection *) chan->conn;
+	ctx  = context;
+	chan = ctx->chan;
+	conn = chan->conn;
 
 	if (conn->open != FIREFLY_CONNECTION_OPEN) {
 		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
@@ -318,16 +341,21 @@ static int trans_writer_end(struct labcomm_writer *w, void *context)
 static int trans_writer_ioctl(struct labcomm_writer *w, void *context,
 		int action, struct labcomm_signature *signature, va_list arg)
 {
+	struct transport_writer_context *ctx;
+	int result;
+
 	UNUSED_VAR(w);
 	UNUSED_VAR(signature);
-	int result = -ENOTSUP;
-	struct transport_writer_context *ctx;
-	ctx = (struct transport_writer_context *) context;
+	ctx = context;
+
 	switch (action) {
 	case FIREFLY_LABCOMM_IOCTL_TRANS_SET_IMPORTANT_ID: {
 		result = 0;
 		ctx->important_id = va_arg(arg, unsigned char*);
 	} break;
+	default:
+		result = -ENOTSUP;
+		break;
 	}
 	return result;
 }
