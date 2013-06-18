@@ -74,7 +74,7 @@ CC = $(shell hash clang 2>/dev/null && echo clang || echo cc)
 CC_ARM = arm-none-eabi-gcc
 
 # Error flags to the compiler.
-ERRFLAGS = -Wall -Wextra
+ERRFLAGS = -Wall -Wextra -Wno-missing-field-initializers
 
 # Common flags to the compiler.
 CFLAGS_COM = -std=c99 $(ERRFLAGS) $(INC_COMMON) -D DEBUG -D LABCOMM_ENCODER_LINEAR_SEARCH

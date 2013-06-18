@@ -32,6 +32,7 @@
 #include "utils/firefly_event_queue_private.h"
 #include "transport/firefly_transport_private.h"
 #include "protocol/firefly_protocol_private.h"
+#include "utils/cppmacros.h"
 
 #define ERROR_STR_MAX_LEN      (256)
 
@@ -46,7 +47,7 @@ struct firefly_transport_llp *firefly_transport_llp_eth_posix_new(
 	struct transport_llp_eth_posix *llp_eth;
 	struct firefly_transport_llp *llp;
 	llp_eth = malloc(sizeof(*llp_eth));
-	
+
 	/* Create the socket */
 	err = socket(AF_PACKET, SOCK_DGRAM, htons(ETH_P_ALL));
 	if(err < 0){
@@ -231,7 +232,8 @@ void firefly_transport_eth_posix_write(unsigned char *data, size_t data_size,
 void firefly_transport_eth_posix_ack(unsigned char pkt_id,
 		struct firefly_connection *conn)
 {
-
+	UNUSED_VAR(pkt_id);
+	UNUSED_VAR(conn);
 }
 
 void firefly_transport_eth_posix_read(struct firefly_transport_llp *llp,
