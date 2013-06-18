@@ -1,5 +1,6 @@
 LDLIBS=-lpthread -lrt
 CC=clang
+CFLAGS= -g
 
 .PHONY: all
 

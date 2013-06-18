@@ -196,7 +196,6 @@ void *thread_receiver_run(void *arg)
 	pkg_count++;
 	memcpy(&expected_time, &time_now, sizeof(time_now));
 
-	pthread_mutex_lock(&exit_mutex);
 	/*FILE *fp;*/
 	/*fp = fopen("test.txt", "w");*/
 	/*if (fp == NULL) {*/
@@ -210,11 +209,10 @@ void *thread_receiver_run(void *arg)
 /*#endif*/
 	/*fclose(fp);*/
 	while(!teardown) {
-		pthread_mutex_unlock(&exit_mutex);
 		err = receive_timespec(soc, &time_data, &time_now, timeout);
 		if (err == -1) {
 			if (teardown)
-				continue;
+				break;
 			else {
 				fprintf(stderr, "Timed out\n");
 				return NULL;
@@ -239,9 +237,7 @@ void *thread_receiver_run(void *arg)
 			memcpy(&min_diff, &time_tmp, sizeof(time_tmp));
 		}
 		pkg_count++;
-		pthread_mutex_lock(&exit_mutex);
 	}
-	pthread_mutex_unlock(&exit_mutex);
 	return NULL;
 }
 
@@ -334,9 +330,10 @@ int main(int argc, char **argv)
 	pthread_t sender_thread;
 	pthread_attr_t thread_attr;
 	struct sched_param thread_prio;
+	char runserv = 'b';
 
 	if (argc < 3) {
-		fprintf(stderr, "Usage: test <interface> <interval(ns)>\n");
+		fprintf(stderr, "Usage: test <interface> <interval(ns)> [send|recv]\n");
 		return 1;
 	}
 
@@ -366,6 +363,11 @@ int main(int argc, char **argv)
 	if (timeout.tv_nsec >= 1000000000) {
 		timeout.tv_sec = timeout.tv_nsec / 1000000000;
 		timeout.tv_nsec = timeout.tv_nsec % 1000000000;
+	}
+
+	if (argc >= 4) {
+		runserv = strncmp("recv", argv[3], 4) == 0 ? 'r' : 
+			(strncmp("send", argv[3], 4) == 0 ? 's' : 'b');
 	}
 
 	pthread_mutex_init(&exit_mutex, NULL);
@@ -409,23 +411,36 @@ int main(int argc, char **argv)
 		.addr = &addr
 	};
 
-	thread_prio.sched_priority = 51;
-	pthread_attr_setschedparam(&thread_attr, &thread_prio);
-	err = pthread_create(&receiver_thread, &thread_attr, thread_receiver_run, &args);
-	if (err < 0) {
-		fprintf(stderr, "Failed to create receiver thread.\n");
-		return 4;
+	if (runserv == 'b' || runserv == 'r') {
+		printf("Staring receiver\n");
+		thread_prio.sched_priority = 51;
+		pthread_attr_setschedparam(&thread_attr, &thread_prio);
+		err = pthread_create(&receiver_thread, &thread_attr, thread_receiver_run, &args);
+		if (err < 0) {
+			fprintf(stderr, "Failed to create receiver thread.\n");
+			return 4;
+		}
 	}
-	thread_prio.sched_priority = 50;
-	pthread_attr_setschedparam(&thread_attr, &thread_prio);
-	err = pthread_create(&sender_thread, &thread_attr, thread_sender_run, &args);
-	if (err < 0) {
-		fprintf(stderr, "Failed to create receiver thread.\n");
-		return 4;
+	if (runserv == 'b' || runserv == 's') {
+		printf("Staring sender\n");
+		thread_prio.sched_priority = 50;
+		pthread_attr_setschedparam(&thread_attr, &thread_prio);
+		err = pthread_create(&sender_thread, &thread_attr, thread_sender_run, &args);
+		if (err < 0) {
+			fprintf(stderr, "Failed to create receiver thread.\n");
+			return 4;
+		}
 	}
 
-	pthread_join(sender_thread, NULL);
-	pthread_join(receiver_thread, NULL);
+	if (runserv == 'b' || runserv == 's') {
+		pthread_join(sender_thread, NULL);
+	}
+	if (runserv == 'b' || runserv == 'r') {
+		pthread_join(receiver_thread, NULL);
+	}
+	if (runserv == 's') {
+		return 0;
+	}
 	printf("Network data statistics:\n");
 	printf("Number of packets received:\t%ld\n", pkg_count);
 	printf("Meassured\tMAX\t\tMIN\t\tAVG\n");
