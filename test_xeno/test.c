@@ -322,9 +322,11 @@ int main(int argc, char **argv)
 	int err;
 	struct ifreq ifr;
 	struct sockaddr_ll addr;
+	struct sockaddr_ll remote_addr;
 	struct timespec interval;
 	struct timespec timeout;
 	char *iface_name;
+	char *mac_address;
 	int soc;
 	pthread_t receiver_thread;
 	pthread_t sender_thread;
@@ -332,8 +334,8 @@ int main(int argc, char **argv)
 	struct sched_param thread_prio;
 	char runserv = 'b';
 
-	if (argc < 3) {
-		fprintf(stderr, "Usage: test <interface> <interval(ns)> [send|recv]\n");
+	if (argc < 4) {
+		fprintf(stderr, "Usage: test <interface> <mac_addr> <interval(ns)> [send|recv]\n");
 		return 1;
 	}
 
@@ -352,8 +354,9 @@ int main(int argc, char **argv)
 	pthread_attr_setschedpolicy(&thread_attr, SCHED_FIFO);
 
 	iface_name = argv[1];
+	mac_address = argv[2];
 	interval.tv_sec = 0;
-	interval.tv_nsec = atol(argv[2]);
+	interval.tv_nsec = atol(argv[3]);
 	if (interval.tv_nsec >= 1000000000) {
 		interval.tv_sec = interval.tv_nsec / 1000000000;
 		interval.tv_nsec = interval.tv_nsec % 1000000000;
@@ -404,11 +407,18 @@ int main(int argc, char **argv)
 		return 4;
 	}
 
+	memset(&remote_addr, 0, sizeof(struct sockaddr_ll));
+	remote_addr.sll_family   = AF_PACKET;
+	remote_addr.sll_protocol = htons(0x1337);
+	remote_addr.sll_ifindex  = ifr.ifr_ifindex;
+	ether_aton_r(mac_address, (void *)&remote_addr.sll_addr);
+	remote_addr.sll_halen    = 6;
+
 	struct thread_args args = {
 		.socket = soc,
 		.timeout = &timeout,
 		.interval = &interval,
-		.addr = &addr
+		.addr = &remote_addr
 	};
 
 	if (runserv == 'b' || runserv == 'r') {
