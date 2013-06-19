@@ -15,8 +15,7 @@ struct firefly_channel *firefly_channel_new(struct firefly_connection *conn)
 	reader = protocol_labcomm_reader_new(conn);
 	writer = protocol_labcomm_writer_new(chan);
 	if (!chan || !reader || !writer) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 1,
-				"memory allocation failed");
+		FFL(FIREFLY_ERROR_ALLOC);
 		protocol_labcomm_reader_free(reader);
 		protocol_labcomm_writer_free(writer);
 		FIREFLY_FREE(chan);
@@ -26,9 +25,7 @@ struct firefly_channel *firefly_channel_new(struct firefly_connection *conn)
 	proto_decoder = labcomm_decoder_new(reader, NULL);
 	proto_encoder = labcomm_encoder_new(writer, NULL);
 	if (!proto_decoder || !proto_encoder) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 1,
-				"memory allocation failed");
-
+		FFL(FIREFLY_ERROR_ALLOC);
 		if (chan->proto_decoder)
 			labcomm_decoder_free(chan->proto_decoder);
 		if (chan->proto_encoder)

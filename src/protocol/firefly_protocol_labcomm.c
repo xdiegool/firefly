@@ -236,7 +236,7 @@ static int proto_writer_end(struct labcomm_writer *w, void *context)
 
 	// create protocol packet and encode it
 	struct firefly_event_send_sample *fess =
-		FIREFLY_RUNTIME_MALLOC(conn, sizeof(struct firefly_event_send_sample));
+		FIREFLY_RUNTIME_MALLOC(conn, sizeof(*fess));
 
 	unsigned char *a = FIREFLY_RUNTIME_MALLOC(conn, w->pos);
 	if (fess == NULL || a == NULL) {
