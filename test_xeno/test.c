@@ -328,7 +328,7 @@ void *thread_sender_run(void *arg)
 	if (soc < 0) {
 		return NULL;
 	}
-	err = sockaddr_init(soc, args->if_name, "00:00:00:00:00:01", &addr);
+	err = sockaddr_init(soc, args->if_name, args->mac_addr, &addr);
 
 	pthread_condattr_t cond_attr;
 	pthread_cond_t interval_cond;
@@ -473,7 +473,6 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-
 	struct thread_args args = {
 		.timeout = &timeout,
 		.interval = &interval,
@@ -482,7 +481,7 @@ int main(int argc, char **argv)
 	};
 
 	if (runserv == 'b' || runserv == 'r') {
-		printf("Staring receiver\n");
+		printf("Staring receiver: %c\n", runserv);
 		thread_prio.sched_priority = 51;
 		pthread_attr_setschedparam(&thread_attr, &thread_prio);
 		err = pthread_create(&receiver_thread, &thread_attr, thread_receiver_run, &args);
@@ -492,7 +491,7 @@ int main(int argc, char **argv)
 		}
 	}
 	if (runserv == 'b' || runserv == 's') {
-		printf("Staring sender\n");
+		printf("Staring sender: %c\n", runserv);
 		thread_prio.sched_priority = 50;
 		pthread_attr_setschedparam(&thread_attr, &thread_prio);
 		err = pthread_create(&sender_thread, &thread_attr, thread_sender_run, &args);
