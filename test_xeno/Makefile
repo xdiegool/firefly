@@ -24,3 +24,5 @@ xeno_test: xeno_test.o
 		-lpthread_rt -lxenomai -lpthread -lrt \
 		-o $@
 
+clean:
+	$(RM) posix_test.o posix_test xeno_test.o xeno_test

@@ -84,7 +84,67 @@ static long pkg_count = 0;
 static struct timespec acc_diff;
 static struct timespec max_diff;
 static struct timespec min_diff;
-// Count the difference from expected time
+#define TIMING_MIN (0)
+#define TIMING_MAX (10000)
+#define TIMING_NBR_GROUPS (10)
+static long timings[TIMING_NBR_GROUPS + 2];
+
+void add_timing(long ns) {
+	long step = (TIMING_MAX - TIMING_MIN) / TIMING_NBR_GROUPS;
+	int i = 0;
+	while (ns > step * i && i < TIMING_NBR_GROUPS + 2) {
+		i++;
+	}
+	timings[i-1]++;
+}
+
+int sockaddr_init(int soc, char *ifname, char *mac_addr, struct sockaddr_ll *addr)
+{
+	int err;
+	struct ifreq ifr;
+	/* Set the interface name */
+	strncpy(ifr.ifr_name, ifname, IFNAMSIZ);
+	err = ioctl(soc, SIOCGIFINDEX, &ifr);
+	if(err < 0){
+		perror("Failed to get interface");
+		fprintf(stderr, "Failed to get interface!\n");
+		return -3;
+	}
+
+	/* init mem of local_addr with zeros */
+	memset(addr, 0, sizeof(struct sockaddr_ll));
+	addr->sll_family   = AF_PACKET;
+	addr->sll_protocol = htons(0x1337);
+	addr->sll_ifindex  = ifr.ifr_ifindex;
+	ether_aton_r(mac_addr, (void *)&addr->sll_addr);
+	addr->sll_halen = 6;
+	return 0;
+}
+
+int open_socket(char *ifname, char *mac_addr)
+{
+	int err;
+	int soc;
+	struct sockaddr_ll addr;
+
+	err = socket(AF_PACKET, SOCK_DGRAM, htons(ETH_P_ALL));
+	if(err < 0){
+		fprintf(stderr, "Failed to open socket!\n");
+		return -2;
+	}
+	soc = err;
+	/* Bind socket to specified interface */
+	sockaddr_init(soc, ifname, mac_addr, &addr);
+	err = bind(soc, (struct sockaddr *)&addr, sizeof(addr));
+	if(err < 0){
+		close(soc);
+		fprintf(stderr, "Failed to bind socket.\n");
+		return -4;
+	}
+
+	/*memcpy(&remote_addr, &addr, sizeof(addr));*/
+	return soc;
+}
 
 int receive_timespec(int soc, struct timespec *time_data,
 		struct timespec *time_now, const struct timespec *timeout)
@@ -92,11 +152,14 @@ int receive_timespec(int soc, struct timespec *time_data,
 	int err;
 	size_t pkg_len;
 	struct sockaddr_ll addr;
+	struct timeval timeout2;
+	timeout2.tv_sec = timeout->tv_sec;
+	timeout2.tv_usec = timeout->tv_nsec / 1000;
 	socklen_t addr_len;
 	fd_set fs;
 	FD_ZERO(&fs);
 	FD_SET(soc, &fs);
-	err = pselect(soc + 1, &fs, NULL, NULL, timeout, NULL);
+	err = select(soc + 1, &fs, NULL, NULL, &timeout2);
 	if (err == 0) {
 		return -1;
 	}
@@ -110,19 +173,13 @@ int receive_timespec(int soc, struct timespec *time_data,
 		return -2;
 	}
 
-	pkg_len = 0;
-	err = ioctl(soc, FIONREAD, &pkg_len);
-	if (err < 0) {
-		fprintf(stderr, "Failed to get package size %d\n", err);
-		return -2;
-	}
-	if (pkg_len != sizeof(struct timespec)) {
-		fprintf(stderr, "Package size corrupt %zu\n", pkg_len);
-		return -2;
-	}
-	err = recvfrom(soc, time_data, pkg_len, 0,
+	err = recvfrom(soc, time_data, sizeof(struct timespec), 0,
 			(struct sockaddr *) &addr, &addr_len);
-	if (err != pkg_len) {
+	if (err < 0) {
+		perror("Failed to read data");
+		return -2;
+	}
+	if (err < sizeof(struct timespec)) {
 		fprintf(stderr, "Could not read entire packet %d\n", err);
 		return -2;
 	}
@@ -156,10 +213,10 @@ void warn_upon_switch(int sig, siginfo_t *si, void *context)
 #endif
 
 struct thread_args {
-	int socket;
 	const struct timespec *timeout;
 	const struct timespec *interval;
-	const struct sockaddr_ll *addr;
+	char *if_name;
+	char *mac_addr;
 };
 
 void *thread_receiver_run(void *arg)
@@ -181,11 +238,18 @@ void *thread_receiver_run(void *arg)
 	struct timespec expected_time;
 
 	struct thread_args *recv_args = arg;
-	soc = recv_args->socket;
 	interval = recv_args->interval;
 	timeout = recv_args->timeout;
+	soc = open_socket(recv_args->if_name, "00:00:00:00:00:01");
+	if (soc < 0) {
+		return NULL;
+	}
+	const struct timespec long_timeout = {
+		.tv_sec = 5,
+		.tv_nsec = 0
+	};
 
-	err = receive_timespec(soc, &time_data, &time_now, NULL);
+	err = receive_timespec(soc, &time_data, &time_now, &long_timeout);
 	if (err < 0) {
 		return NULL;
 	}
@@ -236,6 +300,7 @@ void *thread_receiver_run(void *arg)
 		} else if (timespec_gt(&min_diff, &time_tmp)) {
 			memcpy(&min_diff, &time_tmp, sizeof(time_tmp));
 		}
+		add_timing(time_tmp.tv_nsec);
 		pkg_count++;
 	}
 	return NULL;
@@ -253,12 +318,17 @@ void *thread_sender_run(void *arg)
 #endif
 	int soc;
 	const struct timespec *interval;
-	const struct sockaddr_ll *addr;
+	struct sockaddr_ll addr;
+	unsigned char buffer[128];
+	memset(buffer, 0, 128);
 
 	struct thread_args *args = arg;
-	soc = args->socket;
 	interval = args->interval;
-	addr = args->addr;
+	soc = open_socket(args->if_name, args->mac_addr);
+	if (soc < 0) {
+		return NULL;
+	}
+	err = sockaddr_init(soc, args->if_name, "00:00:00:00:00:01", &addr);
 
 	pthread_condattr_t cond_attr;
 	pthread_cond_t interval_cond;
@@ -296,12 +366,25 @@ void *thread_sender_run(void *arg)
 			teardown = true;
 			continue;
 		}
-		clock_gettime(CLOCK_MONOTONIC, &time_now);
-		err = sendto(soc, &time_now, sizeof(time_now), 0,
-				(struct sockaddr *)addr, sizeof(*addr));
+		err = clock_gettime(CLOCK_MONOTONIC, &time_now);
+		if (err != 0) {
+			perror("Failed to get time");
+			return NULL;
+		}
+		memcpy(buffer, &time_now, sizeof(time_now));
+		err = sendto(soc, &time_now, sizeof(time_now), MSG_DONTWAIT,
+		/*err = sendto(soc, buffer, 128, 0,*/
+				(struct sockaddr *)&addr, sizeof(struct sockaddr_ll));
 		if (err < 0) {
-			close(soc);
-			fprintf(stderr, "Failed to send data.\n");
+			switch (errno) {
+				case EBADF:
+					printf("Bad file descriptor\n");
+					break;
+				case EINVAL:
+					printf("Invalid Argument\n");
+					break;
+			}
+			perror("Failed to send data");
 			return NULL;
 		}
 		pthread_mutex_lock(&exit_mutex);
@@ -317,12 +400,15 @@ static void sig_h(int sig)
 	pthread_mutex_unlock(&exit_mutex);
 }
 
+#define DEFAULT_MAC_ADDR	"00:00:00:00:00:00"
+#define DEFAULT_INTERVAL	(100000000) // 100 ms
+#define DEFAULT_IFNAME		"lo"
+#define DEFAULT_ACTION		'b'			// Both send and receive
+
 int main(int argc, char **argv)
 {
 	int err;
-	struct ifreq ifr;
-	struct sockaddr_ll addr;
-	struct sockaddr_ll remote_addr;
+	long interval_ns;
 	struct timespec interval;
 	struct timespec timeout;
 	char *iface_name;
@@ -332,12 +418,27 @@ int main(int argc, char **argv)
 	pthread_t sender_thread;
 	pthread_attr_t thread_attr;
 	struct sched_param thread_prio;
-	char runserv = 'b';
+	char runserv;
 
-	if (argc < 4) {
-		fprintf(stderr, "Usage: test <interface> <mac_addr> <interval(ns)> [send|recv]\n");
-		return 1;
+	mac_address = DEFAULT_MAC_ADDR;
+	iface_name = DEFAULT_IFNAME;
+	interval_ns = DEFAULT_INTERVAL;
+	runserv = DEFAULT_ACTION;
+
+	for (int i = 1; i < argc; i += 2) {
+		if (strncmp(argv[i], "-i", 2) == 0) {
+			iface_name = argv[i+1];
+		} else if (strncmp(argv[i], "-m", 2) == 0) {
+			mac_address = argv[i+1];
+		} else if (strncmp(argv[i], "-f", 2) == 0) {
+			interval_ns = atol(argv[i+1]);
+		} else if (strncmp(argv[i], "-a", 2) == 0) {
+			runserv = argv[i+1][0];
+		}
 	}
+
+	printf("Interface: %s\nMAC Address: %s\nInterval (ns): %ld\nAction: %c\n",
+			iface_name, mac_address, interval_ns, runserv);
 
 	mlockall(MCL_CURRENT | MCL_FUTURE);
 
@@ -346,17 +447,15 @@ int main(int argc, char **argv)
 	sigemptyset(&sa.sa_mask);
 	sa.sa_sigaction = warn_upon_switch;
 	sa.sa_flags = SA_SIGINFO;
-	/*sigaction(SIGDEBUG, &sa, NULL);*/
-	sigaction(SIGXCPU, &sa, NULL);
+	sigaction(SIGDEBUG, &sa, NULL);
+	/*sigaction(SIGXCPU, &sa, NULL);*/
 #endif
 
 	pthread_attr_init(&thread_attr);
 	pthread_attr_setschedpolicy(&thread_attr, SCHED_FIFO);
 
-	iface_name = argv[1];
-	mac_address = argv[2];
 	interval.tv_sec = 0;
-	interval.tv_nsec = atol(argv[3]);
+	interval.tv_nsec = interval_ns;
 	if (interval.tv_nsec >= 1000000000) {
 		interval.tv_sec = interval.tv_nsec / 1000000000;
 		interval.tv_nsec = interval.tv_nsec % 1000000000;
@@ -368,57 +467,18 @@ int main(int argc, char **argv)
 		timeout.tv_nsec = timeout.tv_nsec % 1000000000;
 	}
 
-	if (argc >= 5) {
-		runserv = strncmp("recv", argv[4], 4) == 0 ? 'r' : 
-			(strncmp("send", argv[4], 4) == 0 ? 's' : 'b');
-	}
-
 	pthread_mutex_init(&exit_mutex, NULL);
 	if (signal(SIGINT, sig_h) == SIG_ERR) {
 		fprintf(stderr, "could not set signal handler.\n");
 		return 1;
 	}
 
-	err = socket(AF_PACKET, SOCK_DGRAM, htons(ETH_P_ALL));
-	if(err < 0){
-		fprintf(stderr, "Failed to open socket!\n");
-		return 2;
-	}
-	soc = err;
-	/* Set the interface name */
-	strncpy(ifr.ifr_name, iface_name, IFNAMSIZ);
-	err = ioctl(soc, SIOCGIFINDEX, &ifr);
-	if(err < 0){
-		close(soc);
-		fprintf(stderr, "Failed to set interface!\n");
-		return 3;
-	}
-
-	/* init mem of local_addr with zeros */
-	memset(&addr, 0, sizeof(struct sockaddr_ll));
-	addr.sll_family   = AF_PACKET;
-	addr.sll_protocol = htons(0x1337);
-	addr.sll_ifindex  = ifr.ifr_ifindex;
-	/* Bind socket to specified interface */
-	err = bind(soc, (struct sockaddr *)&addr, sizeof(addr));
-	if(err < 0){
-		close(soc);
-		fprintf(stderr, "Failed to bind socket.\n");
-		return 4;
-	}
-
-	memset(&remote_addr, 0, sizeof(struct sockaddr_ll));
-	remote_addr.sll_family   = AF_PACKET;
-	remote_addr.sll_protocol = htons(0x1337);
-	remote_addr.sll_ifindex  = ifr.ifr_ifindex;
-	ether_aton_r(mac_address, (void *)&remote_addr.sll_addr);
-	remote_addr.sll_halen    = 6;
 
 	struct thread_args args = {
-		.socket = soc,
 		.timeout = &timeout,
 		.interval = &interval,
-		.addr = &remote_addr
+		.if_name = iface_name,
+		.mac_addr = mac_address
 	};
 
 	if (runserv == 'b' || runserv == 'r') {
@@ -451,19 +511,35 @@ int main(int argc, char **argv)
 	if (runserv == 's') {
 		return 0;
 	}
+	close(soc);
 	printf("Network data statistics:\n");
 	printf("Number of packets received:\t%ld\n", pkg_count);
-	printf("Meassured\tMAX\t\tMIN\t\tAVG\n");
-	printf("TIMING:\t\t%ld.%09ld\t%ld.%09ld\t%ld.%09ld\n",
-			max_diff.tv_sec, max_diff.tv_nsec,
-			min_diff.tv_sec, min_diff.tv_nsec,
-			(acc_diff.tv_sec / pkg_count),
-			(acc_diff.tv_nsec / pkg_count));
-	printf("DELAY:\t\t%ld.%09ld\t%ld.%09ld\t%ld.%09ld\n",
-			max_delay.tv_sec, max_delay.tv_nsec,
-			min_delay.tv_sec, min_delay.tv_nsec,
-			(acc_delay.tv_sec / pkg_count),
-			(acc_delay.tv_nsec / pkg_count));
+	if (pkg_count > 0) {
+		printf("Meassured\tMAX\t\tMIN\t\tAVG\n");
+		printf("TIMING:\t\t%ld.%09ld\t%ld.%09ld\t%ld.%09ld\n",
+				max_diff.tv_sec, max_diff.tv_nsec,
+				min_diff.tv_sec, min_diff.tv_nsec,
+				(acc_diff.tv_sec / pkg_count),
+				(acc_diff.tv_nsec / pkg_count));
+		if (runserv == 'b') {
+			printf("DELAY:\t\t%ld.%09ld\t%ld.%09ld\t%ld.%09ld\n",
+					max_delay.tv_sec, max_delay.tv_nsec,
+					min_delay.tv_sec, min_delay.tv_nsec,
+					(acc_delay.tv_sec / pkg_count),
+					(acc_delay.tv_nsec / pkg_count));
+		}
+		long step = (TIMING_MAX - TIMING_MIN) / TIMING_NBR_GROUPS;
+		printf("Timing distribution:\n");
+		printf("0");
+		for (int i = 0; i < TIMING_NBR_GROUPS; i++) {
+			printf("\t%ld", step * (i+1));
+		}
+		printf("\t%ld+\n", step * TIMING_NBR_GROUPS);
+		for (int i = 0; i < TIMING_NBR_GROUPS + 2; i++) {
+			printf("%ld\t", timings[i]);
+		}
+		printf("\n");
+	}
 
 	return 0;
 }
