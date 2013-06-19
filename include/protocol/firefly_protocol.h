@@ -193,24 +193,6 @@ struct firefly_connection_actions {
 };
 
 /**
- * @brief Set callbacks for use when restricting channels.
- *
- * @param conn The connection to set callbacks for.
- *
- * @param on_channel_restrict_info Callback used to pass information
- *        about mode changes.
- *
- * @param on_channel_restrict Callback for incoming request.
- *        Can be null to ignore incoming requests.
- *
- * @return -1 on invalid configuration.
- */
-int firefly_connection_enable_restricted_channels(
-		struct firefly_connection *conn,
-		firefly_channel_restrict_info_f on_channel_restrict_info,
-		firefly_channel_restrict_f on_channel_restrict);
-
-/**
  * @brief Request restriction of reliability and type registration
  *        on encoders on channel. The agreement is not in effect until
  *        the application receives the callback confirming this.
