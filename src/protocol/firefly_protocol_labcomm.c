@@ -215,11 +215,14 @@ static int proto_writer_start(struct labcomm_writer *w, void *context,
 	ctx->important = (value == NULL);
 	w->pos = 0;
 
-#if 0
-	/* Valgrind really does not like this. */
-	if (ctx && ctx->chan && ctx->chan->restricted_local)
-		return -EPROTO;
-#endif
+	if (!value && ctx->chan->restricted_local) {
+		/* Until we get the updated lc, just print an error. */
+		firefly_error(FIREFLY_ERROR_PROTO_STATE, 2,
+			      "BAD! Encoding signature '%s' on restr chan!\n",
+			      signature->name);
+
+		return 0;	/* TODO: Some retval the new lc will pass. */
+	}
 
 	return 0;
 }
