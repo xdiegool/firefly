@@ -215,6 +215,12 @@ static int proto_writer_start(struct labcomm_writer *w, void *context,
 	ctx->important = (value == NULL);
 	w->pos = 0;
 
+#if 0
+	/* Valgrind really does not like this. */
+	if (ctx && ctx->chan && ctx->chan->restricted_local)
+		return -EPROTO;
+#endif
+
 	return 0;
 }
 
