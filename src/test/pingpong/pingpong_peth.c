@@ -8,6 +8,13 @@
 
 void *reader_thread_main(void *args)
 {
+#ifdef __XENO__
+	int err = pthread_set_mode_np(0, PTHREAD_WARNSW | PTHREAD_PRIMARY);
+	if (err != 0) {
+		printf("Error set mode %d\n", err);
+		return NULL;
+	}
+#endif
 	struct reader_thread_args *rtarg = (struct reader_thread_args *) args;
 	struct firefly_transport_llp *llp = rtarg->llp;
 	bool finish = false;

@@ -138,6 +138,13 @@ INC_TRANSPORT_ETH_POSIX = $(addprefix -I, \
 		$(LABCOMMLIBPATH) \
 	      )
 
+# Inluces for $(LIB_TRANSPORT_ETH_XENO_NAME).
+INC_TRANSPORT_ETH_XENO = $(addprefix -I, \
+		$(LABCOMMLIBPATH) \
+		/usr/include/xenomai \
+		/usr/include/xenomai/posix \
+	      )
+
 # Inluces for $(LIB_TRANSPORT_UDP_LWIP_NAME).
 INC_TRANSPORT_UDP_LWIP = $(addprefix -I, \
 		$(LABCOMMLIBPATH) \
@@ -217,6 +224,7 @@ LIB_FIREFLY_NAME = firefly
 LIB_FIREFLY_WERR_NAME = firefly-werr
 LIB_TRANSPORT_UDP_POSIX_NAME = transport-udp-posix
 LIB_TRANSPORT_ETH_POSIX_NAME = transport-eth-posix
+LIB_TRANSPORT_ETH_XENO_NAME = transport-eth-xeno
 LIB_TRANSPORT_UDP_LWIP_NAME = transport-udp-lwip
 LIB_TRANSPORT_ETH_STELLARIS_NAME = transport-eth-stellaris
 
@@ -286,6 +294,15 @@ TRANSPORT_ETH_POSIX_SRC = $(shell find $(SRC_DIR)/transport/ -type f \( -name '*
 
 # Object files from sources.
 TRANSPORT_ETH_POSIX_OBJS = $(patsubst %.c,$(BUILD_DIR)/%.o,$(TRANSPORT_ETH_POSIX_SRC))
+
+### }
+
+### Transport ETH XENO {
+# Source files for lib$(LIB_TRANSPORT_ETH_XENO_NAME).a
+TRANSPORT_ETH_XENO_SRC = $(TRANSPORT_ETH_POSIX_SRC)
+
+# Object files from sources.
+TRANSPORT_ETH_XENO_OBJS = $(patsubst %.c,$(BUILD_DIR)/%-xeno.o,$(TRANSPORT_ETH_XENO_SRC))
 
 ### }
 
@@ -455,6 +472,22 @@ $(TRANSPORT_ETH_POSIX_OBJS): $$(patsubst $$(BUILD_DIR)/%.o,%.c,$$@) |$$(@D)
 
 ### }
 
+### Transport ETH XENO targets {
+
+# target: build/lib$(LIB_TRANSPORT_ETH_XENO_NAME).a  - Build static library for transport udp posix.
+$(BUILD_DIR)/lib$(LIB_TRANSPORT_ETH_XENO_NAME).a: $(TRANSPORT_ETH_XENO_OBJS) $(TRANSPORT_COMMON_OBJS)
+	ar -rc $@ $^
+
+# Compile UDP POSIX files.
+$(TRANSPORT_ETH_XENO_OBJS): $$(patsubst $$(BUILD_DIR)/%-xeno.o,%.c,$$@) |$$(@D)
+	$(CC) -c $(patsubst %c99,%gnu99,$(CFLAGS)) \
+		$(INC_TRANSPORT_ETH_XENO) \
+		-D_GNU_SOURCE -D_REENTRANT -D__XENO__ \
+		-o $@ \
+		$<
+
+### }
+
 ### Transport UDP LWIP targets {
 
 # target: build/lib$(LIB_TRANSPORT_UDP_LWIP_NAME).a  - Build static library for transport udp lwip.
@@ -513,6 +546,44 @@ $(BUILD_DIR)/test/pingpong/ping_eth_main: $(patsubst %,$(BUILD_DIR)/test/pingpon
 
 $(BUILD_DIR)/test/pingpong/pong_eth_main: $(patsubst %,$(BUILD_DIR)/test/pingpong/%.o,pingpong pingpong_peth pong_peth) $(patsubst %,$(BUILD_DIR)/%.o,$(GEN_DIR)/pingpong utils/firefly_event_queue_posix) $(patsubst %,$(BUILD_DIR)/lib%.a,$(LIB_FIREFLY_WERR_NAME) $(LIB_TRANSPORT_ETH_POSIX_NAME))
 	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) -l$(LIB_FIREFLY_WERR_NAME) -l$(LIB_TRANSPORT_ETH_POSIX_NAME) $(LDLIBS_TEST) -o $@ 
+
+# Main test program for the pingpong ethernet xenomai program.
+PINGPONG_ETH_XENO_OBJS=$(patsubst %,$(BUILD_DIR)/test/pingpong/%-xeno.o, pingpong pingpong_peth ping_peth pong_peth) $(patsubst %,$(BUILD_DIR)/%-xeno.o, utils/firefly_event_queue_posix)
+
+$(PINGPONG_ETH_XENO_OBJS): $$(patsubst $$(BUILD_DIR)/%-xeno.o,%.c,$$@) |$$(@D)
+	$(CC) -c $(patsubst %c99,%gnu99,$(CFLAGS)) \
+		$(INC_TRANSPORT_ETH_XENO) \
+		-D_GNU_SOURCE -D_REENTRANT -D__XENO__ \
+		-o $@ \
+		$<
+
+$(BUILD_DIR)/test/pingpong/ping_eth_xeno_main: \
+	$(patsubst %,$(BUILD_DIR)/test/pingpong/%-xeno.o,pingpong pingpong_peth ping_peth) \
+	$(patsubst %,$(BUILD_DIR)/%.o,$(GEN_DIR)/pingpong utils/firefly_event_queue_posix-xeno) \
+	$(patsubst %,$(BUILD_DIR)/lib%.a,$(LIB_FIREFLY_WERR_NAME) $(LIB_TRANSPORT_ETH_XENO_NAME)) \
+	$(LABCOMMLIBPATH)/liblabcomm.a
+	$(CC) $(LDFLAGS) \
+		$(LDFLAGS_TEST) \
+		-Wl,@/usr/lib/posix.wrappers \
+		$(filter-out %.a,$^) \
+		-lpthread_rt -lxenomai -lnative \
+		-l$(LIB_FIREFLY_WERR_NAME) -l$(LIB_TRANSPORT_ETH_XENO_NAME) \
+		$(LDLIBS_TEST) \
+		-o $@
+
+$(BUILD_DIR)/test/pingpong/pong_eth_xeno_main: \
+	$(patsubst %,$(BUILD_DIR)/test/pingpong/%-xeno.o,pingpong pingpong_peth pong_peth) \
+	$(patsubst %,$(BUILD_DIR)/%.o,$(GEN_DIR)/pingpong utils/firefly_event_queue_posix-xeno) \
+	$(patsubst %,$(BUILD_DIR)/lib%.a,$(LIB_FIREFLY_WERR_NAME) $(LIB_TRANSPORT_ETH_XENO_NAME)) \
+	$(LABCOMMLIBPATH)/liblabcomm.a
+	$(CC) $(LDFLAGS) \
+		$(LDFLAGS_TEST) \
+		-Wl,@/usr/lib/posix.wrappers \
+		$(filter-out %.a,$^) \
+		-lpthread_rt -lxenomai -lnative \
+		-l$(LIB_FIREFLY_WERR_NAME) -l$(LIB_TRANSPORT_ETH_XENO_NAME) \
+		$(LDLIBS_TEST) \
+		-o $@
 
 # Main test program for the multiple transport layer functionality.
 $(BUILD_DIR)/test/pingpong/pingpong_multi_main: $(patsubst %,$(BUILD_DIR)/test/pingpong/%.o,pingpong_main pingpong pong_pmulti ping_pmulti) $(patsubst %,$(BUILD_DIR)/%.o,$(GEN_DIR)/pingpong utils/firefly_event_queue_posix) $(patsubst %,$(BUILD_DIR)/lib%.a,$(LIB_FIREFLY_WERR_NAME) $(LIB_TRANSPORT_UDP_POSIX_NAME) $(LIB_TRANSPORT_ETH_POSIX_NAME))

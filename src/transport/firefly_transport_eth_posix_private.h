@@ -7,6 +7,9 @@
 #include "transport/firefly_transport_private.h"
 #include <transport/firefly_transport_eth_posix.h>
 #include <signal.h>
+#ifdef __XENO__
+#include <native/heap.h>
+#endif
 
 #define FIREFLY_ETH_PROTOCOL	0x1337
 
@@ -14,6 +17,9 @@ struct transport_llp_eth_posix {
 	int socket;
 	struct firefly_event_queue *event_queue;
 	firefly_on_conn_recv_eth_posix on_conn_recv;
+#ifdef __XENO__
+	RT_HEAP dyn_mem;
+#endif
 };
 
 struct protocol_connection_eth_posix {

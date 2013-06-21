@@ -70,17 +70,10 @@ int firefly_event_queue_posix_add(struct firefly_event_queue *eq,
 	pthread_mutex_unlock(&ctx->lock);
 	return res;
 }
-#ifdef __XENO__
-static void handle_signal_context_switch(int signum)
-{
-	printf("ERROR: event thread switched to secondary mode\n");
-}
-#endif
 
 void *firefly_event_posix_thread_main(void *args)
 {
 #ifdef __XENO__
-	signal(SIGXCPU, handle_signal_context_switch);
 	pthread_set_mode_np(0, PTHREAD_WARNSW | PTHREAD_PRIMARY);
 #endif
 	struct firefly_event_queue *eq =

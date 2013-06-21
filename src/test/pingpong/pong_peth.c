@@ -5,6 +5,13 @@
 #include <sys/types.h>
 #include <string.h>
 #include <stdio.h>
+#include <sys/mman.h>
+#ifdef __XENO__
+#include <native/task.h>
+#endif
+#include <execinfo.h>
+#include <getopt.h>
+#include <signal.h>
 
 #include <labcomm.h>
 #include <protocol/firefly_protocol.h>
@@ -148,20 +155,36 @@ void *send_data_and_close(void *args)
 	labcomm_encode_pingpong_data(enc, &data);
 	pong_pass_test(DATA_SEND);
 
-	/* The protocol events takes precedence over the ones spawned above.
-	 * If we want to test in this fashion we will have to simulate
-	 * using the channel for arbitrary length of time. This will
-	 * give the system time to send the application data before closing
-	 * the channel. For this kind of short bursts a synchronous mode *might*
-	 * be a feature in the future. This, however, is not likely. Should the
-	 * application need to keep track of state above the protocol level,
-	 * *it* should probably do so.
-	 */
-	sleep(1);
-	firefly_channel_close(chan);
-
 	return NULL;
 }
+
+#ifdef __XENO__
+static const char *reason_str[] = {
+	[SIGDEBUG_UNDEFINED] = "undefined",
+	[SIGDEBUG_MIGRATE_SIGNAL] = "received signal",
+	[SIGDEBUG_MIGRATE_SYSCALL] = "invoked syscall",
+	[SIGDEBUG_MIGRATE_FAULT] = "triggered fault",
+	[SIGDEBUG_MIGRATE_PRIOINV] = "affected by priority inversion",
+	[SIGDEBUG_NOMLOCK] = "missing mlockall",
+	[SIGDEBUG_WATCHDOG] = "runaway thread",
+};
+
+void warn_upon_switch(int sig, siginfo_t *si, void *context)
+{
+	UNUSED_VAR(sig);
+	UNUSED_VAR(context);
+    unsigned int reason = si->si_value.sival_int;
+    void *bt[32];
+    int nentries;
+
+    printf("\nSIGDEBUG received, reason %d: %s\n", reason,
+       reason <= SIGDEBUG_WATCHDOG ? reason_str[reason] : "<unknown>");
+    /* Dump a backtrace of the frame which caused the switch to
+       secondary mode: */
+    nentries = backtrace(bt,sizeof(bt) / sizeof(bt[0]));
+    backtrace_symbols_fd(bt,nentries,fileno(stdout));
+}
+#endif
 
 int main()
 {
@@ -174,6 +197,16 @@ int main()
 	int res;
 	struct reader_thread_args rtarg;
 	pthread_t reader_thread;
+#ifdef __XENO__
+	mlockall(MCL_CURRENT | MCL_FUTURE);
+
+	struct sigaction sa;
+	sigemptyset(&sa.sa_mask);
+	sa.sa_sigaction = warn_upon_switch;
+	sa.sa_flags = SA_SIGINFO;
+	sigaction(SIGDEBUG, &sa, NULL);
+	/*sigaction(SIGXCPU, &sa, NULL);*/
+#endif
 
 	printf("Hello, Firefly Ethernet from Pong!\n");
 	pong_init_tests();
@@ -181,6 +214,11 @@ int main()
 	event_queue = firefly_event_queue_posix_new(20);
 	pthread_attr_t thread_attrs;
 	pthread_attr_init(&thread_attrs);
+#ifdef __XENO__
+	pthread_attr_setschedpolicy(&thread_attrs, SCHED_FIFO);
+	struct sched_param thread_prio = {.sched_priority = 51};
+	pthread_attr_setschedparam(&thread_attrs, &thread_prio);
+#endif
 	res = firefly_event_queue_posix_run(event_queue, &thread_attrs);
 	if (res) {
 		fprintf(stderr, "ERROR: starting event thread.\n");
