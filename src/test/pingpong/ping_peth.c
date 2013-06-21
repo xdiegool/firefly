@@ -182,7 +182,7 @@ void warn_upon_switch(int sig, siginfo_t *si, void *context)
 }
 #endif
 
-int main()
+int main(int argc, char **argv)
 {
 	uid_t uid;
 	uid = geteuid();
@@ -190,6 +190,8 @@ int main()
 		fprintf(stderr, "Need root to run these tests\n");
 		return 1;
 	}
+	char *iface;
+	char *mac_addr;
 	int res;
 	struct reader_thread_args rtarg;
 	pthread_t reader_thread;
@@ -207,6 +209,17 @@ int main()
 	printf("Hello, Firefly Ethernet from Ping!\n");
 	ping_init_tests();
 
+	iface = PING_IFACE;
+	mac_addr = PONG_MAC_ADDR;
+
+	for (int i = 1; i < argc; i += 2) {
+		if (strncmp(argv[i], "-i", 2) == 0) {
+			iface = argv[i+1];
+		} else if (strncmp(argv[i], "-m", 2) == 0) {
+			mac_addr = argv[i+1];
+		}
+	}
+
 	event_queue = firefly_event_queue_posix_new(20);
 	pthread_attr_t thread_attrs;
 	pthread_attr_init(&thread_attrs);
@@ -221,12 +234,12 @@ int main()
 	}
 
 	struct firefly_transport_llp *llp =
-			firefly_transport_llp_eth_posix_new(PING_IFACE,
+			firefly_transport_llp_eth_posix_new(iface,
 					ping_connection_received, event_queue);
 
 	struct firefly_connection *conn =
 		firefly_transport_connection_eth_posix_open(llp,
-				PONG_MAC_ADDR, PONG_IFACE, &conn_actions);
+				mac_addr, iface, &conn_actions);
 	if (conn != NULL) {
 		ping_pass_test(CONNECTION_OPEN);
 	}

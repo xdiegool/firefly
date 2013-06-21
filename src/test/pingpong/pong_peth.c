@@ -186,7 +186,7 @@ void warn_upon_switch(int sig, siginfo_t *si, void *context)
 }
 #endif
 
-int main()
+int main(int argc, char** argv)
 {
 	uid_t uid;
 	uid = geteuid();
@@ -194,6 +194,8 @@ int main()
 		fprintf(stderr, "Need root to run these tests\n");
 		return 1;
 	}
+	char *iface;
+	char *mac_addr;
 	int res;
 	struct reader_thread_args rtarg;
 	pthread_t reader_thread;
@@ -210,6 +212,17 @@ int main()
 
 	printf("Hello, Firefly Ethernet from Pong!\n");
 	pong_init_tests();
+
+	iface = PONG_IFACE;
+	mac_addr = PING_MAC_ADDR;
+
+	for (int i = 1; i < argc; i += 2) {
+		if (strncmp(argv[i], "-i", 2) == 0) {
+			iface = argv[i+1];
+		} else if (strncmp(argv[i], "-m", 2) == 0) {
+			mac_addr = argv[i+1];
+		}
+	}
 
 	event_queue = firefly_event_queue_posix_new(20);
 	pthread_attr_t thread_attrs;
