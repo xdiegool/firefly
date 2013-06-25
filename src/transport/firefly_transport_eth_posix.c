@@ -31,9 +31,6 @@
 #include "utils/cppmacros.h"
 
 #define ERROR_STR_MAX_LEN      (256)
-#ifdef __XENO__
-#define XENO_HEAP_SIZE			(1024)
-#endif
 
 struct firefly_transport_llp *firefly_transport_llp_eth_posix_new(
 		const char *iface_name,
@@ -96,24 +93,6 @@ struct firefly_transport_llp *firefly_transport_llp_eth_posix_new(
 	llp->llp_platspec		= llp_eth;
 	llp->conn_list			= NULL;
 	llp->protocol_data_received_cb	= protocol_data_received;
-#ifdef __XENO__
-	err = rt_heap_create(&llp_eth->dyn_mem, "somename", XENO_HEAP_SIZE, H_MAPPABLE);
-	if (err) {
-		switch (err) {
-			case -EPERM:
-				fprintf(stderr, "Invalid context\n");
-				break;
-			case -ENOSYS:
-				fprintf(stderr, "Mappable but missing kernel support\n");
-				break;
-			case -EINVAL:
-				fprintf(stderr, "Invalid argument\n");
-				break;
-		}
-	}
-	FFLIF(err, FIREFLY_ERROR_ALLOC);
-#endif
-
 	return llp;
 }
 
@@ -144,9 +123,6 @@ int firefly_transport_llp_eth_posix_free_event(void *event_arg)
 	}
 	if (empty) {
 		close(llp_eth->socket);
-#ifdef __XENO__
-		rt_heap_delete(&llp_eth->dyn_mem);
-#endif
 		free(llp_eth);
 		free(llp);
 	} else {
@@ -165,38 +141,6 @@ void firefly_transport_connection_eth_posix_free(struct firefly_connection *conn
 	free(conn_eth->remote_addr);
 	free(conn_eth);
 }
-#ifdef __XENO__
-static void *xeno_mem_alloc(struct firefly_connection *conn, size_t size)
-{
-	void *buf;
-	struct protocol_connection_eth_posix *conn_eth;
-	conn_eth = conn->transport_conn_platspec;
-	struct transport_llp_eth_posix *llp_eth;
-	llp_eth = conn_eth->llp->llp_platspec;
-	int err = rt_heap_alloc(&llp_eth->dyn_mem, size, TM_NONBLOCK, &buf);
-	if (err) {
-		FFL(FIREFLY_ERROR_ALLOC);
-		return NULL;
-	} else {
-		return buf;
-	}
-}
-
-static void xeno_mem_free(struct firefly_connection *conn, void *ptr)
-{
-	struct protocol_connection_eth_posix *conn_eth;
-	conn_eth = conn->transport_conn_platspec;
-	struct transport_llp_eth_posix *llp_eth;
-	llp_eth = conn_eth->llp->llp_platspec;
-	int err = rt_heap_free(&llp_eth->dyn_mem, ptr);
-	FFLIF(err, FIREFLY_ERROR_ALLOC);
-}
-
-static struct firefly_memory_funcs conn_xeno_mem_fs = {
-	.alloc_replacement = xeno_mem_alloc,
-	.free_replacement = xeno_mem_free
-};
-#endif
 
 struct firefly_connection *firefly_transport_connection_eth_posix_open(
 		struct firefly_transport_llp *llp,
@@ -223,11 +167,7 @@ struct firefly_connection *firefly_transport_connection_eth_posix_open(
 			actions,
 			firefly_transport_eth_posix_write,
 			firefly_transport_eth_posix_ack,
-#ifdef __XENO__
-			&conn_xeno_mem_fs,
-#else
 			NULL,
-#endif
 			((struct transport_llp_eth_posix *)llp->llp_platspec)->event_queue,
 			conn_eth, firefly_transport_connection_eth_posix_free);
 	if (conn == NULL || conn_eth == NULL) {
@@ -269,7 +209,7 @@ void firefly_transport_eth_posix_write(unsigned char *data, size_t data_size,
 	err = sendto(conn_eth->socket, data, data_size, 0,
 			(struct sockaddr *)conn_eth->remote_addr,
 			sizeof(*conn_eth->remote_addr));
-	if (err == -1) {
+	if (err < 0) {
 		FFL(FIREFLY_ERROR_SOCKET);
 		if (conn->actions->connection_error)
 			conn->actions->connection_error(conn);
@@ -324,9 +264,11 @@ void firefly_transport_eth_posix_read(struct firefly_transport_llp *llp,
 	/*}*/
 
 	socklen_t addr_len = sizeof(*ev_arg->addr);
-	res = recvfrom(llp_eth->socket, tmp_buffer, 1500, 0,
+	res = recvfrom(llp_eth->socket, tmp_buffer, 1500, MSG_DONTWAIT,
 			(struct sockaddr *) ev_arg->addr, &addr_len);
-	if (res == -1) {
+	if (res == -EWOULDBLOCK || res == -EAGAIN) {
+		return;
+	} else if (res < 0) {
 		char err_buf[ERROR_STR_MAX_LEN];
 		strerror_r(errno, err_buf, ERROR_STR_MAX_LEN);
 		firefly_error(FIREFLY_ERROR_SOCKET, 3,

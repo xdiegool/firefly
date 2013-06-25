@@ -3,9 +3,6 @@
 
 #include <stdio.h>
 #include <stdbool.h>
-#ifdef __XENO__
-#include <signal.h>
-#endif
 #include <utils/firefly_event_queue_posix.h>
 #include <utils/firefly_event_queue.h>
 
@@ -73,9 +70,6 @@ int firefly_event_queue_posix_add(struct firefly_event_queue *eq,
 
 void *firefly_event_posix_thread_main(void *args)
 {
-#ifdef __XENO__
-	pthread_set_mode_np(0, PTHREAD_WARNSW | PTHREAD_PRIMARY);
-#endif
 	struct firefly_event_queue *eq =
 		(struct firefly_event_queue *) args;
 	struct firefly_event_queue_posix_context *ctx =
