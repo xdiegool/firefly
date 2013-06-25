@@ -2,3 +2,4 @@
 -I ../lib/labcomm/lib/c
 -I .
 -I src
+-I /usr/include/xenomai
