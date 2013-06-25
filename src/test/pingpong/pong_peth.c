@@ -5,10 +5,6 @@
 #include <sys/types.h>
 #include <string.h>
 #include <stdio.h>
-#include <sys/mman.h>
-#ifdef __XENO__
-#include <native/task.h>
-#endif
 #include <execinfo.h>
 #include <getopt.h>
 #include <signal.h>
@@ -63,12 +59,17 @@ static struct firefly_event_queue *event_queue;
 static pthread_mutex_t pong_done_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t pong_done_signal = PTHREAD_COND_INITIALIZER;
 static bool pong_done = false;
+static char *ping_mac_addr = PING_MAC_ADDR;
+static char *pong_iface = PING_IFACE;
 
 void pong_chan_opened(struct firefly_channel *chan);
 void pong_chan_closed(struct firefly_channel *chan);
 bool pong_chan_received(struct firefly_channel *chan);
 void pong_handle_pingpong_data(pingpong_data *data, void *ctx);
 void *send_data_and_close(void *args);
+bool pong_chan_on_restrict_request(struct firefly_channel *chan);
+void pong_chan_on_restrict_change(struct firefly_channel *chan,
+		enum restriction_transition rinfo);
 
 struct firefly_connection_actions conn_actions = {
 	.channel_opened		= pong_chan_opened,
@@ -76,19 +77,29 @@ struct firefly_connection_actions conn_actions = {
 	.channel_recv		= pong_chan_received,
 	// New -v
 	.channel_rejected	= NULL,
-	.channel_restrict	= NULL,
-	.channel_restrict_info	= NULL
+	.channel_restrict	= pong_chan_on_restrict_request,
+	.channel_restrict_info	= pong_chan_on_restrict_change
 };
 
+void pong_chan_on_restrict_change(struct firefly_channel *chan,
+		enum restriction_transition rinfo)
+{
+	printf("restrict change\n");
+}
+
+bool pong_chan_on_restrict_request(struct firefly_channel *chan)
+{
+	return true;
+}
 
 struct firefly_connection *pong_connection_received(
 		struct firefly_transport_llp *llp, char *mac_addr)
 {
 	struct firefly_connection *conn = NULL;
 	/* If address is correct, open a connection. */
-	if (strncmp(mac_addr, PING_MAC_ADDR, strlen(PING_MAC_ADDR)) == 0) {
+	if (strncmp(mac_addr, ping_mac_addr, strlen(ping_mac_addr)) == 0) {
 		conn = firefly_transport_connection_eth_posix_open(
-				llp, mac_addr, PING_IFACE, &conn_actions);
+				llp, mac_addr, pong_iface, &conn_actions);
 		pong_pass_test(CONNECTION_OPEN);
 	} else {
 		fprintf(stderr, "ERROR: Received unknown connection: %s\n",
@@ -158,33 +169,6 @@ void *send_data_and_close(void *args)
 	return NULL;
 }
 
-#ifdef __XENO__
-static const char *reason_str[] = {
-	[SIGDEBUG_UNDEFINED] = "undefined",
-	[SIGDEBUG_MIGRATE_SIGNAL] = "received signal",
-	[SIGDEBUG_MIGRATE_SYSCALL] = "invoked syscall",
-	[SIGDEBUG_MIGRATE_FAULT] = "triggered fault",
-	[SIGDEBUG_MIGRATE_PRIOINV] = "affected by priority inversion",
-	[SIGDEBUG_NOMLOCK] = "missing mlockall",
-	[SIGDEBUG_WATCHDOG] = "runaway thread",
-};
-
-void warn_upon_switch(int sig, siginfo_t *si, void *context)
-{
-	UNUSED_VAR(sig);
-	UNUSED_VAR(context);
-    unsigned int reason = si->si_value.sival_int;
-    void *bt[32];
-    int nentries;
-
-    printf("\nSIGDEBUG received, reason %d: %s\n", reason,
-       reason <= SIGDEBUG_WATCHDOG ? reason_str[reason] : "<unknown>");
-    /* Dump a backtrace of the frame which caused the switch to
-       secondary mode: */
-    nentries = backtrace(bt,sizeof(bt) / sizeof(bt[0]));
-    backtrace_symbols_fd(bt,nentries,fileno(stdout));
-}
-#endif
 
 int main(int argc, char** argv)
 {
@@ -194,51 +178,35 @@ int main(int argc, char** argv)
 		fprintf(stderr, "Need root to run these tests\n");
 		return 1;
 	}
-	char *iface;
-	char *mac_addr;
 	int res;
 	struct reader_thread_args rtarg;
+	struct sched_param thread_prio;
+	pthread_attr_t thread_attrs;
 	pthread_t reader_thread;
-#ifdef __XENO__
-	mlockall(MCL_CURRENT | MCL_FUTURE);
-
-	struct sigaction sa;
-	sigemptyset(&sa.sa_mask);
-	sa.sa_sigaction = warn_upon_switch;
-	sa.sa_flags = SA_SIGINFO;
-	sigaction(SIGDEBUG, &sa, NULL);
-	/*sigaction(SIGXCPU, &sa, NULL);*/
-#endif
 
 	printf("Hello, Firefly Ethernet from Pong!\n");
 	pong_init_tests();
 
-	iface = PONG_IFACE;
-	mac_addr = PING_MAC_ADDR;
+	pong_iface = PONG_IFACE;
+	ping_mac_addr = PING_MAC_ADDR;
 
 	for (int i = 1; i < argc; i += 2) {
 		if (strncmp(argv[i], "-i", 2) == 0) {
-			iface = argv[i+1];
+			pong_iface = argv[i+1];
 		} else if (strncmp(argv[i], "-m", 2) == 0) {
-			mac_addr = argv[i+1];
+			ping_mac_addr = argv[i+1];
 		}
 	}
 
 	event_queue = firefly_event_queue_posix_new(20);
-	pthread_attr_t thread_attrs;
 	pthread_attr_init(&thread_attrs);
-#ifdef __XENO__
-	pthread_attr_setschedpolicy(&thread_attrs, SCHED_FIFO);
-	struct sched_param thread_prio = {.sched_priority = 51};
-	pthread_attr_setschedparam(&thread_attrs, &thread_prio);
-#endif
 	res = firefly_event_queue_posix_run(event_queue, &thread_attrs);
 	if (res) {
 		fprintf(stderr, "ERROR: starting event thread.\n");
 	}
 
 	struct firefly_transport_llp *llp =
-			firefly_transport_llp_eth_posix_new(PONG_IFACE,
+			firefly_transport_llp_eth_posix_new(pong_iface,
 					pong_connection_received, event_queue);
 
 	res = pthread_mutex_init(&rtarg.lock, NULL);
