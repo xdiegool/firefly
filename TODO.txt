@@ -1,3 +1,14 @@
+# CMAKE
+	We should switch to CMake. I have begun on this branch, it can now
+	build the Labcomm compiler (and generate the Labcomm files that are
+	needed), libfirefly, libtransport-eth-posix, libtransport-udp-posix
+	and libfirefly-event-queue (which isn't needed but was a good
+	starting point).
+
+	Need to figure out how to cross compile to arm and how to avoid
+	building xenomai if it's not installed. There are probably some more
+	stuff I've forgotten that we need to do but this is a start.
+
 # EVENT CHAINING
     Should implement some sort of chaining of events, e.g. through next
     pointer on events or through on_complete callback functions. This
