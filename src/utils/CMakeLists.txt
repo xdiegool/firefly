@@ -6,5 +6,4 @@ set(event_queue_src_files
 
 add_library(event-queue ${event_queue_src_files})
 
-# Make event queue depend on the generated Labcomm files
-add_dependencies(event-queue lc_files)
+target_link_libraries(event-queue gen-files)

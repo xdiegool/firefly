@@ -73,10 +73,19 @@ add_custom_command(
 	COMMAND java -jar ${LABCOMMC} --c=${GEN_DIR}/test.c --h=${GEN_DIR}/test.h ${LC_DIR}/test.lc
 )
 
-add_custom_target(
-	lc_files
-	DEPENDS ${GEN_DIR}/firefly_protocol.c ${GEN_DIR}/firefly_protocol.h ${GEN_DIR}/pingpong.c ${GEN_DIR}/pingpong.h ${GEN_DIR}/test.c ${GEN_DIR}/test.h
+add_library(gen-files
+	${Firefly_PROJECT_DIR}/gen/test.c
+	${Firefly_PROJECT_DIR}/gen/firefly_protocol.c
 )
+# Tell cmake that the following files are generated at compile time,
+# otherwise it will complain on missing files.
+set_source_files_properties(${Firefly_PROJECT_DIR}/gen/test.c PROPERTIES GENERATED TRUE)
+set_source_files_properties(${Firefly_PROJECT_DIR}/gen/firefly_protocol.c PROPERTIES GENERATED TRUE)
+
+# add_custom_target(
+#     lc_files
+#     DEPENDS ${GEN_DIR}/firefly_protocol.c ${GEN_DIR}/firefly_protocol.h ${GEN_DIR}/pingpong.c ${GEN_DIR}/pingpong.h ${GEN_DIR}/test.c ${GEN_DIR}/test.h
+# )
 
 add_custom_command(
 	OUTPUT ${LABCOMMC}
