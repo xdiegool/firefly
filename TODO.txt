@@ -5,9 +5,10 @@
 	and libfirefly-event-queue (which isn't needed but was a good
 	starting point).
 
-	Need to figure out how to cross compile to arm and how to avoid
-	building xenomai if it's not installed. There are probably some more
-	stuff I've forgotten that we need to do but this is a start.
+	Need to figure out how to cross compile to arm, how to avoid
+	building xenomai (and LWIP-suff) if it's not installed and how to
+	build test programs. There are probably some more stuff I've
+	forgotten that we need to do but this is a start.
 
 # EVENT CHAINING
     Should implement some sort of chaining of events, e.g. through next
