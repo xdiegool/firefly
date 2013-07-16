@@ -15,6 +15,7 @@ set(GEN_DIR ${Firefly_PROJECT_DIR}/gen)
 set(LC_DIR ${Firefly_PROJECT_DIR}/lc)
 set(INC_DIR ${Firefly_PROJECT_DIR}/include)
 set(GEN_DIR ${Firefly_PROJECT_DIR}/gen)
+set(TEST_FILES_DIR ${Firefly_PROJECT_DIR}/testfiles)
 
 set(LABCOMM_DIR ${Firefly_PROJECT_DIR}/../lib/labcomm)
 set(LABCOMMC ${LABCOMM_DIR}/compiler/labComm.jar)
@@ -26,13 +27,34 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${Firefly_BINARY_DIR})
 ### }
 
 ### FLAGS {
-set(CMAKE_C_FLAGS "-std=c99")
+set(CMAKE_C_FLAGS
+	"-std=c99 -Wall -Wextra -Wno-missing-field-initializers -D DEBUG -D LABCOMM_ENCODER_LINEAR_SEARCH"
+)
+
+# TODO: fix this, includes and stuff
+# set(ARM_C_FLAGS
+# 	"-Wfloat-equal -Werror-implicit-function-declaration"
+# 	"-mthumb -mcpu=cortex-m3 -T$(LDSCRIPT)"
+# 	"-ffunction-sections -fdata-sections"
+# 	"$(INC_TRANSPORT_UDP_LWIP) -D UART_BUFFERED"
+# 	"-D sprintf=usprintf"
+# 	"-D snprintf=usnprintf"
+# 	"-D vsnprintf=uvsnprintf"
+# 	"-D printf=uipprintf"
+# 	"-D malloc=pvPortMalloc"
+# 	"-D calloc=pvPortCalloc"
+# 	"-D free=vPortFree"
+# 	"-D ARM_CORTEXM3_CODESOURCERY"
+# 	"-D LABCOMM_NO_STDIO"
+# 	"-DLABCOMM_COMPAT=\"labcomm_compat_arm_cortexm3.h\""
+# 	"-D GCC_ARMCM3=1"
+# )
 ### }
 
 ### CUSTOM COMMANDS & TARGETS {
 add_custom_command(
 	OUTPUT ${GEN_DIR}
-	DEPENDS ${LABCOMMC}
+	DEPENDS ${LABCOMMC} ${LABCOMM_INC_DIR}/liblabcomm.a
 	COMMAND mkdir -p ${GEN_DIR}
 )
 add_custom_command(
@@ -60,6 +82,22 @@ add_custom_command(
 	OUTPUT ${LABCOMMC}
 	COMMAND ant -f ${LABCOMM_DIR}/compiler/build.xml jar
 )
+
+add_custom_target(
+	labcomm_lib
+	DEPENDS ${LABCOMM_INC_DIR}/liblabcomm.a
+)
+
+add_custom_command(
+	OUTPUT ${LABCOMM_INC_DIR}/liblabcomm.a
+	COMMAND make -C ${LABCOMM_INC_DIR} -e LABCOMM_NO_EXPERIMENTAL=true -e CFLAGS=\"-std=c99 -Wall -Wno-missing-field-initializers -I. -Iinclude -Isrc -D DEBUG -D LABCOMM_ENCODER_LINEAR_SEARCH -g -O0\" liblabcomm.a
+)
+
+add_custom_command(
+	TARGET test
+	POST_BUILD
+	COMMAND echo "testing"
+)
 ### }
 
 ### MISC {
@@ -68,6 +106,7 @@ include_directories(
 	${INC_DIR}
 	${Firefly_PROJECT_DIR}
 	${Firefly_SOURCE_DIR}
+	${Firefly_BINARY_DIR}
 )
 
 # # Dumps variables available to cmake:
@@ -82,5 +121,6 @@ include_directories(
 add_subdirectory(utils)
 add_subdirectory(protocol)
 add_subdirectory(transport)
+add_subdirectory(test)
 ### }§
 
