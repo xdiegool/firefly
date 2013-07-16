@@ -79,14 +79,9 @@
 	- Ack transport packets when closing a channel.
 	- conn->transport_ack == NULL should be interpreted as reliability ensured
 
-# PREPARE FOR XENOMAI
-	- App layer must be notified before change from pure state to inpure state
-	  (using Haskell terminology). Pure would mean a state where nothing is
-	  uncertain, no unacked packets, no new connections or channels, no closing
-	  channels or connections. Pure is only encoding/decoding packets and
-	  sending them.
-	- Research wheather is it possible to have 2 separate event loops, one for
-	  pure events and one for inpure. This state must be know when allocating
-	  new memory.
-	- Fix memory allocation in labcomm, can't use malloc for encoding and
-	  decoding, should not use malloc or free either to support eg RTOS.
+# Better Build system
+	- CMake in the works!
+
+# Seperate LabComm, RTOS\LWIP, Firefly from eachother.
+	- Firefly should not include LabComm but rather depend on it. Path to
+	  headers and libs should be configurable (through cmake?)
