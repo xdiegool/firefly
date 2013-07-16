@@ -534,7 +534,7 @@ $(TEST_PROGS): $(LABCOMMLIBPATH)/liblabcomm.a |$(TESTFILES_DIR)
 # Main test program for the protocol tests.
 # Filter-out libraries since those are not "in-files" but the still depend on them so they can be used for linking.
 $(BUILD_DIR)/test/test_protocol_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_protocol_main test_proto_labcomm test_labcomm_utils test_proto_chan test_proto_conn test_proto_important test_proto_errors error_helper proto_helper event_helper) $(BUILD_DIR)/$(GEN_DIR)/test.o $(BUILD_DIR)/lib$(LIB_FIREFLY_NAME).a
-	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) -L/tmp/ $(filter-out %.a,$^) -l$(LIB_FIREFLY_NAME) $(LDLIBS_TEST) -o $@
+	$(CC) $(LDFLAGS) $(LDFLAGS_TEST) $(filter-out %.a,$^) -l$(LIB_FIREFLY_NAME) $(LDLIBS_TEST) -o $@
 
 # Main test program for the transport tests.
 $(BUILD_DIR)/test/test_transport_main: $(patsubst %,$(BUILD_DIR)/test/%.o,test_transport_main test_transport test_transport_gen test_transport_udp_posix error_helper) $(patsubst %,$(BUILD_DIR)/lib%.a,$(LIB_TRANSPORT_UDP_POSIX_NAME))
