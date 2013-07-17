@@ -84,11 +84,15 @@ struct firefly_connection_actions conn_actions = {
 void pong_chan_on_restrict_change(struct firefly_channel *chan,
 		enum restriction_transition rinfo)
 {
+	UNUSED_VAR(chan);
+	UNUSED_VAR(rinfo);
+
 	printf("restrict change\n");
 }
 
 bool pong_chan_on_restrict_request(struct firefly_channel *chan)
 {
+	UNUSED_VAR(chan);
 	return true;
 }
 
@@ -180,7 +184,6 @@ int main(int argc, char** argv)
 	}
 	int res;
 	struct reader_thread_args rtarg;
-	struct sched_param thread_prio;
 	pthread_attr_t thread_attrs;
 	pthread_t reader_thread;
 
