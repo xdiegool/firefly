@@ -77,8 +77,8 @@ add_library(gen-files
 	${Firefly_PROJECT_DIR}/gen/test.c
 	${Firefly_PROJECT_DIR}/gen/firefly_protocol.c
 )
-# Tell cmake that the following files are generated at compile time,
-# otherwise it will complain on missing files.
+# Tell cmake that the two files above are generated at compile time, otherwise cmake complains about
+# missing files when generating Makefiles (or similar).
 set_source_files_properties(${Firefly_PROJECT_DIR}/gen/test.c PROPERTIES GENERATED TRUE)
 set_source_files_properties(${Firefly_PROJECT_DIR}/gen/firefly_protocol.c PROPERTIES GENERATED TRUE)
 
@@ -90,11 +90,6 @@ set_source_files_properties(${Firefly_PROJECT_DIR}/gen/firefly_protocol.c PROPER
 add_custom_command(
 	OUTPUT ${LABCOMMC}
 	COMMAND ant -f ${LABCOMM_DIR}/compiler/build.xml jar
-)
-
-add_custom_target(
-	labcomm_lib
-	DEPENDS ${LABCOMM_INC_DIR}/liblabcomm.a
 )
 
 add_custom_command(
