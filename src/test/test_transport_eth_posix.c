@@ -483,15 +483,14 @@ void test_eth_llp_free_mult_conns()
 {
 	struct firefly_transport_llp *llp = firefly_transport_llp_eth_posix_new(
 					"lo", NULL, eq);
-	struct firefly_connection *conn;
 
-	conn = firefly_transport_connection_eth_posix_open(llp,
+	firefly_transport_connection_eth_posix_open(llp,
 			"00:00:00:00:00:00", "lo", NULL);
 
-	conn = firefly_transport_connection_eth_posix_open(llp,
+	firefly_transport_connection_eth_posix_open(llp,
 			"00:00:00:00:00:00", "lo", NULL);
 
-	conn = firefly_transport_connection_eth_posix_open(llp,
+	firefly_transport_connection_eth_posix_open(llp,
 			"00:00:00:00:00:00", "lo", NULL);
 
 	firefly_transport_llp_eth_posix_free(llp);
