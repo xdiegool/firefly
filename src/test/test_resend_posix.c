@@ -65,9 +65,6 @@ void test_add_simple()
 
 void test_remove_empty()
 {
-	struct timespec at;
-	at.tv_sec = 1;
-	at.tv_nsec = 2;
 	struct resend_queue *rq = firefly_resend_queue_new();
 
 	CU_ASSERT_PTR_NULL(rq->first);
