@@ -130,4 +130,17 @@ if(NOT CMAKE_CROSSCOMPILING)
 		firefly-werr transport-udp-posix transport-eth-posix
 		labcomm cunit pthread rt gen-files
 	)
+
+	add_custom_target(run-test
+		COMMAND ${Firefly_PROJECT_DIR}/cli/test.sh
+		WORKING_DIRECTORY ${Firefly_PROJECT_DIR}/cli
+		DEPENDS test_protocol_main test_transport_main test_transport_eth_posix_main test_event_main test_resend_posix
+	)
+
+	add_custom_target(run-systemtest
+		COMMAND ${Firefly_PROJECT_DIR}/cli/test.sh system
+		WORKING_DIRECTORY ${Firefly_PROJECT_DIR}/cli
+		DEPENDS pingpong_main pong_eth_main ping_eth_main pingpong_multi_main udp_posix
+	)
+
 endif(NOT CMAKE_CROSSCOMPILING)

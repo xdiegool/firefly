@@ -1,17 +1,17 @@
 # Main CMake file for project Firely.
-# Modeline {
-# vi: foldmarker={,} foldmethod=marker foldlevel=0
-# }
+# Modeline {{{
+# vi: foldmarker={{{,}}} foldmethod=marker foldlevel=0
+# }}}
 
-## General {
+## General {{{
 cmake_minimum_required (VERSION 2.8)
 project (Firefly)
 if(NOT CMAKE_CROSSCOMPILING)
 	enable_testing()
 endif(NOT CMAKE_CROSSCOMPILING)
-## }
+## }}}
 
-## DIRS {
+## DIRS {{{
 # Firefly directories:
 set(Firefly_PROJECT_DIR ${Firefly_SOURCE_DIR}/..)
 set(GEN_DIR ${Firefly_PROJECT_DIR}/gen)
@@ -30,9 +30,9 @@ set(LABCOMM_INC_DIR ${LABCOMM_DIR}/lib/c/)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${Firefly_BINARY_DIR})
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${Firefly_BINARY_DIR})
 
-## }
+## }}}
 
-## FLAGS {
+## FLAGS {{{
 # CFLAGS when cross compiling to the ARM-card:
 if(CMAKE_CROSSCOMPILING)
 	set(CMAKE_C_FLAGS
@@ -46,9 +46,9 @@ if(NOT CMAKE_CROSSCOMPILING)
 		"-std=c99 -Wall -Wextra -Wno-missing-field-initializers -D DEBUG -D LABCOMM_ENCODER_LINEAR_SEARCH"
 	)
 endif(NOT CMAKE_CROSSCOMPILING)
-## }
+## }}}
 
-## CUSTOM COMMANDS & TARGETS {
+## CUSTOM COMMANDS & TARGETS {{{
 # Custom command to create the directory for the generated Labcomm
 # files, it depends upon the Labcomm compiler and library to make sure
 # they are generated before trying to generate files with Labcomm.
@@ -104,9 +104,9 @@ add_custom_command(
 	OUTPUT ${LABCOMM_INC_DIR}/liblabcomm.a
 	COMMAND make -C ${LABCOMM_INC_DIR} -e LABCOMM_NO_EXPERIMENTAL=true -e CFLAGS=\"-std=c99 -Wall -Wno-missing-field-initializers -I. -Iinclude -Isrc -D DEBUG -D LABCOMM_ENCODER_LINEAR_SEARCH -g -O0\" liblabcomm.a
 )
-## }
+## }}}
 
-## MISC {
+## MISC {{{
 # Specify which directories should be searched for header files:
 include_directories(
 	${LABCOMM_INC_DIR}
@@ -122,13 +122,13 @@ include_directories(
 #     message(STATUS "${_variableName}=${${_variableName}}")
 # endforeach()
 
-## }
+## }}}
 
-## INCLUDE {
+## INCLUDE {{{
 # Include subdirectories with their own CMake files:
 add_subdirectory(utils)
 add_subdirectory(protocol)
 add_subdirectory(transport)
 add_subdirectory(test)
-## }§
+## }}}
 
