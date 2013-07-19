@@ -29,11 +29,13 @@
     Possibly also implement an ERROR state on the connection.
 
 # TEST STUFF
-    The eth_posix test suite fails infrequently on a ubu10.04 32b vm
-    with incorrect sender etc. Not reproducible on ubu12.04 64b.
+	- The eth_posix test suite fails infrequently on a ubu10.04 32b vm
+      with incorrect sender etc. Not reproducible on ubu12.04 64b.
 
-    Try limiting the pingpong suite to first open channel and then
-    continue.
+	- Try limiting the pingpong suite to first open channel and then
+	  continue.
+
+	- Fix test_proto_memman, it currently doesn't even compile.
 
 # EVENTIFY CONN OPEN
     fix event driven connection open, at least add connection to llp

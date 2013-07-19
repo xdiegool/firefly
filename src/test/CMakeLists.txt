@@ -155,6 +155,8 @@ if(NOT CMAKE_CROSSCOMPILING)
 	)
 	## }}}
 
+	# TODO: Fix test_proto_memman tests and add that to this file.
+
 	## Custom target to run tests w/ valgrind {{{
 	add_custom_target(run-test
 		COMMAND ${Firefly_PROJECT_DIR}/cli/test.sh
