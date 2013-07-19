@@ -104,6 +104,17 @@ add_custom_command(
 	OUTPUT ${LABCOMM_INC_DIR}/liblabcomm.a
 	COMMAND make -C ${LABCOMM_INC_DIR} -e LABCOMM_NO_EXPERIMENTAL=true -e CFLAGS=\"-std=c99 -Wall -Wno-missing-field-initializers -I. -Iinclude -Isrc -D DEBUG -D LABCOMM_ENCODER_LINEAR_SEARCH -g -O0\" liblabcomm.a
 )
+
+# Custom commands to build tags files for vim/emacs.
+add_custom_target(tags
+	DEPENDS tags-vim tags-emacs
+)
+add_custom_target(tags-vim
+	COMMAND ctags -R --tag-relative=yes -f ../tags ..
+)
+add_custom_target(tags-emacs
+	COMMAND ctags --recurse --tag-relative=yes -e -f ../TAGS ..
+)
 ## }}}
 
 ## MISC {{{
@@ -116,7 +127,7 @@ include_directories(
 	${Firefly_BINARY_DIR}
 )
 
-# Dump variables available to cmake:
+# Dump variables available to cmake, good for debugging:
 # get_cmake_property(_variableNames VARIABLES)
 # foreach (_variableName ${_variableNames})
 #     message(STATUS "${_variableName}=${${_variableName}}")
