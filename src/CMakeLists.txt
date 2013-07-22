@@ -30,6 +30,8 @@ set(LABCOMM_INC_DIR ${LABCOMM_DIR}/lib/c/)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${Firefly_BINARY_DIR})
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${Firefly_BINARY_DIR})
 
+# Append our own CMake modules path:
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${Firefly_PROJECT_DIR}/cmake_modules)
 ## }}}
 
 ## FLAGS {{{
