@@ -124,7 +124,6 @@ include_directories(
 	${INC_DIR}
 	${Firefly_PROJECT_DIR}
 	${Firefly_SOURCE_DIR}
-	${Firefly_BINARY_DIR}
 )
 
 # Dump variables available to cmake, good for debugging:
