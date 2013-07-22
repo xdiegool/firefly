@@ -15,7 +15,7 @@ if(NOT CMAKE_CROSSCOMPILING)
 			${Firefly_SOURCE_DIR}/transport/firefly_transport.c
 			${Firefly_SOURCE_DIR}/transport/firefly_transport_eth_xeno.c
 		)
-		set_target_properties(gen-files
+		set_target_properties(transport-eth-xenomai
 			PROPERTIES COMPILE_FLAGS "-std=gnu99 -D_GNU_SOURCE -D_REENTRANT -D__XENO__"
 		)
 		target_link_libraries(transport-eth-xenomai
