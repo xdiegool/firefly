@@ -6,6 +6,13 @@ if(NOT CMAKE_CROSSCOMPILING)
 	)
 	target_link_libraries(transport-eth-posix gen-files)
 
+	# Ethernet Xenomai
+	add_library(transport-eth-xenomai
+		${Firefly_SOURCE_DIR}/transport/firefly_transport.c
+		${Firefly_SOURCE_DIR}/transport/firefly_transport_eth_xeno.c
+	)
+	target_link_libraries(transport-eth-xenomai gen-files)
+
 	# UDP POSIX
 	add_library(transport-udp-posix
 		${Firefly_SOURCE_DIR}/transport/firefly_transport.c
