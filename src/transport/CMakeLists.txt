@@ -8,21 +8,21 @@ if(NOT CMAKE_CROSSCOMPILING)
 
 	message("Looking for Xenomai")
 	find_package(Xenomai)
-	if (Xenomai_FOUND)
-		message("Found Xenomai")
+	if (XENOMAI_FOUND)
 		include_directories(${XENOMAI_INCLUDE_DIRS})
 		# Ethernet Xenomai
 		add_library(transport-eth-xenomai
 			${Firefly_SOURCE_DIR}/transport/firefly_transport.c
 			${Firefly_SOURCE_DIR}/transport/firefly_transport_eth_xeno.c
 		)
+		set_target_properties(gen-files
+			PROPERTIES COMPILE_FLAGS "-std=gnu99 -D_GNU_SOURCE -D_REENTRANT -D__XENO__"
+		)
 		target_link_libraries(transport-eth-xenomai
 			gen-files
 			${XENOMAI_LIBRARIES}
 		)
-	else (Xenomai_FOUND)
-		message("Not found!")
-	endif (Xenomai_FOUND)
+	endif (XENOMAI_FOUND)
 
 	# UDP POSIX
 	add_library(transport-udp-posix
