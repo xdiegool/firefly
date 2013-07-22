@@ -2,8 +2,8 @@
 	We should switch to CMake. I have begun on this branch, it can now
 	build the Labcomm compiler (and generate the Labcomm files that are
 	needed), libfirefly, libtransport-eth-posix, libtransport-udp-posix
-	and libevent-queue (which isn't needed but was a good
-	starting point since it didn't depend on anything).
+	and libevent-queue (which isn't needed but was a good starting point
+	since it didn't depend on anything).
 
 	Stuff left to do:
 		- Add Xenomai transport layer compilation to
