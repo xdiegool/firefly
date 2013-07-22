@@ -5,11 +5,6 @@
 	and libevent-queue (which isn't needed but was a good
 	starting point since it didn't depend on anything).
 
-	Need to figure out how to cross compile to arm, how to avoid
-	building xenomai (and LWIP-suff) if it's not installed and how to
-	build test programs. There are probably some more stuff I've
-	forgotten that we need to do but this is a start.
-
 	Stuff left to do:
 		- Add Xenomai transport layer compilation to
 		  src/transport/CMakeLists.txt.
@@ -19,6 +14,8 @@
 		  been fixed (see # TEST STUFF below).
 		- Look through the entire Makefile to see if there are targets
 		  left to move over to CMake.
+
+	There's probably more stuff I've forgotten but this is a start.
 
 # EVENT CHAINING
     Should implement some sort of chaining of events, e.g. through next
