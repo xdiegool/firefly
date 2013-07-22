@@ -249,6 +249,17 @@ void handle_test_test_var(test_test_var *v, void *ctx)
 	UNUSED_VAR(ctx);
 }
 
+struct firefly_connection_actions conn_actions = {
+	.channel_recv = memman_chan_accept,
+	.channel_opened = memman_chan_open,
+	.channel_rejected = NULL,
+	.channel_closed = memman_chan_closed,
+	.channel_restrict = NULL,
+	.channel_restrict_info = NULL,
+	.channel_error = NULL,
+	.connection_error = NULL,
+};
+
 void test_memory_management_one_chan()
 {
 	memtest_started = true;
@@ -261,12 +272,12 @@ void test_memory_management_one_chan()
 	memfuncs.alloc_replacement = test_runtime_malloc;
 	memfuncs.free_replacement = test_runtime_free;
 	struct firefly_connection *conn = firefly_connection_new(
-			memman_chan_open, memman_chan_closed, memman_chan_accept,
+			&conn_actions,
 			transport_write_test_decoder, transport_ack_test,
 			&memfuncs, eq, NULL, NULL);
 	CU_ASSERT_PTR_NOT_NULL_FATAL(conn);
 	// --- SETUP PHASE ---
-	firefly_channel_open(conn, NULL);
+	firefly_channel_open(conn);
 	event_execute_all_test(eq);
 	CU_ASSERT_TRUE_FATAL(received_channel_request);
 	firefly_protocol_channel_response resp;
