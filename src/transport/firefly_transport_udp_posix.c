@@ -123,101 +123,87 @@ int firefly_transport_llp_udp_posix_free_event(void *event_arg)
 	return 0;
 }
 
-struct firefly_connection *firefly_connection_udp_posix_new(
-		struct firefly_transport_llp *llp,
-		struct sockaddr_in *remote_addr,
-		unsigned int timeout,
-		struct firefly_connection_actions *actions)
+static int connection_open(struct firefly_connection *conn)
 {
-	struct transport_llp_udp_posix *llp_udp;
-	struct firefly_connection *conn;
-	struct protocol_connection_udp_posix *conn_udp;
-
-	llp_udp = llp->llp_platspec;
-	conn_udp = malloc(sizeof(*conn_udp));
-
-	conn = firefly_connection_new(actions,
-			firefly_transport_udp_posix_write,
-			firefly_transport_udp_posix_ack,
-			NULL,
-			llp_udp->event_queue, conn_udp,
-			firefly_transport_connection_udp_posix_free);
-
-	if (conn == NULL || conn_udp == NULL) {
-		FFL(FIREFLY_ERROR_ALLOC);
-		free(conn);
-		free(conn_udp);
-		return NULL;
-	}
-	conn_udp->remote_addr = remote_addr;
-	conn_udp->socket = llp_udp->local_udp_socket;
-	conn_udp->llp = llp;
-	conn_udp->timeout = timeout;
-
-	return conn;
+	struct firefly_transport_connection_udp_posix *tcup;
+	tcup = conn->transport->context;
+	add_connection_to_llp(conn, tcup->llp);
+	return 0;
 }
 
-void firefly_transport_connection_udp_posix_free(
-		struct firefly_connection *conn)
+static int connection_close(struct firefly_connection *conn)
 {
-	struct protocol_connection_udp_posix *conn_udp;
-	conn_udp = conn->transport_conn_platspec;
+	struct firefly_transport_connection_udp_posix *tcup;
+	tcup = conn->transport->context;
 
-	remove_connection_from_llp(conn_udp->llp, conn,
+	remove_connection_from_llp(tcup->llp, conn,
 			firefly_connection_eq_ptr);
-	free(conn_udp->remote_addr);
-	free(conn_udp);
+	free(tcup->remote_addr);
+	free(tcup);
+	free(conn->transport);
+	return 0;
 }
 
-struct firefly_connection *firefly_transport_connection_udp_posix_open(
+struct firefly_transport_connection *firefly_transport_connection_udp_posix_new(
 		struct firefly_transport_llp *llp,
-		const char *remote_ip_addr,
+		const char *remote_ipaddr,
 		unsigned short remote_port,
-		unsigned int timeout,
-		struct firefly_connection_actions *actions)
+		unsigned int timeout)
 {
-	struct firefly_connection *conn;
-	struct sockaddr_in *remote_addr;
+	struct firefly_transport_connection *tc;
+	struct firefly_transport_connection_udp_posix *tcup;
+	struct transport_llp_udp_posix *llp_udp = llp->llp_platspec;
 	int res;
-
-	remote_addr = calloc(1, sizeof(*remote_addr));
-	if (remote_addr == NULL) {
-		FFL(FIREFLY_ERROR_ALLOC);
+	tc = malloc(sizeof(*tc));
+	tcup = malloc(sizeof(*tcup));
+	if (tc == NULL || tcup == NULL) {
+		free(tc);
+		free(tcup);
 		return NULL;
 	}
-	remote_addr->sin_family = AF_INET;
-	remote_addr->sin_port = htons(remote_port);
-	res = inet_pton(AF_INET, remote_ip_addr, &remote_addr->sin_addr);
+	tcup->remote_addr = calloc(1, sizeof(*tcup->remote_addr));
+	if (tcup->remote_addr == NULL) {
+		free(tc);
+		free(tcup);
+		return NULL;
+	}
+	tcup->remote_addr->sin_family = AF_INET;
+	tcup->remote_addr->sin_port = htons(remote_port);
+	res = inet_pton(AF_INET, remote_ipaddr, &tcup->remote_addr->sin_addr);
 	if (res == 0) {
 		FFL(FIREFLY_ERROR_IP_PARSE);
-		free(remote_addr);
+		free(tcup->remote_addr);
+		free(tc);
+		free(tcup);
 		return NULL;
 	}
-	conn = firefly_connection_udp_posix_new(llp, remote_addr, timeout, actions);
-	if (conn)
-		add_connection_to_llp(conn, llp);
-
-	return conn;
+	tcup->socket = llp_udp->local_udp_socket;
+	tcup->llp = llp;
+	tcup->timeout = timeout;
+	tc->context = tcup;
+	tc->open = connection_open;
+	tc->close = connection_close;
+	return tc;
 }
 
 void firefly_transport_udp_posix_ack(unsigned char pkt_id,
 		struct firefly_connection *conn)
 {
-	struct protocol_connection_udp_posix *conn_udp;
-	struct transport_llp_udp_posix *llpp;
+	struct firefly_transport_connection_udp_posix *conn_udp;
+	struct transport_llp_udp_posix *llpup;
 
-	conn_udp = conn->transport_conn_platspec;
-	llpp = conn_udp->llp->llp_platspec;
-	firefly_resend_remove(llpp->resend_queue, pkt_id);
+	conn_udp = conn->transport->context;
+	llpup = conn_udp->llp->llp_platspec;
+	firefly_resend_remove(llpup->resend_queue, pkt_id);
 }
 
 void firefly_transport_udp_posix_write(unsigned char *data, size_t data_size,
 		struct firefly_connection *conn, bool important, unsigned char *id)
 {
-	struct protocol_connection_udp_posix *conn_udp;
+	struct firefly_transport_connection_udp_posix *conn_udp;
 	int res;
 
-	conn_udp = conn->transport_conn_platspec;
+	conn_udp = conn->transport->context;
 	res = sendto(conn_udp->socket, data, data_size, 0,
 		     (struct sockaddr *) conn_udp->remote_addr,
 		     sizeof(*conn_udp->remote_addr));
@@ -271,8 +257,8 @@ void *firefly_transport_udp_posix_resend(void *args)
 					false, NULL);
 			free(data);
 			firefly_resend_readd(rq, id,
-					((struct protocol_connection_udp_posix *)
-					conn->transport_conn_platspec)->timeout);
+					((struct firefly_transport_connection_udp_posix *)
+					conn->transport->context)->timeout);
 		}
 		pthread_setcancelstate(prev_state, NULL);
 	}
@@ -439,7 +425,9 @@ bool sockaddr_in_eq(struct sockaddr_in *one, struct sockaddr_in *other)
 
 bool connection_eq_inaddr(struct firefly_connection *conn, void *context)
 {
-	return sockaddr_in_eq(((struct protocol_connection_udp_posix *) conn->transport_conn_platspec)->remote_addr, (struct sockaddr_in *) context);
+	return sockaddr_in_eq(((struct firefly_transport_connection_udp_posix *)
+				conn->transport->context)->remote_addr, (struct sockaddr_in
+					*) context);
 }
 
 void sockaddr_in_ipaddr(struct sockaddr_in *addr, char *ip_addr)

@@ -35,6 +35,7 @@ struct firefly_event_queue *eq;
 
 struct test_conn_platspec {
 	bool important;
+	struct firefly_connection **conn;
 };
 
 int init_suit_proto_important()
@@ -62,7 +63,7 @@ void mock_transport_write_important(unsigned char *data, size_t size,
 	UNUSED_VAR(size);
 	mock_transport_written = true;
 	struct test_conn_platspec *ps =
-		(struct test_conn_platspec *) conn->transport_conn_platspec;
+		(struct test_conn_platspec *) conn->transport->context;
 	CU_ASSERT_EQUAL(ps->important, important);
 	if (important) {
 		CU_ASSERT_PTR_NOT_NULL(id);
@@ -79,12 +80,29 @@ void mock_transport_ack(unsigned char id, struct firefly_connection *conn)
 	mock_transport_acked = true;
 }
 
+static int test_conn_open(struct firefly_connection *conn)
+{
+	struct test_conn_platspec *ps = conn->transport->context;
+	struct firefly_connection **res = ps->conn;
+	*res = conn;
+	return 0;
+}
+
 void test_important_signature()
 {
-	struct test_conn_platspec ps;
-	ps.important = true;
-	struct firefly_connection *conn = firefly_connection_new(NULL,
-			mock_transport_write_important, NULL, NULL, eq, &ps, NULL);
+	struct firefly_connection *conn;
+	struct test_conn_platspec ps = { .important = true, .conn = &conn };
+	struct firefly_transport_connection test_trsp_conn = {
+		.write = mock_transport_write_important,
+		.ack = NULL,
+		.open = test_conn_open,
+		.close = NULL,
+		.context = &ps
+	};
+
+	int res = firefly_connection_open(NULL, NULL, eq, &test_trsp_conn);
+	CU_ASSERT_EQUAL_FATAL(res, 0);
+	event_execute_test(eq, 1);
 	struct firefly_channel *chan = firefly_channel_new(conn);
 	add_channel_to_connection(chan, conn);
 
@@ -105,11 +123,19 @@ void test_important_recv_ack()
 {
 	unsigned char *buf;
 	size_t buf_size;
-	struct test_conn_platspec ps;
-	ps.important = true;
-	struct firefly_connection *conn = firefly_connection_new(NULL,
-			mock_transport_write_important, mock_transport_ack,
-			NULL, eq, &ps, NULL);
+	struct firefly_connection *conn;
+	struct test_conn_platspec ps = { .important = true, .conn = &conn };
+	struct firefly_transport_connection test_trsp_conn = {
+		.write = mock_transport_write_important,
+		.ack = mock_transport_ack,
+		.open = test_conn_open,
+		.close = NULL,
+		.context = &ps
+	};
+
+	int res = firefly_connection_open(NULL, NULL, eq, &test_trsp_conn);
+	CU_ASSERT_EQUAL_FATAL(res, 0);
+	event_execute_test(eq, 1);
 	struct firefly_channel *chan = firefly_channel_new(conn);
 	add_channel_to_connection(chan, conn);
 
@@ -135,10 +161,19 @@ void test_important_recv_ack()
 
 void test_important_signatures_mult()
 {
-	struct test_conn_platspec ps;
-	ps.important = true;
-	struct firefly_connection *conn = firefly_connection_new(NULL,
-			mock_transport_write_important, NULL, NULL, eq, &ps, NULL);
+	struct firefly_connection *conn;
+	struct test_conn_platspec ps = { .important = true, .conn = &conn };
+	struct firefly_transport_connection test_trsp_conn = {
+		.write = mock_transport_write_important,
+		.ack = NULL,
+		.open = test_conn_open,
+		.close = NULL,
+		.context = &ps
+	};
+
+	int res = firefly_connection_open(NULL, NULL, eq, &test_trsp_conn);
+	CU_ASSERT_EQUAL_FATAL(res, 0);
+	event_execute_test(eq, 1);
 	struct firefly_channel *chan = firefly_channel_new(conn);
 	add_channel_to_connection(chan, conn);
 
@@ -169,10 +204,19 @@ void test_important_signatures_mult()
 
 void test_important_seqno_overflow()
 {
-	struct test_conn_platspec ps;
-	ps.important = true;
-	struct firefly_connection *conn = firefly_connection_new(NULL,
-			mock_transport_write_important, NULL, NULL, eq, &ps, NULL);
+	struct firefly_connection *conn;
+	struct test_conn_platspec ps = { .important = true, .conn = &conn };
+	struct firefly_transport_connection test_trsp_conn = {
+		.write = mock_transport_write_important,
+		.ack = NULL,
+		.open = test_conn_open,
+		.close = NULL,
+		.context = &ps
+	};
+
+	int res = firefly_connection_open(NULL, NULL, eq, &test_trsp_conn);
+	CU_ASSERT_EQUAL_FATAL(res, 0);
+	event_execute_test(eq, 1);
 	struct firefly_channel *chan = firefly_channel_new(conn);
 	add_channel_to_connection(chan, conn);
 
@@ -193,10 +237,19 @@ void test_important_send_ack()
 {
 	unsigned char *buf;
 	size_t buf_size;
-	struct test_conn_platspec ps;
-	ps.important = true;
-	struct firefly_connection *conn = firefly_connection_new(NULL,
-			transport_write_test_decoder, NULL, NULL, eq, &ps, NULL);
+	struct firefly_connection *conn;
+	struct test_conn_platspec ps = { .important = true, .conn = &conn };
+	struct firefly_transport_connection test_trsp_conn = {
+		.write = transport_write_test_decoder,
+		.ack = NULL,
+		.open = test_conn_open,
+		.close = NULL,
+		.context = &ps
+	};
+
+	int res = firefly_connection_open(NULL, NULL, eq, &test_trsp_conn);
+	CU_ASSERT_EQUAL_FATAL(res, 0);
+	event_execute_test(eq, 1);
 	struct firefly_channel *chan = firefly_channel_new(conn);
 	add_channel_to_connection(chan, conn);
 
@@ -225,10 +278,19 @@ void test_not_important_not_send_ack()
 {
 	unsigned char *buf;
 	size_t buf_size;
-	struct test_conn_platspec ps;
-	ps.important = true;
-	struct firefly_connection *conn = firefly_connection_new(NULL,
-			transport_write_test_decoder, NULL, NULL, eq, &ps, NULL);
+	struct firefly_connection *conn;
+	struct test_conn_platspec ps = { .important = true, .conn = &conn };
+	struct firefly_transport_connection test_trsp_conn = {
+		.write = transport_write_test_decoder,
+		.ack = NULL,
+		.open = test_conn_open,
+		.close = NULL,
+		.context = &ps
+	};
+
+	int res = firefly_connection_open(NULL, NULL, eq, &test_trsp_conn);
+	CU_ASSERT_EQUAL_FATAL(res, 0);
+	event_execute_test(eq, 1);
 	struct firefly_channel *chan = firefly_channel_new(conn);
 	add_channel_to_connection(chan, conn);
 
@@ -255,10 +317,19 @@ void test_important_mult_simultaneously()
 {
 	unsigned char *buf;
 	size_t buf_size;
-	struct test_conn_platspec ps;
-	ps.important = true;
-	struct firefly_connection *conn = firefly_connection_new(NULL,
-			mock_transport_write_important, mock_transport_ack, NULL, eq, &ps, NULL);
+	struct firefly_connection *conn;
+	struct test_conn_platspec ps = { .important = true, .conn = &conn };
+	struct firefly_transport_connection test_trsp_conn = {
+		.write = mock_transport_write_important,
+		.ack = mock_transport_ack,
+		.open = test_conn_open,
+		.close = NULL,
+		.context = &ps
+	};
+
+	int res = firefly_connection_open(NULL, NULL, eq, &test_trsp_conn);
+	CU_ASSERT_EQUAL_FATAL(res, 0);
+	event_execute_test(eq, 1);
 	struct firefly_channel *chan = firefly_channel_new(conn);
 	add_channel_to_connection(chan, conn);
 
@@ -332,10 +403,19 @@ void test_errorneous_ack()
 {
 	unsigned char *buf;
 	size_t buf_size;
-	struct test_conn_platspec ps;
-	ps.important = false;
-	struct firefly_connection *conn = firefly_connection_new(NULL,
-			transport_write_test_decoder, NULL, NULL, eq, &ps, NULL);
+	struct firefly_connection *conn;
+	struct test_conn_platspec ps = { .important = false, .conn = &conn };
+	struct firefly_transport_connection test_trsp_conn = {
+		.write = mock_transport_write_important,
+		.ack = NULL,
+		.open = test_conn_open,
+		.close = NULL,
+		.context = &ps
+	};
+
+	int res = firefly_connection_open(NULL, NULL, eq, &test_trsp_conn);
+	CU_ASSERT_EQUAL_FATAL(res, 0);
+	event_execute_test(eq, 1);
 	struct firefly_channel *chan = firefly_channel_new(conn);
 	add_channel_to_connection(chan, conn);
 
@@ -379,10 +459,19 @@ void test_important_recv_duplicate()
 {
 	unsigned char *buf;
 	size_t buf_size;
-	struct test_conn_platspec ps;
-	ps.important = false;
-	struct firefly_connection *conn = firefly_connection_new(NULL,
-			transport_write_test_decoder, NULL, NULL, eq, &ps, NULL);
+	struct firefly_connection *conn;
+	struct test_conn_platspec ps = { .important = false, .conn = &conn };
+	struct firefly_transport_connection test_trsp_conn = {
+		.write = transport_write_test_decoder,
+		.ack = NULL,
+		.open = test_conn_open,
+		.close = NULL,
+		.context = &ps
+	};
+
+	int res = firefly_connection_open(NULL, NULL, eq, &test_trsp_conn);
+	CU_ASSERT_EQUAL_FATAL(res, 0);
+	event_execute_test(eq, 1);
 	struct firefly_channel *chan = firefly_channel_new(conn);
 	add_channel_to_connection(chan, conn);
 
@@ -467,11 +556,19 @@ void test_important_handshake_recv()
 	};
 	unsigned char *buf;
 	size_t buf_size;
-	struct test_conn_platspec ps;
-	ps.important = true;
-	struct firefly_connection *conn = firefly_connection_new(
-			&conn_actions,
-			mock_transport_write_important, mock_transport_ack, NULL, eq, &ps, NULL);
+	struct firefly_connection *conn;
+	struct test_conn_platspec ps = { .important = true, .conn = &conn };
+	struct firefly_transport_connection test_trsp_conn = {
+		.write = mock_transport_write_important,
+		.ack = mock_transport_ack,
+		.open = test_conn_open,
+		.close = NULL,
+		.context = &ps
+	};
+
+	int res = firefly_connection_open(&conn_actions, NULL, eq, &test_trsp_conn);
+	CU_ASSERT_EQUAL_FATAL(res, 0);
+	event_execute_test(eq, 1);
 
 	firefly_protocol_channel_request req_pkt;
 	req_pkt.source_chan_id = 1;
@@ -516,11 +613,19 @@ void test_important_handshake_open()
 	};
 	unsigned char *buf;
 	size_t buf_size;
-	struct test_conn_platspec ps;
-	ps.important = true;
-	struct firefly_connection *conn = firefly_connection_new(
-			&conn_actions,
-			mock_transport_write_important, mock_transport_ack, NULL, eq, &ps, NULL);
+	struct firefly_connection *conn;
+	struct test_conn_platspec ps = { .important = true, .conn = &conn };
+	struct firefly_transport_connection test_trsp_conn = {
+		.write = mock_transport_write_important,
+		.ack = mock_transport_ack,
+		.open = test_conn_open,
+		.close = NULL,
+		.context = &ps
+	};
+
+	int res = firefly_connection_open(&conn_actions, NULL, eq, &test_trsp_conn);
+	CU_ASSERT_EQUAL_FATAL(res, 0);
+	event_execute_test(eq, 1);
 
 	firefly_channel_open(conn);
 	event_execute_test(eq, 1);

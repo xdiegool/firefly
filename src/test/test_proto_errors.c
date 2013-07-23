@@ -12,7 +12,8 @@
 #include <utils/firefly_event_queue.h>
 
 #include "protocol/firefly_protocol_private.h"
-#include "proto_helper.h"
+#include "test/proto_helper.h"
+#include "test/event_helper.h"
 #include "test/error_helper.h"
 #include "utils/cppmacros.h"
 
@@ -48,8 +49,9 @@ static void mk_lc_and_reg_sigs_free(struct firefly_connection *conn_open,
 {
 	// Clean up
 	chan_opened_called = false;
-	firefly_connection_free(&conn_open);
-	firefly_connection_free(&conn_recv);
+	firefly_connection_close(conn_open);
+	firefly_connection_close(conn_recv);
+	event_execute_all_test(eq);
 	firefly_event_queue_free(&eq);
 }
 
@@ -73,11 +75,11 @@ static void mk_lc_and_reg_sigs(struct firefly_connection **conn_open,
 	}
 	// Init connection to open channel
 	*conn_open = setup_test_conn_new(&conn_open_actions, *eq);
-	(*conn_open)->transport_write = chan_open_recv_write_open;
+	(*conn_open)->transport->write = chan_open_recv_write_open;
 
 	// Init connection to receive channel
 	*conn_recv = setup_test_conn_new(&conn_recv_actions, *eq);
-	(*conn_recv)->transport_write = chan_open_recv_write_recv;
+	(*conn_recv)->transport->write = chan_open_recv_write_recv;
 }
 
 void test_unexpected_ack()

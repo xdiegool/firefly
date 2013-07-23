@@ -17,6 +17,7 @@
 #include <utils/firefly_event_queue.h>
 
 #include "test/proto_helper.h"
+#include "test/event_helper.h"
 #include "protocol/firefly_protocol_private.h"
 #include "test/test_labcomm_utils.h"
 #include "utils/cppmacros.h"
@@ -71,7 +72,8 @@ void test_next_channel_id()
 		CU_ASSERT_EQUAL(i, ch->local_id);
 		firefly_channel_free(ch);
 	}
-	firefly_connection_free(&conn);
+	firefly_connection_close(conn);
+	event_execute_all_test(eq);
 }
 
 void test_get_conn()
@@ -88,7 +90,8 @@ void test_get_conn()
 			chan);
 	CU_ASSERT_PTR_EQUAL(conn, get_conn);
 	firefly_channel_free(chan);
-	firefly_connection_free(&conn);
+	firefly_connection_close(conn);
+	event_execute_all_test(eq);
 }
 
 void test_chan_open()
@@ -145,7 +148,8 @@ void test_chan_open()
 
 	// Clean up
 	chan_opened_called = false;
-	firefly_connection_free(&conn);
+	firefly_connection_close(conn);
+	event_execute_all_test(eq);
 }
 
 static bool chan_accept_called = false;
@@ -210,7 +214,8 @@ void test_chan_recv_accept()
 	CU_ASSERT_TRUE(chan_opened_called);
 	chan_opened_called = false;
 
-	firefly_connection_free(&conn);
+	firefly_connection_close(conn);
+	event_execute_all_test(eq);
 }
 
 static bool chan_recv_reject_chan(struct firefly_channel *chan)
@@ -263,7 +268,8 @@ void test_chan_recv_reject()
 	// Clean up
 	chan_opened_called = false;
 	chan_accept_called = false;
-	firefly_connection_free(&conn);
+	firefly_connection_close(conn);
+	event_execute_all_test(eq);
 }
 
 static bool chan_rejected_called = false;
@@ -321,7 +327,8 @@ void test_chan_open_rejected()
 	// Clean up
 	chan_rejected_called = false;
 	chan_opened_called = false;
-	firefly_connection_free(&conn);
+	firefly_connection_close(conn);
+	event_execute_all_test(eq);
 }
 
 extern bool conn_recv_accept_called;
@@ -343,11 +350,11 @@ void test_chan_open_recv()
 	};
 	// Init connection to open channel
 	conn_open = setup_test_conn_new(&conn_open_ca, eq);
-	conn_open->transport_write = chan_open_recv_write_open;
+	conn_open->transport->write = chan_open_recv_write_open;
 
 	// Init connection to receive channel
 	conn_recv = setup_test_conn_new(&conn_recv_ca, eq);
-	conn_recv->transport_write = chan_open_recv_write_recv;
+	conn_recv->transport->write = chan_open_recv_write_recv;
 
 	// Init open channel from conn_open
 	firefly_channel_open(conn_open);
@@ -393,8 +400,12 @@ void test_chan_open_recv()
 
 	// Clean up
 	chan_opened_called = false;
-	firefly_connection_free(&conn_open);
-	firefly_connection_free(&conn_recv);
+	firefly_connection_close(conn_open);
+	event_execute_all_test(eq);
+	firefly_connection_close(conn_recv);
+	event_execute_all_test(eq);
+	free_tmp_data(&conn_open_write);
+	free_tmp_data(&conn_recv_write);
 }
 
 static bool chan_closed_called = false;
@@ -443,7 +454,8 @@ void test_chan_close()
 
 	// clean up
 	chan_closed_called = false;
-	firefly_connection_free(&conn);
+	firefly_connection_close(conn);
+	event_execute_all_test(eq);
 }
 
 void test_chan_recv_close()
@@ -484,7 +496,8 @@ void test_chan_recv_close()
 
 	// clean up
 	chan_closed_called = false;
-	firefly_connection_free(&conn);
+	firefly_connection_close(conn);
+	event_execute_all_test(eq);
 }
 
 static bool sent_app_data = false;
@@ -551,7 +564,8 @@ void test_send_app_data()
 	CU_ASSERT_TRUE(sent_app_data);
 	sent_app_data = false;
 
-	firefly_connection_free(&conn);
+	firefly_connection_close(conn);
+	event_execute_all_test(eq);
 	labcomm_decoder_free(test_dec_2);
 }
 
@@ -632,7 +646,8 @@ void test_recv_app_data()
 
 	// clean up
 	labcomm_encoder_free(data_encoder);
-	firefly_connection_free(&conn);
+	firefly_connection_close(conn);
+	event_execute_all_test(eq);
 }
 
 
@@ -785,7 +800,7 @@ struct firefly_connection *setup_conn(int conn_n,
 		CU_FAIL("This test have functions to handle *2* connections!");
 	}
 
-	transport_write_f writer = NULL;
+	firefly_transport_connection_write_f writer = NULL;
 	switch (conn_n) {		/* TODO: Expandable later(?) */
 	case 0:
 		writer = trans_w_from_conn_0;
@@ -795,8 +810,9 @@ struct firefly_connection *setup_conn(int conn_n,
 		break;
 	}
 
-	tcon = firefly_connection_new(&conn_actions, writer, mock_ack, NULL,
-				      eqs[conn_n], NULL, NULL);
+	tcon = setup_test_conn_new(&conn_actions, eqs[conn_n]);
+	tcon->transport->write = writer;
+	tcon->transport->ack = mock_ack;
 
 	if (tcon == NULL) {
 		CU_FAIL("Could not create channel");
@@ -1071,7 +1087,8 @@ void test_transmit_app_data_over_mock_trans_layer()
 
 	/* cleanup */
 	for (int i = 0; i < n_conn; i++) {
-		firefly_connection_free(&connections[i]);
+		firefly_connection_close(connections[i]);
+		event_execute_all_test(event_queues[i]);
 		firefly_event_queue_free(&event_queues[i]);
 	}
 	for (size_t i = 0;
@@ -1133,11 +1150,11 @@ void test_chan_open_close_multiple()
 
 	// Init connection to open channel
 	conn_open = setup_test_conn_new(&ca, eq);
-	conn_open->transport_write = chan_open_recv_write_open;
+	conn_open->transport->write = chan_open_recv_write_open;
 
 	// Init connection to receive channel
 	conn_recv = setup_test_conn_new(&ca, eq);
-	conn_recv->transport_write = chan_open_recv_write_recv;
+	conn_recv->transport->write = chan_open_recv_write_recv;
 
 	// Init open channel from conn_open
 	firefly_channel_open(conn_open);
@@ -1434,8 +1451,9 @@ void test_chan_open_close_multiple()
 	CU_ASSERT_PTR_NULL(conn_recv->chan_list);
 
 	// Clean up
-	firefly_connection_free(&conn_open);
-	firefly_connection_free(&conn_recv);
+	firefly_connection_close(conn_open);
+	firefly_connection_close(conn_recv);
+	event_execute_all_test(eq);
 }
 
 void test_nbr_chan()

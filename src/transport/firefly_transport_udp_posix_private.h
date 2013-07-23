@@ -30,7 +30,7 @@ struct transport_llp_udp_posix {
 /**
  * @brief UDP specific connection related data.
  */
-struct protocol_connection_udp_posix {
+struct firefly_transport_connection_udp_posix {
 	struct sockaddr_in *remote_addr; /**< The address to the remote node of
 						this connection */
 	int socket; /**< The socket file descriptor associated with this

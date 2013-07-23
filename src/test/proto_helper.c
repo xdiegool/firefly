@@ -16,6 +16,7 @@
 
 #include "test/test_labcomm_utils.h"
 #include "utils/cppmacros.h"
+#include "test/event_helper.h"
 
 struct labcomm_decoder *test_dec = NULL;
 struct labcomm_encoder *test_enc;
@@ -51,17 +52,38 @@ bool conn_recv_accept_called = false;
 /* firefly_channel_is_open_f ch_op,
 firefly_channel_closed_f ch_cl,
 firefly_channel_accept_f ch_acc, */
+
+static int test_conn_open(struct firefly_connection *conn)
+{
+	struct firefly_connection **res = conn->transport->context;
+	*res = conn;
+	res = NULL;
+	return 0;
+}
+static int test_conn_close(struct firefly_connection *conn)
+{
+	free(conn->transport);
+	return 0;
+}
+
 struct firefly_connection *setup_test_conn_new(
 	       struct firefly_connection_actions *conn_actions,
 	       struct firefly_event_queue *eq)
 {
-	struct firefly_connection *conn =
-		firefly_connection_new(conn_actions,
-				       transport_write_test_decoder,
-				       transport_ack_test, NULL,
-				       eq, NULL, NULL);
+	struct firefly_connection *conn;
+	struct firefly_transport_connection *test_trsp_conn =
+		malloc(sizeof(*test_trsp_conn));
+	test_trsp_conn->write = transport_write_test_decoder;
+	test_trsp_conn->ack = transport_ack_test;
+	test_trsp_conn->open = test_conn_open;
+	test_trsp_conn->close = test_conn_close;
+	test_trsp_conn->context = &conn;
+	int res = firefly_connection_open(conn_actions, NULL, eq, test_trsp_conn);
+	CU_ASSERT_EQUAL_FATAL(res, 0);
+	event_execute_test(eq, 1);
+
 	if (conn == NULL) {
-		CU_FAIL("Could not create connection.\n");
+		CU_FAIL_FATAL("Could not create connection.\n");
 	}
 	// Set some stuff that firefly_init_conn doesn't do
 	labcomm_register_error_handler_encoder(conn->transport_encoder,

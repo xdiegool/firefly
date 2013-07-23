@@ -97,7 +97,7 @@ CFLAGS_ARM = $(CFLAGS_COM) -Wfloat-equal -Werror-implicit-function-declaration \
 		  -D free=vPortFree \
 		  -D ARM_CORTEXM3_CODESOURCERY \
 		  -D LABCOMM_NO_STDIO \
-		  -DLABCOMM_COMPAT=\"labcomm_compat_arm_cortexm3.h\" \
+		  -DLABCOMM_COMPAT=\\\"labcomm_compat_arm_cortexm3.h\\\" \
 		  -D GCC_ARMCM3=1
 
 # Specify alternative memory allocation/deallocation functions
@@ -378,12 +378,14 @@ $(LABCOMMC):
 
 # $(LABCOMMLIBPATH/liblabconn.a) - Build static LabComm library.
 $(LABCOMMLIBPATH)/liblabcomm-arm.a:
+	-mv $(LABCOMMLIBPATH)/liblabcomm.a $(LABCOMMLIBPATH)/liblabcomm-tmp.a
 	@echo "======Building LabComm======"
 	$(MAKE) -C $(LABCOMMLIBPATH) -e CC=$(CC_ARM) \
 		CFLAGS="$(filter-out -Werror -Wextra,$(CFLAGS_ARM)) -DLABCOMM_ENCODER_LINEAR_SEARCH" \
 		-e LABCOMM_NO_EXPERIMENTAL=true liblabcomm.a
-	mv $(LABCOMMLIBPATH)/liblabcomm.a $(LABCOMMLIBPATH)/liblabcomm-arm.a
 	@echo "======End building LabComm======"
+	-mv $(LABCOMMLIBPATH)/liblabcomm.a $(BUILD_DIR)/liblabcomm-arm.a
+	-mv $(LABCOMMLIBPATH)/liblabcomm-tmp.a $(LABCOMMLIBPATH)/liblabcomm.a
 
 $(LABCOMMLIBPATH)/liblabcomm.a:
 	@echo "======Building LabComm======"

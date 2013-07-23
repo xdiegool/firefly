@@ -73,11 +73,18 @@ void transport_write_udp_posix_mock(unsigned char *data, size_t data_size,
 	last_written_size = data_size;
 }
 
+static struct firefly_transport_connection test_trsp_conn = {
+	.write = transport_write_udp_posix_mock,
+	.ack = NULL,
+	.open = NULL,
+	.close = NULL,
+	.context = NULL
+};
+
 void test_encode_decode_protocol()
 {
 	struct firefly_connection conn;
-	conn.transport_conn_platspec = NULL;
-	conn.transport_write = transport_write_udp_posix_mock;
+	conn.transport = &test_trsp_conn;
 
 	// Construct decoder.
 	struct labcomm_decoder *decoder =
@@ -121,8 +128,7 @@ void test_encode_decode_app()
 	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
 			10, NULL);
 	struct firefly_connection conn;
-	conn.transport_conn_platspec = NULL;
-	conn.transport_write = transport_write_udp_posix_mock;
+	conn.transport = &test_trsp_conn;
 	conn.open = FIREFLY_CONNECTION_OPEN;
 	conn.memory_replacements.alloc_replacement = NULL;
 	conn.memory_replacements.free_replacement = NULL;

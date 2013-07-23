@@ -9,18 +9,7 @@
 #include <labcomm.h>
 #include <stdbool.h>
 
-/**
- * @brief An opaque structure representing a connection.
- */
-struct firefly_connection;
-
-/*
- * The application must make sure the connection is no longer used after calling
- * this function. It is not thread safe to continue to use a connection after it
- * is closed. Hence the application must make use of the event queue,
- * mutexes/locks or any other feature preventing concurrency.
- */
-void firefly_connection_close(struct firefly_connection *conn);
+#include <utils/firefly_event_queue.h>
 
 /**
  * @brief An opaque structure representing a channel.
@@ -28,24 +17,43 @@ void firefly_connection_close(struct firefly_connection *conn);
 struct firefly_channel;
 
 /**
- * @brief Get the LabComm encoder associated with the supplied channel.
- * @param chan The channel to get the encoder for.
- * @return The associate encoder for the channel.
- * @retval NULL Is returned if there is no encoder e.g. the channel has not been
- * accepted.
+ * @brief An opaque structure representing a connection.
  */
-struct labcomm_encoder *firefly_protocol_get_output_stream(
-				struct firefly_channel *chan);
+struct firefly_connection;
+
+struct firefly_transport_connection;
+
+enum restriction_transition {
+	UNRESTRICTED,
+	RESTRICTED,
+	RESTRICTION_DENIED
+};
 
 /**
- * @brief Get the LabComm decoder associated with the supplied channel.
- * @param chan The channel to get the decoder for.
- * @return The associate decoder for the channel.
- * @retval NULL Is returned if there is no decoder e.g. the channel has not been
- * accepted.
+ * @brief A function to a malloc() replacement if needed by the transport layer.
+ *
+ * @param conn The connection to allocate on.
+ * @param size The size to allocate.
+ *
+ * @return A void pointer to the allocated data or NULL on failure.
  */
-struct labcomm_decoder *firefly_protocol_get_input_stream(
-				struct firefly_channel *chan);
+typedef void *(*firefly_alloc_f)(struct firefly_connection *conn, size_t size);
+
+/**
+ * @brief A function to a free() replacement if needed by the transport layer.
+ *
+ * @param conn The connection to free on.
+ * @param p The pointer to free.
+ */
+typedef void (*firefly_free_f)(struct firefly_connection *conn, void *p);
+
+/**
+ * @brief Holds the memory replacement functions.
+ */
+struct firefly_memory_funcs {
+	firefly_alloc_f alloc_replacement;
+	firefly_free_f free_replacement;
+};
 
 /**
  * @brief A prototype for a callback from the protocol layer called when a
@@ -108,6 +116,102 @@ typedef void (* firefly_channel_is_open_f)(struct firefly_channel *chan);
 typedef void (* firefly_channel_closed_f)(struct firefly_channel *chan);
 
 /**
+ * @brief Type of callback used to determine how to handle request for restricted mode.
+ *
+ * @param chan The channel to be restricted.
+ */
+typedef bool (* firefly_channel_restrict_f)(struct firefly_channel *chan);
+
+/**
+ * @brief Type of callback used to inform about changes from/to restricted mode.
+ *
+ * @param chan The channel that has been [un]restricted.
+ */
+typedef void (* firefly_channel_restrict_info_f)(struct firefly_channel *chan,
+						 enum restriction_transition rinfo);
+
+/**
+ * @brief TODO
+ */
+typedef void (* firefly_channel_error_f)(struct firefly_channel *chan);
+
+/**
+ * @brief TODO
+ */
+typedef void (* firefly_connection_error_f)(struct firefly_connection *conn);
+
+/**
+ * @brief TODO
+ */
+typedef void (* firefly_connection_opened_f)(struct firefly_connection *conn);
+
+struct firefly_connection_actions {
+	firefly_channel_accept_f	channel_recv;/** TODO */
+	firefly_channel_is_open_f	channel_opened;		/**< Called when a channel has been opened. */
+	firefly_channel_rejected_f	channel_rejected;	/**< Called if this  channel could not be opened due to remote node rejected it. */
+	firefly_channel_closed_f	channel_closed;		/**< Called when a channel has been closed. */
+	firefly_channel_restrict_f	channel_restrict;	/**< Called on incoming restriction request. */
+	firefly_channel_restrict_info_f	channel_restrict_info;	/**< Called on restriction status change. */
+	firefly_channel_error_f		channel_error;/** TODO */
+	firefly_connection_error_f	connection_error;/** TODO */
+	firefly_connection_opened_f connection_opened;/** TODO */
+};
+
+
+/**
+ * Initializes a connection with protocol specific stuff.
+ *
+ * @param on_channel_opened Callback for when a channel has been opened.
+ * @param on_channel_closed Callback for when a channel has been closed.
+ * @param on_channel_recv Callback for when a channel has been recveived.
+ * @param transport_write The interface between transport and protocol layer for
+ * writing data.
+ * @param transport_ack The interface between transport and protocol layer for
+ * removing elements in the resend queue.
+ * @param event_queue The event queue all events relating to this connection is
+ * offered to.
+ * @param plat_spec Transport layer specifik data.
+ * @param plat_spec_free The funtion responsible for freeing the transport
+ * specifik data.
+ *
+ * @return int Indicating error if any.
+ * @retval 0 if no error, negative error number otherwise.
+ */
+int firefly_connection_open(
+		struct firefly_connection_actions *actions,
+		struct firefly_memory_funcs *memory_replacements,
+		struct firefly_event_queue *event_queue,
+		struct firefly_transport_connection *tc);
+
+/*
+ * The application must make sure the connection is no longer used after calling
+ * this function. It is not thread safe to continue to use a connection after it
+ * is closed. Hence the application must make use of the event queue,
+ * mutexes/locks or any other feature preventing concurrency.
+ */
+void firefly_connection_close(struct firefly_connection *conn);
+
+/**
+ * @brief Get the LabComm encoder associated with the supplied channel.
+ * @param chan The channel to get the encoder for.
+ * @return The associate encoder for the channel.
+ * @retval NULL Is returned if there is no encoder e.g. the channel has not been
+ * accepted.
+ */
+struct labcomm_encoder *firefly_protocol_get_output_stream(
+				struct firefly_channel *chan);
+
+/**
+ * @brief Get the LabComm decoder associated with the supplied channel.
+ * @param chan The channel to get the decoder for.
+ * @return The associate decoder for the channel.
+ * @retval NULL Is returned if there is no decoder e.g. the channel has not been
+ * accepted.
+ */
+struct labcomm_decoder *firefly_protocol_get_input_stream(
+				struct firefly_channel *chan);
+
+/**
  * @brief The number of channels in the connection.
  *
  * @param The connection
@@ -145,52 +249,6 @@ void firefly_connection_set_context(struct firefly_connection * const conn,
  */
 struct firefly_event_queue *firefly_connection_get_event_queue(
 	       struct firefly_connection *conn);
-
-
-/**
- * @brief Type of callback used to determine how to handle request for restricted mode.
- *
- * @param chan The channel to be restricted.
- */
-typedef bool (* firefly_channel_restrict_f)(struct firefly_channel *chan);
-
-enum restriction_transition {
-	UNRESTRICTED,
-	RESTRICTED,
-	RESTRICTION_DENIED
-};
-
-/* struct firefly_connection_actions conn_actions = { */
-/* 	.channel_opened		= NULL, */
-/* 	.channel_closed		= NULL, */
-/* 	.channel_recv		= NULL, */
-/*	// New -v			*/
-/* 	.channel_rejected	= NULL, */
-/* 	.channel_restrict	= NULL, */
-/* 	.channel_restrict_info	= NULL */
-/* }; */
-
-/**
- * @brief Type of callback used to inform about changes from/to restricted mode.
- *
- * @param chan The channel that has been [un]restricted.
- */
-typedef void (* firefly_channel_restrict_info_f)(struct firefly_channel *chan,
-						 enum restriction_transition rinfo);
-
-typedef void (* firefly_channel_error_f)(struct firefly_channel *chan);
-typedef void (* firefly_connection_error_f)(struct firefly_connection *conn);
-
-struct firefly_connection_actions {
-	firefly_channel_accept_f	channel_recv;
-	firefly_channel_is_open_f	channel_opened;		/**< Called when a channel has been opened. */
-	firefly_channel_rejected_f	channel_rejected;	/**< Called if this  channel could not be opened due to remote node rejected it. */
-	firefly_channel_closed_f	channel_closed;		/**< Called when a channel has been closed. */
-	firefly_channel_restrict_f	channel_restrict;	/**< Called on incoming restriction request. */
-	firefly_channel_restrict_info_f	channel_restrict_info;	/**< Called on restriction status change. */
-	firefly_channel_error_f		channel_error;
-	firefly_connection_error_f	connection_error;
-};
 
 /**
  * @brief Request restriction of reliability and type registration

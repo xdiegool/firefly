@@ -340,7 +340,7 @@ static int trans_writer_end(struct labcomm_writer *w, void *context)
 {
 	struct transport_writer_context *ctx;
 	ctx = (struct transport_writer_context *) context;
-	ctx->conn->transport_write(w->data, w->pos, ctx->conn,
+	ctx->conn->transport->write(w->data, w->pos, ctx->conn,
 			ctx->important_id != NULL, ctx->important_id);
 	ctx->important_id = NULL;
 	w->pos = 0;

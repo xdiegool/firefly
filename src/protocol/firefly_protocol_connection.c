@@ -9,13 +9,21 @@
 #include "protocol/firefly_protocol_private.h"
 #include "utils/firefly_event_queue_private.h"
 
-struct firefly_connection *firefly_connection_new(
+static int firefly_connection_open_event(void *arg)
+{
+	struct firefly_connection *conn = arg;
+	if (conn->transport != NULL && conn->transport->open != NULL)
+		conn->transport->open(conn);
+	if (conn->actions != NULL && conn->actions->connection_opened != NULL)
+		conn->actions->connection_opened(conn);
+	return 0;
+}
+
+int firefly_connection_open(
 		struct firefly_connection_actions *actions,
-		transport_write_f transport_write,
-		transport_ack_f transport_ack,
 		struct firefly_memory_funcs *memory_replacements,
 		struct firefly_event_queue *event_queue,
-		void *plat_spec, transport_connection_free plat_spec_free)
+		struct firefly_transport_connection *tc)
 {
 	struct firefly_connection *conn;
 	struct labcomm_encoder *transport_encoder;
@@ -29,7 +37,7 @@ struct firefly_connection *firefly_connection_new(
 			      "memory allocation failed %s:%d",
 			      __FUNCTION__, __LINE__);
 		FIREFLY_FREE(conn);
-		return NULL;
+		return 1;
 	}
 	conn->actions = actions;
 	reader = transport_labcomm_reader_new(conn);
@@ -41,7 +49,7 @@ struct firefly_connection *firefly_connection_new(
 		transport_labcomm_reader_free(reader);
 		transport_labcomm_writer_free(writer);
 		FIREFLY_FREE(conn);
-		return NULL;
+		return 1;
 	}
 	transport_encoder = labcomm_encoder_new(writer, NULL);
 	transport_decoder = labcomm_decoder_new(reader, NULL);
@@ -59,15 +67,13 @@ struct firefly_connection *firefly_connection_new(
 		else
 			transport_labcomm_reader_free(reader);
 		FIREFLY_FREE(conn);
-		return NULL;
+		return 1;
 	}
 	conn->event_queue		= event_queue;
 	conn->chan_list			= NULL;
 	conn->channel_id_counter	= 0;
 	conn->transport_encoder		= transport_encoder;
 	conn->transport_decoder		= transport_decoder;
-	conn->transport_write		= transport_write;
-	conn->transport_ack		= transport_ack;
 
 	labcomm_register_error_handler_encoder(conn->transport_encoder,
 			labcomm_error_to_ff_error);
@@ -84,15 +90,16 @@ struct firefly_connection *firefly_connection_new(
 		conn->memory_replacements.alloc_replacement = NULL;
 		conn->memory_replacements.free_replacement = NULL;
 	}
-	conn->transport_conn_platspec = plat_spec;
-	conn->transport_conn_platspec_free = plat_spec_free;
+	conn->transport = tc;
 	conn->open = FIREFLY_CONNECTION_OPEN;
 
 	reg_proto_sigs(conn->transport_encoder,
 		       conn->transport_decoder,
 		       conn);
 
-	return conn;
+	return conn->event_queue->offer_event_cb(conn->event_queue,
+			FIREFLY_PRIORITY_HIGH, firefly_connection_open_event,
+			conn);
 }
 
 void firefly_connection_close(struct firefly_connection *conn)
@@ -126,8 +133,8 @@ int firefly_connection_close_event(void *event_arg)
 	if (empty) {
 		int ret;
 
-		if (conn->transport_conn_platspec_free != NULL) {
-			conn->transport_conn_platspec_free(conn);
+		if (conn->transport != NULL && conn->transport->close != NULL) {
+			conn->transport->close(conn);
 		}
 		ret = conn->event_queue->offer_event_cb(conn->event_queue,
 				FIREFLY_PRIORITY_LOW,

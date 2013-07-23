@@ -47,6 +47,18 @@ void reg_proto_sigs(struct labcomm_encoder *enc,
 		    struct labcomm_decoder *dec,
 		    struct firefly_connection *conn);
 
+typedef void (* protocol_data_received_f)(struct firefly_connection *conn,
+					  unsigned char *data,
+					  size_t size);
+
+/**
+ * @brief A structure for representing a node in a linked list of channels.
+ */
+struct channel_list_node {
+	struct channel_list_node *next;	/**< A pointer to the next list node. */
+	struct firefly_channel *chan;	/**< A pointer the the channel struct for this node. */
+};
+
 /**
  * @brief Write data on the specified connection
  * This is an interface implemented by all transport layers.
@@ -58,7 +70,7 @@ void reg_proto_sigs(struct labcomm_encoder *enc,
  * @param id If important is true the id is a return value and will contain the
  * identifier of the packet which must be used when acking the packet.
  */
-typedef void (* transport_write_f)(unsigned char *data, size_t data_size,
+typedef void (* firefly_transport_connection_write_f)(unsigned char *data, size_t data_size,
 					struct firefly_connection *conn, bool important,
 					unsigned char *id);
 
@@ -69,59 +81,41 @@ typedef void (* transport_write_f)(unsigned char *data, size_t data_size,
  * @param pkg_id The id of the packet.
  * @param conn The #firefly_connection the packet is sent on.
  */
-typedef void (* transport_ack_f)(unsigned char pkg_id,
+typedef void (* firefly_transport_connection_ack_f)(unsigned char pkg_id,
 					struct firefly_connection *conn);
 
-typedef void (*transport_connection_free)(struct firefly_connection *conn);
-
-typedef void (* protocol_data_received_f)(struct firefly_connection *conn,
-					  unsigned char *data,
-					  size_t size);
+/**
+ * @brief TODO
+ */
+typedef int (*firefly_transport_connection_open_f)
+	(struct firefly_connection *conn);
 
 /**
- * @brief A function to a malloc() replacement if needed by the transport layer.
- *
- * @param conn The connection to allocate on.
- * @param size The size to allocate.
- *
- * @return A void pointer to the allocated data or NULL on failure.
+ * @brief TODO
  */
-typedef void *(*firefly_alloc_f)(struct firefly_connection *conn, size_t size);
+typedef int (*firefly_transport_connection_close_f)
+	(struct firefly_connection *conn);
 
-/**
- * @brief A function to a free() replacement if needed by the transport layer.
- *
- * @param conn The connection to free on.
- * @param p The pointer to free.
- */
-typedef void (*firefly_free_f)(struct firefly_connection *conn, void *p);
-
-/**
- * @brief Holds the memory replacement functions.
- */
-struct firefly_memory_funcs {
-	firefly_alloc_f alloc_replacement;
-	firefly_free_f free_replacement;
-};
-
-/**
- * @brief A structure for representing a node in a linked list of channels.
- */
-struct channel_list_node {
-	struct channel_list_node *next;	/**< A pointer to the next list node. */
-	struct firefly_channel *chan;	/**< A pointer the the channel struct for this node. */
+struct firefly_transport_connection {
+	firefly_transport_connection_open_f open;/**< TODO */
+	firefly_transport_connection_close_f close;/**< TODO */
+	firefly_transport_connection_write_f write;/**< TODO */
+	firefly_transport_connection_ack_f ack;/**< Inform transport that a packet
+											 is acked or should not be resent
+											 anymore. */
+	void *context;/**< TODO */
 };
 
 /**
  * @brief A structure representing a connection.
  */
 struct firefly_connection {
-	void					*transport_conn_platspec;	/**< Transport specific connection data. */
-	transport_connection_free		transport_conn_platspec_free;
-	sig_atomic_t				open;				/**< State of the connection. */
-	transport_write_f			transport_write;
-	transport_ack_f				transport_ack;			/**< Inform transport that a packet is acked or should not be resent anymore. */
-	struct labcomm_encoder			*transport_encoder;		/**< The transport layer encoder for this connection. */
+	sig_atomic_t				open;				/**< State of the
+													  connection. */
+	struct labcomm_encoder			*transport_encoder;		/**< The transport
+															  layer encoder for
+															  this connection.
+															  */
 	struct labcomm_decoder			*transport_decoder;		/**< The transport layer decoder for this connection. */
 	struct channel_list_node		*chan_list;			/**< The list of channels associated with this connection. */
 	struct firefly_event_queue		*event_queue;			/**< The queue to which spawned events are added. */
@@ -129,6 +123,7 @@ struct firefly_connection {
 	struct firefly_memory_funcs		memory_replacements;
 	void					*context;			/**< A reference to an optional, user defined context.  */
 	struct firefly_connection_actions 	*actions;			/**< Callbacks to the applicaiton. */
+	struct firefly_transport_connection *transport;	/**< Transport specific connection data. */
 };
 
 /**
@@ -177,41 +172,6 @@ void protocol_labcomm_reader_free(struct labcomm_reader *r);
 void transport_labcomm_reader_free(struct labcomm_reader *r);
 void protocol_labcomm_writer_free(struct labcomm_writer *w);
 void transport_labcomm_writer_free(struct labcomm_writer *w);
-
-/**
- * Initializes a connection with protocol specific stuff.
- *
- * @param on_channel_opened Callback for when a channel has been opened.
- * @param on_channel_closed Callback for when a channel has been closed.
- * @param on_channel_recv Callback for when a channel has been recveived.
- * @param transport_write The interface between transport and protocol layer for
- * writing data.
- * @param transport_ack The interface between transport and protocol layer for
- * removing elements in the resend queue.
- * @param event_queue The event queue all events relating to this connection is
- * offered to.
- * @param plat_spec Transport layer specifik data.
- * @param plat_spec_free The funtion responsible for freeing the transport
- * specifik data.
- *
- * @return A new firefly_connection.
- * @retval NULL on error.
- */
-struct firefly_connection *firefly_connection_new(
-		struct firefly_connection_actions *actions,
-		transport_write_f transport_write,
-		transport_ack_f transport_ack,
-		struct firefly_memory_funcs *memory_replacements,
-		struct firefly_event_queue *event_queue, void *plat_spec,
-		transport_connection_free plat_spec_free);
-
-/*
- * The application must make sure the connection is no longer used after calling
- * this function. It is not thread safe to continue to use a connection after it
- * is closed. Hence the application must make use of the event queue,
- * mutexes/locks or any other feature preventing concurrency.
- */
-void firefly_connection_close(struct firefly_connection *conn);
 
 /**
  *

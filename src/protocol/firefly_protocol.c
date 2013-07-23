@@ -28,14 +28,19 @@ static void signature_trans_write(unsigned char *data, size_t size,
 	protocol_data_received(conn, data, size);
 }
 
+static struct firefly_transport_connection sig_transport = {
+	.write = signature_trans_write,
+	.ack = NULL,
+	.open = NULL,
+	.close = NULL
+};
+
 void reg_proto_sigs(struct labcomm_encoder *enc,
 		    struct labcomm_decoder *dec,
 		    struct firefly_connection *conn)
 {
-	transport_write_f orig_twf;
-
-	orig_twf = conn->transport_write;
-	conn->transport_write = signature_trans_write;
+	struct firefly_transport_connection *orig_transport = conn->transport;
+	conn->transport = &sig_transport;
 
 	labcomm_decoder_register_firefly_protocol_data_sample(dec,
 					  	  handle_data_sample, conn);
@@ -71,7 +76,7 @@ void reg_proto_sigs(struct labcomm_encoder *enc,
 	labcomm_encoder_register_firefly_protocol_channel_restrict_request(enc);
 	labcomm_encoder_register_firefly_protocol_channel_restrict_ack(enc);
 
-	conn->transport_write = orig_twf;
+	conn->transport = orig_transport;
 }
 
 void firefly_channel_open(struct firefly_connection *conn)
@@ -331,7 +336,7 @@ int handle_channel_response_event(void *event_arg)
 					fecrr->conn->transport_encoder, &ack);
 		// Should be done after encode above.
 		if (chan != NULL) {
-			fecrr->conn->transport_ack(chan->important_id,
+			fecrr->conn->transport->ack(chan->important_id,
 						   fecrr->conn);
 			chan->important_id = 0;
 			fecrr->conn->actions->channel_opened(chan);
@@ -381,7 +386,7 @@ int handle_channel_ack_event(void *event_arg)
 	chan = find_channel_by_local_id(fecar->conn,
 					fecar->chan_ack.dest_chan_id);
 	if (chan != NULL) {
-		fecar->conn->transport_ack(chan->important_id, fecar->conn);
+		fecar->conn->transport->ack(chan->important_id, fecar->conn);
 		chan->important_id = 0;
 		fecar->conn->actions->channel_opened(chan);
 	} else {
@@ -510,7 +515,7 @@ void handle_ack(firefly_protocol_ack *ack, void *context)
 	conn = context;
 	chan = find_channel_by_local_id(conn, ack->dest_chan_id);
 	if (chan != NULL && chan->current_seqno == ack->seqno && ack->seqno > 0) {
-		conn->transport_ack(chan->important_id, conn);
+		conn->transport->ack(chan->important_id, conn);
 		chan->important_id = 0;
 		if (chan->important_queue != NULL) {
 			struct firefly_event_send_sample *fess;
