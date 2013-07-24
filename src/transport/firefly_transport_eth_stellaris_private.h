@@ -32,7 +32,7 @@ struct transport_llp_eth_stellaris {
 /**
  * The data structure with specific data for the protocol layer.
  */
-struct protocol_connection_eth_stellaris {
+struct firefly_transport_connection_eth_stellaris {
 	unsigned char remote_addr[ETH_ADDR_LEN];
 	struct firefly_transport_llp *llp;
 };

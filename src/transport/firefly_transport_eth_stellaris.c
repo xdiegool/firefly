@@ -152,61 +152,67 @@ int firefly_transport_llp_eth_stellaris_free_event(void *event_arg)
 	return 0;
 }
 
-void firefly_transport_connection_eth_stellaris_free(
-		struct firefly_connection *conn)
+static int connection_open(struct firefly_connection *conn)
 {
-	struct protocol_connection_eth_stellaris *conn_eth;
-	conn_eth = conn->transport_conn_platspec;
-	remove_connection_from_llp(conn_eth->llp, conn,
-			firefly_connection_eq_ptr);
-	free(conn_eth);
+	struct firefly_transport_connection_eth_stellaris *tces;
+	tces = conn->transport->context;
+	add_connection_to_llp(conn, tces->llp);
+	return 0;
 }
 
-struct firefly_connection *firefly_transport_connection_eth_stellaris_open(
-		struct firefly_transport_llp *llp,
-		unsigned char *mac_address,
-		struct firefly_connection_actions *actions)
+static int connection_close(struct firefly_connection *conn)
 {
+	struct firefly_transport_connection_eth_stellaris *tces;
+	tces = conn->transport->context;
+
+	remove_connection_from_llp(tces->llp, conn,
+			firefly_connection_eq_ptr);
+	free(tces);
+	free(conn->transport);
+	return 0;
+}
+
+struct firefly_transport_connection *
+firefly_transport_connection_eth_stellaris_new(
+		struct firefly_transport_llp *llp,
+		unsigned char *mac_address)
+{
+	struct firefly_transport_connection *tc;
+	struct firefly_transport_connection_eth_stellaris *conn_eth;
 	struct transport_llp_eth_stellaris *llp_eth;
-	struct protocol_connection_eth_stellaris *conn_eth;
-	struct firefly_connection *conn;
 
 	llp_eth = llp->llp_platspec;
+	tc = malloc(sizeof(*tc));
 	conn_eth = malloc(sizeof(*conn_eth));
-
-	conn = firefly_connection_new(
-			actions,
-			firefly_transport_eth_stellaris_write,
-			firefly_transport_eth_stellaris_ack, NULL,
-			llp_eth->event_queue, conn_eth,
-			firefly_transport_connection_eth_stellaris_free);
-
-	if (conn == NULL || conn_eth == NULL) {
+	if (tc == NULL || conn_eth == NULL) {
 		FFL(FIREFLY_ERROR_ALLOC);
 		free(conn_eth);
-		free(conn);
-
+		free(tc);
 		return NULL;
 	}
 
 	memcpy(conn_eth->remote_addr, mac_address, ETH_ADDR_LEN);
 	conn_eth->llp = llp;
-	add_connection_to_llp(conn, llp);
+	tc->context = conn_eth;
+	tc->open = connection_open;
+	tc->close = connection_close;
+	tc->write = firefly_transport_eth_stellaris_write;
+	tc->ack = firefly_transport_eth_stellaris_ack;
 
-	return conn;
+	return tc;
 }
 
 void firefly_transport_eth_stellaris_write(unsigned char *data, size_t data_size,
 		struct firefly_connection *conn, bool important, unsigned char *id)
 {
-	struct protocol_connection_eth_stellaris *conn_eth;
+	struct firefly_transport_connection_eth_stellaris *conn_eth;
 	struct transport_llp_eth_stellaris *llp_eth;
 	int res;
 	unsigned char *frame;
 
 	UNUSED_VAR(important);
 	UNUSED_VAR(id);
-	conn_eth = conn->transport_conn_platspec;
+	conn_eth = conn->transport->context;
 	llp_eth = conn_eth->llp->llp_platspec;
 
 	frame = build_ethernet_frame(llp_eth->src_addr, conn_eth->remote_addr,
@@ -234,11 +240,11 @@ void firefly_transport_eth_stellaris_ack(unsigned char pkg_id,
 
 bool connection_eq_remmac(struct firefly_connection *conn, void *context)
 {
-	struct protocol_connection_eth_stellaris *conn_eth;
+	struct firefly_transport_connection_eth_stellaris *conn_eth;
 	unsigned char *addr1;
 	unsigned char *addr2;
 
-	conn_eth = conn->transport_conn_platspec;
+	conn_eth = conn->transport->context;
 
 	addr1 = conn_eth->remote_addr;
 	addr2 = context;
@@ -313,23 +319,15 @@ int firefly_transport_eth_stellaris_read_event(void *event_args)
 	// Find existing connection or create new.
 	conn = find_connection(llp, ev_a->eth_packet + ETH_SRC_OFFSET,
 			connection_eq_remmac);
-	if (conn == NULL)
+	if (conn == NULL && llp_eth->on_conn_recv != NULL)
 	{
-		if (llp_eth->on_conn_recv != NULL) {
-			conn = llp_eth->on_conn_recv(llp,
-					ev_a->eth_packet + ETH_SRC_OFFSET);
-		} else {
-			char addr[18];
-			sprint_mac(addr, ev_a->eth_packet + ETH_SRC_OFFSET);
-			firefly_error(FIREFLY_ERROR_MISSING_CALLBACK, 4,
-					"Cannot accept supposed connection from"
-					" mac: %s.\n (in %s() at %s:%d)", addr,
-					__func__, __FILE__, __LINE__);
+		if (llp_eth->on_conn_recv(llp,
+					ev_a->eth_packet + ETH_SRC_OFFSET)) {
+			return llp_eth->event_queue->offer_event_cb(llp_eth->event_queue,
+					FIREFLY_PRIORITY_HIGH,
+					firefly_transport_eth_stellaris_read_event, ev_a);
 		}
-	}
-
-	// Existing or newly created conn. Passing data to protocol layer.
-	if (conn != NULL) {
+	} else {
 		protocol_data_received(conn,
 				ev_a->eth_packet + ETH_DATA_OFFSET,
 				ev_a->len - ETH_HEADER_LEN);
