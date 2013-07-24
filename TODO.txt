@@ -6,10 +6,8 @@
 	since it didn't depend on anything).
 
 	Stuff left to do:
-		- Add Xenomai transport layer compilation to
-		  src/transport/CMakeLists.txt.
-		- Avoid compiling Xenomai and LWIP if it doesn't exist on the
-		  compiling computer.
+		- Avoid compiling LWIP if it doesn't exist on the compiling
+		  computer.
 		- Add test_proto_memman to src/test/CMakeLists.txt when it has
 		  been fixed (see # TEST STUFF below).
 		- Look through the entire Makefile to see if there are targets
