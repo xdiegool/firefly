@@ -24,7 +24,7 @@ struct transport_llp_udp_lwip {
 					be IP_ADDR_ANY to bind to all known
 					interfaces. */
 	u16_t local_port;	/**< The local port to listen on. */
-	firefly_on_conn_recv_udp_lwip on_conn_recv; /**< The callback to be called
+	firefly_on_conn_recv_udp_lwip_f on_conn_recv; /**< The callback to be called
 							when a new connection is
 							detected. */
 	struct firefly_event_queue *event_queue;
@@ -33,7 +33,7 @@ struct transport_llp_udp_lwip {
 /**
  * @brief UDP specific connection related data.
  */
-struct protocol_connection_udp_lwip {
+struct firefly_transport_connection_udp_lwip {
 	struct udp_pcb *upcb;	/**< UDP process control block. Share between
 				  all connections. Don't dealloc this since the
 				  owner is the llp_udp this connection is in. */

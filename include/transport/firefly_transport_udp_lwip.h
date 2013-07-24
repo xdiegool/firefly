@@ -32,8 +32,7 @@ struct firefly_transport_llp_udp_lwip;
  * @return The opened connection.
  * @retval NULL if no connection was opened.
  */
-// TODO rename to _f to follow our function typedef standard.
-typedef struct firefly_connection *(*firefly_on_conn_recv_udp_lwip)(
+typedef bool (*firefly_on_conn_recv_udp_lwip_f)(
 		struct firefly_transport_llp *llp, char *ip_addr,
 		unsigned short port);
 
@@ -49,7 +48,7 @@ typedef struct firefly_connection *(*firefly_on_conn_recv_udp_lwip)(
  */
 struct firefly_transport_llp *firefly_transport_llp_udp_lwip_new(
 		char *local_ip_addr, unsigned short local_port,
-		firefly_on_conn_recv_udp_lwip on_conn_recv,
+		firefly_on_conn_recv_udp_lwip_f on_conn_recv,
 		struct firefly_event_queue *event_queue);
 
 /**
@@ -75,18 +74,10 @@ void firefly_transport_llp_udp_lwip_free(struct firefly_transport_llp *llp);
  * @return The newly opened connection.
  * @retval NULL Returns \c NULL upon failure.
  */
-/* struct firefly_connection *firefly_transport_connection_udp_lwip_open( */
-/* 		firefly_channel_is_open_f on_channel_opened, */
-/* 		firefly_channel_closed_f on_channel_closed, */
-/* 		firefly_channel_accept_f on_channel_recv, */
-/* 		char *ip_addr, */
-/* 		unsigned short port, */
-/* 		struct firefly_transport_llp *llp); */
-struct firefly_connection *firefly_transport_connection_udp_lwip_open(
+struct firefly_transport_connection *firefly_transport_connection_udp_lwip_new(
 		struct firefly_transport_llp *llp,
 		char *remote_ip_addr,
-		unsigned short remote_port,
-		struct firefly_connection_actions *actions);
+		unsigned short remote_port);
 
 /**
  * @brief Free the connection and any resources associated with it.
