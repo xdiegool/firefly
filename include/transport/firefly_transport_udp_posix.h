@@ -38,7 +38,7 @@ struct firefly_transport_llp_udp_posix;
  * @return The opened connection.
  * @retval NULL if no connection was opened.
  */
-typedef struct firefly_connection *(*firefly_on_conn_recv_pudp)(
+typedef bool (*firefly_on_conn_recv_pudp)(
 		struct firefly_transport_llp *llp,
 		const char *ip_addr, unsigned short port);
 
@@ -47,7 +47,8 @@ typedef struct firefly_connection *(*firefly_on_conn_recv_pudp)(
  * data and open an UDP socket bound to the specified \a local_port.
  *
  * @param local_port The port to bind the new socket to.
- * @param on_conn_recv The callback to call when a new connection is received
+ * @param on_conn_recv The callback to call when a new connection is received.
+ * If it is NULL no received connections will be accepted.
  * @return A pointer to the created \c firefly_transport_llp.
  */
 struct firefly_transport_llp *firefly_transport_llp_udp_posix_new(
@@ -80,12 +81,12 @@ void firefly_transport_llp_udp_posix_free(struct firefly_transport_llp *llp);
  * @return The newly opened connection.
  * @retval NULL Returns \c NULL upon failure.
  */
-struct firefly_connection *firefly_transport_connection_udp_posix_open(
+
+struct firefly_transport_connection *firefly_transport_connection_udp_posix_new(
 		struct firefly_transport_llp *llp,
-		const char *remote_ip_addr,
+		const char *remote_ipaddr,
 		unsigned short remote_port,
-		unsigned int timeout,
-		struct firefly_connection_actions *actions);
+		unsigned int timeout);
 
 /**
  * @brief Start reader and resend thread. Both will run until stopped with

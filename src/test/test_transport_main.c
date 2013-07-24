@@ -59,9 +59,6 @@ int main()
 		(CU_add_test(trans_udp_posix, "test_recv_conn_and_two_data",
 				test_recv_conn_and_two_data) == NULL)
 			   ||
-		(CU_add_test(trans_udp_posix, "test_null_pointer_as_callback",
-				test_null_pointer_as_callback) == NULL)
-			   ||
 		(CU_add_test(trans_udp_posix, "test_conn_open_and_send",
 				test_conn_open_and_send) == NULL)
 			   ||

@@ -23,7 +23,6 @@ void test_llp_free_mult_conns_w_chans();
 
 void test_open_and_recv_with_two_llp();
 void test_recv_big_connection();
-void test_null_pointer_as_callback();
 
 void test_read_mult_threads();
 

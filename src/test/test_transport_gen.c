@@ -21,10 +21,8 @@ int clean_suit_general()
 void test_add_conn_to_llp()
 {
 	struct firefly_transport_llp *llp = calloc(1, sizeof(*llp));
-	long data_1 = 1234;
 
-	struct firefly_connection *conn_1 = firefly_connection_new(NULL, NULL, NULL, NULL, NULL,
-							&data_1, NULL);
+	struct firefly_connection *conn_1 = calloc(1, sizeof(*conn_1));;
 	add_connection_to_llp(conn_1, llp);
 
 	CU_ASSERT_PTR_NOT_NULL(llp->conn_list);
@@ -32,10 +30,7 @@ void test_add_conn_to_llp()
 	CU_ASSERT_PTR_EQUAL(llp->conn_list->conn, conn_1);
 	CU_ASSERT_PTR_NULL(llp->conn_list->next);
 
-	long data_2 = 1234;
-	struct firefly_connection *conn_2 = firefly_connection_new(
-							NULL, NULL, NULL, NULL, NULL,
-							&data_2, NULL);
+	struct firefly_connection *conn_2 = calloc(1, sizeof(*conn_2));;
 	add_connection_to_llp(conn_2, llp);
 
 	CU_ASSERT_PTR_NOT_NULL(llp->conn_list);
@@ -48,7 +43,7 @@ void test_add_conn_to_llp()
 	struct llp_connection_list_node *tmp = NULL;
 	while (head != NULL) {
 		tmp = head->next;
-		firefly_connection_free_event(head->conn);
+		free(head->conn);
 		free(head);
 		head = tmp;
 	}
@@ -57,7 +52,7 @@ void test_add_conn_to_llp()
 
 bool conn_eq_test(struct firefly_connection *conn, void *context)
 {
-	long a = *((long *) conn->transport_conn_platspec);
+	long a = *((long *) conn->transport->context);
 	long b = *((long *) context);
 	return a == b;
 }
@@ -68,10 +63,10 @@ void test_remove_conn_by_addr()
 			sizeof(struct firefly_transport_llp));
 
 	long data_1 = 1234;
-	struct firefly_connection *conn_1 = firefly_connection_new(
-							NULL, NULL, NULL, NULL, NULL,
-							&data_1, NULL);
-	CU_ASSERT_PTR_NOT_NULL(conn_1);
+	struct firefly_transport_connection tc_1 = {.context = &data_1};
+	struct firefly_connection *conn_1 = calloc(1, sizeof(*conn_1));
+	CU_ASSERT_PTR_NOT_NULL_FATAL(conn_1);
+	conn_1->transport = &tc_1;
 
 	struct firefly_connection *conn = find_connection(llp, &data_1,
 			conn_eq_test);
@@ -85,9 +80,10 @@ void test_remove_conn_by_addr()
 
 	// Add a second connection after the first one
 	long data_2 = 2234;
-	struct firefly_connection *conn_2 = firefly_connection_new(
-							NULL, NULL, NULL, NULL, NULL,
-							&data_2, NULL);
+	struct firefly_transport_connection tc_2 = {.context = &data_2};
+	struct firefly_connection *conn_2 = calloc(1, sizeof(*conn_2));
+	CU_ASSERT_PTR_NOT_NULL_FATAL(conn_2);
+	conn_2->transport = &tc_2;
 	struct llp_connection_list_node *node_2 =
 		malloc(sizeof(struct llp_connection_list_node));
 	node_2->conn = conn_2;
@@ -100,13 +96,13 @@ void test_remove_conn_by_addr()
 	CU_ASSERT_TRUE(conn_eq_test(llp->conn_list->conn, &data_2))
 	CU_ASSERT_TRUE(conn_eq_test(conn, &data_1))
 	CU_ASSERT_PTR_NULL(llp->conn_list->next)
-	firefly_connection_free_event(conn);
+	free(conn);
 
 	conn = remove_connection_from_llp(llp, &data_2, conn_eq_test);
 	CU_ASSERT_PTR_NOT_NULL(conn);
 	CU_ASSERT_PTR_NULL(llp->conn_list);
 	CU_ASSERT_TRUE(conn_eq_test(conn, &data_2))
-	firefly_connection_free_event(conn);
+	free(conn);
 
 	conn = remove_connection_from_llp(llp, &data_1, conn_eq_test);
 	CU_ASSERT_PTR_NULL(conn);
@@ -122,10 +118,10 @@ void test_find_conn_by_addr()
 			sizeof(struct firefly_transport_llp));
 
 	long data_1 = 1234;
-	struct firefly_connection *conn_1 = firefly_connection_new(
-							NULL, NULL, NULL, NULL, NULL,
-							&data_1, NULL);
-	CU_ASSERT_PTR_NOT_NULL(conn_1);
+	struct firefly_transport_connection tc_1 = {.context = &data_1};
+	struct firefly_connection *conn_1 = calloc(1, sizeof(*conn_1));
+	CU_ASSERT_PTR_NOT_NULL_FATAL(conn_1);
+	conn_1->transport = &tc_1;
 
 	struct firefly_connection *conn = find_connection(llp, &data_1,
 			conn_eq_test);
@@ -143,9 +139,11 @@ void test_find_conn_by_addr()
 
 	// Add a second connection after the first one and try to find it
 	long data_2 = 2234;
-	struct firefly_connection *conn_2 = firefly_connection_new(
-							NULL, NULL, NULL, NULL, NULL,
-							&data_2, NULL);
+	struct firefly_transport_connection tc_2 = {.context = &data_2};
+	struct firefly_connection *conn_2 = calloc(1, sizeof(*conn_2));
+	CU_ASSERT_PTR_NOT_NULL_FATAL(conn_2);
+	conn_2->transport = &tc_2;
+
 	struct llp_connection_list_node *node_2 =
 		malloc(sizeof(struct llp_connection_list_node));
 	node_2->conn = conn_2;

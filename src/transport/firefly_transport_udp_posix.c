@@ -183,6 +183,8 @@ struct firefly_transport_connection *firefly_transport_connection_udp_posix_new(
 	tc->context = tcup;
 	tc->open = connection_open;
 	tc->close = connection_close;
+	tc->write = firefly_transport_udp_posix_write;
+	tc->ack = firefly_transport_udp_posix_ack;
 	return tc;
 }
 
@@ -387,31 +389,22 @@ int firefly_transport_udp_posix_read_event(void *event_arg)
 
 	// Find existing connection or create new.
 	conn = find_connection(ev_arg->llp, ev_arg->addr, connection_eq_inaddr);
-	if (conn == NULL) {
-		if (llp_udp->on_conn_recv != NULL) {
-			char ip_addr[INET_ADDRSTRLEN];
-			sockaddr_in_ipaddr(ev_arg->addr, ip_addr);
-			conn = llp_udp->on_conn_recv(ev_arg->llp, ip_addr,
-					sockaddr_in_port(ev_arg->addr));
-		} else {
-			firefly_error(FIREFLY_ERROR_MISSING_CALLBACK, 4,
-				      "Cannot accept incoming connection "
-				      "on port %d.\n"
-				      "Callback 'on_conn_recv' not set"
-				      "on llp.\n (in %s() at %s:%d)",
-				      ntohs(llp_udp->local_addr->sin_port),
-				      __FUNCTION__, __FILE__, __LINE__);
+	if (conn == NULL && llp_udp->on_conn_recv != NULL) {
+		char ip_addr[INET_ADDRSTRLEN];
+		sockaddr_in_ipaddr(ev_arg->addr, ip_addr);
+		if (llp_udp->on_conn_recv(ev_arg->llp, ip_addr,
+				sockaddr_in_port(ev_arg->addr))) {
+			return llp_udp->event_queue->offer_event_cb(llp_udp->event_queue,
+					FIREFLY_PRIORITY_HIGH,
+					firefly_transport_udp_posix_read_event,
+					ev_arg);
 		}
-	}
-
-	// Existing or newly created conn. Passing data to procol layer.
-	if (conn != NULL) {
+	} else {
 		ev_arg->llp->protocol_data_received_cb(conn, ev_arg->data, ev_arg->len);
 	}
 	free(ev_arg->data);
 	free(ev_arg->addr);
 	free(ev_arg);
-
 	return 0;
 }
 
