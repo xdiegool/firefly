@@ -6,9 +6,9 @@
 
 struct transport_llp_eth_xeno;
 
-struct protocol_connection_eth_xeno;
+struct firefly_transport_connection_eth_xeno;
 
-typedef struct firefly_connection *(*firefly_on_conn_recv_eth_xeno)(
+typedef bool (*firefly_on_conn_recv_eth_xeno)(
 		struct firefly_transport_llp *llp, char *mac_address);
 
 struct firefly_transport_llp *firefly_transport_llp_eth_xeno_new(
@@ -26,5 +26,7 @@ struct firefly_connection *firefly_transport_connection_eth_xeno_open(
 
 void firefly_transport_eth_xeno_read(struct firefly_transport_llp *llp,
 		int64_t *timeout);
+
+struct firefly_memory_funcs *firefly_transport_eth_xeno_memfuncs();
 
 #endif

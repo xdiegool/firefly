@@ -18,7 +18,7 @@ struct transport_llp_eth_xeno {
 	RT_HEAP dyn_mem;
 };
 
-struct protocol_connection_eth_xeno {
+struct firefly_transport_connection_eth_xeno {
 	struct sockaddr_ll *remote_addr;
 	struct firefly_transport_llp *llp;
 	int socket;

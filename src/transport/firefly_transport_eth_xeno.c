@@ -163,17 +163,6 @@ int firefly_transport_llp_eth_xeno_free_event(void *event_arg)
 	return 0;
 }
 
-void firefly_transport_connection_eth_xeno_free(struct firefly_connection *conn)
-{
-	struct protocol_connection_eth_xeno *conn_eth;
-	conn_eth = conn->transport_conn_platspec;
-
-	remove_connection_from_llp(conn_eth->llp, conn,
-			firefly_connection_eq_ptr);
-	free(conn_eth->remote_addr);
-	free(conn_eth);
-}
-
 static void *xeno_mem_alloc_llp(struct firefly_transport_llp *llp, size_t size)
 {
 	/*return malloc(size);*/
@@ -192,8 +181,8 @@ static void *xeno_mem_alloc_llp(struct firefly_transport_llp *llp, size_t size)
 static void *xeno_mem_alloc_conn(struct firefly_connection *conn, size_t size)
 {
 	/*return malloc(size);*/
-	struct protocol_connection_eth_xeno *conn_eth;
-	conn_eth = conn->transport_conn_platspec;
+	struct firefly_transport_connection_eth_xeno *conn_eth;
+	conn_eth = conn->transport->context;
 	return xeno_mem_alloc_llp(conn_eth->llp, size);
 }
 
@@ -208,8 +197,8 @@ static void xeno_mem_free_llp(struct firefly_transport_llp *llp, void *ptr)
 static void xeno_mem_free_conn(struct firefly_connection *conn, void *ptr)
 {
 	/*free(ptr);*/
-	struct protocol_connection_eth_xeno *conn_eth;
-	conn_eth = conn->transport_conn_platspec;
+	struct firefly_transport_connection_eth_xeno *conn_eth;
+	conn_eth = conn->transport->context;
 	xeno_mem_free_llp(conn_eth->llp, ptr);
 }
 
@@ -218,70 +207,94 @@ static struct firefly_memory_funcs conn_xeno_mem_fs = {
 	.free_replacement = xeno_mem_free_conn
 };
 
-struct firefly_connection *firefly_transport_connection_eth_xeno_open(
+struct firefly_memory_funcs *firefly_transport_eth_xeno_memfuncs()
+{
+	return &conn_xeno_mem_fs;
+}
+
+static int connection_open(struct firefly_connection *conn)
+{
+	struct firefly_transport_connection_eth_xeno *tcex;
+	tcex = conn->transport->context;
+	add_connection_to_llp(conn, tcex->llp);
+	return 0;
+}
+
+static int connection_close(struct firefly_connection *conn)
+{
+	struct firefly_transport_connection_eth_xeno *tcex;
+	tcex = conn->transport->context;
+
+	remove_connection_from_llp(tcex->llp, conn,
+			firefly_connection_eq_ptr);
+	free(tcex->remote_addr);
+	free(tcex);
+	free(conn->transport);
+	return 0;
+}
+
+struct firefly_transport_connection *firefly_transport_connection_eth_xeno_new(
 		struct firefly_transport_llp *llp,
 		char *mac_address,
-		char *if_name,
-		struct firefly_connection_actions *actions)
+		char *if_name)
 
 {
-	/* Get ifindex first to avoid mem alloc if it fails. */
 	int err;
+	struct firefly_transport_connection *tc;
+	struct firefly_transport_connection_eth_xeno *tcex;
+	struct transport_llp_eth_xeno * llp_eth;
 	struct ifreq ifr;
+
+	llp_eth = llp->llp_platspec;
+	/* Get ifindex first to avoid mem alloc if it fails. */
 	strncpy(ifr.ifr_name, if_name, IFNAMSIZ);
-	err = rt_dev_ioctl(((struct transport_llp_eth_xeno *)llp->llp_platspec)->socket,
-			SIOCGIFINDEX, &ifr);
+	err = rt_dev_ioctl(llp_eth->socket, SIOCGIFINDEX, &ifr);
 	if(err < 0) {
 		FFL(FIREFLY_ERROR_SOCKET);
 		return NULL;
 	}
 
-	/* Alloc connection structs */
-	struct protocol_connection_eth_xeno *conn_eth;
-	conn_eth = malloc(sizeof(*conn_eth));
-	struct firefly_connection *conn = firefly_connection_new(
-			actions,
-			firefly_transport_eth_xeno_write,
-			firefly_transport_eth_xeno_ack,
-			&conn_xeno_mem_fs,
-			((struct transport_llp_eth_xeno *)llp->llp_platspec)->event_queue,
-			conn_eth, firefly_transport_connection_eth_xeno_free);
-	if (conn == NULL || conn_eth == NULL) {
-		FFL(FIREFLY_ERROR_ALLOC);
-		free(conn_eth);
-		free(conn);
-		return NULL;
-	}
-	conn_eth->remote_addr = malloc(sizeof(struct sockaddr_ll));
-	if (conn_eth == NULL) {
-		FFL(FIREFLY_ERROR_ALLOC);
-		free(conn_eth);
+	tcex = malloc(sizeof(*tcex));
+	tc = malloc(sizeof(*tc));
+	if (tc == NULL || tcex == NULL) {
+		free(tc);
+		free(tcex);
 		return NULL;
 	}
 
-	memset(conn_eth->remote_addr, 0, sizeof(struct sockaddr_ll));
-	conn_eth->remote_addr->sll_family   = AF_PACKET;
-	conn_eth->remote_addr->sll_protocol = htons(FIREFLY_ETH_PROTOCOL);
+	/* Construct address  { */
+	tcex->remote_addr = malloc(sizeof(struct sockaddr_ll));
+	if (tcex->remote_addr == NULL) {
+		free(tc);
+		free(tcex);
+		return NULL;
+	}
+	memset(tcex->remote_addr, 0, sizeof(struct sockaddr_ll));
+	tcex->remote_addr->sll_family   = AF_PACKET;
+	tcex->remote_addr->sll_protocol = htons(FIREFLY_ETH_PROTOCOL);
 	/* Convert address to to binary data */
-	ether_aton_r(mac_address, (void*)&conn_eth->remote_addr->sll_addr);
-	conn_eth->remote_addr->sll_halen    = 6;
-	conn_eth->remote_addr->sll_ifindex  = ifr.ifr_ifindex;
+	ether_aton_r(mac_address, (void*)&tcex->remote_addr->sll_addr);
+	tcex->remote_addr->sll_halen    = 6;
+	tcex->remote_addr->sll_ifindex  = ifr.ifr_ifindex;
+	/* } */
 
-	conn_eth->socket =
-		((struct transport_llp_eth_xeno *)llp->llp_platspec)->socket;
+	tcex->socket = llp_eth->socket;
+	tcex->llp = llp;
+	tc->context = tcex;
+	tc->open = connection_open;
+	tc->close = connection_close;
+	tc->write = firefly_transport_eth_xeno_write;
+	tc->ack = firefly_transport_eth_xeno_ack;
 
-	conn_eth->llp = llp;
-	add_connection_to_llp(conn, llp);
-
-	return conn;
+	return tc;
 }
 
 void firefly_transport_eth_xeno_write(unsigned char *data, size_t data_size,
 		struct firefly_connection *conn, bool important, unsigned char *id)
 {
 	int err;
-	struct protocol_connection_eth_xeno *conn_eth =
-		(struct protocol_connection_eth_xeno *) conn->transport_conn_platspec;
+	struct firefly_transport_connection_eth_xeno *conn_eth =
+			conn->transport->context;
 	err = rt_dev_sendto(conn_eth->socket, data, data_size, 0,
 			(struct sockaddr *)conn_eth->remote_addr,
 			sizeof(*conn_eth->remote_addr));
@@ -360,22 +373,15 @@ int firefly_transport_eth_xeno_read_event(void *event_args)
 
 	struct firefly_connection *conn = find_connection(ev_a->llp, &ev_a->addr,
 			connection_eq_addr);
-	if (conn == NULL) {
-		if (llp_eth->on_conn_recv != NULL) {
-			char mac_addr[18];
-			get_mac_addr(&ev_a->addr, mac_addr);
-			// TODO got incorrect mac address here once, ever... two times.
-			conn = llp_eth->on_conn_recv(ev_a->llp, mac_addr);
-		} else {
-			firefly_error(FIREFLY_ERROR_MISSING_CALLBACK, 4,
-				      "Cannot accept incoming connection.\n"
-				      "Callback 'on_conn_recv' not set"
-				      "on llp.\n (in %s() at %s:%d)",
-				      __FUNCTION__, __FILE__, __LINE__);
+	if (conn == NULL && llp_eth->on_conn_recv != NULL) {
+		char mac_addr[18];
+		get_mac_addr(&ev_a->addr, mac_addr);
+		if (llp_eth->on_conn_recv(ev_a->llp, mac_addr)) {
+			return llp_eth->event_queue->offer_event_cb(llp_eth->event_queue,
+					FIREFLY_PRIORITY_HIGH,
+					firefly_transport_eth_xeno_read_event, ev_a);
 		}
-	}
-	// Existing or newly created conn. Passing data to procol layer.
-	if (conn != NULL) {
+	} else {
 		ev_a->llp->protocol_data_received_cb(conn, ev_a->data, ev_a->len);
 	}
 	xeno_mem_free_llp(ev_a->llp, ev_a->data);
@@ -397,11 +403,11 @@ void get_mac_addr(struct sockaddr_ll *addr, char *mac_addr)
 
 bool connection_eq_addr(struct firefly_connection *conn, void *context)
 {
-	struct protocol_connection_eth_xeno *conn_eth;
+	struct firefly_transport_connection_eth_xeno *conn_eth;
 	struct sockaddr_ll *addr;
 	int result;
 
-	conn_eth = conn->transport_conn_platspec;
+	conn_eth = conn->transport->context;
 	addr = context;
 
 	if (addr->sll_halen == conn_eth->remote_addr->sll_halen) {
