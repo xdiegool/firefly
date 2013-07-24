@@ -169,7 +169,7 @@ static void recv_data(int socket)
 }
 
 static bool recv_conn_called = false;
-static struct firefly_connection *on_conn_recv(
+static bool on_conn_recv(
 		struct firefly_transport_llp *llp, char *mac_address)
 {
 	UNUSED_VAR(llp);
@@ -179,10 +179,10 @@ static struct firefly_connection *on_conn_recv(
 	}
 	CU_ASSERT_NSTRING_EQUAL(mac_address, remote_mac_addr, 18);
 	recv_conn_called = true;
-	return NULL;
+	return false;
 }
 
-static struct firefly_connection *on_conn_recv_keep(
+static bool on_conn_recv_keep(
 		struct firefly_transport_llp *llp, char *mac_address)
 {
 	UNUSED_VAR(llp);
@@ -191,17 +191,23 @@ static struct firefly_connection *on_conn_recv_keep(
 		printf("Mac: %s\n", mac_address);
 	}
 	recv_conn_called = true;
-	return firefly_transport_connection_eth_posix_open(
-			llp, mac_address, "lo", NULL);
+	int res = firefly_connection_open(NULL, NULL, eq,
+			firefly_transport_connection_eth_posix_new(llp,
+				mac_address, "lo"));
+	CU_ASSERT_EQUAL(res, 0);
+	return true;
 }
 
-static struct firefly_connection *on_conn_recv_keep_two(
+static bool on_conn_recv_keep_two(
 		struct firefly_transport_llp *llp, char *mac_address)
 {
 	UNUSED_VAR(llp);
 	recv_conn_called = true;
-	return firefly_transport_connection_eth_posix_open(
-			llp, mac_address, "lo", NULL);
+	int res = firefly_connection_open(NULL, NULL, eq,
+			firefly_transport_connection_eth_posix_new(llp,
+				mac_address, "lo"));
+	CU_ASSERT_EQUAL(res, 0);
+	return true;
 }
 
 void test_eth_recv_connection()
@@ -232,8 +238,11 @@ void test_eth_recv_data()
 	replace_protocol_data_received_cb(llp, protocol_data_received_repl);
 
 	send_data();
-	firefly_transport_connection_eth_posix_open(
-			llp, remote_mac_addr, "lo", NULL);
+	int res = firefly_connection_open(NULL, NULL, eq,
+			firefly_transport_connection_eth_posix_new(llp,
+				remote_mac_addr, "lo"));
+	CU_ASSERT_EQUAL_FATAL(res, 0);
+	event_execute_test(eq, 1);
 
 	firefly_transport_eth_posix_read(llp, NULL);
 	event_execute_test(eq, 1);
@@ -261,6 +270,7 @@ void test_eth_recv_conn_and_data()
 
 	CU_ASSERT_TRUE(recv_conn_called);
 	recv_conn_called = false;
+	event_execute_test(eq, 2);
 	CU_ASSERT_TRUE(data_received);
 	data_received = false;
 	firefly_transport_llp_eth_posix_free(llp);
@@ -280,6 +290,7 @@ void test_eth_recv_conn_keep()
 	firefly_transport_eth_posix_read(llp, NULL);
 	event_execute_test(eq, 1);
 	CU_ASSERT_TRUE(recv_conn_called);
+	event_execute_test(eq, 2);
 	CU_ASSERT_TRUE(data_received);
 
 	struct sockaddr_ll addr;
@@ -330,6 +341,7 @@ void test_eth_recv_conn_and_two_data()
 	firefly_transport_eth_posix_read(llp, NULL);
 	event_execute_test(eq, 1);
 	CU_ASSERT_TRUE(recv_conn_called);
+	event_execute_test(eq, 2);
 	CU_ASSERT_TRUE(data_received);
 
 	struct sockaddr_ll addr;
@@ -357,12 +369,17 @@ void test_eth_conn_open_and_send()
 {
 	struct firefly_transport_llp *llp = firefly_transport_llp_eth_posix_new(
 			"lo", on_conn_recv, eq);
-	struct firefly_connection *conn = firefly_transport_connection_eth_posix_open(
-			llp, remote_mac_addr, "lo", NULL);
+
+	struct firefly_connection *conn = firefly_connection_new(NULL, NULL, eq,
+			firefly_transport_connection_eth_posix_new(llp,
+				remote_mac_addr, "lo"));
+	CU_ASSERT_PTR_NOT_NULL_FATAL(conn);
+	add_connection_to_llp(conn, llp);
 
 	int socket = open_socket();
 
-	firefly_transport_eth_posix_write(send_buf, sizeof(send_buf), conn, false, NULL);
+	firefly_transport_eth_posix_write(send_buf, sizeof(send_buf),
+			conn, false, NULL);
 
 	recv_data(socket);
 	close(socket);
@@ -387,6 +404,7 @@ void test_eth_recv_conn_keep_two()
 	firefly_transport_eth_posix_read(llp, NULL);
 	event_execute_test(eq, 1);
 	CU_ASSERT_TRUE(recv_conn_called);
+	event_execute_test(eq, 2);
 	CU_ASSERT_TRUE(data_received);
 
 	struct sockaddr_ll addr;
@@ -402,6 +420,7 @@ void test_eth_recv_conn_keep_two()
 	firefly_transport_eth_posix_read(llp, NULL);
 	event_execute_test(eq, 1);
 	CU_ASSERT_TRUE(recv_conn_called);
+	event_execute_test(eq, 2);
 	CU_ASSERT_TRUE(data_received);
 
 	ether_aton_r(remote_mac_addr_alt, (void*)&addr.sll_addr);
@@ -426,10 +445,17 @@ void test_eth_recv_data_two_conn()
 	/* Replace the ordinary data recv. callback. */
 	replace_protocol_data_received_cb(llp, protocol_data_received_repl);
 
-	struct firefly_connection *conn_1 = firefly_transport_connection_eth_posix_open(
-											llp, remote_mac_addr, "lo", NULL);
-	struct firefly_connection *conn_2 = firefly_transport_connection_eth_posix_open(
-											llp, remote_mac_addr_alt, "lo", NULL);
+	struct firefly_connection *conn_1 = firefly_connection_new(NULL, NULL, eq,
+			firefly_transport_connection_eth_posix_new(llp,
+				remote_mac_addr, "lo"));
+	CU_ASSERT_PTR_NOT_NULL_FATAL(conn_1);
+	add_connection_to_llp(conn_1, llp);
+
+	struct firefly_connection *conn_2 = firefly_connection_new(NULL, NULL, eq,
+			firefly_transport_connection_eth_posix_new(llp,
+				remote_mac_addr_alt, "lo"));
+	CU_ASSERT_PTR_NOT_NULL_FATAL(conn_2);
+	add_connection_to_llp(conn_2, llp);
 
 	data_recv_expected_conn = conn_1;
 	send_data_w_addr(remote_mac_addr);
@@ -456,8 +482,13 @@ void test_eth_conn_close_recv()
 {
 	struct firefly_transport_llp *llp = firefly_transport_llp_eth_posix_new(
 			"lo", on_conn_recv, eq);
-	struct firefly_connection *conn = firefly_transport_connection_eth_posix_open(
-			llp, remote_mac_addr, "lo", NULL);
+
+	struct firefly_connection *conn = firefly_connection_new(NULL, NULL, eq,
+			firefly_transport_connection_eth_posix_new(llp,
+				remote_mac_addr, "lo"));
+	CU_ASSERT_PTR_NOT_NULL_FATAL(conn);
+	add_connection_to_llp(conn, llp);
+
 	firefly_connection_close(conn);
 	send_data();
 	firefly_transport_eth_posix_read(llp, NULL);
@@ -485,14 +516,23 @@ void test_eth_llp_free_mult_conns()
 					"lo", NULL, eq);
 	struct firefly_connection *conn;
 
-	conn = firefly_transport_connection_eth_posix_open(llp,
-			"00:00:00:00:00:00", "lo", NULL);
+	conn = firefly_connection_new(NULL, NULL, eq,
+			firefly_transport_connection_eth_posix_new(llp,
+				"00:00:00:00:00:00", "lo"));
+	CU_ASSERT_PTR_NOT_NULL_FATAL(conn);
+	add_connection_to_llp(conn, llp);
 
-	conn = firefly_transport_connection_eth_posix_open(llp,
-			"00:00:00:00:00:00", "lo", NULL);
+	conn = firefly_connection_new(NULL, NULL, eq,
+			firefly_transport_connection_eth_posix_new(llp,
+				"00:00:00:00:00:00", "lo"));
+	CU_ASSERT_PTR_NOT_NULL_FATAL(conn);
+	add_connection_to_llp(conn, llp);
 
-	conn = firefly_transport_connection_eth_posix_open(llp,
-			"00:00:00:00:00:00", "lo", NULL);
+	conn = firefly_connection_new(NULL, NULL, eq,
+			firefly_transport_connection_eth_posix_new(llp,
+				"00:00:00:00:00:00", "lo"));
+	CU_ASSERT_PTR_NOT_NULL_FATAL(conn);
+	add_connection_to_llp(conn, llp);
 
 	firefly_transport_llp_eth_posix_free(llp);
 	event_execute_test(eq, 8);
@@ -507,8 +547,11 @@ void test_eth_llp_free_mult_conns_w_chans()
 	struct firefly_connection *conn;
 	struct firefly_channel *ch;
 
-	conn = firefly_transport_connection_eth_posix_open(llp,
-			"00:00:00:00:00:00", "lo", NULL);
+	conn = firefly_connection_new(NULL, NULL, eq,
+			firefly_transport_connection_eth_posix_new(llp,
+				"00:00:00:00:00:00", "lo"));
+	CU_ASSERT_PTR_NOT_NULL_FATAL(conn);
+	add_connection_to_llp(conn, llp);
 
 	ch = firefly_channel_new(conn);
 	ch->remote_id = 0;
@@ -518,15 +561,21 @@ void test_eth_llp_free_mult_conns_w_chans()
 	ch->remote_id = 1;
 	add_channel_to_connection(ch, conn);
 
-	conn = firefly_transport_connection_eth_posix_open(llp,
-			"00:00:00:00:00:00", "lo", NULL);
+	conn = firefly_connection_new(NULL, NULL, eq,
+			firefly_transport_connection_eth_posix_new(llp,
+				"00:00:00:00:00:00", "lo"));
+	CU_ASSERT_PTR_NOT_NULL_FATAL(conn);
+	add_connection_to_llp(conn, llp);
 
 	ch = firefly_channel_new(conn);
 	ch->remote_id = 2;
 	add_channel_to_connection(ch, conn);
 
-	conn = firefly_transport_connection_eth_posix_open(llp,
-			"00:00:00:00:00:00", "lo", NULL);
+	conn = firefly_connection_new(NULL, NULL, eq,
+			firefly_transport_connection_eth_posix_new(llp,
+				"00:00:00:00:00:00", "lo"));
+	CU_ASSERT_PTR_NOT_NULL_FATAL(conn);
+	add_connection_to_llp(conn, llp);
 
 	ch = firefly_channel_new(conn);
 	ch->remote_id = 3;
