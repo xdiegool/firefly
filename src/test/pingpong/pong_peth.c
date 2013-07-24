@@ -70,6 +70,7 @@ void *send_data_and_close(void *args);
 bool pong_chan_on_restrict_request(struct firefly_channel *chan);
 void pong_chan_on_restrict_change(struct firefly_channel *chan,
 		enum restriction_transition rinfo);
+void ping_connection_opened(struct firefly_connection *conn);
 
 struct firefly_connection_actions conn_actions = {
 	.channel_opened		= pong_chan_opened,
@@ -78,34 +79,44 @@ struct firefly_connection_actions conn_actions = {
 	// New -v
 	.channel_rejected	= NULL,
 	.channel_restrict	= pong_chan_on_restrict_request,
-	.channel_restrict_info	= pong_chan_on_restrict_change
+	.channel_restrict_info	= pong_chan_on_restrict_change,
+	.connection_opened = ping_connection_opened
 };
 
 void pong_chan_on_restrict_change(struct firefly_channel *chan,
 		enum restriction_transition rinfo)
 {
+	UNUSED_VAR(chan);
+	UNUSED_VAR(rinfo);
 	printf("restrict change\n");
 }
 
 bool pong_chan_on_restrict_request(struct firefly_channel *chan)
 {
+	UNUSED_VAR(chan);
 	return true;
 }
 
-struct firefly_connection *pong_connection_received(
-		struct firefly_transport_llp *llp, char *mac_addr)
+void ping_connection_opened(struct firefly_connection *conn)
 {
-	struct firefly_connection *conn = NULL;
+	UNUSED_VAR(conn);
+	pong_pass_test(CONNECTION_OPEN);
+}
+
+bool pong_connection_received(struct firefly_transport_llp *llp,
+		char *mac_addr)
+{
 	/* If address is correct, open a connection. */
 	if (strncmp(mac_addr, ping_mac_addr, strlen(ping_mac_addr)) == 0) {
-		conn = firefly_transport_connection_eth_posix_open(
-				llp, mac_addr, pong_iface, &conn_actions);
-		pong_pass_test(CONNECTION_OPEN);
+		firefly_connection_open(&conn_actions, NULL, event_queue,
+				firefly_transport_connection_eth_posix_new(
+				llp, mac_addr, pong_iface));
+		return true;
 	} else {
 		fprintf(stderr, "ERROR: Received unknown connection: %s\n",
 				mac_addr);
 	}
-	return conn;
+	return false;
 }
 
 void pong_chan_opened(struct firefly_channel *chan)
@@ -180,7 +191,6 @@ int main(int argc, char** argv)
 	}
 	int res;
 	struct reader_thread_args rtarg;
-	struct sched_param thread_prio;
 	pthread_attr_t thread_attrs;
 	pthread_t reader_thread;
 

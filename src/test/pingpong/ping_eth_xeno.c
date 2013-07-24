@@ -125,6 +125,12 @@ void ping_channel_restrict_change(struct firefly_channel *chan,
 	}
 }
 
+void ping_connection_opened(struct firefly_connection *conn)
+{
+	ping_pass_test(CONNECTION_OPEN);
+	firefly_channel_open(conn);
+}
+
 struct firefly_connection_actions conn_actions = {
 	.channel_opened		= ping_chan_opened,
 	.channel_closed		= ping_chan_closed,
@@ -132,22 +138,10 @@ struct firefly_connection_actions conn_actions = {
 	// New -v
 	.channel_rejected	= ping_channel_rejected,
 	.channel_restrict	= NULL,
-	.channel_restrict_info	= ping_channel_restrict_change
+	.channel_restrict_info	= ping_channel_restrict_change,
+	.connection_opened = ping_connection_opened
 };
 
-struct firefly_connection *ping_connection_received(
-		struct firefly_transport_llp *llp, char *mac_addr)
-{
-	printf("PING: Connection received.\n");
-	struct firefly_connection *conn = NULL;
-	/* If address is correct, open a connection. */
-	if (strncmp(mac_addr, PONG_MAC_ADDR, strlen(PONG_MAC_ADDR)) == 0) {
-		printf("PING: Connection accepted.\n");
-		conn = firefly_transport_connection_eth_xeno_open(
-				llp, mac_addr, PING_IFACE, &conn_actions);
-	}
-	return conn;
-}
 
 void ping_handle_pingpong_data(pingpong_data *data, void *ctx)
 {
@@ -243,16 +237,12 @@ int main(int argc, char **argv)
 
 	struct firefly_transport_llp *llp =
 			firefly_transport_llp_eth_xeno_new(iface,
-					ping_connection_received, event_queue);
+					NULL, event_queue);
 
-	struct firefly_connection *conn =
-		firefly_transport_connection_eth_xeno_open(llp,
-				mac_addr, iface, &conn_actions);
-	if (conn != NULL) {
-		ping_pass_test(CONNECTION_OPEN);
-	}
-
-	firefly_channel_open(conn);
+	firefly_connection_open(&conn_actions,
+			firefly_transport_eth_xeno_memfuncs(), event_queue,
+			firefly_transport_connection_eth_xeno_new(
+			llp, mac_addr, iface));
 
 	res = rt_mutex_create(&rtarg.lock, "reader_mutex");
 	if (res) {

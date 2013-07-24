@@ -63,6 +63,12 @@ static pthread_mutex_t ping_done_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t ping_done_signal = PTHREAD_COND_INITIALIZER;
 static bool ping_done;
 
+void ping_connection_opened(struct firefly_connection *conn)
+{
+	ping_pass_test(CONNECTION_OPEN);
+	firefly_channel_open(conn);
+}
+
 /* Restr. state change. */
 void ping_chan_restr_info(struct firefly_channel *chan,
 			  enum restriction_transition restr)
@@ -155,7 +161,8 @@ struct firefly_connection_actions ping_actions = {
 	// New -v
 	.channel_rejected	= ping_channel_rejected,
 	.channel_restrict	= NULL,
-	.channel_restrict_info	= ping_chan_restr_info
+	.channel_restrict_info	= ping_chan_restr_info,
+	.connection_opened = ping_connection_opened
 };
 
 void *ping_main_thread(void *arg)
@@ -164,7 +171,6 @@ void *ping_main_thread(void *arg)
 	pthread_t reader_thread;
 	pthread_t resend_thread;
 	struct firefly_transport_llp *llp;
-	struct firefly_connection *conn;
 
 	UNUSED_VAR(arg);
 	printf("Hello, Firefly from Ping!\n");
@@ -175,13 +181,11 @@ void *ping_main_thread(void *arg)
 
 	llp = firefly_transport_llp_udp_posix_new(PING_PORT, NULL, event_queue);
 
-	conn = firefly_transport_connection_udp_posix_open(llp,
-			PONG_ADDR, PONG_PORT,
-			FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT,
-			&ping_actions);
-	if (conn) ping_pass_test(CONNECTION_OPEN);
+	firefly_connection_open(&ping_actions, NULL, event_queue,
+			firefly_transport_connection_udp_posix_new(
+					llp, PONG_ADDR, PONG_PORT,
+					FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT));
 
-	firefly_channel_open(conn);
 	res = firefly_transport_udp_posix_run(llp, &reader_thread,
 					      &resend_thread);
 	if (res) fprintf(stderr, "ERROR: starting reader/resend thread.\n");

@@ -107,6 +107,12 @@ void ping_channel_rejected(struct firefly_connection *conn)
 	fprintf(stderr, "ERROR: Channel was rejected.\n");
 }
 
+void ping_connection_opened(struct firefly_connection *conn)
+{
+	ping_pass_test(CONNECTION_OPEN);
+	firefly_channel_open(conn);
+}
+
 struct firefly_connection_actions conn_actions = {
 	.channel_opened		= ping_chan_opened,
 	.channel_closed		= ping_chan_closed,
@@ -114,22 +120,9 @@ struct firefly_connection_actions conn_actions = {
 	// New -v
 	.channel_rejected	= ping_channel_rejected,
 	.channel_restrict	= NULL,
-	.channel_restrict_info	= NULL
+	.channel_restrict_info	= NULL,
+	.connection_opened = ping_connection_opened
 };
-
-struct firefly_connection *ping_connection_received(
-		struct firefly_transport_llp *llp, char *mac_addr)
-{
-	printf("PING: Connection received.\n");
-	struct firefly_connection *conn = NULL;
-	/* If address is correct, open a connection. */
-	if (strncmp(mac_addr, PONG_MAC_ADDR, strlen(PONG_MAC_ADDR)) == 0) {
-		printf("PING: Connection accepted.\n");
-		conn = firefly_transport_connection_eth_posix_open(
-				llp, mac_addr, PING_IFACE, &conn_actions);
-	}
-	return conn;
-}
 
 void *send_data(void *args)
 {
@@ -187,17 +180,11 @@ int main(int argc, char **argv)
 	}
 
 	struct firefly_transport_llp *llp =
-			firefly_transport_llp_eth_posix_new(iface,
-					ping_connection_received, event_queue);
+			firefly_transport_llp_eth_posix_new(iface, NULL, event_queue);
 
-	struct firefly_connection *conn =
-		firefly_transport_connection_eth_posix_open(llp,
-				mac_addr, iface, &conn_actions);
-	if (conn != NULL) {
-		ping_pass_test(CONNECTION_OPEN);
-	}
-
-	firefly_channel_open(conn);
+	firefly_connection_open(&conn_actions, NULL, event_queue,
+			firefly_transport_connection_eth_posix_new(
+			llp, mac_addr, iface));
 
 	res = pthread_mutex_init(&rtarg.lock, NULL);
 	if (res) {

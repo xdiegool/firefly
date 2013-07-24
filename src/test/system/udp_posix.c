@@ -646,14 +646,14 @@ void mock_handle_time_sample(test_time_sample *d, void *ctx)
 	acc_delay += diff;
 }
 
-struct firefly_connection *received_connection(
+bool received_connection(
 		struct firefly_transport_llp *llp,
 		const char *ip_addr, unsigned short port)
 {
 	UNUSED_VAR(llp);
 	UNUSED_VAR(ip_addr);
 	UNUSED_VAR(port);
-	return NULL;
+	return false;
 }
 
 static struct firefly_channel *firefly_chan = NULL;
@@ -686,6 +686,11 @@ bool firefly_channel_received(struct firefly_channel *chan)
 	UNUSED_VAR(chan);
 	printf("channel received\n");
 	return false;
+}
+
+void connection_opened(struct firefly_connection *conn)
+{
+	firefly_channel_open(conn);
 }
 
 void test_something()
@@ -787,14 +792,13 @@ void test_something()
 		// New -v
 		.channel_rejected	= NULL,
 		.channel_restrict	= NULL,
-		.channel_restrict_info	= NULL
+		.channel_restrict_info	= NULL,
+		.connection_opened = connection_opened
 	};
 
-	struct firefly_connection *conn =
-		firefly_transport_connection_udp_posix_open(llp,
-				IP_ADDR, MOCK_UDP_PORT, RESEND_TIMEOUT,
-				&conn_actions);
-	firefly_channel_open(conn);
+	firefly_connection_open(&conn_actions, NULL, events,
+			firefly_transport_connection_udp_posix_new(
+					llp, IP_ADDR, MOCK_UDP_PORT, RESEND_TIMEOUT));
 
 	// Receive ingored request
 	current_packet = next_packet_wait(prev_packet);
