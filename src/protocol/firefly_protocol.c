@@ -336,8 +336,11 @@ int handle_channel_response_event(void *event_arg)
 					fecrr->conn->transport_encoder, &ack);
 		// Should be done after encode above.
 		if (chan != NULL) {
-			fecrr->conn->transport->ack(chan->important_id,
-						   fecrr->conn);
+
+			if (fecrr->conn->transport != NULL &&
+					fecrr->conn->transport->ack != NULL)
+				fecrr->conn->transport->ack(chan->important_id,
+							   fecrr->conn);
 			chan->important_id = 0;
 			fecrr->conn->actions->channel_opened(chan);
 		}
@@ -386,7 +389,9 @@ int handle_channel_ack_event(void *event_arg)
 	chan = find_channel_by_local_id(fecar->conn,
 					fecar->chan_ack.dest_chan_id);
 	if (chan != NULL) {
-		fecar->conn->transport->ack(chan->important_id, fecar->conn);
+		if (fecar->conn->transport != NULL &&
+				fecar->conn->transport->ack != NULL)
+			fecar->conn->transport->ack(chan->important_id, fecar->conn);
 		chan->important_id = 0;
 		fecar->conn->actions->channel_opened(chan);
 	} else {
@@ -515,7 +520,8 @@ void handle_ack(firefly_protocol_ack *ack, void *context)
 	conn = context;
 	chan = find_channel_by_local_id(conn, ack->dest_chan_id);
 	if (chan != NULL && chan->current_seqno == ack->seqno && ack->seqno > 0) {
-		conn->transport->ack(chan->important_id, conn);
+		if (conn->transport != NULL && conn->transport->ack != NULL)
+			conn->transport->ack(chan->important_id, conn);
 		chan->important_id = 0;
 		if (chan->important_queue != NULL) {
 			struct firefly_event_send_sample *fess;

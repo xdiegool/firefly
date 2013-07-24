@@ -27,10 +27,6 @@
     Try limiting the pingpong suite to first open channel and then
     continue.
 
-# RELIABILITY
-	- Ack transport packets when closing a channel.
-	- conn->transport_ack == NULL should be interpreted as reliability ensured
-
 # Better Build system
 	- CMake in the works!
 

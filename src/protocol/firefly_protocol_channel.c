@@ -87,6 +87,12 @@ int firefly_channel_closed_event(void *event_arg)
 	struct firefly_channel *chan;
 
 	chan = event_arg;
+
+	if (chan->important_id != 0 &&
+			chan->conn->transport != NULL &&
+			chan->conn->transport->ack != NULL)
+		chan->conn->transport->ack(chan->important_id, chan->conn);
+
 	remove_channel_from_connection(chan, chan->conn);
 	if (chan->conn->actions && chan->conn->actions->channel_closed)
 		chan->conn->actions->channel_closed(chan);
