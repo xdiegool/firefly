@@ -27,12 +27,6 @@
     Try limiting the pingpong suite to first open channel and then
     continue.
 
-# EVENTIFY CONN OPEN
-    fix event driven connection open, at least add connection to llp
-	HOWTO:
-	- Make add conn to llp an event with highest priority
-	- Add conn_open to connection action struct.
-
 # RELIABILITY
 	- Ack transport packets when closing a channel.
 	- conn->transport_ack == NULL should be interpreted as reliability ensured
