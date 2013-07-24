@@ -19,7 +19,7 @@ static int firefly_connection_open_event(void *arg)
 	return 0;
 }
 
-int firefly_connection_open(
+struct firefly_connection *firefly_connection_new(
 		struct firefly_connection_actions *actions,
 		struct firefly_memory_funcs *memory_replacements,
 		struct firefly_event_queue *event_queue,
@@ -37,7 +37,7 @@ int firefly_connection_open(
 			      "memory allocation failed %s:%d",
 			      __FUNCTION__, __LINE__);
 		FIREFLY_FREE(conn);
-		return 1;
+		return NULL;
 	}
 	conn->actions = actions;
 	reader = transport_labcomm_reader_new(conn);
@@ -49,7 +49,7 @@ int firefly_connection_open(
 		transport_labcomm_reader_free(reader);
 		transport_labcomm_writer_free(writer);
 		FIREFLY_FREE(conn);
-		return 1;
+		return NULL;
 	}
 	transport_encoder = labcomm_encoder_new(writer, NULL);
 	transport_decoder = labcomm_decoder_new(reader, NULL);
@@ -67,7 +67,7 @@ int firefly_connection_open(
 		else
 			transport_labcomm_reader_free(reader);
 		FIREFLY_FREE(conn);
-		return 1;
+		return NULL;
 	}
 	conn->event_queue		= event_queue;
 	conn->chan_list			= NULL;
@@ -96,10 +96,21 @@ int firefly_connection_open(
 	reg_proto_sigs(conn->transport_encoder,
 		       conn->transport_decoder,
 		       conn);
+	return conn;
+}
 
-	return conn->event_queue->offer_event_cb(conn->event_queue,
+int firefly_connection_open(
+		struct firefly_connection_actions *actions,
+		struct firefly_memory_funcs *memory_replacements,
+		struct firefly_event_queue *event_queue,
+		struct firefly_transport_connection *tc)
+{
+
+	struct firefly_connection *conn;
+	conn = firefly_connection_new(actions, memory_replacements, event_queue, tc);
+	return conn != NULL ? conn->event_queue->offer_event_cb(conn->event_queue,
 			FIREFLY_PRIORITY_HIGH, firefly_connection_open_event,
-			conn);
+			conn) : 1;
 }
 
 void firefly_connection_close(struct firefly_connection *conn)

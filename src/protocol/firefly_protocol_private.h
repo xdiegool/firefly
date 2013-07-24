@@ -184,6 +184,15 @@ void transport_labcomm_writer_free(struct labcomm_writer *w);
 int firefly_connection_close_event(void *event_arg);
 
 /**
+ * @brief TODO
+ */
+struct firefly_connection *firefly_connection_new(
+		struct firefly_connection_actions *actions,
+		struct firefly_memory_funcs *memory_replacements,
+		struct firefly_event_queue *event_queue,
+		struct firefly_transport_connection *tc);
+
+/**
  * @brief Frees a connection.
  *
  * @param conn The connection to free.
