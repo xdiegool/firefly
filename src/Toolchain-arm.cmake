@@ -1,3 +1,4 @@
+# Directories:
 set(FT_SENSE_DIR ${Firefly_SOURCE_DIR}/../../ft-sense)
 set(LDSCRIPT ${FT_SENSE_DIR}/src/adc_freertos_lwip/standalone.ld)
 set(RTOS_BASE ${FT_SENSE_DIR}/lib/freertos)
@@ -13,14 +14,20 @@ set(COMMOM_INCLUDE ${RTOS_COMMON_PORTS}/include)
 set(COMMOM_ADC ${FT_SENSE_DIR}/src/common)
 set(DRIVERLIB_DIR ${FT_SENSE_DIR}/lib/driverlib)
 
-# this one is important
+# Set system name to Generic when compiling for embedded systems
+# according to CMake manual:
 set(CMAKE_SYSTEM_NAME Generic)
 
-# specify the cross compiler
+# Specify the cross compiler:
 set(CMAKE_C_COMPILER arm-none-eabi-gcc)
+set(CROSS_COMPILER_ARM arm-none-eabi-gcc)
 
-# where is the target environment
+# A hack to enable us to find arm-none-eabi include stuff:
+find_path(CROSS_COMPILER_PATH ${CMAKE_C_COMPILER})
+
+# Specify where include files and stuff exists:
 set(CMAKE_FIND_ROOT_PATH
+	${CROSS_COMPILER_PATH}/../arm-none-eabi/include
 	${COMMOM_ADC}
 	${COMMOM_INCLUDE}
 	${DRIVERLIB_DIR}
@@ -37,9 +44,14 @@ set(CMAKE_FIND_ROOT_PATH
 	${RTOS_SOURCE_DIR}/portable/GCC/ARM_CM3
 	${WEB_SERVER_DIR}
 )
+
+# Add include directories:
 include_directories(${CMAKE_FIND_ROOT_PATH})
-# search for programs in the build host directories
-set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
-# for libraries and headers in the target directories
+
+# Enable searching for programs in both default paths and
+# CMAKE_FIND_ROOT_PATH:
+set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM BOTH)
+
+# Same as above but for libraries and include files:
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)

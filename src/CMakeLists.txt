@@ -1,4 +1,4 @@
-# Main CMake file for project Firely.
+# Main CMake file for project Firefly.
 # Modeline {{{
 # vi: foldmarker={{{,}}} foldmethod=marker foldlevel=0
 # }}}
@@ -9,6 +9,12 @@ project (Firefly)
 if(NOT CMAKE_CROSSCOMPILING)
 	enable_testing()
 endif(NOT CMAKE_CROSSCOMPILING)
+
+# Helper function to join a list into a string:
+function(JOIN VALUES OUTPUT)
+	string(REGEX REPLACE ";" " " _TMP_STR ${VALUES})
+	set(${OUTPUT} "${_TMP_STR}" PARENT_SCOPE)
+endfunction()
 ## }}}
 
 ## DIRS {{{
@@ -17,7 +23,6 @@ set(Firefly_PROJECT_DIR ${Firefly_SOURCE_DIR}/..)
 set(GEN_DIR ${Firefly_PROJECT_DIR}/gen)
 set(LC_DIR ${Firefly_PROJECT_DIR}/lc)
 set(INC_DIR ${Firefly_PROJECT_DIR}/include)
-set(GEN_DIR ${Firefly_PROJECT_DIR}/gen)
 set(TEST_FILES_DIR ${Firefly_PROJECT_DIR}/testfiles)
 
 # Labcomm directories:
@@ -35,19 +40,29 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${Firefly_PROJECT_DIR}/cmake_modules)
 ## }}}
 
 ## FLAGS {{{
-# CFLAGS when cross compiling to the ARM-card:
-if(CMAKE_CROSSCOMPILING)
-	set(CMAKE_C_FLAGS
-		"-std=c99 -Wall -Wextra -Wno-missing-field-initializers -D DEBUG -D LABCOMM_ENCODER_LINEAR_SEARCH -Wfloat-equal -Werror-implicit-function-declaration -mthumb -mcpu=cortex-m3 -T$(LDSCRIPT) -ffunction-sections -fdata-sections $(INC_TRANSPORT_UDP_LWIP) -D UART_BUFFERED -D sprintf=usprintf -D snprintf=usnprintf -D vsnprintf=uvsnprintf -D printf=uipprintf -D malloc=pvPortMalloc -D calloc=pvPortCalloc -D free=vPortFree -D ARM_CORTEXM3_CODESOURCERY -D LABCOMM_NO_STDIO -DLABCOMM_COMPAT=\\\"labcomm_compat_arm_cortexm3.h\\\" -D GCC_ARMCM3=1"
-	)
-endif(CMAKE_CROSSCOMPILING)
+set(C_STD "-std=c99")
+set(ERR_FLAGS "-Wall -Wextra -Wno-missing-field-initializers")
+set(MACROS_DEF "-DDEBUG -DLABCOMM_ENCODER_LINEAR_SEARCH")
 
-# CFLAGS when compiling normally:
-if(NOT CMAKE_CROSSCOMPILING)
+if(CMAKE_CROSSCOMPILING)
+	# CFLAGS when cross compiling to the ARM-card:
 	set(CMAKE_C_FLAGS
-		"-std=c99 -Wall -Wextra -Wno-missing-field-initializers -D DEBUG -D LABCOMM_ENCODER_LINEAR_SEARCH"
+		"${C_STD} "
+		"${ERR_FLAGS} -Wfloat-equal -Werror-implicit-function-declaration "
+		"-ffunction-sections -fdata-sections "
+		"${MACROS_DEF} -DUART_BUFFERED -Dsprintf=usprintf "
+		"-Dsnprintf=usnprintf -Dvsnprintf=uvsnprintf -Dprintf=uipprintf "
+		"-Dmalloc=pvPortMalloc -Dcalloc=pvPortCalloc -Dfree=vPortFree "
+		"-DARM_CORTEXM3_CODESOURCERY -DLABCOMM_NO_STDIO "
+		"-DLABCOMM_COMPAT=\\\"labcomm_compat_arm_cortexm3.h\\\" "
+		"-DGCC_ARMCM3=1"
 	)
-endif(NOT CMAKE_CROSSCOMPILING)
+	# Join the list stuff above to a single string:
+	JOIN("${CMAKE_C_FLAGS}" CMAKE_C_FLAGS)
+else()
+	# CFLAGS when compiling normally:
+	set(CMAKE_C_FLAGS "${C_STD} ${ERR_FLAGS} ${MACROS_DEF}")
+endif(CMAKE_CROSSCOMPILING)
 ## }}}
 
 ## CUSTOM COMMANDS & TARGETS {{{
@@ -102,10 +117,24 @@ add_custom_command(
 )
 
 # Custom command to build the static Labcomm library:
-add_custom_command(
-	OUTPUT ${LABCOMM_INC_DIR}/liblabcomm.a
-	COMMAND make -C ${LABCOMM_INC_DIR} -e LABCOMM_NO_EXPERIMENTAL=true -e CFLAGS=\"-std=c99 -Wall -Wno-missing-field-initializers -I. -Iinclude -Isrc -D DEBUG -D LABCOMM_ENCODER_LINEAR_SEARCH -g -O0\" liblabcomm.a
-)
+if (NOT CMAKE_CROSSCOMPILING)
+	add_custom_command(
+		OUTPUT ${LABCOMM_INC_DIR}/liblabcomm.a
+		COMMAND make -C ${LABCOMM_INC_DIR} -e LABCOMM_NO_EXPERIMENTAL=true CFLAGS=\"-g -O0 -D LABCOMM_ENCODER_LINEAR_SEARCH -I.\" liblabcomm.a
+	)
+else ()
+	add_custom_command(
+		OUTPUT ${LABCOMM_INC_DIR}/liblabcomm.a
+		COMMAND make -C ${LABCOMM_INC_DIR}
+				-e CC=${CROSS_COMPILER_ARM} -e LABCOMM_NO_EXPERIMENTAL=true
+				CFLAGS=\"-Os -g -Wfloat-equal -Werror-implicit-function-declaration -Wno-missing-field-initializers
+				-mthumb -mcpu=cortex-m3 -ffunction-sections -fdata-sections
+				-Dmalloc=pvPortMalloc -Dcalloc=pvPortCalloc -Dfree=vPortFree
+				-DARM_CORTEXM3_CODESOURCERY -DLABCOMM_NO_STDIO -DLABCOMM_ENCODER_LINEAR_SEARCH
+				-DLABCOMM_COMPAT=\\\\"\\"labcomm_compat_arm_cortexm3.h\\\\"\\"
+				-I.\" liblabcomm.a
+	)
+endif ()
 
 # Custom commands to build tags files for vim/emacs.
 add_custom_target(tags
@@ -117,6 +146,19 @@ add_custom_target(tags-vim
 add_custom_target(tags-emacs
 	COMMAND ctags --recurse --tag-relative=yes -e -f ../TAGS ..
 )
+
+# Custom command to clean everything:
+add_custom_target(cleaner
+	COMMAND make clean &&
+			rm -fr ${Firefly_PROJECT_DIR}/build/* &&
+			rm -fr ${TEST_FILES_DIR} &&
+			echo -n \"--Cleaning LabComm...\" &&
+			make -C ${LABCOMM_INC_DIR} distclean &&
+			echo \" OK!\" &&
+			echo -n \"--Cleaning LabComm compiler...\" &&
+			cd ${LABCOMM_DIR}/compiler; ant clean  &&
+			echo \" OK!\"
+)
 ## }}}
 
 ## MISC {{{
@@ -127,6 +169,9 @@ include_directories(
 	${Firefly_PROJECT_DIR}
 	${Firefly_SOURCE_DIR}
 )
+
+# Make sure object files are named *.o instead of *.c.o:
+set(CMAKE_C_OUTPUT_EXTENSION_REPLACE 1)
 
 # Dump variables available to cmake, good for debugging:
 # get_cmake_property(_variableNames VARIABLES)
