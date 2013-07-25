@@ -515,4 +515,8 @@ int firefly_channel_restrict_event(void *earg);
  */
 int firefly_channel_unrestrict_event(void *earg);
 
+/**
+ * @brief TODO
+ */
+void firefly_channel_ack(struct firefly_channel *chan);
 #endif

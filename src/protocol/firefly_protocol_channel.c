@@ -88,10 +88,7 @@ int firefly_channel_closed_event(void *event_arg)
 
 	chan = event_arg;
 
-	if (chan->important_id != 0 &&
-			chan->conn->transport != NULL &&
-			chan->conn->transport->ack != NULL)
-		chan->conn->transport->ack(chan->important_id, chan->conn);
+	firefly_channel_ack(chan);
 
 	remove_channel_from_connection(chan, chan->conn);
 	if (chan->conn->actions && chan->conn->actions->channel_closed)
@@ -182,4 +179,13 @@ int firefly_channel_unrestrict_event(void *earg)
 	labcomm_encode_firefly_protocol_channel_restrict_request(tenc, &req);
 
 	return 0;
+}
+
+void firefly_channel_ack(struct firefly_channel *chan)
+{
+	if (chan->important_id != 0 &&
+			chan->conn->transport != NULL &&
+			chan->conn->transport->ack != NULL)
+		chan->conn->transport->ack(chan->important_id, chan->conn);
+	chan->important_id = 0;
 }
