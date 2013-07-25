@@ -185,8 +185,8 @@ int firefly_channel_unrestrict_event(void *earg)
 void firefly_channel_internal_opened(struct firefly_channel *chan)
 {
 	if (chan->state != FIREFLY_CHANNEL_OPEN) {
-		chan->conn->actions->channel_opened(chan);
 		chan->state = FIREFLY_CHANNEL_OPEN;
+		chan->conn->actions->channel_opened(chan);
 	}
 }
 
