@@ -538,9 +538,12 @@ void important_handshake_chan_open(struct firefly_channel *chan)
 	handshake_chan_open_called = true;
 }
 
+
+bool handshake_chan_recv_called = false;
 bool important_handshake_chan_acc(struct firefly_channel *chan)
 {
 	UNUSED_VAR(chan);
+	handshake_chan_recv_called = true;
 	return true;
 }
 
@@ -598,6 +601,83 @@ void test_important_handshake_recv()
 	handshake_chan_open_called = false;
 	mock_transport_acked = false;
 	mock_transport_written = false;
+	handshake_chan_recv_called = false;
+	firefly_connection_free(&conn);
+}
+
+void test_important_handshake_recv_errors()
+{
+	struct firefly_connection_actions conn_actions = {
+		.channel_recv		= important_handshake_chan_acc,
+		.channel_opened		= important_handshake_chan_open,
+		.channel_rejected	= NULL,
+		.channel_closed		= NULL,
+		.channel_restrict	= NULL,
+		.channel_restrict_info	= NULL
+	};
+	unsigned char *buf;
+	size_t buf_size;
+	struct firefly_connection *conn;
+	struct test_conn_platspec ps = { .important = true, .conn = &conn };
+	struct firefly_transport_connection test_trsp_conn = {
+		.write = mock_transport_write_important,
+		.ack = mock_transport_ack,
+		.open = test_conn_open,
+		.close = NULL,
+		.context = &ps
+	};
+
+	int res = firefly_connection_open(&conn_actions, NULL, eq, &test_trsp_conn);
+	CU_ASSERT_EQUAL_FATAL(res, 0);
+	event_execute_test(eq, 1);
+
+	firefly_protocol_channel_request req_pkt;
+	req_pkt.source_chan_id = 1;
+	req_pkt.dest_chan_id = CHANNEL_ID_NOT_SET;
+	labcomm_encode_firefly_protocol_channel_request(test_enc, &req_pkt);
+	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
+			&buf, &buf_size);
+
+	protocol_data_received(conn, buf, buf_size);
+	event_execute_test(eq, 1);
+
+	CU_ASSERT_TRUE(mock_transport_written);
+	CU_ASSERT_TRUE(handshake_chan_recv_called);
+	mock_transport_written = false;
+	handshake_chan_recv_called = false;
+
+	protocol_data_received(conn, buf, buf_size);
+	event_execute_test(eq, 1);
+
+	CU_ASSERT_FALSE(mock_transport_written);
+	CU_ASSERT_FALSE(handshake_chan_recv_called);
+	mock_transport_written = false;
+	handshake_chan_recv_called = false;
+
+	firefly_protocol_channel_ack ack_pkt;
+	ack_pkt.source_chan_id = 1;
+	ack_pkt.dest_chan_id = channel_response.source_chan_id;
+	labcomm_encode_firefly_protocol_channel_ack(test_enc, &ack_pkt);
+	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
+			&buf, &buf_size);
+	protocol_data_received(conn, buf, buf_size);
+	event_execute_test(eq, 1);
+	CU_ASSERT_FALSE(mock_transport_written);
+	CU_ASSERT_TRUE(mock_transport_acked);
+	CU_ASSERT_TRUE(handshake_chan_open_called);
+	handshake_chan_open_called = false;
+	mock_transport_acked = false;
+	mock_transport_written = false;
+
+	protocol_data_received(conn, buf, buf_size);
+	event_execute_test(eq, 1);
+	CU_ASSERT_FALSE(mock_transport_written);
+	CU_ASSERT_FALSE(mock_transport_acked);
+	CU_ASSERT_FALSE(handshake_chan_open_called);
+
+	handshake_chan_open_called = false;
+	mock_transport_acked = false;
+	mock_transport_written = false;
 	firefly_connection_free(&conn);
 }
 
@@ -648,6 +728,69 @@ void test_important_handshake_open()
 	CU_ASSERT_TRUE(mock_transport_acked);
 	mock_transport_written = false;
 	CU_ASSERT_TRUE(handshake_chan_open_called);
+
+	handshake_chan_open_called = false;
+	mock_transport_acked = false;
+	mock_transport_written = false;
+	firefly_connection_free(&conn);
+}
+
+void test_important_handshake_open_errors()
+{
+	struct firefly_connection_actions conn_actions = {
+		.channel_recv		= important_handshake_chan_acc,
+		.channel_opened		= important_handshake_chan_open,
+		.channel_rejected	= NULL,
+		.channel_closed		= NULL,
+		.channel_restrict	= NULL,
+		.channel_restrict_info	= NULL
+	};
+	unsigned char *buf;
+	size_t buf_size;
+	struct firefly_connection *conn;
+	struct test_conn_platspec ps = { .important = true, .conn = &conn };
+	struct firefly_transport_connection test_trsp_conn = {
+		.write = mock_transport_write_important,
+		.ack = mock_transport_ack,
+		.open = test_conn_open,
+		.close = NULL,
+		.context = &ps
+	};
+
+	int res = firefly_connection_open(&conn_actions, NULL, eq, &test_trsp_conn);
+	CU_ASSERT_EQUAL_FATAL(res, 0);
+	event_execute_test(eq, 1);
+
+	firefly_channel_open(conn);
+	event_execute_test(eq, 1);
+
+	CU_ASSERT_TRUE(mock_transport_written);
+	mock_transport_written = false;
+
+	firefly_protocol_channel_response res_pkt;
+	res_pkt.source_chan_id = 1;
+	res_pkt.dest_chan_id = channel_request.source_chan_id;
+	res_pkt.ack = true;
+	labcomm_encode_firefly_protocol_channel_response(test_enc, &res_pkt);
+	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
+			&buf, &buf_size);
+	protocol_data_received(conn, buf, buf_size);
+	ps.important = false;
+	event_execute_test(eq, 1);
+
+	CU_ASSERT_TRUE(mock_transport_written);
+	CU_ASSERT_TRUE(mock_transport_acked);
+	CU_ASSERT_TRUE(handshake_chan_open_called);
+	mock_transport_written = false;
+	mock_transport_acked = false;
+	handshake_chan_open_called = false;
+
+	protocol_data_received(conn, buf, buf_size);
+	ps.important = false;
+	event_execute_test(eq, 1);
+	CU_ASSERT_TRUE(mock_transport_written);
+	CU_ASSERT_FALSE(mock_transport_acked);
+	CU_ASSERT_FALSE(handshake_chan_open_called);
 
 	handshake_chan_open_called = false;
 	mock_transport_acked = false;

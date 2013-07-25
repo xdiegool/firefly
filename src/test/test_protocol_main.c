@@ -177,8 +177,14 @@ int main()
 			(CU_add_test(important_suite, "test_important_handshake_recv",
 					test_important_handshake_recv) == NULL)
 			||
+			(CU_add_test(important_suite, "test_important_handshake_recv_errors",
+					test_important_handshake_recv_errors) == NULL)
+			||
 			(CU_add_test(important_suite, "test_important_handshake_open",
 					test_important_handshake_open) == NULL)
+			||
+			(CU_add_test(important_suite, "test_important_handshake_open_errors",
+					test_important_handshake_open_errors) == NULL)
 			||
 			(CU_add_test(important_suite, "test_important_ack_on_close",
 					test_important_ack_on_close) == NULL)

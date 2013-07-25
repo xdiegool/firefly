@@ -134,6 +134,8 @@ struct firefly_channel_important_queue {
 	struct firefly_channel_important_queue *next;
 };
 
+enum firefly_channel_state {FIREFLY_CHANNEL_READY, FIREFLY_CHANNEL_OPEN};
+
 /**
  * @brief A structure representing a channel.
  */
@@ -143,6 +145,7 @@ struct firefly_channel {
 	int local_id; /**< The local ID used to identify this channel */
 	int remote_id; /**< The ID used by the remote node to identify
 				this channel */
+	enum firefly_channel_state state; /**< The state of the channel */
 	struct firefly_channel_important_queue *important_queue; /**< The
 	queue used to queue important packets when sending another. */
 
@@ -248,6 +251,14 @@ struct firefly_event_chan_open {
  * @retval Negative integer upon error.
  */
 int firefly_channel_open_event(void *event_arg);
+
+/**
+ * @brief Sets opened state on channel and calls on_open callback if  the
+ * channel was not already open.
+ *
+ * @param The channel to set opened state on
+ */
+void firefly_channel_internal_opened(struct firefly_channel *chan);
 
 /**
  * @brief Free's and removes the firefly_channel from the firefly_connection.
@@ -458,6 +469,15 @@ struct firefly_event_send_sample {
  */
 int send_data_sample_event(void *event_arg);
 
+/**
+ * @brief Find and return the channel associated with the given connection with
+ * the given remote channel id.
+ *
+ * @param id The remote ID of the channel.
+ * @param conn The connection the channel is associated with.
+ */
+struct firefly_channel *find_channel_by_remote_id(
+		struct firefly_connection *conn, int id);
 /**
  * @brief Find and return the channel associated with the given connection with
  * the given local channel id.

@@ -44,6 +44,7 @@ struct firefly_channel *firefly_channel_new(struct firefly_connection *conn)
 
 	chan->local_id			= next_channel_id(conn);
 	chan->remote_id			= CHANNEL_ID_NOT_SET;
+	chan->state				= FIREFLY_CHANNEL_READY;
 	chan->important_queue		= NULL;
 	chan->important_id		= 0;
 	chan->current_seqno		= 0;
@@ -179,6 +180,14 @@ int firefly_channel_unrestrict_event(void *earg)
 	labcomm_encode_firefly_protocol_channel_restrict_request(tenc, &req);
 
 	return 0;
+}
+
+void firefly_channel_internal_opened(struct firefly_channel *chan)
+{
+	if (chan->state != FIREFLY_CHANNEL_OPEN) {
+		chan->conn->actions->channel_opened(chan);
+		chan->state = FIREFLY_CHANNEL_OPEN;
+	}
 }
 
 void firefly_channel_ack(struct firefly_channel *chan)

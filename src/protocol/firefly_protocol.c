@@ -242,12 +242,8 @@ int handle_channel_request_event(void *event_arg)
 
 	fecrr = event_arg;
 	conn  = fecrr->conn;
-	chan  = find_channel_by_local_id(conn, fecrr->chan_req.dest_chan_id);
-	if (chan != NULL) {
-		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
-			      "Received open channel on existing channel.\n");
-		res = -1;
-	} else {
+	chan  = find_channel_by_remote_id(conn, fecrr->chan_req.source_chan_id);
+	if (chan == NULL) {
 		// Received Channel request.
 		chan = firefly_channel_new(conn);
 		if (chan == NULL) {
@@ -309,39 +305,52 @@ void handle_channel_response(firefly_protocol_channel_response *chan_res,
 	}
 }
 
+static void firefly_channel_send_channel_ack(
+		struct firefly_connection *conn,
+		struct firefly_channel *chan,
+		int dest_chan_id)
+{
+	firefly_protocol_channel_ack ack;
+	if (chan != NULL) {
+		ack.ack = true;
+		ack.source_chan_id = chan->local_id;
+		ack.dest_chan_id = chan->remote_id;
+	} else {
+		ack.ack = false;
+		ack.source_chan_id = CHANNEL_ID_NOT_SET;
+		ack.dest_chan_id = dest_chan_id;
+	}
+	labcomm_encode_firefly_protocol_channel_ack(
+				conn->transport_encoder, &ack);
+}
+
 int handle_channel_response_event(void *event_arg)
 {
 	struct firefly_event_chan_res_recv *fecrr;
 	struct firefly_channel *chan;
-	firefly_protocol_channel_ack ack;
 
 	fecrr = event_arg;
 	chan = find_channel_by_local_id(fecrr->conn,
 					fecrr->chan_res.dest_chan_id);
 
-	ack.dest_chan_id = fecrr->chan_res.source_chan_id;
-	if (chan != NULL) {
-		// Received Channel request ack.
-		chan->remote_id = fecrr->chan_res.source_chan_id;
-		ack.source_chan_id = chan->local_id;
-		ack.ack = true;
-	} else {
-		ack.source_chan_id = CHANNEL_ID_NOT_SET;
-		ack.ack = false;
+	// TODO reconsider reporting this error, silently discard?
+	if (chan == NULL) {
 		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
-			      "Received open channel on non-existing channel");
+				  "Received open channel on non-existing channel");
 	}
+
 	if (fecrr->chan_res.ack) {
-		labcomm_encode_firefly_protocol_channel_ack(
-					fecrr->conn->transport_encoder, &ack);
-		// Should be done after encode above.
-		if (chan != NULL) {
+		if (chan != NULL && chan->remote_id == CHANNEL_ID_NOT_SET) {
+			chan->remote_id = fecrr->chan_res.source_chan_id;
 			firefly_channel_ack(chan);
-			chan->important_id = 0;
-			fecrr->conn->actions->channel_opened(chan);
+			firefly_channel_internal_opened(chan);
 		}
-	} else {
-		chan->conn->actions->channel_rejected(fecrr->conn);
+		firefly_channel_send_channel_ack(fecrr->conn, chan,
+				fecrr->chan_res.source_chan_id);
+	} else if (chan != NULL) {
+		if (chan->conn->actions->channel_rejected != NULL)
+			chan->conn->actions->channel_rejected(fecrr->conn);
+		firefly_channel_ack(chan);
 		firefly_channel_free(remove_channel_from_connection(chan,
 								fecrr->conn));
 	}
@@ -386,7 +395,7 @@ int handle_channel_ack_event(void *event_arg)
 					fecar->chan_ack.dest_chan_id);
 	if (chan != NULL) {
 		firefly_channel_ack(chan);
-		fecar->conn->actions->channel_opened(chan);
+		firefly_channel_internal_opened(chan);
 	} else {
 		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
 			      "Received ack on non-existing channel.\n");
@@ -535,6 +544,20 @@ void handle_ack(firefly_protocol_ack *ack, void *context)
 	} else {
 		// TODO errornous packet
 	}
+}
+
+struct firefly_channel *find_channel_by_remote_id(
+		struct firefly_connection *conn, int id)
+{
+	struct channel_list_node *head;
+
+	head = conn->chan_list;
+	while (head) {
+		if (head->chan->remote_id == id)
+			break;
+		head = head->next;
+	}
+	return (head) ? head->chan : NULL;
 }
 
 struct firefly_channel *find_channel_by_local_id(
