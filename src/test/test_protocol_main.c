@@ -179,6 +179,9 @@ int main()
 			||
 			(CU_add_test(important_suite, "test_important_handshake_open",
 					test_important_handshake_open) == NULL)
+			||
+			(CU_add_test(important_suite, "test_important_ack_on_close",
+					test_important_ack_on_close) == NULL)
 		) {
 		CU_cleanup_registry();
 		return CU_get_error();

@@ -654,3 +654,33 @@ void test_important_handshake_open()
 	mock_transport_written = false;
 	firefly_connection_free(&conn);
 }
+
+void test_important_ack_on_close()
+{
+	struct firefly_connection *conn;
+	struct test_conn_platspec ps = { .important = false, .conn = &conn };
+	struct firefly_transport_connection test_trsp_conn = {
+		.write = mock_transport_write_important,
+		.ack = mock_transport_ack,
+		.open = test_conn_open,
+		.close = NULL,
+		.context = &ps
+	};
+
+	int res = firefly_connection_open(NULL, NULL, eq, &test_trsp_conn);
+	CU_ASSERT_EQUAL_FATAL(res, 0);
+	event_execute_test(eq, 1);
+	struct firefly_channel *chan = firefly_channel_new(conn);
+	add_channel_to_connection(chan, conn);
+
+	chan->important_id = TEST_IMPORTANT_ID;
+	chan->current_seqno = 1;
+
+	firefly_channel_close(chan);
+	event_execute_all_test(eq);
+	CU_ASSERT_TRUE(mock_transport_acked);
+
+	mock_transport_written = false;
+	mock_transport_acked = false;
+	firefly_connection_free(&conn);
+}

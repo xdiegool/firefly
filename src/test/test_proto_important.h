@@ -15,5 +15,6 @@ void test_important_mult_simultaneously();
 void test_important_recv_duplicate();
 void test_important_handshake_recv();
 void test_important_handshake_open();
+void test_important_ack_on_close();
 
 #endif
