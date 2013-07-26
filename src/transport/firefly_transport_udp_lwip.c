@@ -37,7 +37,7 @@ static void udp_lwip_recv_callback(void *recv_arg, struct udp_pcb *upcb,
 
 	llp_udp->event_queue->offer_event_cb(llp_udp->event_queue,
 			FIREFLY_PRIORITY_HIGH,
-			firefly_transport_udp_lwip_read_event, ev_a);
+			firefly_transport_udp_lwip_read_event, ev_a, 0, NULL);
 }
 
 int firefly_transport_udp_lwip_read_event(void *event_arg)
@@ -54,7 +54,7 @@ int firefly_transport_udp_lwip_read_event(void *event_arg)
 		if (llp_udp->on_conn_recv(ev_a->llp, ip_str, ev_a->port)) {
 			return llp_udp->event_queue->offer_event_cb(llp_udp->event_queue,
 					FIREFLY_PRIORITY_HIGH,
-					firefly_transport_udp_lwip_read_event, ev_a);
+					firefly_transport_udp_lwip_read_event, ev_a, 0, NULL);
 
 		}
 		free(ip_str);
@@ -123,8 +123,8 @@ void firefly_transport_llp_udp_lwip_free(struct firefly_transport_llp *llp)
 
 	int ret = llp_lwip->event_queue->offer_event_cb(llp_lwip->event_queue,
 			FIREFLY_PRIORITY_LOW,
-			firefly_transport_llp_udp_lwip_free_event, llp);
-	FFLIF(ret, FIREFLY_ERROR_ALLOC);
+			firefly_transport_llp_udp_lwip_free_event, llp, 0, NULL);
+	FFLIF(ret < 0, FIREFLY_ERROR_ALLOC);
 }
 
 int firefly_transport_llp_udp_lwip_free_event(void *event_arg)

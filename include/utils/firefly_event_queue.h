@@ -14,6 +14,7 @@
 
 #include <stdlib.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 /**
  * Defines different priorities.
@@ -63,8 +64,9 @@ typedef int (*firefly_event_execute_f)(void *event_arg);
  * @retval 0 If event was successfully added.
  * @retval != 0 if an error occured.
  */
-typedef int (*firefly_offer_event)(struct firefly_event_queue *eq,
-		unsigned char prio, firefly_event_execute_f execute, void *context);
+typedef int64_t (*firefly_offer_event)(struct firefly_event_queue *eq,
+		unsigned char prio, firefly_event_execute_f execute, void *context,
+		unsigned int nbr_depends, const int64_t *depends);
 
 /**
  * @brief Initializes and allocates a new firefly_event_queue.
@@ -121,11 +123,12 @@ void firefly_event_queue_set_strict_pool_size(struct firefly_event_queue *eq,
  * @param prio The priority of the new event.
  * @param execute The function called when the firefly_event is executed.
  * @param context The argument passed to the execute function when called.
- * @return A integer indicating the result.
- * @retval A negative integer upon error.
+ * @return The positive ID of the newly added event.
+ * @retval A negative value upon error.
  */
-int firefly_event_add(struct firefly_event_queue *eq, unsigned char prio,
-		firefly_event_execute_f execute, void *context);
+int64_t firefly_event_add(struct firefly_event_queue *eq, unsigned char prio,
+		firefly_event_execute_f execute, void *context,
+		unsigned int nbr_depends, const int64_t *depends);
 
 /**
  * @brief Get the first event in the firefly_event_queue and remove it from the

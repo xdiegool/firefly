@@ -566,8 +566,9 @@ struct event_queue_signals {
 	bool event_exec_finish;
 };
 
-int event_add_mutex(struct firefly_event_queue *eq, unsigned char prio,
-		firefly_event_execute_f execute, void *context)
+int64_t event_add_mutex(struct firefly_event_queue *eq, unsigned char prio,
+		firefly_event_execute_f execute, void *context,
+		unsigned int nbr_deps, const int64_t *deps)
 {
 	int res = 0;
 	struct event_queue_signals *eq_s =
@@ -577,7 +578,7 @@ int event_add_mutex(struct firefly_event_queue *eq, unsigned char prio,
 	if (res) {
 		return res;
 	}
-	res = firefly_event_add(eq, prio, execute, context);
+	res = firefly_event_add(eq, prio, execute, context, nbr_deps, deps);
 	if (!res) {
 		pthread_cond_signal(&eq_s->eq_cond);
 	}

@@ -30,6 +30,7 @@
 #include "transport/firefly_transport_udp_posix_private.h"
 #include "protocol/firefly_protocol_private.h"
 #include "test/error_helper.h"
+#include "test/event_helper.h"
 #include "utils/cppmacros.h"
 #include "test_transport.h"
 
@@ -61,29 +62,6 @@ static unsigned char send_buf_big[] = {0,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,
 				   0,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,
 				   0,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,
 				   0,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16};
-
-
-static void execute_remaining_events(struct firefly_event_queue *eq)
-{
-	struct firefly_event *ev;
-	while (firefly_event_queue_length(eq) > 0) {
-		ev = firefly_event_pop(eq);
-		CU_ASSERT_PTR_NOT_NULL(ev);
-		firefly_event_execute(ev);
-		firefly_event_return(eq, &ev);
-	}
-}
-
-static void execute_events(struct firefly_event_queue *eq, size_t nbr_events)
-{
-	struct firefly_event *ev;
-	for (size_t i = 0; i < nbr_events; i++) {
-		ev = firefly_event_pop(eq);
-		CU_ASSERT_PTR_NOT_NULL(ev);
-		firefly_event_execute(ev);
-		firefly_event_return(eq, &ev);
-	}
-}
 
 static void setup_sockaddr(struct sockaddr_in *addr, unsigned short port)
 {
@@ -156,7 +134,7 @@ bool recv_conn_recv_conn(
 		firefly_transport_connection_udp_posix_new(llp, ipaddr, port, 1000);
 
 	int res = firefly_connection_open(NULL, NULL, eq, conn_udp);
-	return res == 0;
+	return res > 0;
 }
 
 /* Test receiving a new connection.*/
@@ -174,12 +152,12 @@ void test_recv_connection()
 
 	// Set up a connection over local loopback.
 	firefly_transport_udp_posix_read(llp);
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 	CU_ASSERT_TRUE(good_conn_received);
 	data_received = false;
 	good_conn_received = false;
 	firefly_transport_llp_udp_posix_free(llp);
-	execute_remaining_events(eq);
+	event_execute_all_test(eq);
 }
 
 bool recv_data_recv_conn(
@@ -218,18 +196,18 @@ void test_recv_data()
 	struct firefly_transport_connection *conn_udp =
 		firefly_transport_connection_udp_posix_new(llp, ipaddr, port, 1000);
 	int res = firefly_connection_open(&actions, NULL, eq, conn_udp);
-	CU_ASSERT_EQUAL_FATAL(res, 0);
-	execute_events(eq, 1);
+	CU_ASSERT_TRUE_FATAL(res > 0);
+	event_execute_test(eq, 1);
 	conn = tmp_conn;
 	CU_ASSERT_PTR_NOT_NULL_FATAL(conn);
 
 	firefly_transport_udp_posix_read(llp);
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 	CU_ASSERT_TRUE(data_received);
 	data_received = false;
 	good_conn_received = false;
 	firefly_transport_llp_udp_posix_free(llp);
-	execute_remaining_events(eq);
+	event_execute_all_test(eq);
 }
 
 void test_recv_conn_and_data()
@@ -245,15 +223,15 @@ void test_recv_conn_and_data()
 
 	// Set up a connection over local loopback.
 	firefly_transport_udp_posix_read(llp);
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 
 	CU_ASSERT_TRUE(good_conn_received);
-	execute_events(eq, 2);
+	event_execute_test(eq, 2);
 	CU_ASSERT_TRUE(data_received);
 	good_conn_received = false;
 	data_received = false;
 	firefly_transport_llp_udp_posix_free(llp);
-	execute_remaining_events(eq);
+	event_execute_all_test(eq);
 }
 
 void test_recv_conn_and_two_data()
@@ -270,24 +248,24 @@ void test_recv_conn_and_two_data()
 
 	// Set up a connection over local loopback.
 	firefly_transport_udp_posix_read(llp);
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 
 	CU_ASSERT_TRUE(good_conn_received);
-	execute_events(eq, 2);
+	event_execute_test(eq, 2);
 	CU_ASSERT_TRUE(data_received);
 	good_conn_received = false;
 	data_received = false;
 
 	send_data(&remote_addr, remote_port, send_buf, sizeof(send_buf));
 	firefly_transport_udp_posix_read(llp);
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 
 	CU_ASSERT_FALSE(good_conn_received);
 	CU_ASSERT_TRUE(data_received);
 	good_conn_received = false;
 	data_received = false;
 	firefly_transport_llp_udp_posix_free(llp);
-	execute_remaining_events(eq);
+	event_execute_all_test(eq);
 }
 
 void test_recv_conn_keep()
@@ -304,10 +282,10 @@ void test_recv_conn_keep()
 
 	// Set up a connection over local loopback.
 	firefly_transport_udp_posix_read(llp);
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 
 	CU_ASSERT_TRUE(good_conn_received);
-	execute_events(eq, 2);
+	event_execute_test(eq, 2);
 	CU_ASSERT_TRUE(data_received);
 	struct firefly_connection *conn = find_connection(llp, &remote_addr,
 									connection_eq_inaddr);
@@ -316,7 +294,7 @@ void test_recv_conn_keep()
 	good_conn_received = false;
 	data_received = false;
 	firefly_transport_llp_udp_posix_free(llp);
-	execute_remaining_events(eq);
+	event_execute_all_test(eq);
 }
 
 bool recv_conn_keep_two(struct firefly_transport_llp *llp,
@@ -327,7 +305,7 @@ bool recv_conn_keep_two(struct firefly_transport_llp *llp,
 		firefly_transport_connection_udp_posix_new(llp, ipaddr, port, 0);
 
 	int res = firefly_connection_open(NULL, NULL, eq, conn_udp);
-	return res == 0;
+	return res > 0;
 }
 
 void test_recv_conn_keep_two()
@@ -344,11 +322,11 @@ void test_recv_conn_keep_two()
 
 	// Set up a connection over local loopback.
 	firefly_transport_udp_posix_read(llp);
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 
 	// test first connection
 	CU_ASSERT_TRUE(good_conn_received);
-	execute_events(eq, 2);
+	event_execute_test(eq, 2);
 	CU_ASSERT_TRUE(data_received);
 	struct firefly_connection *conn = find_connection(llp, &remote_addr,
 									connection_eq_inaddr);
@@ -361,11 +339,11 @@ void test_recv_conn_keep_two()
 
 	// Set up a connection over local loopback.
 	firefly_transport_udp_posix_read(llp);
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 
 	// test first connection
 	CU_ASSERT_TRUE(good_conn_received);
-	execute_events(eq, 2);
+	event_execute_test(eq, 2);
 	CU_ASSERT_TRUE(data_received);
 	conn = find_connection(llp, &remote_addr, connection_eq_inaddr);
 	CU_ASSERT_NOT_EQUAL(conn, NULL);
@@ -373,7 +351,7 @@ void test_recv_conn_keep_two()
 	good_conn_received = false;
 	data_received = false;
 	firefly_transport_llp_udp_posix_free(llp);
-	execute_remaining_events(eq);
+	event_execute_all_test(eq);
 }
 
 bool recv_conn_reject_recv_conn(struct firefly_transport_llp *llp,
@@ -396,14 +374,14 @@ void test_recv_conn_reject()
 
 	// Set up a connection over local loopback.
 	firefly_transport_udp_posix_read(llp);
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 
 	CU_ASSERT_TRUE(good_conn_received);
 	CU_ASSERT_FALSE(data_received);
 
 	CU_ASSERT_EQUAL(llp->conn_list, NULL);
 	firefly_transport_llp_udp_posix_free(llp);
-	execute_remaining_events(eq);
+	event_execute_all_test(eq);
 }
 
 void test_conn_open_and_send()
@@ -419,8 +397,8 @@ void test_conn_open_and_send()
 		firefly_transport_connection_udp_posix_new(llp,
 				"127.0.0.1", 55550, 1000);
 	int res = firefly_connection_open(&actions, NULL, eq, conn_udp);
-	CU_ASSERT_EQUAL_FATAL(res, 0);
-	execute_events(eq, 1);
+	CU_ASSERT_TRUE_FATAL(res > 0);
+	event_execute_test(eq, 1);
 	conn = tmp_conn;
 
 	CU_ASSERT_PTR_NOT_NULL_FATAL(conn);
@@ -436,7 +414,7 @@ void test_conn_open_and_send()
 
 	close(recv_soc);
 	firefly_transport_llp_udp_posix_free(llp);
-	execute_remaining_events(eq);
+	event_execute_all_test(eq);
 }
 
 void test_conn_open_and_recv()
@@ -453,8 +431,8 @@ void test_conn_open_and_recv()
 		firefly_transport_connection_udp_posix_new(llp,
 				"127.0.0.1", 55550, 1000);
 	int res = firefly_connection_open(&actions, NULL, eq, conn_udp);
-	CU_ASSERT_EQUAL_FATAL(res, 0);
-	execute_events(eq, 1);
+	CU_ASSERT_TRUE_FATAL(res > 0);
+	event_execute_test(eq, 1);
 	conn = tmp_conn;
 	CU_ASSERT_PTR_NOT_NULL_FATAL(conn);
 
@@ -462,13 +440,13 @@ void test_conn_open_and_recv()
 	send_data(&send_addr, 55550, send_buf, sizeof(send_buf));
 
 	firefly_transport_udp_posix_read(llp);
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 
 	CU_ASSERT_TRUE(data_received);
 
 	data_received = false;
 	firefly_transport_llp_udp_posix_free(llp);
-	execute_remaining_events(eq);
+	event_execute_all_test(eq);
 }
 
 bool open_and_recv_conn_recv_conn(struct firefly_transport_llp *llp,
@@ -479,7 +457,7 @@ bool open_and_recv_conn_recv_conn(struct firefly_transport_llp *llp,
 		firefly_transport_connection_udp_posix_new(llp, ipaddr, port, 1000);
 
 	int res = firefly_connection_open(NULL, NULL, eq, conn_udp);
-	return res == 0;
+	return res > 0;
 }
 
 void test_open_and_recv_with_two_llp()
@@ -504,8 +482,8 @@ void test_open_and_recv_with_two_llp()
 		firefly_transport_connection_udp_posix_new(llp_send,
 				"127.0.0.1", local_port, 1000);
 	int res = firefly_connection_open(&actions, NULL, eq, conn_udp);
-	CU_ASSERT_EQUAL_FATAL(res, 0);
-	execute_events(eq, 1);
+	CU_ASSERT_TRUE_FATAL(res > 0);
+	event_execute_test(eq, 1);
 	struct firefly_connection *conn_send = tmp_conn;
 	CU_ASSERT_PTR_NOT_NULL(conn_send);
 
@@ -513,10 +491,10 @@ void test_open_and_recv_with_two_llp()
 						conn_send, false, NULL);
 
 	firefly_transport_udp_posix_read(llp_recv);
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 
 	CU_ASSERT_TRUE(good_conn_received);
-	execute_events(eq, 2);
+	event_execute_test(eq, 2);
 	CU_ASSERT_TRUE(data_received);
 	good_conn_received = false;
 	data_received = false;
@@ -528,13 +506,13 @@ void test_open_and_recv_with_two_llp()
 						conn_recv, false, NULL);
 
 	firefly_transport_udp_posix_read(llp_send);
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 	CU_ASSERT_TRUE(data_received);
 
 	data_received = false;
 	firefly_transport_llp_udp_posix_free(llp_recv);
 	firefly_transport_llp_udp_posix_free(llp_send);
-	execute_remaining_events(eq);
+	event_execute_all_test(eq);
 }
 
 void test_recv_big_connection()
@@ -555,9 +533,9 @@ void test_recv_big_connection()
 	data_recv_buf = send_buf;
 
 	firefly_transport_udp_posix_read(llp);
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 	CU_ASSERT_TRUE(good_conn_received);
-	execute_events(eq, 2);
+	event_execute_test(eq, 2);
 	CU_ASSERT_TRUE(data_received);
 
 	send_data(&remote_addr, remote_port, send_buf_big,
@@ -569,13 +547,13 @@ void test_recv_big_connection()
 	data_recv_buf = send_buf_big;
 
 	firefly_transport_udp_posix_read(llp);
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 	CU_ASSERT_TRUE(data_received);
 
 	data_received = false;
 	/* good_conn_received = false; */
 	firefly_transport_llp_udp_posix_free(llp);
-	execute_remaining_events(eq);
+	event_execute_all_test(eq);
 	data_recv_size = sizeof(send_buf);
 	data_recv_buf = send_buf;
 }
@@ -586,7 +564,7 @@ void *reader_thread_main(void *args)
 	firefly_transport_udp_posix_read(llp);
 	struct transport_llp_udp_posix *llp_udp =
 		(struct transport_llp_udp_posix *) llp->llp_platspec;
-	execute_events(llp_udp->event_queue, 1);
+	event_execute_test(llp_udp->event_queue, 1);
 
 	return NULL;
 }
@@ -612,8 +590,8 @@ void test_read_mult_threads()
 	struct firefly_transport_connection *conn_udp =
 		firefly_transport_connection_udp_posix_new(llp, ipaddr, port, 1000);
 	int res = firefly_connection_open(&actions, NULL, eq, conn_udp);
-	CU_ASSERT_EQUAL_FATAL(res, 0);
-	execute_events(eq, 1);
+	CU_ASSERT_TRUE_FATAL(res > 0);
+	event_execute_test(eq, 1);
 	conn = tmp_conn;
 	CU_ASSERT_PTR_NOT_NULL_FATAL(conn);
 
@@ -628,7 +606,7 @@ void test_read_mult_threads()
 	data_received = false;
 	good_conn_received = false;
 	firefly_transport_llp_udp_posix_free(llp);
-	execute_remaining_events(eq);
+	event_execute_all_test(eq);
 }
 
 void test_llp_free_empty()
@@ -637,7 +615,7 @@ void test_llp_free_empty()
 					local_port, recv_data_recv_conn, eq);
 
 	firefly_transport_llp_udp_posix_free(llp);
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 }
 
 void test_llp_free_mult_conns()
@@ -651,23 +629,23 @@ void test_llp_free_mult_conns()
 	res = firefly_connection_open(&actions, NULL, eq,
 			firefly_transport_connection_udp_posix_new(llp,
 				"127.0.0.1", remote_port, 1000));
-	CU_ASSERT_EQUAL_FATAL(res, 0);
-	execute_events(eq, 1);
+	CU_ASSERT_TRUE_FATAL(res > 0);
+	event_execute_test(eq, 1);
 
 	res = firefly_connection_open(&actions, NULL, eq,
 			firefly_transport_connection_udp_posix_new(llp,
 				"127.0.0.1", remote_port, 1000));
-	CU_ASSERT_EQUAL_FATAL(res, 0);
-	execute_events(eq, 1);
+	CU_ASSERT_TRUE_FATAL(res > 0);
+	event_execute_test(eq, 1);
 
 	res = firefly_connection_open(&actions, NULL, eq,
 			firefly_transport_connection_udp_posix_new(llp,
 				"127.0.0.1", remote_port, 1000));
-	CU_ASSERT_EQUAL_FATAL(res, 0);
-	execute_events(eq, 1);
+	CU_ASSERT_TRUE_FATAL(res > 0);
+	event_execute_test(eq, 1);
 
 	firefly_transport_llp_udp_posix_free(llp);
-	execute_events(eq, 8);
+	event_execute_test(eq, 8);
 }
 
 // test correct number of events and channel close packets sent in the
@@ -686,8 +664,8 @@ void test_llp_free_mult_conns_w_chans()
 	res = firefly_connection_open(&actions, NULL, eq,
 			firefly_transport_connection_udp_posix_new(llp,
 				"127.0.0.1", 55550, 1000));
-	CU_ASSERT_EQUAL_FATAL(res, 0);
-	execute_events(eq, 1);
+	CU_ASSERT_TRUE_FATAL(res > 0);
+	event_execute_test(eq, 1);
 	conn = tmp_conn;
 	CU_ASSERT_PTR_NOT_NULL_FATAL(conn);
 
@@ -702,8 +680,8 @@ void test_llp_free_mult_conns_w_chans()
 	res = firefly_connection_open(&actions, NULL, eq,
 			firefly_transport_connection_udp_posix_new(llp,
 				"127.0.0.1", 55550, 1000));
-	CU_ASSERT_EQUAL_FATAL(res, 0);
-	execute_events(eq, 1);
+	CU_ASSERT_TRUE_FATAL(res > 0);
+	event_execute_test(eq, 1);
 	conn = tmp_conn;
 	CU_ASSERT_PTR_NOT_NULL_FATAL(conn);
 
@@ -714,8 +692,8 @@ void test_llp_free_mult_conns_w_chans()
 	res = firefly_connection_open(&actions, NULL, eq,
 			firefly_transport_connection_udp_posix_new(llp,
 				"127.0.0.1", 55550, 1000));
-	CU_ASSERT_EQUAL_FATAL(res, 0);
-	execute_events(eq, 1);
+	CU_ASSERT_TRUE_FATAL(res > 0);
+	event_execute_test(eq, 1);
 	conn = tmp_conn;
 	CU_ASSERT_PTR_NOT_NULL_FATAL(conn);
 
@@ -725,35 +703,35 @@ void test_llp_free_mult_conns_w_chans()
 
 	firefly_transport_llp_udp_posix_free(llp);
 	// llp free
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 
 	// connection close
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 	// channel close
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 	// channel free
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 
 	// connection close
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 	// channel close
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 	// channel free
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 
 	// connection close
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 	// channel close
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 	// channel free
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 	// channel close
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 	// channel free
-	execute_events(eq, 1);
+	event_execute_test(eq, 1);
 
 	// 3 conn close, 3 conn free, llp free
-	execute_events(eq, 7);
+	event_execute_test(eq, 7);
 }
 
 int time_ms_diff(struct timespec *from, struct timespec *to)
@@ -787,8 +765,8 @@ void test_send_important()
 			firefly_transport_connection_udp_posix_new(llp,
 				"127.0.0.1", 55550,
 				FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT));
-	CU_ASSERT_EQUAL_FATAL(res, 0);
-	execute_events(eq, 1);
+	CU_ASSERT_TRUE_FATAL(res > 0);
+	event_execute_test(eq, 1);
 	conn = tmp_conn;
 	CU_ASSERT_PTR_NOT_NULL_FATAL(conn);
 
@@ -837,7 +815,7 @@ void test_send_important()
 	}
 
 	firefly_transport_llp_udp_posix_free(llp);
-	execute_remaining_events(eq);
+	event_execute_all_test(eq);
 }
 
 void test_send_important_ack()
@@ -855,8 +833,8 @@ void test_send_important_ack()
 			firefly_transport_connection_udp_posix_new(llp,
 				"127.0.0.1", 55550,
 				FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT));
-	CU_ASSERT_EQUAL_FATAL(res, 0);
-	execute_events(eq, 1);
+	CU_ASSERT_TRUE_FATAL(res > 0);
+	event_execute_test(eq, 1);
 	conn = tmp_conn;
 	CU_ASSERT_PTR_NOT_NULL_FATAL(conn);
 
@@ -872,7 +850,7 @@ void test_send_important_ack()
 	CU_ASSERT_PTR_NULL(llp_udp->resend_queue->last);
 
 	firefly_transport_llp_udp_posix_free(llp);
-	execute_remaining_events(eq);
+	event_execute_all_test(eq);
 }
 
 void test_send_important_id_null()
@@ -890,8 +868,8 @@ void test_send_important_id_null()
 			firefly_transport_connection_udp_posix_new(llp,
 				"127.0.0.1", 55550,
 				FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT));
-	CU_ASSERT_EQUAL_FATAL(res, 0);
-	execute_events(eq, 1);
+	CU_ASSERT_TRUE_FATAL(res > 0);
+	event_execute_test(eq, 1);
 	conn = tmp_conn;
 	CU_ASSERT_PTR_NOT_NULL_FATAL(conn);
 
@@ -903,7 +881,7 @@ void test_send_important_id_null()
 	CU_ASSERT_PTR_NULL(llp_udp->resend_queue->last);
 
 	firefly_transport_llp_udp_posix_free(llp);
-	execute_remaining_events(eq);
+	event_execute_all_test(eq);
 	expected_error = FIREFLY_ERROR_FIRST;
 }
 
@@ -922,8 +900,8 @@ void test_send_important_long_timeout()
 	res = firefly_connection_open(&actions, NULL, eq,
 			firefly_transport_connection_udp_posix_new(llp,
 				"127.0.0.1", 55550, long_timeout));
-	CU_ASSERT_EQUAL_FATAL(res, 0);
-	execute_events(eq, 1);
+	CU_ASSERT_TRUE_FATAL(res > 0);
+	event_execute_test(eq, 1);
 	conn = tmp_conn;
 	CU_ASSERT_PTR_NOT_NULL_FATAL(conn);
 
@@ -966,5 +944,5 @@ void test_send_important_long_timeout()
 	}
 
 	firefly_transport_llp_udp_posix_free(llp);
-	execute_remaining_events(eq);
+	event_execute_all_test(eq);
 }

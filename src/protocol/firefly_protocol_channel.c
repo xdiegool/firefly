@@ -108,8 +108,8 @@ void firefly_channel_restrict(struct firefly_channel *chan)
 	ret = conn->event_queue->offer_event_cb(conn->event_queue,
 						FIREFLY_PRIORITY_MEDIUM,
 						firefly_channel_restrict_event,
-						chan);
-	if (ret)
+						chan, 0, NULL);
+	if (ret < 0)
 		firefly_error(FIREFLY_ERROR_ALLOC, 1,
 			      "could not add event to queue");
 }
@@ -149,8 +149,8 @@ void firefly_channel_unrestrict(struct firefly_channel *chan)
 	ret = conn->event_queue->offer_event_cb(conn->event_queue,
 						FIREFLY_PRIORITY_MEDIUM,
 						firefly_channel_unrestrict_event,
-						chan);
-	if (ret)
+						chan, 0, NULL);
+	if (ret < 0)
 		firefly_error(FIREFLY_ERROR_ALLOC, 1,
 			      "could not add event to queue");
 }

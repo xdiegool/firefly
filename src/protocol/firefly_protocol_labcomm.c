@@ -268,7 +268,7 @@ static int proto_writer_end(struct labcomm_writer *w, void *context)
 	memcpy(fess->data.app_enc_data.a, w->data, w->pos);
 
 	conn->event_queue->offer_event_cb(conn->event_queue, FIREFLY_PRIORITY_HIGH,
-			send_data_sample_event, fess);
+			send_data_sample_event, fess, 0, NULL);
 	w->pos = 0;
 
 	return 0;

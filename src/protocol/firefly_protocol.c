@@ -92,8 +92,8 @@ void firefly_channel_open(struct firefly_connection *conn)
 	ret = conn->event_queue->offer_event_cb(conn->event_queue,
 						FIREFLY_PRIORITY_HIGH,
 						firefly_channel_open_event,
-						conn);
-	if (ret)
+						conn, 0, NULL);
+	if (ret < 0)
 		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Could not add event.");
 }
 
@@ -134,8 +134,8 @@ static void create_channel_closed_event(struct firefly_channel *chan)
 
 	ret = chan->conn->event_queue->offer_event_cb(chan->conn->event_queue,
 			FIREFLY_PRIORITY_HIGH, firefly_channel_closed_event,
-			chan);
-	if (ret)
+			chan, 0, NULL);
+	if (ret < 0)
 		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Could not add event.");
 }
 
@@ -159,8 +159,8 @@ void firefly_channel_close(struct firefly_channel *chan)
 	ret = conn->event_queue->offer_event_cb(conn->event_queue,
 						FIREFLY_PRIORITY_HIGH,
 						firefly_channel_close_event,
-						fecc);
-	if (ret) {
+						fecc, 0, NULL);
+	if (ret < 0) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1,
 			      "Could not add event to queue.");
 		FIREFLY_FREE(fecc);
@@ -225,8 +225,8 @@ void handle_channel_request(firefly_protocol_channel_request *chan_req,
 	ret = conn->event_queue->offer_event_cb(conn->event_queue,
 						FIREFLY_PRIORITY_HIGH,
 						handle_channel_request_event,
-						fecrr);
-	if (ret) {
+						fecrr, 0, NULL);
+	if (ret < 0) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1,
 			      "could not add event to queue");
 		FIREFLY_FREE(fecrr);
@@ -297,8 +297,8 @@ void handle_channel_response(firefly_protocol_channel_response *chan_res,
 	ret = conn->event_queue->offer_event_cb(conn->event_queue,
 						FIREFLY_PRIORITY_HIGH,
 						handle_channel_response_event,
-						fecrr);
-	if (ret) {
+						fecrr, 0, NULL);
+	if (ret < 0) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1,
 			      "could not add event to queue");
 		FIREFLY_FREE(fecrr);
@@ -377,8 +377,8 @@ void handle_channel_ack(firefly_protocol_channel_ack *chan_ack, void *context)
 	memcpy(&fecar->chan_ack, chan_ack, sizeof(*chan_ack));
 
 	ret = conn->event_queue->offer_event_cb(conn->event_queue,
-			FIREFLY_PRIORITY_HIGH, handle_channel_ack_event, fecar);
-	if (ret) {
+			FIREFLY_PRIORITY_HIGH, handle_channel_ack_event, fecar, 0, NULL);
+	if (ret < 0) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1,
 			      "could not add event to queue");
 		FIREFLY_FREE(fecar);
@@ -445,8 +445,8 @@ void handle_data_sample(firefly_protocol_data_sample *data, void *context)
 	fers->data.app_enc_data.a = fers_data;
 
 	ret = conn->event_queue->offer_event_cb(conn->event_queue,
-			FIREFLY_PRIORITY_LOW, handle_data_sample_event, fers);
-	if (ret) {
+			FIREFLY_PRIORITY_LOW, handle_data_sample_event, fers, 0, NULL);
+	if (ret < 0) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1,
 			      "could not add event to queue");
 		FIREFLY_RUNTIME_FREE(conn, fers->data.app_enc_data.a);
@@ -537,7 +537,7 @@ void handle_ack(firefly_protocol_ack *ack, void *context)
 			FIREFLY_FREE(tmp);
 			conn->event_queue->offer_event_cb(conn->event_queue,
 					FIREFLY_PRIORITY_HIGH,
-					send_data_sample_event, fess);
+					send_data_sample_event, fess, 0, NULL);
 		}
 	} else if (chan->current_seqno > ack->seqno) {
 		// Do nothing, old ack
@@ -637,8 +637,8 @@ void handle_channel_restrict_request(
 	ret = conn->event_queue->offer_event_cb(conn->event_queue,
 						FIREFLY_PRIORITY_MEDIUM,
 						&channel_restrict_request_event,
-						earg);
-	if (ret) {
+						earg, 0, NULL);
+	if (ret < 0) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1,
 			      "Could not add event to queue");
 		FIREFLY_FREE(earg);
@@ -728,8 +728,8 @@ void handle_channel_restrict_ack(firefly_protocol_channel_restrict_ack *data,
 	ret = conn->event_queue->offer_event_cb(conn->event_queue,
 						FIREFLY_PRIORITY_MEDIUM,
 						channel_restrict_ack_event,
-						earg);
-	if (ret) {
+						earg, 0, NULL);
+	if (ret < 0) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1,
 			      "Could not add event to queue");
 		FIREFLY_FREE(earg);

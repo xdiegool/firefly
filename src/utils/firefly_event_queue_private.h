@@ -9,6 +9,9 @@
 #include <utils/firefly_event_queue.h>
 
 #include <stdbool.h>
+#include <stdint.h>
+
+#define FIREFLY_EVENT_QUEUE_MAX_DEPENDS (10)
 
 /**
  * @brief An event queue
@@ -20,6 +23,7 @@ struct firefly_event_queue {
 						the queue. */
 	firefly_offer_event offer_event_cb; /**< The callback used for adding
 							new events. */
+	int64_t event_id; /**< Counter to keep track of used event ID's */
 	struct firefly_event **event_pool;
 	size_t event_pool_size;
 	size_t event_pool_in_use;
@@ -37,20 +41,13 @@ struct firefly_event_queue {
 struct firefly_event {
 	unsigned char prio; /**< The priority of the event, higher value means
 					higher priority. */
+	int64_t id; /**< The unique identifier of this event. */
 	firefly_event_execute_f execute; /**< The function to call when the
 						event is executed. */
 	void *context; /**< The context passed to firefly_event_execute_f() when
 				the event is executed. */
-	struct firefly_event *next; /**< The event. */
-};
-
-/**
- * @brief A node in the prioritized firefly_event_queue implemented as a linked
- * list.
- */
-struct firefly_eq_node {
-	struct firefly_eq_node *next; /**< The next node. */
-	struct firefly_event *event; /**< The event. */
+	int64_t depends[FIREFLY_EVENT_QUEUE_MAX_DEPENDS];
+	struct firefly_event *next; /**< The next event. */
 };
 
 /**
@@ -75,6 +72,7 @@ void firefly_event_free(struct firefly_event *ev);
  * @param execute The function called when the firefly_event is executed.
  * @param context The argument passed to the execute function when called.
  */
-void firefly_event_init(struct firefly_event *ev, unsigned char prio,
-		firefly_event_execute_f execute, void *context);
+void firefly_event_init(struct firefly_event *ev, int64_t id, unsigned char prio,
+		firefly_event_execute_f execute, void *context,
+		unsigned int nbr_depends, const int64_t *depends);
 #endif

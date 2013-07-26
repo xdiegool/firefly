@@ -79,7 +79,7 @@ struct firefly_connection *setup_test_conn_new(
 	test_trsp_conn->close = test_conn_close;
 	test_trsp_conn->context = &conn;
 	int res = firefly_connection_open(conn_actions, NULL, eq, test_trsp_conn);
-	CU_ASSERT_EQUAL_FATAL(res, 0);
+	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 
 	if (conn == NULL) {

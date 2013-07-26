@@ -101,7 +101,7 @@ void test_important_signature()
 	};
 
 	int res = firefly_connection_open(NULL, NULL, eq, &test_trsp_conn);
-	CU_ASSERT_EQUAL_FATAL(res, 0);
+	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 	struct firefly_channel *chan = firefly_channel_new(conn);
 	add_channel_to_connection(chan, conn);
@@ -134,7 +134,7 @@ void test_important_recv_ack()
 	};
 
 	int res = firefly_connection_open(NULL, NULL, eq, &test_trsp_conn);
-	CU_ASSERT_EQUAL_FATAL(res, 0);
+	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 	struct firefly_channel *chan = firefly_channel_new(conn);
 	add_channel_to_connection(chan, conn);
@@ -172,7 +172,7 @@ void test_important_signatures_mult()
 	};
 
 	int res = firefly_connection_open(NULL, NULL, eq, &test_trsp_conn);
-	CU_ASSERT_EQUAL_FATAL(res, 0);
+	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 	struct firefly_channel *chan = firefly_channel_new(conn);
 	add_channel_to_connection(chan, conn);
@@ -215,7 +215,7 @@ void test_important_seqno_overflow()
 	};
 
 	int res = firefly_connection_open(NULL, NULL, eq, &test_trsp_conn);
-	CU_ASSERT_EQUAL_FATAL(res, 0);
+	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 	struct firefly_channel *chan = firefly_channel_new(conn);
 	add_channel_to_connection(chan, conn);
@@ -248,7 +248,7 @@ void test_important_send_ack()
 	};
 
 	int res = firefly_connection_open(NULL, NULL, eq, &test_trsp_conn);
-	CU_ASSERT_EQUAL_FATAL(res, 0);
+	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 	struct firefly_channel *chan = firefly_channel_new(conn);
 	add_channel_to_connection(chan, conn);
@@ -289,7 +289,7 @@ void test_not_important_not_send_ack()
 	};
 
 	int res = firefly_connection_open(NULL, NULL, eq, &test_trsp_conn);
-	CU_ASSERT_EQUAL_FATAL(res, 0);
+	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 	struct firefly_channel *chan = firefly_channel_new(conn);
 	add_channel_to_connection(chan, conn);
@@ -328,7 +328,7 @@ void test_important_mult_simultaneously()
 	};
 
 	int res = firefly_connection_open(NULL, NULL, eq, &test_trsp_conn);
-	CU_ASSERT_EQUAL_FATAL(res, 0);
+	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 	struct firefly_channel *chan = firefly_channel_new(conn);
 	add_channel_to_connection(chan, conn);
@@ -414,7 +414,7 @@ void test_errorneous_ack()
 	};
 
 	int res = firefly_connection_open(NULL, NULL, eq, &test_trsp_conn);
-	CU_ASSERT_EQUAL_FATAL(res, 0);
+	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 	struct firefly_channel *chan = firefly_channel_new(conn);
 	add_channel_to_connection(chan, conn);
@@ -470,7 +470,7 @@ void test_important_recv_duplicate()
 	};
 
 	int res = firefly_connection_open(NULL, NULL, eq, &test_trsp_conn);
-	CU_ASSERT_EQUAL_FATAL(res, 0);
+	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 	struct firefly_channel *chan = firefly_channel_new(conn);
 	add_channel_to_connection(chan, conn);
@@ -570,7 +570,7 @@ void test_important_handshake_recv()
 	};
 
 	int res = firefly_connection_open(&conn_actions, NULL, eq, &test_trsp_conn);
-	CU_ASSERT_EQUAL_FATAL(res, 0);
+	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 
 	firefly_protocol_channel_request req_pkt;
@@ -628,7 +628,7 @@ void test_important_handshake_recv_errors()
 	};
 
 	int res = firefly_connection_open(&conn_actions, NULL, eq, &test_trsp_conn);
-	CU_ASSERT_EQUAL_FATAL(res, 0);
+	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 
 	firefly_protocol_channel_request req_pkt;
@@ -704,7 +704,7 @@ void test_important_handshake_open()
 	};
 
 	int res = firefly_connection_open(&conn_actions, NULL, eq, &test_trsp_conn);
-	CU_ASSERT_EQUAL_FATAL(res, 0);
+	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 
 	firefly_channel_open(conn);
@@ -758,7 +758,7 @@ void test_important_handshake_open_errors()
 	};
 
 	int res = firefly_connection_open(&conn_actions, NULL, eq, &test_trsp_conn);
-	CU_ASSERT_EQUAL_FATAL(res, 0);
+	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 
 	firefly_channel_open(conn);
@@ -811,7 +811,7 @@ void test_important_ack_on_close()
 	};
 
 	int res = firefly_connection_open(NULL, NULL, eq, &test_trsp_conn);
-	CU_ASSERT_EQUAL_FATAL(res, 0);
+	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 	struct firefly_channel *chan = firefly_channel_new(conn);
 	add_channel_to_connection(chan, conn);

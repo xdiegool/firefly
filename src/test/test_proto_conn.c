@@ -75,7 +75,7 @@ void test_conn_close_empty()
 		.context = &conn
 	};
 	int res = firefly_connection_open(NULL, NULL, eq, &test_trsp_conn);
-	CU_ASSERT_EQUAL_FATAL(res, 0);
+	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 
 	CU_ASSERT_EQUAL(conn->open, FIREFLY_CONNECTION_OPEN);
@@ -101,7 +101,7 @@ void test_conn_close_mult_chans()
 		.context = &conn
 	};
 	int res = firefly_connection_open(NULL, NULL, eq, &test_trsp_conn);
-	CU_ASSERT_EQUAL_FATAL(res, 0);
+	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 
 	struct firefly_channel *ch = firefly_channel_new(conn);
@@ -137,7 +137,7 @@ void test_conn_close_open_chan()
 		.context = &conn
 	};
 	int res = firefly_connection_open(NULL, NULL, eq, &test_trsp_conn);
-	CU_ASSERT_EQUAL_FATAL(res, 0);
+	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 
 	struct firefly_channel *ch = firefly_channel_new(conn);
@@ -175,7 +175,7 @@ void test_conn_close_send_data()
 		.context = &conn
 	};
 	int res = firefly_connection_open(NULL, NULL, eq, &test_trsp_conn);
-	CU_ASSERT_EQUAL_FATAL(res, 0);
+	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 
 	struct firefly_channel *ch = firefly_channel_new(conn);
@@ -230,7 +230,7 @@ void test_conn_close_send_first()
 		.context = &conn
 	};
 	int res = firefly_connection_open(NULL, NULL, eq, &test_trsp_conn);
-	CU_ASSERT_EQUAL_FATAL(res, 0);
+	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 
 	struct firefly_channel *ch = firefly_channel_new(conn);
@@ -264,7 +264,7 @@ void test_conn_close_recv_any()
 		.context = &conn
 	};
 	int res = firefly_connection_open(NULL, NULL, eq, &test_trsp_conn);
-	CU_ASSERT_EQUAL_FATAL(res, 0);
+	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 
 	struct firefly_channel *ch = firefly_channel_new(conn);
@@ -320,7 +320,7 @@ void test_conn_close_recv_chan_req_first()
 		.context = &conn
 	};
 	int res = firefly_connection_open(&conn_actions, NULL, eq, &test_trsp_conn);
-	CU_ASSERT_EQUAL_FATAL(res, 0);
+	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 
 	/* First add close connection event */

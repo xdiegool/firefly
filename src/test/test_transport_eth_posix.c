@@ -194,7 +194,7 @@ static bool on_conn_recv_keep(
 	int res = firefly_connection_open(NULL, NULL, eq,
 			firefly_transport_connection_eth_posix_new(llp,
 				mac_address, "lo"));
-	CU_ASSERT_EQUAL(res, 0);
+	CU_ASSERT_TRUE(res > 0);
 	return true;
 }
 
@@ -206,7 +206,7 @@ static bool on_conn_recv_keep_two(
 	int res = firefly_connection_open(NULL, NULL, eq,
 			firefly_transport_connection_eth_posix_new(llp,
 				mac_address, "lo"));
-	CU_ASSERT_EQUAL(res, 0);
+	CU_ASSERT_TRUE_FATAL(res > 0);
 	return true;
 }
 
@@ -241,7 +241,7 @@ void test_eth_recv_data()
 	int res = firefly_connection_open(NULL, NULL, eq,
 			firefly_transport_connection_eth_posix_new(llp,
 				remote_mac_addr, "lo"));
-	CU_ASSERT_EQUAL_FATAL(res, 0);
+	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 
 	firefly_transport_eth_posix_read(llp, NULL);

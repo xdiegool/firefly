@@ -114,8 +114,8 @@ void firefly_transport_llp_udp_posix_free(struct firefly_transport_llp *llp)
 	ret = llp_udp->event_queue->offer_event_cb(llp_udp->event_queue,
 			FIREFLY_PRIORITY_LOW,
 			firefly_transport_llp_udp_posix_free_event,
-			llp);
-	FFLIF(ret, FIREFLY_ERROR_ALLOC);
+			llp, 0, NULL);
+	FFLIF(ret < 0, FIREFLY_ERROR_ALLOC);
 }
 
 int firefly_transport_llp_udp_posix_free_event(void *event_arg)
@@ -399,7 +399,7 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 	llp_udp->event_queue->offer_event_cb(llp_udp->event_queue,
 			FIREFLY_PRIORITY_HIGH,
 			firefly_transport_udp_posix_read_event,
-			ev_arg);
+			ev_arg, 0, NULL);
 }
 
 int firefly_transport_udp_posix_read_event(void *event_arg)
@@ -421,7 +421,7 @@ int firefly_transport_udp_posix_read_event(void *event_arg)
 			return llp_udp->event_queue->offer_event_cb(llp_udp->event_queue,
 					FIREFLY_PRIORITY_HIGH,
 					firefly_transport_udp_posix_read_event,
-					ev_arg);
+					ev_arg, 0, NULL);
 		}
 	} else {
 		ev_arg->llp->protocol_data_received_cb(conn, ev_arg->data, ev_arg->len);

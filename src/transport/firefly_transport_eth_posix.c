@@ -109,8 +109,9 @@ void firefly_transport_llp_eth_posix_free(struct firefly_transport_llp *llp)
 	struct transport_llp_eth_posix *llp_eth;
 	llp_eth = (struct transport_llp_eth_posix *) llp->llp_platspec;
 	int ret = llp_eth->event_queue->offer_event_cb(llp_eth->event_queue,
-			FIREFLY_PRIORITY_LOW, firefly_transport_llp_eth_posix_free_event, llp);
-	FFLIF(ret, FIREFLY_ERROR_ALLOC);
+			FIREFLY_PRIORITY_LOW, firefly_transport_llp_eth_posix_free_event,
+			llp, 0, NULL);
+	FFLIF(ret < 0, FIREFLY_ERROR_ALLOC);
 }
 
 int firefly_transport_llp_eth_posix_free_event(void *event_arg)
@@ -290,7 +291,7 @@ void firefly_transport_eth_posix_read(struct firefly_transport_llp *llp,
 
 	llp_eth->event_queue->offer_event_cb(llp_eth->event_queue,
 			FIREFLY_PRIORITY_HIGH,
-			firefly_transport_eth_posix_read_event, ev_arg);
+			firefly_transport_eth_posix_read_event, ev_arg, 0, NULL);
 }
 
 int firefly_transport_eth_posix_read_event(void *event_args)
@@ -311,7 +312,7 @@ int firefly_transport_eth_posix_read_event(void *event_args)
 					llp_eth->event_queue,
 					FIREFLY_PRIORITY_HIGH,
 					firefly_transport_eth_posix_read_event,
-					ev_a);
+					ev_a, 0, NULL);
 		}
 	} else {
 		ev_a->llp->protocol_data_received_cb(conn, ev_a->data, ev_a->len);

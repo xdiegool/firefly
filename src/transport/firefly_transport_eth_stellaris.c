@@ -125,8 +125,8 @@ void firefly_transport_llp_eth_stellaris_free(struct firefly_transport_llp *llp)
 	llp_eth = llp->llp_platspec;
 	int ret = llp_eth->event_queue->offer_event_cb(llp_eth->event_queue,
 			FIREFLY_PRIORITY_LOW,
-			firefly_transport_llp_eth_stellaris_free_event, llp);
-	FFLIF(ret, FIREFLY_ERROR_ALLOC)
+			firefly_transport_llp_eth_stellaris_free_event, llp, 0, NULL);
+	FFLIF(ret < 0, FIREFLY_ERROR_ALLOC)
 }
 
 int firefly_transport_llp_eth_stellaris_free_event(void *event_arg)
@@ -305,7 +305,7 @@ void firefly_transport_eth_stellaris_read(struct firefly_transport_llp *llp)
 
 	llp_eth->event_queue->offer_event_cb(llp_eth->event_queue,
 			FIREFLY_PRIORITY_HIGH,
-			firefly_transport_eth_stellaris_read_event, ev_a);
+			firefly_transport_eth_stellaris_read_event, ev_a, 0, NULL);
 
 }
 
@@ -325,7 +325,7 @@ int firefly_transport_eth_stellaris_read_event(void *event_args)
 					ev_a->eth_packet + ETH_SRC_OFFSET)) {
 			return llp_eth->event_queue->offer_event_cb(llp_eth->event_queue,
 					FIREFLY_PRIORITY_HIGH,
-					firefly_transport_eth_stellaris_read_event, ev_a);
+					firefly_transport_eth_stellaris_read_event, ev_a, 0, NULL);
 		}
 	} else {
 		protocol_data_received(conn,

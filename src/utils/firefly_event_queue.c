@@ -6,6 +6,7 @@
 
 #include <stdlib.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <string.h>
 
 #include <utils/firefly_errors.h>
@@ -19,6 +20,7 @@ struct firefly_event_queue *firefly_event_queue_new(
 	if ((q = FIREFLY_MALLOC(sizeof(struct firefly_event_queue))) != NULL) {
 		q->head = NULL;
 		q->offer_event_cb = offer_cb;
+		q->event_id = 0;
 		q->context = context;
 		q->event_pool = FIREFLY_MALLOC(sizeof(struct firefly_event *)*pool_size);
 		for (size_t i = 0; i < pool_size; i++) {
@@ -61,6 +63,7 @@ struct firefly_event *firefly_event_new(unsigned char prio,
 		ev->prio = prio;
 		ev->execute = execute;
 		ev->context = context;
+		memset(ev->depends, 0, FIREFLY_EVENT_QUEUE_MAX_DEPENDS);
 	}
 
 	return ev;
@@ -71,12 +74,17 @@ void firefly_event_free(struct firefly_event *ev)
 	FIREFLY_FREE(ev);
 }
 
-void firefly_event_init(struct firefly_event *ev, unsigned char prio,
-		firefly_event_execute_f execute, void *context)
+void firefly_event_init(struct firefly_event *ev, int64_t id, unsigned char prio,
+		firefly_event_execute_f execute, void *context,
+		unsigned int nbr_depends, const int64_t *depends)
 {
 		ev->prio = prio;
+		ev->id = id;
 		ev->execute = execute;
 		ev->context = context;
+		memset(ev->depends, 0, sizeof(ev->depends));
+		if (nbr_depends > 0)
+			memcpy(ev->depends, depends, nbr_depends);
 }
 
 struct firefly_event *firefly_event_take(struct firefly_event_queue *q)
@@ -87,8 +95,8 @@ struct firefly_event *firefly_event_take(struct firefly_event_queue *q)
 		return NULL;
 	} else if (q->event_pool_in_use == q->event_pool_size) {
 		if (q->event_pool_strict_size) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 1,
-				"No available events in the pool.");
+			firefly_error(FIREFLY_ERROR_ALLOC, 1,
+					"No available events in the pool.");
 			return NULL;
 		} else {
 			// Double the size of the new pool
@@ -117,6 +125,7 @@ void firefly_event_return(struct firefly_event_queue *q,
 	if (q->event_pool_in_use > q->event_pool_size) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1,
 				"EVENT: Inconsistent state, more events in use than possible.");
+		exit(1);
 	} else {
 		q->event_pool_in_use--;
 		q->event_pool[q->event_pool_in_use] = *ev;
@@ -124,10 +133,13 @@ void firefly_event_return(struct firefly_event_queue *q,
 	}
 }
 
-int firefly_event_add(struct firefly_event_queue *eq, unsigned char prio,
-		firefly_event_execute_f execute, void *context)
+int64_t firefly_event_add(struct firefly_event_queue *eq, unsigned char prio,
+		firefly_event_execute_f execute, void *context,
+		unsigned int nbr_depends, const int64_t *depends)
 {
 	struct firefly_event **n = &eq->head;
+	if (nbr_depends > FIREFLY_EVENT_QUEUE_MAX_DEPENDS)
+		return -2;
 
 	// Find the node to insert the event before, it may be NULL and eq->head
 	while (*n != NULL && (*n)->prio >= prio) {
@@ -138,24 +150,71 @@ int firefly_event_add(struct firefly_event_queue *eq, unsigned char prio,
 	if (ev == NULL) {
 		return -1;
 	}
-	firefly_event_init(ev, prio, execute, context);
+	firefly_event_init(ev, ++eq->event_id, prio, execute, context,
+			nbr_depends, depends);
 	ev->next = (*n);
 	*n = ev;
 
-	return 0;
+	return ev->id;
+}
+
+void firefly_event_remove(struct firefly_event **ev)
+{
+	*ev = (*ev)->next;
+}
+
+struct firefly_event **firefly_event_find(struct firefly_event_queue *eq,
+		int64_t id)
+{
+	struct firefly_event *ev;
+	if (eq->head == NULL)
+		return NULL;
+	else if (eq->head->id == id)
+		return &eq->head;
+	ev = eq->head;
+	while (ev->next != NULL && ev->next->id != id) {
+		ev = ev->next;
+	}
+
+	return &ev->next;
+}
+
+struct firefly_event **firefly_event_get_depends(struct firefly_event_queue *eq,
+		struct firefly_event **ev)
+{
+	for (int i = 0; i < FIREFLY_EVENT_QUEUE_MAX_DEPENDS; i++) {
+		if ((*ev)->depends[i] != 0) {
+			struct firefly_event **tmp =
+				firefly_event_find(eq, (*ev)->depends[i]);
+			if (*tmp != NULL) {
+				struct firefly_event **tmp2 =
+					firefly_event_get_depends(eq, tmp);
+				if (*tmp2 == *tmp)
+					(*ev)->depends[i] = 0;
+				return tmp2;
+			} else {
+				(*ev)->depends[i] = 0;
+			}
+		}
+	}
+	return ev;
 }
 
 struct firefly_event *firefly_event_pop(struct firefly_event_queue *eq)
 {
 	// The actual event
-	struct firefly_event *ev;
+	struct firefly_event **ev;
+	struct firefly_event *tmp;
 
-	if ((ev = eq->head) == NULL) {
+	ev = &eq->head;
+	if ((*ev) == NULL) {
 		return NULL;
 	}
-	eq->head = eq->head->next;
+	ev = firefly_event_get_depends(eq, ev);
+	tmp = *ev;
+	firefly_event_remove(ev);
 
-	return ev;
+	return tmp;
 }
 
 int firefly_event_execute(struct firefly_event *ev)
