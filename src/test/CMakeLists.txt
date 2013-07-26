@@ -2,8 +2,11 @@
 # vi: foldmarker={{{,}}} foldmethod=marker foldlevel=0
 # }}}
 
+message("-- Looking for CUnit")
+find_package(CUnit)
+
 # We can only compile tests when not compiling for ARM
-if(NOT CMAKE_CROSSCOMPILING)
+if(NOT CMAKE_CROSSCOMPILING AND CUNIT_FOUND)
 	link_directories(${Firefly_BINARY_DIR} ${LABCOMM_INC_DIR})
 
 	## Test helper library {{{
@@ -173,4 +176,4 @@ if(NOT CMAKE_CROSSCOMPILING)
 	)
 	## }}}
 
-endif(NOT CMAKE_CROSSCOMPILING)
+endif(NOT CMAKE_CROSSCOMPILING AND CUNIT_FOUND)
