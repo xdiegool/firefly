@@ -1,0 +1,103 @@
+Build Instructions
+------------------
+
+Please follow the instructions below to build Firefly. Read the INFO
+document for a brief introduction to Firefly.
+
+
+Pre-requisites
+--------------
+
+Firefly has recently switched to cmake as it's build system. The old
+make file is still there but should be considered deprecated and should
+only be used if cmake fails. Thus, building Firefly requires:
+
+	- cmake >= 2.8
+	- make (any version really)
+	- valgrind and CUnit (only for running the tests)
+
+Make is somewhat optional, cmake can use any other supported generator
+(such as ninja) to generate the build files and it should work
+regardlessly. However, cmake's default is to generate make files.
+
+More information on cmake and how to obtain it can be found at
+http://cmake.org/.
+
+
+General Build Instructions
+--------------------------
+
+The default build will compile Firefly for x86 along with the following
+transport layers:
+	- Ethernet for POSIX-compliant systems
+	- UDP for POSIX-compliant systems
+	- Ethernet for Xenomai (if Xenomai is detected as installed)
+
+The build is fairly simple, enter the following commands from the
+Firefly root folder:
+
+	$ mkdir build && cd build	[1]
+	$ cmake ../src				[2]
+	$ make						[3]
+
+	1. Create a build folder which the output (object files, libraries
+	   and binaries) will be put in.
+	2. Generate build files using the CMakeLists.txt file in the src
+	   folder.
+	3. Build the library (and possibly test files).
+
+When running step [2], cmake will look for Xenomai and the CUnit
+library. If Xenomai is found, the Ethernet Xenomai transport layer is
+also compiled. If CUnit is found, the unit and system tests are built.
+
+To run unit tests, run the command:
+
+	$ make test
+
+This will run the unit tests with cmake's built in test functionality
+which produces a very  brief output. To get more output (this requires
+valgrind since valgrind is executed to check for memory leaks and
+errors), run the command:
+
+	$ make run-test
+
+This will run the CUnit test programs via valgrind which produces a
+_LOT_ of output (although valgrind only produces output if it detects an
+error.
+
+To run the system tests (also requires valgrind), use the following
+command:
+
+	$ make run-systemtest
+
+
+Build and Configuration Options
+-------------------------------
+
+There are really only two different builds you can do at the moment:
+
+	- Build for x86
+	- Build for ARM (for use in the ft-sense project)
+
+To build the ARM version of the library, run the following option
+instead of [2] above:
+
+	$ cmake -DCMAKE_TOOLCHAIN_FILE=../src/Toolchain-arm.cmake ../src
+
+This requires that you have the ARM-compiler gcc-arm-none-eabi from
+CodeSourcery in your path (you should be able to find it by Googling a
+bit). Running step [3] above will now build Ethernet and UDP transport
+layers for the ft-sense project, along with the firefly library for ARM.
+
+Currently, these two projects share the same repository but this will
+likely change in the future. Thus, compiling for ARM will likely change
+with that split of repositories.
+
+To use a different generator when running cmake, run the following
+command (here with the ninja generator as an example):
+
+	$ cmake -GNinja ../src
+
+See the GENERATORS section in your cmake installation's man pages to
+find out which generators are available to you.
+
