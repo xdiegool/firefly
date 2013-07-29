@@ -152,6 +152,9 @@ int64_t firefly_event_add(struct firefly_event_queue *eq, unsigned char prio,
 	}
 	firefly_event_init(ev, ++eq->event_id, prio, execute, context,
 			nbr_depends, depends);
+	if (eq->event_id == INT64_MAX) {
+		eq->event_id = 0;
+	}
 	ev->next = (*n);
 	*n = ev;
 

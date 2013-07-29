@@ -16,6 +16,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#define FIREFLY_EVENT_QUEUE_MAX_DEPENDS (10)
+
 /**
  * Defines different priorities.
  */

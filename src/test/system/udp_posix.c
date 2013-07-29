@@ -579,7 +579,7 @@ int64_t event_add_mutex(struct firefly_event_queue *eq, unsigned char prio,
 		return res;
 	}
 	res = firefly_event_add(eq, prio, execute, context, nbr_deps, deps);
-	if (!res) {
+	if (res > 0) {
 		pthread_cond_signal(&eq_s->eq_cond);
 	}
 	pthread_mutex_unlock(&eq_s->eq_lock);

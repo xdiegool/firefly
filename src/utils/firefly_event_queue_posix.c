@@ -13,8 +13,9 @@ struct firefly_event_queue_posix_context {
 	bool event_loop_stop;
 };
 
-int firefly_event_queue_posix_add(struct firefly_event_queue *eq,
-		unsigned char prio, firefly_event_execute_f execute, void *context);
+int64_t firefly_event_queue_posix_add(struct firefly_event_queue *eq,
+		unsigned char prio, firefly_event_execute_f execute, void *context,
+		unsigned int nbr_deps, const int64_t *deps);
 
 struct firefly_event_queue *firefly_event_queue_posix_new(size_t pool_size)
 {
@@ -48,8 +49,9 @@ void firefly_event_queue_posix_free(struct firefly_event_queue **eq)
 	firefly_event_queue_free(eq);
 }
 
-int firefly_event_queue_posix_add(struct firefly_event_queue *eq,
-		unsigned char prio, firefly_event_execute_f execute, void *context)
+int64_t firefly_event_queue_posix_add(struct firefly_event_queue *eq,
+		unsigned char prio, firefly_event_execute_f execute, void *context,
+		unsigned int nbr_deps, const int64_t *deps)
 {
 	int res = 0;
 	struct firefly_event_queue_posix_context *ctx =
@@ -60,8 +62,8 @@ int firefly_event_queue_posix_add(struct firefly_event_queue *eq,
 	if (res) {
 		return res;
 	}
-	res = firefly_event_add(eq, prio, execute, context);
-	if (!res) {
+	res = firefly_event_add(eq, prio, execute, context, nbr_deps, deps);
+	if (res > 0) {
 		pthread_cond_signal(&ctx->signal);
 	}
 	pthread_mutex_unlock(&ctx->lock);
