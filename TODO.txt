@@ -29,6 +29,15 @@
 
     Possibly also implement an ERROR state on the connection.
 
+# GENERAL STUFF THAT NEEDS FIXING
+	- In firefly_connection_actions there are two function pointers that
+	  handle errors; connection_error and channel_error. Neither lets the
+	  user now what the error was, only that AN error occurred. This
+	  should be fixed. When it comes to connection_error, the enum
+	  firefly_errors should be used since these are already printed when
+	  an error occurs. The same enum could possibly be used for
+	  channel_error as well.
+
 # TEST STUFF
 	- The eth_posix test suite fails infrequently on a ubu10.04 32b vm
       with incorrect sender etc. Not reproducible on ubu12.04 64b.
