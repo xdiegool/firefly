@@ -9,13 +9,20 @@
 #include <transport/firefly_transport.h>
 
 #include "protocol/firefly_protocol_private.h"
+#include "utils/firefly_errors.h"
 
 void add_connection_to_llp(struct firefly_connection *conn,
 		struct firefly_transport_llp *llp)
 {
-	struct llp_connection_list_node *tmp = llp->conn_list;
-	struct llp_connection_list_node *new_node =
-		FIREFLY_MALLOC(sizeof(struct llp_connection_list_node));
+	struct llp_connection_list_node *tmp;
+	struct llp_connection_list_node *new_node;
+
+	tmp = llp->conn_list;
+	new_node = FIREFLY_MALLOC(sizeof(*new_node));
+	if (!new_node) {
+		FFL(FIREFLY_ERROR_ALLOC);
+		return;
+	}
 	new_node->conn = conn;
 	new_node->next = tmp;
 	llp->conn_list = new_node;

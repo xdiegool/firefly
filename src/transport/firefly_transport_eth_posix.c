@@ -3,7 +3,7 @@
  * @brief The public API of the transport Ethernet POSIX with specific structures and
  * functions.
  */
-#define _POSIX_C_SOURCE (200112L)
+#define _POSIX_C_SOURCE (200112L) // Needed to define strerror_r().
 
 #include "transport/firefly_transport_eth_posix_private.h"
 #include <transport/firefly_transport_eth_posix.h>
@@ -44,38 +44,39 @@ struct firefly_transport_llp *firefly_transport_llp_eth_posix_new(
 	struct firefly_transport_llp *llp;
 	llp_eth = malloc(sizeof(*llp_eth));
 
+	if (!llp_eth) {
+		FFL(FIREFLY_ERROR_ALLOC);
+		return NULL;
+	}
 	/* Create the socket */
 	err = socket(AF_PACKET, SOCK_DGRAM, htons(ETH_P_ALL));
-	FFLIF((err < 0), FIREFLY_ERROR_SOCKET);
-
+	if (err < 0) {
+		FFL(FIREFLY_ERROR_SOCKET);
+		return NULL;
+	}
 	llp_eth->socket = err;
-
-	/* Set the interface name */
 	strncpy(ifr.ifr_name, iface_name, IFNAMSIZ);
-
 	/* Retreive the interface index of the interface and save it to
 	* ifr.ifr_ifindex. */
 	err = ioctl(llp_eth->socket, SIOCGIFINDEX, &ifr);
 	if(err < 0){
 		close(llp_eth->socket);
+		free(llp_eth);
 		FFL(FIREFLY_ERROR_SOCKET);
+		return NULL;
 	}
-
-	/* init mem of local_addr with zeros */
-	memset(&addr, 0, sizeof(struct sockaddr_ll));
-	/* set address parameters */
+	memset(&addr, 0, sizeof(addr));
 	addr.sll_family   = AF_PACKET;
-	/* htons will convert protocol into correct format used by network */
 	addr.sll_protocol = htons(FIREFLY_ETH_PROTOCOL);
-	/*addr.sll_protocol = htons(ETH_P_ALL);*/
 	addr.sll_ifindex  = ifr.ifr_ifindex;
 	/* Retreive the mac address of the interface and save it to ifr */
 	err = ioctl(llp_eth->socket, SIOCGIFHWADDR, &ifr);
 	if(err < 0){
 		close(llp_eth->socket);
+		free(llp_eth);
 		FFL(FIREFLY_ERROR_SOCKET);
+		return NULL;
 	}
-	/* 6 is the length of a mac address */
 	memcpy(ifr.ifr_hwaddr.sa_data, addr.sll_addr, 6);
 	addr.sll_halen = 6;
 	/* Bind socket to specified interface */
@@ -83,13 +84,21 @@ struct firefly_transport_llp *firefly_transport_llp_eth_posix_new(
 		    sizeof(struct sockaddr_ll));
 	if(err < 0){
 		close(llp_eth->socket);
+		free(llp_eth);
 		FFL(FIREFLY_ERROR_SOCKET);
+		return NULL;
 	}
 
 	llp_eth->event_queue		= event_queue;
 	llp_eth->on_conn_recv		= on_conn_recv;
 
 	llp				= malloc(sizeof(*llp));
+	if (!llp) {
+		close(llp_eth->socket);
+		free(llp_eth);
+		FFL(FIREFLY_ERROR_ALLOC);
+		return NULL;
+	}
 	llp->llp_platspec		= llp_eth;
 	llp->conn_list			= NULL;
 	llp->protocol_data_received_cb	= protocol_data_received;
@@ -186,6 +195,7 @@ struct firefly_transport_connection *firefly_transport_connection_eth_posix_new(
 	if (tcep->remote_addr == NULL) {
 		free(tc);
 		free(tcep);
+		FFL(FIREFLY_ERROR_ALLOC);
 		return NULL;
 	}
 	memset(tcep->remote_addr, 0, sizeof(struct sockaddr_ll));
@@ -237,10 +247,12 @@ void firefly_transport_eth_posix_ack(unsigned char pkt_id,
 void firefly_transport_eth_posix_read(struct firefly_transport_llp *llp,
 		struct timeval *tv)
 {
-	int res;
+	struct firefly_event_llp_read_eth_posix *ev_arg;
 	struct transport_llp_eth_posix *llp_eth;
 	unsigned char tmp_buffer[1500];
 	fd_set fs;
+	int res;
+	void *tmp;
 
 	llp_eth = llp->llp_platspec;
 	FD_ZERO(&fs);
@@ -253,10 +265,13 @@ void firefly_transport_eth_posix_read(struct firefly_transport_llp *llp,
 		return;
 	}
 
-	struct firefly_event_llp_read_eth_posix *ev_arg = malloc(sizeof(*ev_arg));
-	FFLIF(!ev_arg, FIREFLY_ERROR_ALLOC);
-	ev_arg->addr = malloc(sizeof(struct sockaddr_ll));
-	FFLIF(!ev_arg->addr, FIREFLY_ERROR_ALLOC);
+	ev_arg = malloc(sizeof(*ev_arg));
+	tmp = malloc(sizeof(struct sockaddr_ll));
+	if (!ev_arg || !tmp) {
+		FFL(FIREFLY_ERROR_ALLOC);
+		return;
+	}
+	ev_arg->addr = tmp;
 
 	ev_arg->len = 0;
 	ev_arg->data = NULL;
@@ -289,8 +304,8 @@ void firefly_transport_eth_posix_read(struct firefly_transport_llp *llp,
 
 	ev_arg->len = res;
 	ev_arg->data = malloc(ev_arg->len);
-	FFLIF(!ev_arg->data, FIREFLY_ERROR_ALLOC);
 	if (!ev_arg->data) {
+		FFL(FIREFLY_ERROR_ALLOC);
 		return;
 	}
 	memcpy(ev_arg->data, tmp_buffer, ev_arg->len);
