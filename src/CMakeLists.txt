@@ -25,6 +25,12 @@ set(LC_DIR ${Firefly_PROJECT_DIR}/lc)
 set(INC_DIR ${Firefly_PROJECT_DIR}/include)
 set(TEST_FILES_DIR ${Firefly_PROJECT_DIR}/testfiles)
 
+# Documentation directories:
+set(DOC_DIR ${Firefly_PROJECT_DIR}/doc)
+set(DOC_GEN_DIR ${DOC_DIR}/gen)
+set(DOC_GEN_API_DIR ${DOC_GEN_DIR}/api)
+Set(DOC_GEN_FULL_DIR ${DOC_GEN_DIR}/full)
+
 # Labcomm directories:
 set(LABCOMM_DIR ${Firefly_PROJECT_DIR}/../lib/labcomm)
 set(LABCOMMC ${LABCOMM_DIR}/compiler/labComm.jar)
@@ -159,6 +165,60 @@ add_custom_target(cleaner
 			cd ${LABCOMM_DIR}/compiler; ant clean  &&
 			echo \" OK!\"
 )
+
+
+# Documentation targets {{{
+add_custom_target(docs
+	DEPENDS docs-full docs-api
+)
+
+# Custom target to create full documentation (takes FOREVER to run):
+add_custom_target(docs-full
+	COMMAND doxygen ${DOC_GEN_DIR}/doxygen_full.cfg
+	DEPENDS ${DOC_GEN_DIR}/doxygen_full.cfg
+	WORKING_DIRECTORY ${Firefly_PROJECT_DIR}
+)
+
+# Custom target to create API documentation:
+add_custom_target(docs-api
+	COMMAND doxygen ${DOC_GEN_DIR}/doxygen_api.cfg
+	DEPENDS ${DOC_GEN_DIR}/doxygen_api.cfg
+	WORKING_DIRECTORY ${Firefly_PROJECT_DIR}
+)
+
+# Custom target to build the conf file needed by docs-full above:
+add_custom_command(
+	OUTPUT ${DOC_GEN_DIR}/doxygen_full.cfg
+	DEPENDS ${DOC_GEN_DIR}/index.dox
+	COMMAND mkdir ${DOC_GEN_FULL_DIR} &&
+			cp ${DOC_DIR}/doxygen_template.cfg ${DOC_GEN_DIR}/doxygen_full.cfg &&
+			echo \"INPUT = doc/gen/index.dox include src\" >> ${DOC_GEN_DIR}/doxygen_full.cfg &&
+			echo \"OUTPUT_DIRECTORY = \\"${DOC_GEN_FULL_DIR}\\"\" >> $@
+)
+
+# Custom target to build the conf file needed by docs-api above:
+add_custom_command(
+	OUTPUT ${DOC_GEN_DIR}/doxygen_api.cfg
+	DEPENDS ${DOC_GEN_DIR}/index.dox
+	COMMAND mkdir ${DOC_GEN_API_DIR} &&
+			cp ${DOC_DIR}/doxygen_template.cfg ${DOC_GEN_DIR}/doxygen_api.cfg &&
+			echo \"INPUT = doc/gen/index.dox include\" >> ${DOC_GEN_DIR}/doxygen_api.cfg &&
+			echo \"OUTPUT_DIRECTORY = \\"${DOC_GEN_API_DIR}\\"\" >> $@
+)
+
+# Append our README to the index file:
+add_custom_command(
+	OUTPUT ${DOC_GEN_DIR}/index.dox
+	DEPENDS ${DOC_GEN_DIR}
+	COMMAND cat ${DOC_DIR}/README.dox >> ${DOC_GEN_DIR}/index.dox
+)
+
+# Custom target to create doc/gen:
+add_custom_command(
+	OUTPUT ${DOC_GEN_DIR}
+	COMMAND mkdir -p ${DOC_GEN_DIR}
+)
+# }}}
 ## }}}
 
 ## MISC {{{
