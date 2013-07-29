@@ -32,21 +32,23 @@
 # GENERAL STUFF THAT NEEDS FIXING
 	- In firefly_connection_actions there are two function pointers that
 	  handle errors; connection_error and channel_error. Neither lets the
-	  user now what the error was, only that AN error occurred. This
+	  user know what the error was, only that an error occurred. This
 	  should be fixed. When it comes to connection_error, the enum
 	  firefly_errors should be used since these are already printed when
 	  an error occurs. The same enum could possibly be used for
 	  channel_error as well.
 	- We need to go through all of Firefly and fix error handling. E.g.
-	  when malloc:ing, it's _NOT_ OK check for error, print error
-	  message and then keep executing. There's A LOT of stuff like this.
+	  add something more than the (sometimes) existing error prints
+	  for when malloc() fails. (Fixed in POSIX transports.)
 
 # TEST STUFF
 	- The eth_posix test suite fails infrequently on a ubu10.04 32b vm
-      with incorrect sender etc. Not reproducible on ubu12.04 64b.
+	  with incorrect sender etc. Not reproducible on ubu12.04 64b.
+	  (These looks like packets sent from another adapter. Why
+	  they show up on loopback is undetermined.)
 
 	- Try limiting the pingpong suite to first open channel and then
-	  continue.
+	  continue. (What does this mean?)
 
 	- Fix test_proto_memman, it currently doesn't even compile.
 
