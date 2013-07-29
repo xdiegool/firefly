@@ -177,11 +177,11 @@ void test_pop_empty()
 
 void test_length()
 {
-	const int k_len = 256;
+	const size_t k_len = 256;
 	struct firefly_event_queue *q =
 		firefly_event_queue_new(firefly_event_add, k_len, NULL);
 
-	for (int i = 0; i < k_len; i++) {
+	for (size_t i = 0; i < k_len; i++) {
 		q->offer_event_cb(q, 1, NULL, NULL);
 	}
 

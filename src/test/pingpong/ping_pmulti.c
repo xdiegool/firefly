@@ -168,6 +168,8 @@ static void *udp_reader_thread_main(void *args)
 	llp = (struct firefly_transport_llp *) args;
 	while (1)
 		firefly_transport_udp_posix_read(llp);
+
+	return NULL;
 }
 
 static void *eth_reader_thread_main(void *args)
@@ -180,6 +182,8 @@ static void *eth_reader_thread_main(void *args)
 	tv.tv_usec = 0;
 	while (1)
 		firefly_transport_eth_posix_read(llp, &tv);
+
+	return NULL;
 }
 
 void *ping_main_thread(void *arg)

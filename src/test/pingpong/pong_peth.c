@@ -88,6 +88,7 @@ void pong_chan_on_restrict_change(struct firefly_channel *chan,
 {
 	UNUSED_VAR(chan);
 	UNUSED_VAR(rinfo);
+
 	printf("restrict change\n");
 }
 

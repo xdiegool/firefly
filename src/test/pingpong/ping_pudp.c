@@ -81,17 +81,10 @@ void ping_chan_restr_info(struct firefly_channel *chan,
 		ping_pass_test(CHAN_UNRESTRICTED);
 		firefly_channel_close(chan);
 		break;
-	case RESTRICTED: {
-		/* Send data */
-		pthread_t sender;
-
+	case RESTRICTED:
 		ping_pass_test(CHAN_RESTRICTED);
-		if (pthread_create(&sender, NULL, send_data, chan))
-			warn("Could not create sender thread for channel.");
-		else
-			pthread_detach(sender);
-
-	}
+		/* Send data */
+		send_data(chan);
 		break;
 	case RESTRICTION_DENIED:
 		/* Fail */

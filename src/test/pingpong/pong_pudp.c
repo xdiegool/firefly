@@ -174,16 +174,9 @@ void pong_channel_rejected(struct firefly_connection *conn)
 
 void pong_handle_pingpong_data(pingpong_data *data, void *ctx)
 {
-	pthread_t sender;
-
 	UNUSED_VAR(data);
 	pong_pass_test(DATA_RECEIVE);
-	if (pthread_create(&sender, NULL, send_data_and_close, ctx)) {
-		fprintf(stderr, "channel_received: Could not create sender "
-			"thread for channel.\n");
-	} else {
-		pthread_detach(sender);
-	}
+	send_data_and_close(ctx);
 }
 
 void *send_data_and_close(void *args)

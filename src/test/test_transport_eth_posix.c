@@ -514,7 +514,6 @@ void test_eth_llp_free_mult_conns()
 {
 	struct firefly_transport_llp *llp = firefly_transport_llp_eth_posix_new(
 					"lo", NULL, eq);
-	struct firefly_connection *conn;
 
 	conn = firefly_connection_new(NULL, NULL, eq,
 			firefly_transport_connection_eth_posix_new(llp,
