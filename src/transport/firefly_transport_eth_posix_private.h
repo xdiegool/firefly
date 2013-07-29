@@ -2,11 +2,13 @@
 #ifndef FIREFLY_TRANSPORT_ETH_POSIX_PRIVATE_H
 #define FIREFLY_TRANSPORT_ETH_POSIX_PRIVATE_H
 
+#include <netpacket/packet.h>	// defines sockaddr_ll
+#include <signal.h>
 
 #include <transport/firefly_transport.h>
-#include "transport/firefly_transport_private.h"
 #include <transport/firefly_transport_eth_posix.h>
-#include <signal.h>
+
+#include "transport/firefly_transport_private.h"
 
 #define FIREFLY_ETH_PROTOCOL	0x1337
 
@@ -24,9 +26,9 @@ struct firefly_transport_connection_eth_posix {
 
 struct firefly_event_llp_read_eth_posix {
 	struct firefly_transport_llp *llp;
-	struct sockaddr_ll *addr;
-	unsigned char *data;
+	struct sockaddr_ll addr;
 	size_t len;
+	unsigned char data[];
 };
 
 int firefly_transport_eth_posix_read_event(void *event_arg);

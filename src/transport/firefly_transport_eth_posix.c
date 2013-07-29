@@ -17,7 +17,6 @@
 #include <sys/ioctl.h>		// defines SIOCGIFINDEX
 #include <unistd.h>			// defines close
 #include <netinet/ether.h>	// defines ETH_P_ALL, AF_PACKET
-#include <netpacket/packet.h>	// defines sockaddr_ll
 #include <arpa/inet.h>		// defines htons
 #include <linux/if.h>		// defines ifreq, IFNAMSIZ
 
@@ -249,10 +248,11 @@ void firefly_transport_eth_posix_read(struct firefly_transport_llp *llp,
 {
 	struct firefly_event_llp_read_eth_posix *ev_arg;
 	struct transport_llp_eth_posix *llp_eth;
+	socklen_t addr_len;
 	unsigned char tmp_buffer[1500];
+	struct sockaddr_ll tmp_address;
 	fd_set fs;
 	int res;
-	void *tmp;
 
 	llp_eth = llp->llp_platspec;
 	FD_ZERO(&fs);
@@ -265,30 +265,9 @@ void firefly_transport_eth_posix_read(struct firefly_transport_llp *llp,
 		return;
 	}
 
-	ev_arg = malloc(sizeof(*ev_arg));
-	tmp = malloc(sizeof(struct sockaddr_ll));
-	if (!ev_arg || !tmp) {
-		FFL(FIREFLY_ERROR_ALLOC);
-		return;
-	}
-	ev_arg->addr = tmp;
-
-	ev_arg->len = 0;
-	ev_arg->data = NULL;
-	ev_arg->llp = llp;
-
-	// Read data from socket, = 0 is crucial due to ioctl only sets the
-	// first 32 bits of pkg_len
-	/*res = ioctl(llp_eth->socket, FIONREAD, &ev_arg->len);*/
-	/*if (res == -1) {*/
-		/*FFL(FIREFLY_ERROR_SOCKET);*/
-		/*ev_arg->len = 0;*/
-		/*return;*/
-	/*}*/
-
-	socklen_t addr_len = sizeof(*ev_arg->addr);
+	addr_len = sizeof(tmp_address);
 	res = recvfrom(llp_eth->socket, tmp_buffer, 1500, MSG_DONTWAIT,
-			(struct sockaddr *) ev_arg->addr, &addr_len);
+			(struct sockaddr *) &tmp_address, &addr_len);
 	if (res == -EWOULDBLOCK || res == -EAGAIN) {
 		return;
 	} else if (res < 0) {
@@ -297,17 +276,16 @@ void firefly_transport_eth_posix_read(struct firefly_transport_llp *llp,
 		firefly_error(FIREFLY_ERROR_SOCKET, 3,
 			      "recvfrom() failed in %s.\n%s()\n",
 			      __FUNCTION__, err_buf);
-		free(ev_arg->addr);
-		free(ev_arg);
 		return;
 	}
-
-	ev_arg->len = res;
-	ev_arg->data = malloc(ev_arg->len);
-	if (!ev_arg->data) {
+	ev_arg = malloc(sizeof(*ev_arg) + res);
+	if (!ev_arg) {
 		FFL(FIREFLY_ERROR_ALLOC);
 		return;
 	}
+	ev_arg->len = res;
+	ev_arg->addr = tmp_address;
+	ev_arg->llp = llp;
 	memcpy(ev_arg->data, tmp_buffer, ev_arg->len);
 
 	llp_eth->event_queue->offer_event_cb(llp_eth->event_queue,
@@ -317,25 +295,29 @@ void firefly_transport_eth_posix_read(struct firefly_transport_llp *llp,
 
 int firefly_transport_eth_posix_read_event(void *event_args)
 {
-	struct firefly_event_llp_read_eth_posix *ev_a = event_args;
-	struct transport_llp_eth_posix *llp_eth = ev_a->llp->llp_platspec;
+	struct firefly_event_llp_read_eth_posix *ev_a;
+	struct transport_llp_eth_posix *llp_eth;
+	struct firefly_connection *conn;
 
-	struct firefly_connection *conn = find_connection(ev_a->llp, ev_a->addr,
-			connection_eq_addr);
+	ev_a = event_args;
+	llp_eth = ev_a->llp->llp_platspec;
+	conn = find_connection(ev_a->llp, &ev_a->addr, connection_eq_addr);
 	if (conn == NULL && llp_eth->on_conn_recv != NULL) {
 		char mac_addr[18];
-		get_mac_addr(ev_a->addr, mac_addr);
+		get_mac_addr(&ev_a->addr, mac_addr);
 		if (llp_eth->on_conn_recv(ev_a->llp, mac_addr)) {
-			return llp_eth->event_queue->offer_event_cb(llp_eth->event_queue,
+			/* Connection accepted; reschedule event. */
+			return llp_eth->event_queue->offer_event_cb(
+					llp_eth->event_queue,
 					FIREFLY_PRIORITY_HIGH,
-					firefly_transport_eth_posix_read_event, ev_a);
+					firefly_transport_eth_posix_read_event,
+					ev_a);
 		}
 	} else {
 		ev_a->llp->protocol_data_received_cb(conn, ev_a->data, ev_a->len);
 	}
-	free(ev_a->data);
-	free(ev_a->addr);
 	free(ev_a);
+
 	return 0;
 }
 
