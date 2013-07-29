@@ -41,9 +41,9 @@ struct firefly_transport_connection_udp_posix {
 
 struct firefly_event_llp_read_udp_posix {
 	struct firefly_transport_llp *llp;
-	struct sockaddr_in *addr;
-	unsigned char *data;
+	struct sockaddr_in addr;
 	size_t len;
+	unsigned char data[];
 };
 
 int firefly_transport_udp_posix_read_event(void *event_arg);

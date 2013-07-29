@@ -351,9 +351,8 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 	struct transport_llp_udp_posix *llp_udp;
 	fd_set fs;
 	int res;
-	size_t pkg_len = 0;
-	struct sockaddr_in *remote_addr;
-	unsigned char *data;
+	size_t pkg_len = 0;	/* ioctl() sets only the lower 32 bit. */
+	struct sockaddr_in remote_addr;
 	struct firefly_event_llp_read_udp_posix *ev_arg;
 	socklen_t len;
 
@@ -364,40 +363,28 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 		res = select(llp_udp->local_udp_socket + 1, &fs, NULL, NULL, NULL);
 	} while (res == -1 && errno == EINTR);
 	if (res == -1) {
-		switch (errno) {
-		case ENOMEM:
+		if (errno == ENOMEM) {
 			firefly_error(FIREFLY_ERROR_ALLOC, 1, "select()");
-			break;
-		default:
+		} else {
 			firefly_error(FIREFLY_ERROR_SOCKET, 2,
 				      "select() ret unspecified %d", res);
 		}
-
 		return;
 	}
-
-	// Read data from socket, = 0 is crucial due to ioctl only sets the
-	// first 32 bits of pkg_len
 	res = ioctl(llp_udp->local_udp_socket, FIONREAD, &pkg_len);
 	if (res == -1) {
 		FFL(FIREFLY_ERROR_SOCKET);
 		pkg_len = 0;
 	}
-	/* socklen_t len = sizeof(struct sockaddr_in); */
-
-	len = sizeof(*remote_addr);
-	remote_addr = malloc(len);
-	data = malloc(pkg_len);
-	ev_arg = malloc(sizeof(*ev_arg));
-	if (!data || !remote_addr || !ev_arg) {
+	ev_arg = malloc(sizeof(*ev_arg) + pkg_len);
+	if (!ev_arg) {
 		FFL(FIREFLY_ERROR_ALLOC);
-		free(data);
-		free(remote_addr);
 		free(ev_arg);
 		return;
 	}
-	res = recvfrom(llp_udp->local_udp_socket, data, pkg_len, 0,
-			(struct sockaddr *) remote_addr, &len);
+	len = sizeof(remote_addr);
+	res = recvfrom(llp_udp->local_udp_socket, ev_arg->data, pkg_len, 0,
+		       (struct sockaddr *) &remote_addr, &len);
 	if (res == -1) {
 		char err_buf[ERROR_STR_MAX_LEN];
 		strerror_r(errno, err_buf, ERROR_STR_MAX_LEN);
@@ -406,8 +393,8 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 	}
 	ev_arg->llp	= llp;
 	ev_arg->addr	= remote_addr;
-	ev_arg->data	= data;
 	ev_arg->len	= pkg_len;
+	/* Member 'data' already filled in recvfrom(). */
 
 	llp_udp->event_queue->offer_event_cb(llp_udp->event_queue,
 			FIREFLY_PRIORITY_HIGH,
@@ -425,12 +412,12 @@ int firefly_transport_udp_posix_read_event(void *event_arg)
 	llp_udp = ev_arg->llp->llp_platspec;
 
 	// Find existing connection or create new.
-	conn = find_connection(ev_arg->llp, ev_arg->addr, connection_eq_inaddr);
+	conn = find_connection(ev_arg->llp, &ev_arg->addr, connection_eq_inaddr);
 	if (conn == NULL && llp_udp->on_conn_recv != NULL) {
 		char ip_addr[INET_ADDRSTRLEN];
-		sockaddr_in_ipaddr(ev_arg->addr, ip_addr);
+		sockaddr_in_ipaddr(&ev_arg->addr, ip_addr);
 		if (llp_udp->on_conn_recv(ev_arg->llp, ip_addr,
-				sockaddr_in_port(ev_arg->addr))) {
+				sockaddr_in_port(&ev_arg->addr))) {
 			return llp_udp->event_queue->offer_event_cb(llp_udp->event_queue,
 					FIREFLY_PRIORITY_HIGH,
 					firefly_transport_udp_posix_read_event,
@@ -439,8 +426,6 @@ int firefly_transport_udp_posix_read_event(void *event_arg)
 	} else {
 		ev_arg->llp->protocol_data_received_cb(conn, ev_arg->data, ev_arg->len);
 	}
-	free(ev_arg->data);
-	free(ev_arg->addr);
 	free(ev_arg);
 	return 0;
 }
