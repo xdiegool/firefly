@@ -250,3 +250,8 @@ void *firefly_event_queue_get_context(struct firefly_event_queue *eq)
 {
 	return eq->context;
 }
+
+int64_t firefly_event_queue_event_id(struct firefly_event *ev)
+{
+	return ev->id;
+}

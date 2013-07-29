@@ -89,6 +89,9 @@ int main()
 			(CU_add_test(conn_suite, "test_conn_close_mult_chans",
 					test_conn_close_mult_chans) == NULL)
 			||
+			(CU_add_test(conn_suite, "test_conn_close_mult_chans_overflow",
+					test_conn_close_mult_chans_overflow) == NULL)
+			||
 			(CU_add_test(conn_suite, "test_conn_close_recv_any",
 					test_conn_close_recv_any) == NULL)
 			||

@@ -113,49 +113,54 @@ int firefly_connection_open(
 			conn, 0, NULL) : -1;
 }
 
-void firefly_connection_close(struct firefly_connection *conn)
+int64_t firefly_connection_close(struct firefly_connection *conn)
 {
 	int ret;
 
 	ret = conn->event_queue->offer_event_cb(conn->event_queue,
-			FIREFLY_PRIORITY_MEDIUM, firefly_connection_close_event,
+			FIREFLY_CONNECTION_CLOSE_PRIORITY, firefly_connection_close_event,
 			conn, 0, NULL);
 	if (ret < 0) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1,
 			      "could not add event to queue");
 	}
+	return ret;
 }
 
 int firefly_connection_close_event(void *event_arg)
 {
 	struct firefly_connection *conn;
 	struct channel_list_node *head;
+	int64_t deps[FIREFLY_EVENT_QUEUE_MAX_DEPENDS] = {0};
 	bool empty = true;
+	int count = 0;
+	int64_t ret;
 
 	conn = event_arg;
 	conn->open = FIREFLY_CONNECTION_CLOSED;
 
 	head = conn->chan_list;
-	while (head != NULL) {
+	while (head != NULL && count < FIREFLY_EVENT_QUEUE_MAX_DEPENDS) {
 		empty = false;
-		firefly_channel_close(head->chan);
+		deps[count] = firefly_channel_close(head->chan);
 		head = head->next;
+		++count;
 	}
-	if (empty) {
-		int ret;
-
-		if (conn->transport != NULL && conn->transport->close != NULL) {
-			conn->transport->close(conn);
-		}
+	if (head == NULL) {
 		ret = conn->event_queue->offer_event_cb(conn->event_queue,
-				FIREFLY_PRIORITY_LOW,
-				firefly_connection_free_event, conn, 0, NULL);
-		if (ret < 0) {
-			firefly_error(FIREFLY_ERROR_ALLOC, 1,
-				      "could not add event to queue");
-		}
+				FIREFLY_CONNECTION_CLOSE_PRIORITY,
+				firefly_connection_free_event, conn, count, deps);
 	} else {
-		firefly_connection_close(conn);
+		ret = conn->event_queue->offer_event_cb(conn->event_queue,
+				FIREFLY_CONNECTION_CLOSE_PRIORITY,
+				firefly_connection_close_event,
+				conn, count, deps);
+	}
+
+	if (ret < 0) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 1,
+				  "could not add event to queue");
+		return -1;
 	}
 
 	return 0;
@@ -166,6 +171,9 @@ int firefly_connection_free_event(void *event_arg)
 	struct firefly_connection *conn;
 
 	conn = event_arg;
+	if (conn->transport != NULL && conn->transport->close != NULL) {
+		conn->transport->close(conn);
+	}
 	firefly_connection_free(&conn);
 
 	return 0;

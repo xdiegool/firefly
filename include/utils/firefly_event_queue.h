@@ -182,4 +182,9 @@ size_t firefly_event_queue_length(struct firefly_event_queue *eq);
  */
 void *firefly_event_queue_get_context(struct firefly_event_queue *eq);
 
+/**
+ * @brief Get the id of an event
+ */
+int64_t firefly_event_queue_event_id(struct firefly_event *ev);
+
 #endif

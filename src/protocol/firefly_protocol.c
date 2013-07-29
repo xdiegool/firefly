@@ -128,27 +128,29 @@ int firefly_channel_open_event(void *event_arg)
 	return 0;
 }
 
-static void create_channel_closed_event(struct firefly_channel *chan)
+static int64_t create_channel_closed_event(struct firefly_channel *chan,
+		unsigned int nbr_deps, const int64_t *deps)
 {
-	int ret;
+	int64_t ret;
 
 	ret = chan->conn->event_queue->offer_event_cb(chan->conn->event_queue,
 			FIREFLY_PRIORITY_HIGH, firefly_channel_closed_event,
-			chan, 0, NULL);
+			chan, nbr_deps, deps);
 	if (ret < 0)
 		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Could not add event.");
+	return ret;
 }
 
-void firefly_channel_close(struct firefly_channel *chan)
+int64_t firefly_channel_close(struct firefly_channel *chan)
 {
 	struct firefly_event_chan_close *fecc;
 	struct firefly_connection *conn;
-	int ret;
+	int64_t ret;
 
 	fecc = FIREFLY_MALLOC(sizeof(*fecc));
 	if (!fecc) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Could not create event.");
-		return;
+		return -1;
 	}
 
 	conn = chan->conn;
@@ -164,11 +166,11 @@ void firefly_channel_close(struct firefly_channel *chan)
 		firefly_error(FIREFLY_ERROR_ALLOC, 1,
 			      "Could not add event to queue.");
 		FIREFLY_FREE(fecc);
-		 // We don't want to call the function below if we failed here
-		return;
+	} else {
+		ret = create_channel_closed_event(chan, 1, &ret);
 	}
 
-	create_channel_closed_event(chan);
+	return ret;
 }
 
 int firefly_channel_close_event(void *event_arg)
@@ -414,7 +416,7 @@ void handle_channel_close(firefly_protocol_channel_close *chan_close,
 	conn = context;
 	chan = find_channel_by_local_id(conn, chan_close->dest_chan_id);
 	if (chan != NULL){
-		create_channel_closed_event(chan);
+		create_channel_closed_event(chan, 0, NULL);
 	} else {
 		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
 			      "Received closed on non-existing channel.\n");

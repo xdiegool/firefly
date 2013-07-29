@@ -27,6 +27,10 @@
 
 static struct firefly_event_queue *eq = NULL;
 
+extern unsigned int nbr_added_events;
+extern int64_t test_event_ids[50];
+extern int64_t test_event_deps[50][FIREFLY_EVENT_QUEUE_MAX_DEPENDS];
+
 extern struct labcomm_decoder *test_dec;
 extern struct labcomm_encoder *test_enc;
 
@@ -47,7 +51,7 @@ int init_suit_proto_chan()
 {
 	int error = init_labcomm_test_enc_dec();
 
-	eq = firefly_event_queue_new(firefly_event_add, 10, NULL);
+	eq = firefly_event_queue_new(mock_test_event_add, 10, NULL);
 	error = eq == NULL ? 1 : error;
 	return error; // Success.
 }
@@ -74,6 +78,7 @@ void test_next_channel_id()
 	}
 	firefly_connection_close(conn);
 	event_execute_all_test(eq);
+	mock_test_event_queue_reset(eq);
 }
 
 void test_get_conn()
@@ -92,6 +97,7 @@ void test_get_conn()
 	firefly_channel_free(chan);
 	firefly_connection_close(conn);
 	event_execute_all_test(eq);
+	mock_test_event_queue_reset(eq);
 }
 
 void test_chan_open()
@@ -150,6 +156,7 @@ void test_chan_open()
 	chan_opened_called = false;
 	firefly_connection_close(conn);
 	event_execute_all_test(eq);
+	mock_test_event_queue_reset(eq);
 }
 
 static bool chan_accept_called = false;
@@ -216,6 +223,7 @@ void test_chan_recv_accept()
 
 	firefly_connection_close(conn);
 	event_execute_all_test(eq);
+	mock_test_event_queue_reset(eq);
 }
 
 static bool chan_recv_reject_chan(struct firefly_channel *chan)
@@ -270,6 +278,7 @@ void test_chan_recv_reject()
 	chan_accept_called = false;
 	firefly_connection_close(conn);
 	event_execute_all_test(eq);
+	mock_test_event_queue_reset(eq);
 }
 
 static bool chan_rejected_called = false;
@@ -329,6 +338,7 @@ void test_chan_open_rejected()
 	chan_opened_called = false;
 	firefly_connection_close(conn);
 	event_execute_all_test(eq);
+	mock_test_event_queue_reset(eq);
 }
 
 extern bool conn_recv_accept_called;
@@ -406,6 +416,7 @@ void test_chan_open_recv()
 	event_execute_all_test(eq);
 	free_tmp_data(&conn_open_write);
 	free_tmp_data(&conn_recv_write);
+	mock_test_event_queue_reset(eq);
 }
 
 static bool chan_closed_called = false;
@@ -429,8 +440,12 @@ void test_chan_close()
 	chan->remote_id = REMOTE_CHAN_ID;
 	add_channel_to_connection(chan, conn);
 
+	mock_test_event_queue_reset(eq);
 	// close channel
-	firefly_channel_close(chan);
+	int64_t id = firefly_channel_close(chan);
+	CU_ASSERT_EQUAL(nbr_added_events, 2);
+	CU_ASSERT_EQUAL(id, test_event_ids[1]);
+	CU_ASSERT_EQUAL(test_event_ids[0], test_event_deps[1][0]);
 	// pop event to send channel close
 	struct firefly_event *ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
@@ -456,6 +471,7 @@ void test_chan_close()
 	chan_closed_called = false;
 	firefly_connection_close(conn);
 	event_execute_all_test(eq);
+	mock_test_event_queue_reset(eq);
 }
 
 void test_chan_recv_close()
@@ -498,6 +514,7 @@ void test_chan_recv_close()
 	chan_closed_called = false;
 	firefly_connection_close(conn);
 	event_execute_all_test(eq);
+	mock_test_event_queue_reset(eq);
 }
 
 static bool sent_app_data = false;
@@ -567,6 +584,7 @@ void test_send_app_data()
 	firefly_connection_close(conn);
 	event_execute_all_test(eq);
 	labcomm_decoder_free(test_dec_2);
+	mock_test_event_queue_reset(eq);
 }
 
 void test_recv_app_data()
@@ -648,6 +666,7 @@ void test_recv_app_data()
 	labcomm_encoder_free(data_encoder);
 	firefly_connection_close(conn);
 	event_execute_all_test(eq);
+	mock_test_event_queue_reset(eq);
 }
 
 
@@ -1101,6 +1120,7 @@ void test_transmit_app_data_over_mock_trans_layer()
 			tmp = next;
 		}
 	}
+	mock_test_event_queue_reset(eq);
 }
 
 bool chan_accept_mock(struct firefly_channel *chan)
@@ -1454,6 +1474,7 @@ void test_chan_open_close_multiple()
 	firefly_connection_close(conn_open);
 	firefly_connection_close(conn_recv);
 	event_execute_all_test(eq);
+	mock_test_event_queue_reset(eq);
 }
 
 void test_nbr_chan()
@@ -1471,4 +1492,5 @@ void test_nbr_chan()
 	ln[1].next = NULL;
 	conn.chan_list->next = &ln[1];
 	CU_ASSERT_EQUAL(firefly_number_channels_in_connection(&conn), 2);
+	mock_test_event_queue_reset(eq);
 }

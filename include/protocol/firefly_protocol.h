@@ -97,8 +97,10 @@ void firefly_channel_open(struct firefly_connection *conn);
  *
  * @param chan The channel to close and free.
  * @param conn The connection of the channel.
+ *
+ * @return TODO
  */
-void firefly_channel_close(struct firefly_channel *chan);
+int64_t firefly_channel_close(struct firefly_channel *chan);
 
 /**
  * @brief A prototype for a callback from the protocol layer called when a new
@@ -212,8 +214,10 @@ int firefly_connection_open(
  * this function. It is not thread safe to continue to use a connection after it
  * is closed. Hence the application must make use of the event queue,
  * mutexes/locks or any other feature preventing concurrency.
+ *
+ * @return TODO
  */
-void firefly_connection_close(struct firefly_connection *conn);
+int64_t firefly_connection_close(struct firefly_connection *conn);
 
 /**
  * @brief Get the LabComm encoder associated with the supplied channel.

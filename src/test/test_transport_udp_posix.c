@@ -154,6 +154,7 @@ void test_recv_connection()
 	firefly_transport_udp_posix_read(llp);
 	event_execute_test(eq, 1);
 	CU_ASSERT_TRUE(good_conn_received);
+	event_execute_test(eq, 1);
 	data_received = false;
 	good_conn_received = false;
 	firefly_transport_llp_udp_posix_free(llp);
@@ -731,7 +732,7 @@ void test_llp_free_mult_conns_w_chans()
 	event_execute_test(eq, 1);
 
 	// 3 conn close, 3 conn free, llp free
-	event_execute_test(eq, 7);
+	event_execute_test(eq, 4);
 }
 
 int time_ms_diff(struct timespec *from, struct timespec *to)
