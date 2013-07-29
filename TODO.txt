@@ -37,6 +37,9 @@
 	  firefly_errors should be used since these are already printed when
 	  an error occurs. The same enum could possibly be used for
 	  channel_error as well.
+	- We need to go through all of Firefly and fix error handling. E.g.
+	  when malloc:ing, it's _NOT_ OK check for error, print error
+	  message and then keep executing. There's A LOT of stuff like this.
 
 # TEST STUFF
 	- The eth_posix test suite fails infrequently on a ubu10.04 32b vm
