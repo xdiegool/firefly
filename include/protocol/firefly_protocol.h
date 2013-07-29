@@ -21,8 +21,16 @@ struct firefly_channel;
  */
 struct firefly_connection;
 
+/**
+ * @brief An opaque structure that represents transport layer specific
+ * connection data and that allows the protocol layer to communicate
+ * with the transport layer.
+ */
 struct firefly_transport_connection;
 
+/**
+ * @brief Transitions between different restriction states.
+ */
 enum restriction_transition {
 	UNRESTRICTED,
 	RESTRICTED,
@@ -80,8 +88,11 @@ typedef void (* firefly_channel_rejected_f)(struct firefly_connection *conn);
 void firefly_channel_open(struct firefly_connection *conn);
 
 /**
- * @brief Offers an event to close the channel. The event will send a
- * firefly_protocol_channel_close packet, free it's memory and removes it from
+ * @brief Creates and offers first a close event for the channel and
+ * then a closed event for the same.
+ *
+ * The close event will send a firefly_protocol_channel_close packet.
+ * The closed event will free the channel's memory and remove it from
  * the connection's chan_list.
  *
  * @param chan The channel to close and free.
@@ -91,9 +102,11 @@ void firefly_channel_close(struct firefly_channel *chan);
 
 /**
  * @brief A prototype for a callback from the protocol layer called when a new
- * channel is received and a accept/decline descision must be done.
+ * channel is received and a accept/decline decision must be done.
  *
  * @param chan The newly received channel.
+ * @return A boolean indicating whether the channel should be accepted
+ * or not.
  * @retval true Indicates that the channel is accepted.
  * @retval false Indicates that the channal is rejected.
  */
@@ -111,7 +124,10 @@ typedef void (* firefly_channel_is_open_f)(struct firefly_channel *chan);
  * @brief A prototype for a callback from the protocol layer called when a
  * channel is closed.
  *
- * @qaram chan The closed channel.
+ * @warning The channel that is passed as a parameter will be freed once
+ * the callback returns.
+ *
+ * @param chan The closed channel.
  */
 typedef void (* firefly_channel_closed_f)(struct firefly_channel *chan);
 
@@ -131,7 +147,11 @@ typedef void (* firefly_channel_restrict_info_f)(struct firefly_channel *chan,
 						 enum restriction_transition rinfo);
 
 /**
- * @brief TODO
+ * @brief Called when an error occurs on the provided channel.
+ *
+ * Currently unused.
+ *
+ * TODO: Should provide some error information as well.
  */
 typedef void (* firefly_channel_error_f)(struct firefly_channel *chan);
 
@@ -145,16 +165,20 @@ typedef void (* firefly_connection_error_f)(struct firefly_connection *conn);
  */
 typedef void (* firefly_connection_opened_f)(struct firefly_connection *conn);
 
+/**
+ * @brief Holds the callback functions that are called when there is any
+ * action on channels or connections.
+ */
 struct firefly_connection_actions {
-	firefly_channel_accept_f	channel_recv;/** TODO */
+	firefly_channel_accept_f	channel_recv;		/**< Called when a new channel is received. */
 	firefly_channel_is_open_f	channel_opened;		/**< Called when a channel has been opened. */
-	firefly_channel_rejected_f	channel_rejected;	/**< Called if this  channel could not be opened due to remote node rejected it. */
+	firefly_channel_rejected_f	channel_rejected;	/**< Called if this channel could not be opened due to remote node rejected it. */
 	firefly_channel_closed_f	channel_closed;		/**< Called when a channel has been closed. */
 	firefly_channel_restrict_f	channel_restrict;	/**< Called on incoming restriction request. */
 	firefly_channel_restrict_info_f	channel_restrict_info;	/**< Called on restriction status change. */
-	firefly_channel_error_f		channel_error;/** TODO */
-	firefly_connection_error_f	connection_error;/** TODO */
-	firefly_connection_opened_f connection_opened;/** TODO */
+	firefly_channel_error_f		channel_error;		/**< Called when an error occurs on a channel. */
+	firefly_connection_error_f	connection_error;	/**< Called when an error occurs on a connection. */
+	firefly_connection_opened_f connection_opened;	/**< Called when a connection is opened.  */
 };
 
 
