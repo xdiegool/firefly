@@ -193,18 +193,14 @@ struct firefly_connection_actions {
 /**
  * Initializes a connection with protocol specific stuff.
  *
- * @param on_channel_opened Callback for when a channel has been opened.
- * @param on_channel_closed Callback for when a channel has been closed.
- * @param on_channel_recv Callback for when a channel has been recveived.
- * @param transport_write The interface between transport and protocol layer for
- * writing data.
- * @param transport_ack The interface between transport and protocol layer for
- * removing elements in the resend queue.
+ * @param actions A struct containing the callback functions used to
+ * signal different events to the application.
+ * @param memory_replacements A struct containing replacements for
+ * malloc/free. Ignored if set to NULL.
  * @param event_queue The event queue all events relating to this connection is
  * offered to.
- * @param plat_spec Transport layer specifik data.
- * @param plat_spec_free The funtion responsible for freeing the transport
- * specifik data.
+ * @param tc A struct containing the transport layer specific
+ * functions and data.
  *
  * @return int Indicating error if any.
  * @retval 0 if no error, negative error number otherwise.
