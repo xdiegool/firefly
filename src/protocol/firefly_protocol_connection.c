@@ -132,7 +132,6 @@ int firefly_connection_close_event(void *event_arg)
 	struct firefly_connection *conn;
 	struct channel_list_node *head;
 	int64_t deps[FIREFLY_EVENT_QUEUE_MAX_DEPENDS] = {0};
-	bool empty = true;
 	int count = 0;
 	int64_t ret;
 
@@ -141,7 +140,6 @@ int firefly_connection_close_event(void *event_arg)
 
 	head = conn->chan_list;
 	while (head != NULL && count < FIREFLY_EVENT_QUEUE_MAX_DEPENDS) {
-		empty = false;
 		deps[count] = firefly_channel_close(head->chan);
 		head = head->next;
 		++count;
