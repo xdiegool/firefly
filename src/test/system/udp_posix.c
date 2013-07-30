@@ -647,14 +647,14 @@ void mock_handle_time_sample(test_time_sample *d, void *ctx)
 	acc_delay += diff;
 }
 
-bool received_connection(
+int64_t received_connection(
 		struct firefly_transport_llp *llp,
 		const char *ip_addr, unsigned short port)
 {
 	UNUSED_VAR(llp);
 	UNUSED_VAR(ip_addr);
 	UNUSED_VAR(port);
-	return false;
+	return 0;
 }
 
 static struct firefly_channel *firefly_chan = NULL;

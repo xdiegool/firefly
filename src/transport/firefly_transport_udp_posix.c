@@ -425,12 +425,13 @@ int firefly_transport_udp_posix_read_event(void *event_arg)
 	if (conn == NULL && llp_udp->on_conn_recv != NULL) {
 		char ip_addr[INET_ADDRSTRLEN];
 		sockaddr_in_ipaddr(&ev_arg->addr, ip_addr);
-		if (llp_udp->on_conn_recv(ev_arg->llp, ip_addr,
-				sockaddr_in_port(&ev_arg->addr))) {
+		int64_t ev_id = 0;
+		if ((ev_id = llp_udp->on_conn_recv(ev_arg->llp, ip_addr,
+				sockaddr_in_port(&ev_arg->addr))) > 0) {
 			return llp_udp->event_queue->offer_event_cb(llp_udp->event_queue,
 					FIREFLY_PRIORITY_HIGH,
 					firefly_transport_udp_posix_read_event,
-					ev_arg, 0, NULL);
+					ev_arg, 1, &ev_id);
 		}
 	} else {
 		ev_arg->llp->protocol_data_received_cb(conn, ev_arg->data, ev_arg->len);

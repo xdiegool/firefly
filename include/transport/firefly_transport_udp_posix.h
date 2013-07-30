@@ -35,10 +35,9 @@ struct firefly_transport_llp_udp_posix;
  *
  * @param ip_addr The IP addr of the remote node.
  * @param port The port number of the remote node.
- * @return The opened connection.
- * @retval NULL if no connection was opened.
+ * @return Event id or 0.
  */
-typedef bool (*firefly_on_conn_recv_pudp)(
+typedef int64_t (*firefly_on_conn_recv_pudp)(
 		struct firefly_transport_llp *llp,
 		const char *ip_addr, unsigned short port);
 

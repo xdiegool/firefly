@@ -81,7 +81,7 @@ void pong_pudp_connection_opened(struct firefly_connection *conn)
 	/*pong_pass_test(CONNECTION_OPEN);*/
 }
 
-bool pong_udp_connection_received(
+int64_t pong_udp_connection_received(
 							struct firefly_transport_llp *llp,
 							const char *ip_addr,
 							unsigned short port)
@@ -90,15 +90,14 @@ bool pong_udp_connection_received(
 	if (strncmp(ip_addr, PING_ADDR, strlen(PING_ADDR)) == 0 &&
 		port == PING_PORT)
 	{
-		firefly_connection_open(&pong_udp_conn_actions, NULL, event_queue,
+		return firefly_connection_open(&pong_udp_conn_actions, NULL, event_queue,
 				firefly_transport_connection_udp_posix_new(
 						llp, ip_addr, port,
 						FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT));
-		return true;
 	} else {
 		fprintf(stderr, "ERROR: Received unknown connection: %s:%hu\n",
 				ip_addr, port);
-		return false;
+		return 0;
 	}
 }
 
@@ -212,19 +211,18 @@ struct firefly_connection_actions pong_eth_conn_actions = {
 	.connection_opened = pong_eth_connection_opened
 };
 
-bool pong_eth_connection_received(struct firefly_transport_llp *llp,
+int64_t pong_eth_connection_received(struct firefly_transport_llp *llp,
 							char *mac_addr)
 {
 	/* If address is correct, open a connection. */
 	if (strncmp(mac_addr, PING_MAC_ADDR, strlen(PING_MAC_ADDR)) == 0) {
 		printf("Recieved connection on %s!\n", PONG_IFACE);
-		firefly_connection_open(&pong_eth_conn_actions, NULL, event_queue,
+		return firefly_connection_open(&pong_eth_conn_actions, NULL, event_queue,
 				firefly_transport_connection_eth_posix_new(
 				llp, mac_addr, PONG_IFACE));
-		return true;
 	} else {
 		fprintf(stderr, "ERROR: Received unknown connection: %s\n", mac_addr);
-		return false;
+		return 0;
 	}
 }
 

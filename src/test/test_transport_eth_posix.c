@@ -44,9 +44,13 @@
 
 static struct firefly_event_queue *eq = NULL;
 
+extern unsigned int nbr_added_events;
+extern int64_t test_event_ids[50];
+extern int64_t test_event_deps[50][FIREFLY_EVENT_QUEUE_MAX_DEPENDS];
+
 int init_suit_eth_posix()
 {
-	eq = firefly_event_queue_new(firefly_event_add, 10, NULL);
+	eq = firefly_event_queue_new(mock_test_event_add, 10, NULL);
 	return 0; // Success.
 }
 
@@ -169,7 +173,7 @@ static void recv_data(int socket)
 }
 
 static bool recv_conn_called = false;
-static bool on_conn_recv(
+static int64_t on_conn_recv(
 		struct firefly_transport_llp *llp, char *mac_address)
 {
 	UNUSED_VAR(llp);
@@ -179,10 +183,10 @@ static bool on_conn_recv(
 	}
 	CU_ASSERT_NSTRING_EQUAL(mac_address, remote_mac_addr, 18);
 	recv_conn_called = true;
-	return false;
+	return 0;
 }
 
-static bool on_conn_recv_keep(
+static int64_t on_conn_recv_keep(
 		struct firefly_transport_llp *llp, char *mac_address)
 {
 	UNUSED_VAR(llp);
@@ -191,23 +195,23 @@ static bool on_conn_recv_keep(
 		printf("Mac: %s\n", mac_address);
 	}
 	recv_conn_called = true;
-	int res = firefly_connection_open(NULL, NULL, eq,
+	int64_t res = firefly_connection_open(NULL, NULL, eq,
 			firefly_transport_connection_eth_posix_new(llp,
 				mac_address, "lo"));
 	CU_ASSERT_TRUE(res > 0);
-	return true;
+	return res;
 }
 
-static bool on_conn_recv_keep_two(
+static int64_t on_conn_recv_keep_two(
 		struct firefly_transport_llp *llp, char *mac_address)
 {
 	UNUSED_VAR(llp);
 	recv_conn_called = true;
-	int res = firefly_connection_open(NULL, NULL, eq,
+	int64_t res = firefly_connection_open(NULL, NULL, eq,
 			firefly_transport_connection_eth_posix_new(llp,
 				mac_address, "lo"));
 	CU_ASSERT_TRUE_FATAL(res > 0);
-	return true;
+	return res;
 }
 
 void test_eth_recv_connection()
@@ -266,7 +270,11 @@ void test_eth_recv_conn_and_data()
 	send_data();
 
 	firefly_transport_eth_posix_read(llp, NULL);
+	mock_test_event_queue_reset(eq);
 	event_execute_test(eq, 1);
+
+	CU_ASSERT_EQUAL(nbr_added_events, 2);
+	CU_ASSERT_EQUAL(test_event_ids[0], test_event_deps[1][0]);
 
 	CU_ASSERT_TRUE(recv_conn_called);
 	recv_conn_called = false;

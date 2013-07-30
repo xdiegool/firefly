@@ -43,9 +43,13 @@ extern bool was_in_error;
 extern enum firefly_error expected_error;
 static struct firefly_event_queue *eq = NULL;
 
+extern unsigned int nbr_added_events;
+extern int64_t test_event_ids[50];
+extern int64_t test_event_deps[50][FIREFLY_EVENT_QUEUE_MAX_DEPENDS];
+
 int init_suit_udp_posix()
 {
-	eq = firefly_event_queue_new(firefly_event_add, 10, NULL);
+	eq = firefly_event_queue_new(mock_test_event_add, 10, NULL);
 	return 0; // Success.
 }
 
@@ -124,7 +128,7 @@ static void send_data(struct sockaddr_in *remote_addr, unsigned short port,
 
 static bool good_conn_received = false;
 /* Callback when a new connection arrives at transport layer. */
-bool recv_conn_recv_conn(
+int64_t recv_conn_recv_conn(
 		struct firefly_transport_llp *llp, const char *ipaddr, unsigned short port)
 {
 	CU_ASSERT_STRING_EQUAL(ipaddr, "127.0.0.1");
@@ -133,8 +137,8 @@ bool recv_conn_recv_conn(
 	struct firefly_transport_connection *conn_udp =
 		firefly_transport_connection_udp_posix_new(llp, ipaddr, port, 1000);
 
-	int res = firefly_connection_open(NULL, NULL, eq, conn_udp);
-	return res > 0;
+	int64_t res = firefly_connection_open(NULL, NULL, eq, conn_udp);
+	return res;
 }
 
 /* Test receiving a new connection.*/
@@ -161,14 +165,14 @@ void test_recv_connection()
 	event_execute_all_test(eq);
 }
 
-bool recv_data_recv_conn(
+int64_t recv_data_recv_conn(
 		struct firefly_transport_llp *llp, const char *ip_addr, unsigned short port)
 {
 	UNUSED_VAR(llp);
 	UNUSED_VAR(ip_addr);
 	UNUSED_VAR(port);
 	CU_FAIL("Received connection but shouldn't have.\n");
-	return false;
+	return 0;
 }
 
 static struct firefly_connection *tmp_conn;
@@ -224,7 +228,11 @@ void test_recv_conn_and_data()
 
 	// Set up a connection over local loopback.
 	firefly_transport_udp_posix_read(llp);
+	mock_test_event_queue_reset(eq);
 	event_execute_test(eq, 1);
+
+	CU_ASSERT_EQUAL(nbr_added_events, 2);
+	CU_ASSERT_EQUAL(test_event_ids[0], test_event_deps[1][0]);
 
 	CU_ASSERT_TRUE(good_conn_received);
 	event_execute_test(eq, 2);
@@ -298,15 +306,15 @@ void test_recv_conn_keep()
 	event_execute_all_test(eq);
 }
 
-bool recv_conn_keep_two(struct firefly_transport_llp *llp,
+int64_t recv_conn_keep_two(struct firefly_transport_llp *llp,
 		const char *ipaddr, unsigned short port)
 {
 	good_conn_received = true;
 	struct firefly_transport_connection *conn_udp =
 		firefly_transport_connection_udp_posix_new(llp, ipaddr, port, 0);
 
-	int res = firefly_connection_open(NULL, NULL, eq, conn_udp);
-	return res > 0;
+	int64_t res = firefly_connection_open(NULL, NULL, eq, conn_udp);
+	return res;
 }
 
 void test_recv_conn_keep_two()
@@ -355,14 +363,14 @@ void test_recv_conn_keep_two()
 	event_execute_all_test(eq);
 }
 
-bool recv_conn_reject_recv_conn(struct firefly_transport_llp *llp,
+int64_t recv_conn_reject_recv_conn(struct firefly_transport_llp *llp,
 		const char *ip_addr, unsigned short port)
 {
 	UNUSED_VAR(llp);
 	UNUSED_VAR(ip_addr);
 	UNUSED_VAR(port);
 	good_conn_received = true;
-	return false;
+	return 0;
 }
 
 void test_recv_conn_reject()
@@ -450,7 +458,7 @@ void test_conn_open_and_recv()
 	event_execute_all_test(eq);
 }
 
-bool open_and_recv_conn_recv_conn(struct firefly_transport_llp *llp,
+int64_t open_and_recv_conn_recv_conn(struct firefly_transport_llp *llp,
 		const char *ipaddr, unsigned short port)
 {
 	good_conn_received = true;
@@ -458,7 +466,7 @@ bool open_and_recv_conn_recv_conn(struct firefly_transport_llp *llp,
 		firefly_transport_connection_udp_posix_new(llp, ipaddr, port, 1000);
 
 	int res = firefly_connection_open(NULL, NULL, eq, conn_udp);
-	return res > 0;
+	return res;
 }
 
 void test_open_and_recv_with_two_llp()

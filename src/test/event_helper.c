@@ -38,7 +38,7 @@ int64_t mock_test_event_add(struct firefly_event_queue *eq, unsigned char prio,
 	int64_t ret;
 	ret = firefly_event_add(eq, prio, execute, context, nbr_depends, depends);
 	test_event_ids[nbr_added_events] = ret;
-	for (int i = 0; i < nbr_depends; i++) {
+	for (unsigned int i = 0; i < nbr_depends; i++) {
 		test_event_deps[nbr_added_events][i] = depends[i];
 	}
 	++nbr_added_events;

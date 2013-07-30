@@ -9,7 +9,7 @@ struct transport_llp_eth_posix;
 
 struct firefly_transport_connection_eth_posix;
 
-typedef bool (*firefly_on_conn_recv_eth_posix_f)(
+typedef int64_t (*firefly_on_conn_recv_eth_posix_f)(
 		struct firefly_transport_llp *llp, char *mac_address);
 
 struct firefly_transport_llp *firefly_transport_llp_eth_posix_new(
