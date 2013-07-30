@@ -6,6 +6,8 @@
 		  been fixed (see # TEST STUFF below).
 		- Look through the entire Makefile to see if there are targets
 		  left to move over to CMake.
+		- Make use of DEBUG vs RELEASE builds that enables or disables
+		  the CFLAGs -g and -O[0-3] (and possibly more).
 
 # HALF OPEN CONNECTION
     Impl. half open on connections, can send but not receive on a half

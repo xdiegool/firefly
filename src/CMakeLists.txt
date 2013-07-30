@@ -67,7 +67,7 @@ if(CMAKE_CROSSCOMPILING)
 	JOIN("${CMAKE_C_FLAGS}" CMAKE_C_FLAGS)
 else()
 	# CFLAGS when compiling normally:
-	set(CMAKE_C_FLAGS "${C_STD} ${ERR_FLAGS} ${MACROS_DEF}")
+	set(CMAKE_C_FLAGS "${C_STD} ${ERR_FLAGS} ${MACROS_DEF} -g")
 endif(CMAKE_CROSSCOMPILING)
 ## }}}
 
