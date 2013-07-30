@@ -30,6 +30,9 @@
 	- We need to go through all of Firefly and fix error handling. E.g.
 	  add something more than the (sometimes) existing error prints
 	  for when malloc() fails. (Fixed in POSIX transports.)
+	- In firefly_connection_actions, channel_rejected should be merged
+	  with channel_error since the rejected is an error state (compare
+	  with sockets in Java where an exception is thrown on failure).
 
 # TEST STUFF
 	- The eth_posix test suite fails infrequently on a ubu10.04 32b vm

@@ -170,6 +170,12 @@ typedef void (* firefly_connection_opened_f)(struct firefly_connection *conn);
 /**
  * @brief Holds the callback functions that are called when there is any
  * action on channels or connections.
+ *
+ * Only the channel_opened callback is mandatory, the others are
+ * optional to implement. It might not make sense for applications to
+ * skip them but they are free to do so if they want to. If
+ * channel_opened is missing, the library will segfault when it should
+ * have been called.
  */
 struct firefly_connection_actions {
 	firefly_channel_accept_f	channel_recv;		/**< Called when a new channel is received. */
