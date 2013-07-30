@@ -12,8 +12,21 @@
 
 #define CHANNEL_ID_NOT_SET		(-1)
 #define BUFFER_SIZE			(128)
-#define FIREFLY_CONNECTION_CLOSED	(0)
-#define FIREFLY_CONNECTION_OPEN		(1)
+
+/**
+ * @defgroup conn_state Connection State Values
+ * @brief The different values the state of a connection may have.
+ */
+/**
+ * @brief Defines the opened state of a connection.
+ * @ingroup conn_state
+ */
+#define FIREFLY_CONNECTION_OPEN (1)
+/**
+ * @brief Defines the closed state of a connection.
+ * @ingroup conn_state
+ */
+#define FIREFLY_CONNECTION_CLOSED (0)
 
 #define FIREFLY_CONNECTION_CLOSE_PRIORITY FIREFLY_PRIORITY_MEDIUM
 

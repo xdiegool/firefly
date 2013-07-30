@@ -152,10 +152,7 @@ static void check_llp_free(struct firefly_transport_llp *llp)
 int firefly_transport_llp_eth_xeno_free_event(void *event_arg)
 {
 	struct firefly_transport_llp *llp;
-	struct transport_llp_eth_xeno *llp_eth;
-
 	llp = event_arg;
-	llp_eth = llp->llp_platspec;
 
 	llp->state = FIREFLY_LLP_CLOSING;
 

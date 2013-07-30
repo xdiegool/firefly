@@ -11,21 +11,6 @@
 #include <protocol/firefly_protocol_private.h>
 
 /**
- * @defgroup conn_state Connection State Values
- * @brief The different values the state of a connection may have.
- */
-/**
- * @brief Defines the opened state of a connection.
- * @ingroup conn_state
- */
-#define FIREFLY_CONNECTION_OPEN (1)
-/**
- * @brief Defines the closed state of a connection.
- * @ingroup conn_state
- */
-#define FIREFLY_CONNECTION_CLOSED (0)
-
-/**
  * @brief The different states a llp may have. Used to enable multiple
  * asynchronous actions which depends on each other.
  */
