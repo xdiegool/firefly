@@ -101,6 +101,7 @@ struct firefly_transport_llp *firefly_transport_llp_eth_posix_new(
 	llp->llp_platspec		= llp_eth;
 	llp->conn_list			= NULL;
 	llp->protocol_data_received_cb	= protocol_data_received;
+	llp->state				= FIREFLY_LLP_OPEN;
 	return llp;
 }
 
@@ -114,6 +115,17 @@ void firefly_transport_llp_eth_posix_free(struct firefly_transport_llp *llp)
 	FFLIF(ret < 0, FIREFLY_ERROR_ALLOC);
 }
 
+static void check_llp_free(struct firefly_transport_llp *llp)
+{
+	struct transport_llp_eth_posix *llp_eth;
+	if (llp->state == FIREFLY_LLP_CLOSING && llp->conn_list == NULL) {
+		llp_eth = llp->llp_platspec;
+		close(llp_eth->socket);
+		free(llp_eth);
+		free(llp);
+	}
+}
+
 int firefly_transport_llp_eth_posix_free_event(void *event_arg)
 {
 	struct firefly_transport_llp *llp;
@@ -122,21 +134,15 @@ int firefly_transport_llp_eth_posix_free_event(void *event_arg)
 	llp = event_arg;
 	llp_eth = llp->llp_platspec;
 
-	bool empty = true;
+	llp->state = FIREFLY_LLP_CLOSING;
+
 	// Close all connections.
 	struct llp_connection_list_node *head = llp->conn_list;
 	while (head != NULL) {
-		empty = false;
 		firefly_connection_close(head->conn);
 		head = head->next;
 	}
-	if (empty) {
-		close(llp_eth->socket);
-		free(llp_eth);
-		free(llp);
-	} else {
-		firefly_transport_llp_eth_posix_free(llp);
-	}
+	check_llp_free(llp);
 	return 0;
 }
 
@@ -151,13 +157,16 @@ static int connection_open(struct firefly_connection *conn)
 static int connection_close(struct firefly_connection *conn)
 {
 	struct firefly_transport_connection_eth_posix *tcep;
+	struct firefly_transport_llp *llp;
 	tcep = conn->transport->context;
+	llp = tcep->llp;
 
 	remove_connection_from_llp(tcep->llp, conn,
 			firefly_connection_eq_ptr);
 	free(tcep->remote_addr);
 	free(tcep);
 	free(conn->transport);
+	check_llp_free(llp);
 	return 0;
 }
 

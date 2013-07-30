@@ -536,7 +536,7 @@ void test_eth_llp_free_mult_conns()
 	add_connection_to_llp(conn, llp);
 
 	firefly_transport_llp_eth_posix_free(llp);
-	event_execute_test(eq, 8);
+	event_execute_test(eq, 7);
 }
 
 void test_eth_llp_free_mult_conns_w_chans()
@@ -611,6 +611,6 @@ void test_eth_llp_free_mult_conns_w_chans()
 	// channel free
 	event_execute_test(eq, 1);
 
-	// 3 conn close, 3 conn free, llp free
-	event_execute_test(eq, 7);
+	// 3 conn free (includes llp free)
+	event_execute_test(eq, 3);
 }
