@@ -13,12 +13,14 @@
 #define FIREFLY_CONNECTION_OPEN (1)
 #define FIREFLY_CONNECTION_CLOSED (0)
 
+enum firefly_llp_state {FIREFLY_LLP_OPEN, FIREFLY_LLP_CLOSING};
 
 /**
  * @brief A general data structure representing a link layer port on the
  * transport layer.
  */
 struct firefly_transport_llp {
+	enum firefly_llp_state state;
 	struct llp_connection_list_node *conn_list; /**< A linked list of
 							connections. */
 	void *llp_platspec; /**< Platform, and transport method, specific data.

@@ -646,7 +646,7 @@ void test_llp_free_mult_conns()
 	event_execute_test(eq, 1);
 
 	firefly_transport_llp_udp_posix_free(llp);
-	event_execute_test(eq, 8);
+	event_execute_test(eq, 7);
 }
 
 // test correct number of events and channel close packets sent in the
@@ -731,8 +731,8 @@ void test_llp_free_mult_conns_w_chans()
 	// channel free
 	event_execute_test(eq, 1);
 
-	// 3 conn close, 3 conn free, llp free
-	event_execute_test(eq, 4);
+	// 3 conn free (llp free included in conn free)
+	event_execute_test(eq, 3);
 }
 
 int time_ms_diff(struct timespec *from, struct timespec *to)
