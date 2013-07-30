@@ -7,20 +7,6 @@
 		- Look through the entire Makefile to see if there are targets
 		  left to move over to CMake.
 
-# EVENT CHAINING
-	Should implement some sort of chaining of events. This would allow us to
-	close channels when a connection is closed, e.g:
-
-	conn_close -> chan_close_ev -> chan_close_ev -> conn_close_ev
-
-    This would save us from relying on event priority to synchronize the
-    order of execution of events.
-
-	HOWTO:
-	Every event has an id. When adding an event, specify the id of each event
-	it depends on. When executing an event, iterate through each dependency,
-	find the referenced event and if it is not yet executed, execute it.
-
 # HALF OPEN CONNECTION
     Impl. half open on connections, can send but not receive on a half
     open.  When closing a connection, it should be set to HALF_OPEN to
@@ -28,6 +14,8 @@
     packets to be sent.
 
     Possibly also implement an ERROR state on the connection.
+	
+	Refactor connection state to be an enum.
 
 # GENERAL STUFF THAT NEEDS FIXING
 	- In firefly_connection_actions there are two function pointers that
