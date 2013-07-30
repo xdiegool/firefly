@@ -7,6 +7,13 @@
  * performed.
  * The events will be pushed to the event_queue and pop'ed from the event_queue
  * before execution.
+ *
+ * This event queue is a priority queue with optional dependecies between
+ * events. To solve any conflicts of priority in a dependecy tree priority
+ * inheritance is applied. Any depended on event of lower priority will get the
+ * effective priority of the event depending on it. In practice all dependecies
+ * of an event will be run as soon the event is first in the queue if not
+ * before.
  */
 
 #ifndef FIREFLY_EVENT_QUEUE_H
@@ -16,13 +23,29 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+/**
+ * @brief Defines the maximum number of events an event may depend on.
+ */
 #define FIREFLY_EVENT_QUEUE_MAX_DEPENDS (10)
 
 /**
- * Defines different priorities.
+ * @defgroup eq_prio Event Queue Priorities
+ * @brief Defines common priorities.
+ */
+/**
+ * @brief Defines the low priority value.
+ * @ingroup eq_prio
  */
 #define FIREFLY_PRIORITY_LOW (20)
+/**
+ * @brief Defines the medium priority value.
+ * @ingroup eq_prio
+ */
 #define FIREFLY_PRIORITY_MEDIUM (125)
+/**
+ * @brief Defines the high priority value.
+ * @ingroup eq_prio
+ */
 #define FIREFLY_PRIORITY_HIGH (235)
 
 /**
@@ -50,21 +73,27 @@ struct firefly_event_queue;
 typedef int (*firefly_event_execute_f)(void *event_arg);
 
 /**
- * @brief The function implementing any extra logic needed to add an event to the
- * event queue.
+ * @brief The function implementing any extra logic needed to add an event to
+ * the event queue in a thread safe way.
  *
  * Should a mutex be locked or signaling be done this is the funtion to
  * implement.
  * @note This function is implemented by firefly_event_add(). But it contains no
  * logic handling mutexes nor uses the context of the firefly_event_queue.
  *
- * @param queue
- *		The firefly_event_queue to add the event to.
- * @param event
- *		The firefly_event to add to the firefly_event_queue.
+ * @param eq The firefly_event_queue to add the event to.
+ * @param prio The prioity of the new event.
+ * @param execute A function implementing the event to be executed.
+ * @param context The argument to the function \p execute.
+ * @param nbr_depends The number of events this event depends on.
+ * @param depends A list of event ids, as returned by this function, specifying
+ * the events this event depends on. These events will inherit the priority of
+ * this event and be executed before this event. This list will be copied and
+ * not be referenced once this function returns.
  *
- * @retval 0 If event was successfully added.
- * @retval != 0 if an error occured.
+ * @return The positive id of the newly added event.
+ * @retval <0 if an error occured.
+ * @see #eq_prio
  */
 typedef int64_t (*firefly_offer_event)(struct firefly_event_queue *eq,
 		unsigned char prio, firefly_event_execute_f execute, void *context,
@@ -74,18 +103,19 @@ typedef int64_t (*firefly_offer_event)(struct firefly_event_queue *eq,
  * @brief Initializes and allocates a new firefly_event_queue.
  *
  * @param offer_cb
- *		A function implementing firefly_offer_event.
- * @param context
- *		The user defined context of this firefly_event_queue.
+ *		A function implementing #firefly_offer_event.
  * @param pool_size
- *		The initial size of the pre-allocated event pool to be allocated.
+ *		The initial size of the pre-allocated event pool.
+ * @param context
+ *		The user defined context of this #firefly_event_queue.
  * @return The created firefly_event_queue.
+ * @retval NULL on error.
  */
 struct firefly_event_queue *firefly_event_queue_new(
 		firefly_offer_event offer_cb, size_t pool_size, void *context);
 
 /**
- * @brief Free the provided firefly_event_queue, this function will also free
+ * @brief Free the provided #firefly_event_queue, this function will also free
  * any events left in the queue.
  *
  * @warning The context of the firefly_event_queue will not be freed.
@@ -96,7 +126,7 @@ struct firefly_event_queue *firefly_event_queue_new(
  * be done manually to avoid memory leaks.
  *
  * @param eq
- *		A pointer to the pionter of the firefly_event_queue to be freed.
+ *		A pointer to the pointer of the firefly_event_queue to be freed.
  */
 void firefly_event_queue_free(struct firefly_event_queue **eq);
 
@@ -125,16 +155,26 @@ void firefly_event_queue_set_strict_pool_size(struct firefly_event_queue *eq,
  * @param prio The priority of the new event.
  * @param execute The function called when the firefly_event is executed.
  * @param context The argument passed to the execute function when called.
+ * @param nbr_depends The number of events this event depends on.
+ * @param depends A list of event ids, as returned by this function, specifying
+ * the events this event depends on. These events will inherit the priority of
+ * this event and be executed before this event. This list will be copied and
+ * not be referenced once this function returns.
  * @return The positive ID of the newly added event.
  * @retval A negative value upon error.
+ * @see #firefly_offer_event
  */
 int64_t firefly_event_add(struct firefly_event_queue *eq, unsigned char prio,
 		firefly_event_execute_f execute, void *context,
 		unsigned int nbr_depends, const int64_t *depends);
 
 /**
- * @brief Get the first event in the firefly_event_queue and remove it from the
+ * @brief Get the next event in the firefly_event_queue and remove it from the
  * queue.
+ *
+ * This function will follow any dependencies and return the next event which
+ * must be executed to satify the dependecies of the first event in the queue or
+ * itself if all its dependencied are fulfilled.
  *
  * @param eq
  *		The queue to pop an event from.
@@ -147,21 +187,20 @@ struct firefly_event *firefly_event_pop(struct firefly_event_queue *eq);
  * @brief Returns the event to the pool of available event in the queue. The
  * reference to the event will be set to NULL to prevent it from being used.
  *
- * @param q The event queue to return the event to
+ * @param eq The event queue to return the event to
  * @param ev A referece to the reference to the event to return.
  */
-void firefly_event_return(struct firefly_event_queue *q,
+void firefly_event_return(struct firefly_event_queue *eq,
 		struct firefly_event **ev);
 
 /**
- * @brief Executes the provided event.
- *
- * The firefly_event_type of the event is checked, the parameters of the event
- * are extracted and the action is performed.
+ * @brief Executes the provided event. This will not return the event to the
+ * queue.
  *
  * @param ev The event to execute.
  * @return An integer to indicate whether the execution was successful or not.
  * @retval A negative integer upon error.
+ * @see #firefly_event_return()
  */
 int firefly_event_execute(struct firefly_event *ev);
 
@@ -177,13 +216,16 @@ size_t firefly_event_queue_length(struct firefly_event_queue *eq);
 /**
  * @brief Get the context in the event queue.
  *
- * @param ev The event queue to get the context from
+ * @param eq The event queue to get the context from
  * @return The context.
  */
 void *firefly_event_queue_get_context(struct firefly_event_queue *eq);
 
 /**
  * @brief Get the id of an event
+ * 
+ * @param ev The event to get the ID of.
+ * @return The ID of the event.
  */
 int64_t firefly_event_queue_event_id(struct firefly_event *ev);
 
