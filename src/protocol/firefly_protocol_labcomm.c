@@ -118,7 +118,7 @@ static void proto_reader_mem_free(struct labcomm_reader *r, void *context,
 		void *ptr)
 {
 	UNUSED_VAR(r);
-	return FIREFLY_RUNTIME_FREE((struct firefly_connection *) context, ptr);
+	FIREFLY_RUNTIME_FREE((struct firefly_connection *) context, ptr);
 }
 
 static const struct labcomm_reader_action proto_reader_action = {
