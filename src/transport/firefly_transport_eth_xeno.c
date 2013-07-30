@@ -385,10 +385,11 @@ int firefly_transport_eth_xeno_read_event(void *event_args)
 	if (conn == NULL && llp_eth->on_conn_recv != NULL) {
 		char mac_addr[18];
 		get_mac_addr(&ev_a->addr, mac_addr);
-		if (llp_eth->on_conn_recv(ev_a->llp, mac_addr)) {
+		int64_t ev_id = 0;
+		if ((ev_id = llp_eth->on_conn_recv(ev_a->llp, mac_addr)) > 0) {
 			return llp_eth->event_queue->offer_event_cb(llp_eth->event_queue,
 					FIREFLY_PRIORITY_HIGH,
-					firefly_transport_eth_xeno_read_event, ev_a, 0, NULL);
+					firefly_transport_eth_xeno_read_event, ev_a, 1, &ev_id);
 		}
 	} else {
 		ev_a->llp->protocol_data_received_cb(conn, ev_a->data, ev_a->len);

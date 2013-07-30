@@ -80,9 +80,10 @@ int firefly_transport_llp_eth_posix_free_event(void *event_arg);
  * @param data_size The size of the data to be written.
  * @param conn The connection to written the data on.
  * @param important If true the packet will be resent until it is acked by
- * calling #firefly_transport_udp_posix_ack or max retries is reached.
+ * calling #firefly_transport_eth_posix_ack or max retries is reached.
  * @param id The variable to save the resend packed id in.
  * @see #firefly_transport_connection_write_f()
+ * @see #firefly_transport_eth_posix_ack()
  */
 void firefly_transport_eth_posix_write(unsigned char *data, size_t data_size,
 		struct firefly_connection *conn, bool important, unsigned char *id);
@@ -94,6 +95,7 @@ void firefly_transport_eth_posix_write(unsigned char *data, size_t data_size,
  * @param pkt_id The id previously set by #firefly_transport_eth_posix_write.
  * @param conn The connection the packet was sent on.
  * @see #firefly_transport_connection_ack_f()
+ * @see #firefly_transport_eth_posix_write()
  */
 void firefly_transport_eth_posix_ack(unsigned char pkt_id,
 		struct firefly_connection *conn);
@@ -116,6 +118,7 @@ void get_mac_addr(struct sockaddr_ll *addr, char *mac_addr);
  * @retval true if the address supplied matches the addrss of
  * the \c struct #firefly_connection.
  * @retval false otherwise
+ * @see #conn_eq_f()
  */
 bool connection_eq_addr(struct firefly_connection *conn, void *context);
 
