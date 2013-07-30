@@ -135,10 +135,7 @@ static void check_llp_free(struct firefly_transport_llp *llp)
 int firefly_transport_llp_udp_posix_free_event(void *event_arg)
 {
 	struct firefly_transport_llp *llp;
-	struct transport_llp_udp_posix *llp_udp;
-
 	llp = event_arg;
-	llp_udp = llp->llp_platspec;
 
 	llp->state = FIREFLY_LLP_CLOSING;
 

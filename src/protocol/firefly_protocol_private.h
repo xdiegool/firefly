@@ -129,7 +129,7 @@ struct firefly_connection {
 };
 
 /**
- * @breif A simple queue of important packets.
+ * @brief A simple queue of important packets.
  */
 struct firefly_channel_important_queue {
 	struct firefly_event_send_sample *fess;

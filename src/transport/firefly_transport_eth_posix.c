@@ -129,10 +129,7 @@ static void check_llp_free(struct firefly_transport_llp *llp)
 int firefly_transport_llp_eth_posix_free_event(void *event_arg)
 {
 	struct firefly_transport_llp *llp;
-	struct transport_llp_eth_posix *llp_eth;
-
 	llp = event_arg;
-	llp_eth = llp->llp_platspec;
 
 	llp->state = FIREFLY_LLP_CLOSING;
 
@@ -313,7 +310,7 @@ int firefly_transport_eth_posix_read_event(void *event_args)
 	llp_eth = ev_a->llp->llp_platspec;
 	conn = find_connection(ev_a->llp, &ev_a->addr, connection_eq_addr);
 	if (conn == NULL && llp_eth->on_conn_recv != NULL) {
-		char mac_addr[18];
+		char mac_addr[MACADDR_STRLEN];
 		get_mac_addr(&ev_a->addr, mac_addr);
 		int64_t ev_id = 0;
 		if ((ev_id = llp_eth->on_conn_recv(ev_a->llp, mac_addr)) > 0) {
@@ -334,7 +331,7 @@ int firefly_transport_eth_posix_read_event(void *event_args)
 
 void get_mac_addr(struct sockaddr_ll *addr, char *mac_addr)
 {
-	char temp_addr[18];
+	char temp_addr[MACADDR_STRLEN];
 	unsigned int addr_vals[6];
 	ether_ntoa_r((void*)addr->sll_addr, temp_addr);
 	sscanf(temp_addr, "%x:%x:%x:%x:%x:%x", addr_vals+0, addr_vals+1,

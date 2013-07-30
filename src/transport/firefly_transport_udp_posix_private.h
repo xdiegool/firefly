@@ -104,7 +104,7 @@ void sockaddr_in_ipaddr(struct sockaddr_in *addr, char *ip_addr);
  * @brief Get the port number in an struct sockaddr_in.
  * 
  * @param addr The \c struct \c sockaddr_in
- * @retnr The port number.
+ * @return The port number.
  */
 unsigned short sockaddr_in_port(struct sockaddr_in *addr);
 
@@ -118,15 +118,18 @@ unsigned short sockaddr_in_port(struct sockaddr_in *addr);
  * @param important If true the packet will be resent until it is acked by
  * calling #firefly_transport_udp_posix_ack or max retries is reached.
  * @param id The variable to save the resend packed id in.
+ * @see #firefly_transport_connection_write_f()
  */
 void firefly_transport_udp_posix_write(unsigned char *data, size_t data_size,
 		struct firefly_connection *conn, bool important, unsigned char *id);
 
 /**
  * @brief Ack an important packed. Removes the packet from the resend queue.
+ * Implements #firefly_transport_connection_ack_f()
  *
  * @param pkt_id The id previously set by #firefly_transport_udp_posix_write.
  * @param conn The connection the packet was sent on.
+ * @see #firefly_transport_connection_ack_f()
  */
 void firefly_transport_udp_posix_ack(unsigned char pkt_id,
 		struct firefly_connection *conn);

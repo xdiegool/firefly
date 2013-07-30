@@ -59,6 +59,7 @@ typedef int64_t (*firefly_on_conn_recv_pudp)(
  * @param local_port The port to bind the new socket to.
  * @param on_conn_recv The callback to call when a new connection is received.
  * If it is NULL no received connections will be accepted.
+ * @param event_queue The event queue to push spawned events to.
  * @return A pointer to the created \c firefly_transport_llp.
  * @retval NULL on error.
  */
@@ -84,12 +85,13 @@ void firefly_transport_llp_udp_posix_free(struct firefly_transport_llp *llp);
  * #firefly_connection_open().
  *
  * @param llp The \c #firefly_transport_llp to associate the data with.
- * @param remote_ip_addr The IP address to connect to.
+ * @param remote_ipaddr The IP address to connect to.
  * @param remote_port The port to connect to.
  * @param timeout The time in ms between resends.
  * @return The transport specific data ready to be supplied as argument to
  * #firefly_connection_open().
  * @retval NULL upon failure.
+ * @see #firefly_connection_open()
  */
 struct firefly_transport_connection *firefly_transport_connection_udp_posix_new(
 		struct firefly_transport_llp *llp,
@@ -139,8 +141,8 @@ int firefly_transport_udp_posix_stop(struct firefly_transport_llp *llp,
  * The read data will be distributed to the connection opened to the remote
  * address the data is sent from.
  *
- * If no such connection exists the #firefly_on_conn_recv_pudp will be called if
- * it is not NULL, in which case the data will be discarded.
+ * If no such connection exists the #firefly_on_conn_recv_pudp will be called,
+ * if it is NULL the data will be discarded.
  *
  * This function is blocking.
  *

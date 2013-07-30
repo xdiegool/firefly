@@ -85,6 +85,7 @@ void add_connection_to_llp(struct firefly_connection *conn,
  * function returns true.
  *
  * @param llp The llp the remove a connection from.
+ * @param context The data to compare each connection to with \p conn_eq
  * @param conn_eq The function used to determine if any connection is the
  * connection to remove.
  * @return The removed connection.
