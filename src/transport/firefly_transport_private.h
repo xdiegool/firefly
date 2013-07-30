@@ -61,7 +61,7 @@ struct llp_connection_list_node {
 };
 
 /**
- * @brief Compares a connection to some value. This funktion is used by
+ * @brief Compares a connection to some value. This function is used by
  * find_connection to test if a connection is the one searched for.
  *
  * @param conn The connection to compare.

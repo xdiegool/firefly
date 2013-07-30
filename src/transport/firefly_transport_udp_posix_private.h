@@ -20,103 +20,114 @@
 struct transport_llp_udp_posix {
 	int local_udp_socket; /**< The file descriptor of the UDP socket */
 	struct sockaddr_in *local_addr; /**< The address the socket is bound to. */
-	firefly_on_conn_recv_pudp on_conn_recv; /**< The callback to be called
-							when a new connection is
-							detected. */
-	struct firefly_event_queue *event_queue;
-	struct resend_queue *resend_queue;
+	firefly_on_conn_recv_pudp on_conn_recv; /**< The callback to be called when
+											  a new connection is received. */
+	struct firefly_event_queue *event_queue; /**< The event queue to push new
+											   events on. */
+	struct resend_queue *resend_queue; /**< The resend queue managing important
+										 packets. */
 };
 
 /**
  * @brief UDP specific connection related data.
  */
 struct firefly_transport_connection_udp_posix {
-	struct sockaddr_in *remote_addr; /**< The address to the remote node of
-						this connection */
+	struct sockaddr_in *remote_addr; /**< The address of the remote node of this
+									   connection */
 	int socket; /**< The socket file descriptor associated with this
-				connection. */
-	struct firefly_transport_llp *llp;
+				  connection. */
+	struct firefly_transport_llp *llp; /**< The \a llp this connection is
+										 associated with. */
 	unsigned int timeout; /**< The time between resends on this connection. */
 };
 
+/**
+ * @brief The argument type of a read event.
+ */
 struct firefly_event_llp_read_udp_posix {
-	struct firefly_transport_llp *llp;
-	struct sockaddr_in addr;
-	size_t len;
-	unsigned char data[];
+	struct firefly_transport_llp *llp; /**< The llp the data was read on. */
+	struct sockaddr_in addr; /**< The address the data was sent from. */
+	size_t len; /**< The number of bytes in the data field. */
+	unsigned char data[]; /**< The read data. */
 };
 
+/**
+ * @brief The event handling any read data.
+ *
+ * @param event_arg See #firefly_event_llp_read_udp_posix.
+ * @see #firefly_transport_udp_posix_read()
+ */
 int firefly_transport_udp_posix_read_event(void *event_arg);
+
+/**
+ * @brief The event handling llp free.
+ *
+ * @param event_arg The #firefly_transport_llp to free.
+ * @see #firefly_transport_llp_udp_posix_free().
+ */
+int firefly_transport_llp_udp_posix_free_event(void *event_arg);
 
 /**
  * @brief Compares the \c struct #firefly_connection with the specified address.
  *
  * @param conn The \c struct #firefly_connection to compare the address of.
- * @param context The address of the connection to find.
+ * @param context The address of the connection to find, must be of type
+ * \c struct \c sockaddr_in.
  * @retval true if the address supplied matches the addrss of
  * the \c struct #firefly_connection.
+ * @retval false otherwise
  */
 bool connection_eq_inaddr(struct firefly_connection *conn, void *context);
 
 
 /**
- * @brief Compares two \c struct sockaddr_in.
+ * @brief Compares two \c struct \c sockaddr_in.
  *
  * @param one The first element.
  * @param other The second element to compare against the first.
- * @retval true if the two parameters are equal
+ * @retval true if the two addresses are equal with respect to ip address and
+ * port number.
  * @retval false otherwise.
  */
 bool sockaddr_in_eq(struct sockaddr_in *one, struct sockaddr_in *other);
 
 /**
- * @brief Convert a struct sockaddr_in to a string representation.
+ * @brief Get the ip address of a \c struct \c sockaddr_in as a string.
  * 
- * @param addr The struct sockaddr_in to convert.
- * @param ip_addr Where the resulting string should be written.
- * @warning The string ip_addr must be at least of length INET_ADDRSTRLEN.
+ * @param addr The \c struct \c sockaddr_in.
+ * @param ip_addr The preallocated memory to save the string in.
+ * @warning The string ip_addr must be at least of length \c INET_ADDRSTRLEN.
  */
 void sockaddr_in_ipaddr(struct sockaddr_in *addr, char *ip_addr);
 
 /**
- * @brief Get the port in an struct sockaddr_in.
+ * @brief Get the port number in an struct sockaddr_in.
  * 
- * @param addr The struct sockaddr_in
- * @retnr The port.
+ * @param addr The \c struct \c sockaddr_in
+ * @retnr The port number.
  */
 unsigned short sockaddr_in_port(struct sockaddr_in *addr);
 
-int firefly_transport_llp_udp_posix_free_event(void *event_arg);
+/**
+ * @brief Write data on the specified connection. Implements
+ * #firefly_transport_connection_write_f.
+ *
+ * @param data The data to be written.
+ * @param data_size The size of the data to be written.
+ * @param conn The connection to written the data on.
+ * @param important If true the packet will be resent until it is acked by
+ * calling #firefly_transport_udp_posix_ack or max retries is reached.
+ * @param id The variable to save the resend packed id in.
+ */
+void firefly_transport_udp_posix_write(unsigned char *data, size_t data_size,
+		struct firefly_connection *conn, bool important, unsigned char *id);
 
 /**
- * @brief Allocates and initializes a new connection with udp posix specific
- * data.
+ * @brief Ack an important packed. Removes the packet from the resend queue.
  *
- * @param llp The link layer port this connection receives data from.
- * @param remote_addr The address of the remote node.
- * @param timeout The time in ms between resends.
- * @param actions Callbacks.
- *
- * @return A new firefly_connection with udp posix specific data.
- * @retval NULL on error.
+ * @param pkt_id The id previously set by #firefly_transport_udp_posix_write.
+ * @param conn The connection the packet was sent on.
  */
-struct firefly_connection *firefly_connection_udp_posix_new(
-		struct firefly_transport_llp *llp,
-		struct sockaddr_in *remote_addr,
-		unsigned int timeout,
-		struct firefly_connection_actions *actions);
-
-/**
- * @brief Free the connection and any resources associated with it.
- *
- * The freed resources includes all channels.
- *
- * @param conn A pointer to the pointer to the #firefly_connection to free. The
- * pointer will be set to \c NULL.
- */
-void firefly_transport_connection_udp_posix_free(
-		struct firefly_connection *conn);
-
 void firefly_transport_udp_posix_ack(unsigned char pkt_id,
 		struct firefly_connection *conn);
 
