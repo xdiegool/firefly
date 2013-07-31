@@ -47,19 +47,57 @@ struct firefly_transport_connection_udp_lwip {
  * @brief The argument type of a read event.
  */
 struct firefly_event_llp_read_udp_lwip {
-	struct firefly_transport_llp *llp;
-	struct ip_addr *ip_addr;
-	struct pbuf *p;
-	u16_t port;
+	struct firefly_transport_llp *llp;	/**< The LLP to read on. */
+	struct ip_addr *ip_addr; /**< The LLP to read on. */
+	struct pbuf *p; /**< The pbuf containing the payload read. */
+	u16_t port; /**< The port to read from which the data was read. */
 };
 
+/**
+ * Mark the packet with the provided id as acknowledged. The packet is
+ * removed from the resend_queue.
+ *
+ * @note Currently not implemented.
+ *
+ * @param pkt_id The ID of the packet that has been acknowledged and
+ * should be removed.
+ * @param conn The conn the packet was sent on.
+ */
 void firefly_transport_udp_lwip_ack(unsigned char pkt_id,
 		struct firefly_connection *conn);
 
+/**
+ * @brief The event that handles parsing data and getting it further up
+ * in the protocol chain. Called by the event constructed by
+ * #udp_lwip_recv_callback.
+ *
+ * @param event_arg See #firefly_event_llp_read_udp_lwip.
+ * @see #udp_lwip_recv_callback()
+ */
 int firefly_transport_udp_lwip_read_event(void *event_arg);
 
+/**
+ * @brief The event that handles freeing the LWIP LLP.
+ *
+ * Called by the event constructed by
+ * #firefly_transport_llp_udp_lwip_free.
+ *
+ * @param event_arg The argument for this event.
+ * @return An int indicating success (0) or failure (not 0).
+ */
 int firefly_transport_llp_udp_lwip_free_event(void *event_arg);
 
+/**
+ * @brief Internal function to compare IP addresses, one in the context
+ * parameter and the remote one in the #firefly_connection.
+ *
+ * @param conn The connection to compare the remote address of.
+ * @param context The IP address to compare the connection's with.
+ *
+ * @return A boolean indicating whether they are equal or not.
+ * @retval false If the addresses are not equal.
+ * @retval true If the addresses are equal.
+ */
 bool transport_udp_lwip_conn_eq_ipaddr(struct firefly_connection *conn,
 		void *context);
 
@@ -77,8 +115,9 @@ struct ip_addr *str_to_ip_addr(const char *ip_str);
  * @brief Converts a LWIP represented IPv4 address to a string of the format
  * "a.b.c.d".
  *
- * @param An LWIP representation of the address.
- * @return ip_str The IP address string in dot base 255 format.
+ * @param ip_addr The IP address struct that will be converted.
+ *
+ * @return The IP address string in a dot base 255 format.
  * @retval NULL On failure.
  */
 char *ip_addr_to_str(struct ip_addr *ip_addr);

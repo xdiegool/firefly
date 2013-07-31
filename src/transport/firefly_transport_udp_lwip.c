@@ -17,6 +17,19 @@
 #include "utils/firefly_event_queue_private.h"
 #include "utils/cppmacros.h"
 
+/**
+ * @brief The callback called by LWIP when new data has been fetched.
+ *
+ * This function constructs a #firefly_event_llp_read_udp_lwip with all
+ * the data of the read and creates an event that does the rest.
+ *
+ * @param recv_arg A void pointer used to carry data through LWIP, in
+ * this case our LLP.
+ * @param upcb UDP Program Control Block, unused in this function.
+ * @param pbuf A data structure with the data that has been read.
+ * @param remote_ip_addr The IP address from where the data came.
+ * @param remote_port The port number on which the data entered.
+ */
 static void udp_lwip_recv_callback(void *recv_arg, struct udp_pcb *upcb,
 		struct pbuf *pbuf, struct ip_addr *remote_ip_addr,
 		u16_t remote_port)
