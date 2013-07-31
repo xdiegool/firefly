@@ -242,7 +242,6 @@ struct firefly_channel *firefly_channel_new(struct firefly_connection *conn);
  * @brief Free the supplied channel.
  *
  * @param chan The channel to free.
- * @param conn The connection the channel lives on.
  */
 void firefly_channel_free(struct firefly_channel *chan);
 
@@ -261,7 +260,7 @@ struct firefly_event_chan_open {
  * firefly_channel struct is alocated and added to the chan_list of the
  * firefly_connection.
  *
- * @pram event_arg A firefly_event_chan_open.
+ * @param event_arg A firefly_event_chan_open.
  * @return Integer idicating the resutlt of the event.
  * @retval Negative integer upon error.
  */
@@ -271,7 +270,7 @@ int firefly_channel_open_event(void *event_arg);
  * @brief Sets opened state on channel and calls on_open callback if  the
  * channel was not already open.
  *
- * @param The channel to set opened state on
+ * @param chan The channel to set opened state on
  */
 void firefly_channel_internal_opened(struct firefly_channel *chan);
 
@@ -301,10 +300,10 @@ struct firefly_event_chan_close {
 };
 
 /**
- * @brief Sends a \c #firefly_protocol_channel_close and pushes an event to free
+ * @brief Sends a \c firefly_protocol_channel_close and pushes an event to free
  * and remove the channel from its firefly_connection.
  *
- * @pram event_arg A firefly_event_chan_close.
+ * @param event_arg A firefly_event_chan_close.
  * @return Integer idicating the resutlt of the event.
  * @retval Negative integer upon error.
  */
@@ -375,7 +374,7 @@ int handle_channel_response_event(void *event_arg);
 /**
  * @brief The callback registered with LabComm used to receive channel ack.
  *
- * @param chan_res The decoded channel ack.
+ * @param chan_ack The decoded channel ack.
  * @param context The connection associated with the channel ack.
  */
 void handle_channel_ack(firefly_protocol_channel_ack *chan_ack, void *context);
