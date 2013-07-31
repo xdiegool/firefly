@@ -25,7 +25,7 @@ static void udp_lwip_recv_callback(void *recv_arg, struct udp_pcb *upcb,
 	struct firefly_transport_llp *llp = recv_arg;
 	struct transport_llp_udp_lwip *llp_udp = llp->llp_platspec;
 
-	struct firefly_event_llp_read_udp_posix *ev_a = malloc(sizeof(*ev_a));
+	struct firefly_event_llp_read_udp_lwip *ev_a = malloc(sizeof(*ev_a));
 	if (llp_udp == NULL) {
 		FFL(FIREFLY_ERROR_ALLOC);
 		return;
@@ -42,7 +42,7 @@ static void udp_lwip_recv_callback(void *recv_arg, struct udp_pcb *upcb,
 
 int firefly_transport_udp_lwip_read_event(void *event_arg)
 {
-	struct firefly_event_llp_read_udp_posix *ev_a = event_arg;
+	struct firefly_event_llp_read_udp_lwip *ev_a = event_arg;
 	struct transport_llp_udp_lwip *llp_udp = ev_a->llp->llp_platspec;
 
 	// Find existing connection or create new.

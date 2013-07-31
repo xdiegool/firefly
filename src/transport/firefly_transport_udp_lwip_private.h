@@ -43,7 +43,10 @@ struct firefly_transport_connection_udp_lwip {
 	struct firefly_transport_llp *llp;
 };
 
-struct firefly_event_llp_read_udp_posix {
+/**
+ * @brief The argument type of a read event.
+ */
+struct firefly_event_llp_read_udp_lwip {
 	struct firefly_transport_llp *llp;
 	struct ip_addr *ip_addr;
 	struct pbuf *p;
