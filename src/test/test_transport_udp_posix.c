@@ -186,9 +186,9 @@ void test_recv_conn_null_cb()
 
 	CU_ASSERT_EQUAL(nbr_added_events, 0);
 	CU_ASSERT_FALSE(data_received);
-	data_received = false;
 	firefly_transport_llp_udp_posix_free(llp);
 	event_execute_all_test(eq);
+	data_received = false;
 }
 
 int64_t recv_data_recv_conn(
