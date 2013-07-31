@@ -193,7 +193,7 @@ add_custom_command(
 	COMMAND mkdir ${DOC_GEN_FULL_DIR} &&
 			cp ${DOC_DIR}/doxygen_template.cfg ${DOC_GEN_DIR}/doxygen_full.cfg &&
 			echo \"INPUT = doc/gen/index.dox include src\" >> ${DOC_GEN_DIR}/doxygen_full.cfg &&
-			echo \"OUTPUT_DIRECTORY = \\"${DOC_GEN_FULL_DIR}\\"\" >> $@
+			echo \"OUTPUT_DIRECTORY = \\"${DOC_GEN_FULL_DIR}\\"\" >> ${DOC_GEN_DIR}/doxygen_full.cfg
 )
 
 # Custom target to build the conf file needed by docs-api above:
@@ -203,7 +203,7 @@ add_custom_command(
 	COMMAND mkdir ${DOC_GEN_API_DIR} &&
 			cp ${DOC_DIR}/doxygen_template.cfg ${DOC_GEN_DIR}/doxygen_api.cfg &&
 			echo \"INPUT = doc/gen/index.dox include\" >> ${DOC_GEN_DIR}/doxygen_api.cfg &&
-			echo \"OUTPUT_DIRECTORY = \\"${DOC_GEN_API_DIR}\\"\" >> $@
+			echo \"OUTPUT_DIRECTORY = \\"${DOC_GEN_API_DIR}\\"\" >> ${DOC_GEN_DIR}/doxygen_api.cfg
 )
 
 # Append our README to the index file:
