@@ -319,10 +319,9 @@ int firefly_transport_eth_stellaris_read_event(void *event_args)
 	// Find existing connection or create new.
 	conn = find_connection(llp, ev_a->eth_packet + ETH_SRC_OFFSET,
 			connection_eq_remmac);
-	if (conn == NULL && llp_eth->on_conn_recv != NULL)
-	{
-		if (llp_eth->on_conn_recv(llp,
-					ev_a->eth_packet + ETH_SRC_OFFSET)) {
+	if (conn == NULL) {
+		if (llp_eth->on_conn_recv != NULL &&
+				llp_eth->on_conn_recv(llp, ev_a->eth_packet + ETH_SRC_OFFSET)) {
 			return llp_eth->event_queue->offer_event_cb(llp_eth->event_queue,
 					FIREFLY_PRIORITY_HIGH,
 					firefly_transport_eth_stellaris_read_event, ev_a, 0, NULL);

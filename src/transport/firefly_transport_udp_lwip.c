@@ -49,13 +49,14 @@ int firefly_transport_udp_lwip_read_event(void *event_arg)
 	struct firefly_connection *conn = find_connection(ev_a->llp,
 			ev_a->ip_addr, transport_udp_lwip_conn_eq_ipaddr);
 
-	if (conn == NULL && llp_udp->on_conn_recv != NULL) {
+	if (conn == NULL) {
 		char *ip_str = ip_addr_to_str(ev_a->ip_addr);
-		if (llp_udp->on_conn_recv(ev_a->llp, ip_str, ev_a->port)) {
+		if (llp_udp->on_conn_recv != NULL &&
+				llp_udp->on_conn_recv(ev_a->llp, ip_str, ev_a->port)) {
+			free(ip_str);
 			return llp_udp->event_queue->offer_event_cb(llp_udp->event_queue,
 					FIREFLY_PRIORITY_HIGH,
 					firefly_transport_udp_lwip_read_event, ev_a, 0, NULL);
-
 		}
 		free(ip_str);
 	} else {
