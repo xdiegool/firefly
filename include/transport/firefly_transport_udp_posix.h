@@ -25,11 +25,6 @@
 #define FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_RETRIES (5)
 
 /**
- * @brief An opaque UDP specific link layer port data.
- */
-struct firefly_transport_llp_udp_posix;
-
-/**
  * @brief This callback will be called when a new connection is received.
  *
  * This function is implemented by the application layer. It will be called

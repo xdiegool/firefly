@@ -5,11 +5,6 @@
 #include <sys/time.h>
 
 /**
- * @brief An opaque ethernet posix specific link layer port data.
- */
-struct transport_llp_eth_posix;
-
-/**
  * @brief This callback will be called when a new connection is received.
  *
  * This function is implemented by the application layer. It will be called

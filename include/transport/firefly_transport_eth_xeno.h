@@ -5,13 +5,6 @@
 #include <sys/time.h>
 
 /**
- * @brief An opaque ethernet xenomai specific link layer port data.
- */
-struct transport_llp_eth_xeno;
-
-struct firefly_transport_connection_eth_xeno;
-
-/**
  * @brief This callback will be called when a new connection is received.
  *
  * This function is implemented by the application layer. It will be called
