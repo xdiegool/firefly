@@ -309,11 +309,12 @@ int firefly_transport_eth_posix_read_event(void *event_args)
 	ev_a = event_args;
 	llp_eth = ev_a->llp->llp_platspec;
 	conn = find_connection(ev_a->llp, &ev_a->addr, connection_eq_addr);
-	if (conn == NULL && llp_eth->on_conn_recv != NULL) {
+	if (conn == NULL) {
 		char mac_addr[MACADDR_STRLEN];
 		get_mac_addr(&ev_a->addr, mac_addr);
 		int64_t ev_id = 0;
-		if ((ev_id = llp_eth->on_conn_recv(ev_a->llp, mac_addr)) > 0) {
+		if (llp_eth->on_conn_recv != NULL &&
+				(ev_id = llp_eth->on_conn_recv(ev_a->llp, mac_addr)) > 0) {
 			/* Connection accepted; reschedule event. */
 			return llp_eth->event_queue->offer_event_cb(
 					llp_eth->event_queue,

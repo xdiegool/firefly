@@ -7,6 +7,7 @@ int clean_suit_eth_posix();
 
 //void test_eth_find_conn_by_address()
 void test_eth_recv_connection();
+void test_eth_recv_conn_null_cb();
 void test_eth_recv_data();
 void test_eth_recv_conn_and_data();
 void test_eth_recv_conn_keep();

@@ -228,9 +228,33 @@ void test_eth_recv_connection()
 	event_execute_test(eq, 1);
 
 	CU_ASSERT_TRUE(recv_conn_called);
-	recv_conn_called = false;
 	firefly_transport_llp_eth_posix_free(llp);
 	event_execute_all_test(eq);
+	recv_conn_called = false;
+	data_received = false;
+}
+
+void test_eth_recv_conn_null_cb()
+{
+	struct firefly_transport_llp *llp = firefly_transport_llp_eth_posix_new(
+			"lo", NULL, eq);
+
+	/* Replace the ordinary data recv. callback. */
+	replace_protocol_data_received_cb(llp, protocol_data_received_repl);
+
+	send_data();
+
+	mock_test_event_queue_reset(eq);
+	firefly_transport_eth_posix_read(llp, NULL);
+	CU_ASSERT_EQUAL(nbr_added_events, 1);
+	mock_test_event_queue_reset(eq);
+	event_execute_test(eq, 1);
+
+	CU_ASSERT_EQUAL(nbr_added_events, 0);
+	CU_ASSERT_FALSE(data_received);
+	firefly_transport_llp_eth_posix_free(llp);
+	event_execute_all_test(eq);
+	data_received = false;
 }
 
 void test_eth_recv_data()

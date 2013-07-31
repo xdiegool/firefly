@@ -32,6 +32,9 @@ int main()
 		(CU_add_test(trans_eth_posix, "test_eth_recv_connection",
 				test_eth_recv_connection) == NULL)
 			   ||
+		(CU_add_test(trans_eth_posix, "test_eth_recv_conn_null_cb",
+				test_eth_recv_conn_null_cb) == NULL)
+			   ||
 		(CU_add_test(trans_eth_posix, "test_eth_recv_data",
 				test_eth_recv_data) == NULL)
 			   ||
