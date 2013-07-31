@@ -179,6 +179,42 @@ static int connection_close(struct firefly_connection *conn)
 	return 0;
 }
 
+// TODO we should not have to memcpy the data to write. Can we make memory alloc
+// transport specific or avoid this problem somehow?
+void firefly_transport_udp_lwip_write(unsigned char *data, size_t data_size,
+		struct firefly_connection *conn, bool important, unsigned char *id)
+{
+	struct firefly_transport_connection_udp_lwip *conn_udp;
+	conn_udp = conn->transport->context;
+	struct pbuf *pbuf = pbuf_alloc(PBUF_TRANSPORT, data_size, PBUF_RAM);
+	if (pbuf == NULL) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 3,
+				"Failed to allocate a pbuf in  %s() on"
+				"line %d.\n", __FUNCTION__, __LINE__);
+	}
+	memcpy(pbuf->payload, data, data_size);
+
+	err_t err = udp_sendto(conn_udp->upcb, pbuf, conn_udp->remote_ip_addr,
+			conn_udp->remote_port);
+	if (err != ERR_OK) {
+		FFL(FIREFLY_ERROR_TRANS_WRITE);
+		if (conn->actions->connection_error)
+			conn->actions->connection_error(conn);
+	}
+	pbuf_free(pbuf);
+	if (important && id != NULL) {
+		// TODO
+	}
+}
+
+void firefly_transport_udp_lwip_ack(unsigned char pkt_id,
+		struct firefly_connection *conn)
+{
+	UNUSED_VAR(pkt_id);
+	UNUSED_VAR(conn);
+}
+
+
 struct firefly_transport_connection *firefly_transport_connection_udp_lwip_new(
 		struct firefly_transport_llp *llp,
 		char *remote_ip_addr,
@@ -214,41 +250,6 @@ struct firefly_transport_connection *firefly_transport_connection_udp_lwip_new(
 	tc->ack = firefly_transport_udp_lwip_ack;
 
 	return tc;
-}
-
-// TODO we should not have to memcpy the data to write. Can we make memory alloc
-// transport specific or avoid this problem somehow?
-void firefly_transport_udp_lwip_write(unsigned char *data, size_t data_size,
-		struct firefly_connection *conn, bool important, unsigned char *id)
-{
-	struct firefly_transport_connection_udp_lwip *conn_udp;
-	conn_udp = conn->transport->context;
-	struct pbuf *pbuf = pbuf_alloc(PBUF_TRANSPORT, data_size, PBUF_RAM);
-	if (pbuf == NULL) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 3,
-				"Failed to allocate a pbuf in  %s() on"
-				"line %d.\n", __FUNCTION__, __LINE__);
-	}
-	memcpy(pbuf->payload, data, data_size);
-
-	err_t err = udp_sendto(conn_udp->upcb, pbuf, conn_udp->remote_ip_addr,
-			conn_udp->remote_port);
-	if (err != ERR_OK) {
-		FFL(FIREFLY_ERROR_TRANS_WRITE);
-		if (conn->actions->connection_error)
-			conn->actions->connection_error(conn);
-	}
-	pbuf_free(pbuf);
-	if (important && id != NULL) {
-		// TODO
-	}
-}
-
-void firefly_transport_udp_lwip_ack(unsigned char pkt_id,
-		struct firefly_connection *conn)
-{
-	UNUSED_VAR(pkt_id);
-	UNUSED_VAR(conn);
 }
 
 bool transport_udp_lwip_conn_eq_ipaddr(struct firefly_connection *conn,
