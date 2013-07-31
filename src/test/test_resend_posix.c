@@ -227,7 +227,8 @@ void test_readd_simple()
 	struct resend_elem *re = rq->first;
 	re->resend_at.tv_sec = 1;
 	re->resend_at.tv_nsec = 2;
-	firefly_resend_readd(rq, re->id, 500);
+	re->timeout = 500;
+	firefly_resend_readd(rq, re->id);
 
 	CU_ASSERT_EQUAL(re->num_retries, 1);
 	CU_ASSERT_EQUAL(re->resend_at.tv_sec, 1);
@@ -252,7 +253,8 @@ void test_readd_complex()
 	struct resend_elem *re = rq->first;
 	re->resend_at.tv_sec = 1;
 	re->resend_at.tv_nsec = 600000002;
-	firefly_resend_readd(rq, re->id, 2500);
+	re->timeout = 2500;
+	firefly_resend_readd(rq, re->id);
 
 	CU_ASSERT_EQUAL(re->num_retries, 1);
 	CU_ASSERT_EQUAL(re->resend_at.tv_sec, 4);
@@ -271,7 +273,8 @@ void test_readd_removed()
 			0, 2, NULL);
 	struct resend_elem *re = rq->first;
 	struct timespec t = re->resend_at;
-	firefly_resend_readd(rq, 5, 500);
+	re->timeout = 500;
+	firefly_resend_readd(rq, 5);
 
 	CU_ASSERT_EQUAL(re->num_retries, 2);
 	CU_ASSERT_EQUAL(re->resend_at.tv_sec, t.tv_sec);

@@ -7,7 +7,10 @@
 #include <time.h>
 #include <sys/time.h>
 
+#include <protocol/firefly_protocol.h>
+
 #include "utils/firefly_resend_posix.h"
+#include "protocol/firefly_protocol_private.h"
 
 struct resend_queue *firefly_resend_queue_new()
 {
@@ -67,6 +70,7 @@ unsigned char firefly_resend_add(struct resend_queue *rq,
 	timespec_add_ms(&re->resend_at, timeout_ms);
 	re->num_retries = retries;
 	re->conn = conn;
+	re->timeout = timeout_ms;
 	re->prev = NULL;
 	pthread_mutex_lock(&rq->lock);
 	re->id = rq->next_id++;
@@ -114,8 +118,7 @@ static inline struct resend_elem *firefly_resend_pop(
 	return NULL;
 }
 
-void firefly_resend_readd(struct resend_queue *rq, unsigned char id,
-		long timeout_ms)
+void firefly_resend_readd(struct resend_queue *rq, unsigned char id)
 {
 	struct resend_elem *re = firefly_resend_pop(rq, id);
 	if (re == NULL)
@@ -124,7 +127,7 @@ void firefly_resend_readd(struct resend_queue *rq, unsigned char id,
 	// Decrement retries counter
 	re->num_retries--;
 
-	timespec_add_ms(&re->resend_at, timeout_ms);
+	timespec_add_ms(&re->resend_at, re->timeout);
 	re->prev = NULL;
 	if (rq->last == NULL) {
 		rq->first = re;
@@ -189,7 +192,6 @@ int firefly_resend_wait(struct resend_queue *rq,
 		res = rq->first;
 	}
 	*conn = res->conn;
-	// TODO find better way to safely return data block
 	// Check if counter has reached 0
 	if (res->num_retries <= 0) {
 		firefly_resend_pop(rq, res->id);
@@ -207,4 +209,33 @@ int firefly_resend_wait(struct resend_queue *rq,
 	}
 	pthread_mutex_unlock(&rq->lock);
 	return result;
+}
+
+void *firefly_resend_run(void *args)
+{
+	struct resend_queue *rq;
+	unsigned char *data;
+	size_t size;
+	struct firefly_connection *conn;
+	unsigned char id;
+	int res;
+
+	rq = args;
+	while (true) {
+		int prev_state;
+
+		res = firefly_resend_wait(rq, &data, &size, &conn, &id);
+		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &prev_state);
+		if (res < 0) {
+			if (conn->actions->connection_error)
+				conn->actions->connection_error(conn);
+		} else {
+			conn->transport->write(data, size, conn,
+					false, NULL);
+			free(data);
+			firefly_resend_readd(rq, id);
+		}
+		pthread_setcancelstate(prev_state, NULL);
+	}
+	return NULL;
 }

@@ -3,6 +3,7 @@ if(NOT CMAKE_CROSSCOMPILING)
 	add_library(transport-eth-posix
 		${Firefly_SOURCE_DIR}/transport/firefly_transport.c
 		${Firefly_SOURCE_DIR}/transport/firefly_transport_eth_posix.c
+		${Firefly_SOURCE_DIR}/utils/firefly_resend_posix.c
 	)
 	target_link_libraries(transport-eth-posix gen-files)
 

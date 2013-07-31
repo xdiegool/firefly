@@ -161,8 +161,6 @@ struct firefly_connection_actions ping_actions = {
 void *ping_main_thread(void *arg)
 {
 	int res;
-	pthread_t reader_thread;
-	pthread_t resend_thread;
 	struct firefly_transport_llp *llp;
 
 	UNUSED_VAR(arg);
@@ -180,15 +178,14 @@ void *ping_main_thread(void *arg)
 					FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT));
 	if (res < 0) fprintf(stderr, "PING ERROR: Open connection: %d.\n", res);
 
-	res = firefly_transport_udp_posix_run(llp, &reader_thread,
-					      &resend_thread);
+	res = firefly_transport_udp_posix_run(llp);
 	if (res) fprintf(stderr, "ERROR: starting reader/resend thread.\n");
 
 	pthread_mutex_lock(&ping_done_lock);
 	while (!ping_done)
 		pthread_cond_wait(&ping_done_signal, &ping_done_lock);
 	pthread_mutex_unlock(&ping_done_lock);
-	firefly_transport_udp_posix_stop(llp, &reader_thread, &resend_thread);
+	firefly_transport_udp_posix_stop(llp);
 	firefly_transport_llp_udp_posix_free(llp);
 	firefly_event_queue_posix_free(&event_queue);
 	ping_pass_test(TEST_DONE);

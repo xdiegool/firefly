@@ -12,6 +12,7 @@ struct resend_elem {
 	unsigned char id; /**< The unique identifier of this packet in its queue. */
 	struct timespec resend_at; /**< The absolute time when this packet must be
 								 sent again. */
+	long timeout; /**< The interval between resends for this packet. */
 	unsigned char num_retries; /**< Number of times left this packet will be
 								 sent until it is removed. */
 	struct firefly_connection *conn; /**< The connection this packet comes from. */
@@ -106,18 +107,19 @@ struct resend_elem *firefly_resend_top(struct resend_queue *rq);
  * @param conn Result parameter. The pointed to pointer will be set to the
  * connection the returned data shall be sent on.
  * @param id Result parameter. The ID of the packet returned.
+ * @param timeout Result parameter. The interval between resends in ms of the
+ * packet returned.
  * @return Integer indicating result.
  * @retval 0 If a packet was returned and should be sent again.
  * @retval <0 If a packet was found but its number of retries was exceeded. In
- * this case the parameters \p data, \p size, \p id will be set to \c NULL, \c
- * 0, \c 0 respectively and the parameter \p conn will be set to the connection
- * the packet was associated with.
+ * this case the parameters \p data, \p size and \p id will be set
+ * to \c NULL, \c 0 and \c 0 respectively and the parameter \p conn will
+ * be set to the connection the packet was associated with.
  * @note The packet will remain in its place in the queue after this operation.
  * @see #firefly_resend_readd()
  */
-int firefly_resend_wait(struct resend_queue *rq,
-		unsigned char **data, size_t *size, struct firefly_connection **conn,
-		unsigned char *id);
+int firefly_resend_wait(struct resend_queue *rq, unsigned char **data,
+		size_t *size, struct firefly_connection **conn, unsigned char *id);
 
 /**
  * @brief Add a timeout to a packet already in the resend queue.
@@ -131,6 +133,21 @@ int firefly_resend_wait(struct resend_queue *rq,
  * push the packet to the back of the queue.
  * @see #firefly_resend_wait()
  */
-void firefly_resend_readd(struct resend_queue *rq, unsigned char id,
-		long timeout_ms);
+void firefly_resend_readd(struct resend_queue *rq, unsigned char id);
+
+/**
+ * @brief Run the resend loop.
+ *
+ * This loop will run forever and not return anything useful.
+ * The loop consists of running #firefly_resend_wait(). On error call
+ * #firefly_connection_error_f() in the \c struct #firefly_connection_actions of
+ * the connection. For each successfully fetched packet it will be written using
+ * #firefly_transport_connection_write_f() in the \c struct
+ * #firefly_transport_connection of the connection and then readded with
+ * #firefly_resend_readd().
+ *
+ * @param args The #firefly_resend_queue.
+ * @return Nothing
+ */
+void *firefly_resend_run(void *args);
 #endif

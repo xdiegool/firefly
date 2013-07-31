@@ -5,6 +5,17 @@
 #include <sys/time.h>
 
 /**
+ * @brief The default interval between resending important packets.
+ */
+#define FIREFLY_TRANSPORT_ETH_POSIX_DEFAULT_TIMEOUT (500)
+
+/**
+ * @brief The default number of retries to send an important packet before
+ * giving up.
+ */
+#define FIREFLY_TRANSPORT_ETH_POSIX_DEFAULT_RETRIES (5)
+
+/**
  * @brief This callback will be called when a new connection is received.
  *
  * This function is implemented by the application layer. It will be called
@@ -90,4 +101,28 @@ struct firefly_transport_connection *firefly_transport_connection_eth_posix_new(
 void firefly_transport_eth_posix_read(struct firefly_transport_llp *llp,
 		struct timeval *tv);
 
+/**
+ * @brief Start reader and resend thread. Both will run until stopped with
+ * firefly_transport_eth_posix_stop().
+ *
+ * @param llp The LLP to run.
+ * @return Integer indicating success or failure.
+ * @retval 0 if successfull.
+ * @retval <0 upon error.
+ * @see #firefly_transport_eth_posix_stop()
+ */
+int firefly_transport_eth_posix_run(struct firefly_transport_llp *llp);
+
+/**
+ * @brief Stop reader and resend thread. Any thread to be stopped must have been
+ * started with firefly_transport_eth_posix_run(), if not the result is
+ * undefined.
+ *
+ * @param llp The LLP to stop.
+ * @return Integer indicating success or failure.
+ * @retval 0 if successfull.
+ * @retval <0 upon error.
+ * @see #firefly_transport_eth_posix_run()
+ */
+int firefly_transport_eth_posix_stop(struct firefly_transport_llp *llp);
 #endif

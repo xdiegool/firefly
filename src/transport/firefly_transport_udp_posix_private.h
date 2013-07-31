@@ -26,6 +26,9 @@ struct transport_llp_udp_posix {
 											   events on. */
 	struct resend_queue *resend_queue; /**< The resend queue managing important
 										 packets. */
+	pthread_t read_thread; /**< The handle to the thread running the read loop. */
+	pthread_t resend_thread; /**< The handle to the thread running the resend
+							   loop. */
 };
 
 /**

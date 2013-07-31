@@ -4,6 +4,7 @@
  * functions.
  */
 #define _POSIX_C_SOURCE (200112L) // Needed to define strerror_r().
+#include <pthread.h>
 
 #include "transport/firefly_transport_eth_posix_private.h"
 #include <transport/firefly_transport_eth_posix.h>
@@ -24,6 +25,7 @@
 #include <utils/firefly_errors.h>
 #include <transport/firefly_transport.h>
 
+#include <utils/firefly_resend_posix.h>
 #include "utils/firefly_event_queue_private.h"
 #include "transport/firefly_transport_private.h"
 #include "protocol/firefly_protocol_private.h"
@@ -88,8 +90,11 @@ struct firefly_transport_llp *firefly_transport_llp_eth_posix_new(
 		return NULL;
 	}
 
-	llp_eth->event_queue		= event_queue;
 	llp_eth->on_conn_recv		= on_conn_recv;
+	llp_eth->event_queue		= event_queue;
+	llp_eth->resend_queue = firefly_resend_queue_new();
+	memset(&llp_eth->read_thread, 0, sizeof(llp_eth->read_thread));
+	memset(&llp_eth->resend_thread, 0, sizeof(llp_eth->read_thread));
 
 	llp				= malloc(sizeof(*llp));
 	if (!llp) {
@@ -121,6 +126,7 @@ static void check_llp_free(struct firefly_transport_llp *llp)
 	if (llp->state == FIREFLY_LLP_CLOSING && llp->conn_list == NULL) {
 		llp_eth = llp->llp_platspec;
 		close(llp_eth->socket);
+		firefly_resend_queue_free(llp_eth->resend_queue);
 		free(llp_eth);
 		free(llp);
 	}
@@ -215,6 +221,7 @@ struct firefly_transport_connection *firefly_transport_connection_eth_posix_new(
 
 	tcep->socket = llp_eth->socket;
 	tcep->llp = llp;
+	tcep->timeout = FIREFLY_TRANSPORT_ETH_POSIX_DEFAULT_TIMEOUT;
 	tc->context = tcep;
 	tc->open = connection_open;
 	tc->close = connection_close;
@@ -239,15 +246,31 @@ void firefly_transport_eth_posix_write(unsigned char *data, size_t data_size,
 			conn->actions->connection_error(conn);
 	}
 	if (important && id != NULL) {
-		// TODO
+		unsigned char *new_data;
+		struct transport_llp_eth_posix *llp_ps;
+
+		new_data = malloc(data_size);
+		if (!new_data) {
+			FFL(FIREFLY_ERROR_ALLOC);
+			return;
+		}
+		memcpy(new_data, data, data_size);
+		llp_ps = tcep->llp->llp_platspec;
+		*id = firefly_resend_add(llp_ps->resend_queue,
+				new_data, data_size, tcep->timeout,
+				FIREFLY_TRANSPORT_ETH_POSIX_DEFAULT_RETRIES, conn);
 	}
 }
 
 void firefly_transport_eth_posix_ack(unsigned char pkt_id,
 		struct firefly_connection *conn)
 {
-	UNUSED_VAR(pkt_id);
-	UNUSED_VAR(conn);
+	struct firefly_transport_connection_eth_posix *conn_eth;
+	struct transport_llp_eth_posix *llpep;
+
+	conn_eth = conn->transport->context;
+	llpep = conn_eth->llp->llp_platspec;
+	firefly_resend_remove(llpep->resend_queue, pkt_id);
 }
 
 void firefly_transport_eth_posix_read(struct firefly_transport_llp *llp,
@@ -327,6 +350,55 @@ int firefly_transport_eth_posix_read_event(void *event_args)
 	}
 	free(ev_a);
 
+	return 0;
+}
+
+void *firefly_transport_eth_posix_read_run(void *arg)
+{
+	int prev_state;
+	struct firefly_transport_llp *llp;
+	struct timeval tv = {
+		.tv_sec = 0,
+		.tv_usec = FIREFLY_TRANSPORT_ETH_POSIX_DEFAULT_TIMEOUT * 1000
+	};
+
+	llp = arg;
+	while (true) {
+		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &prev_state);
+		firefly_transport_eth_posix_read(llp, &tv);
+		pthread_setcancelstate(prev_state, NULL);
+	}
+	return NULL;
+}
+
+int firefly_transport_eth_posix_run(struct firefly_transport_llp *llp)
+{
+	int res;
+	struct transport_llp_eth_posix *llp_eth;
+
+	llp_eth = llp->llp_platspec;
+	res = pthread_create(&llp_eth->read_thread, NULL,
+			firefly_transport_eth_posix_read_run, llp);
+	if (res < 0)
+		return res;
+	res = pthread_create(&llp_eth->resend_thread, NULL,
+				 firefly_resend_run,
+				 llp_eth->resend_queue);
+	if (res < 0) {
+		pthread_cancel(llp_eth->read_thread);
+		return res;
+	}
+	return 0;
+}
+
+int firefly_transport_eth_posix_stop(struct firefly_transport_llp *llp)
+{
+	struct transport_llp_eth_posix *llp_eth;
+	llp_eth = llp->llp_platspec;
+	pthread_cancel(llp_eth->read_thread);
+	pthread_cancel(llp_eth->resend_thread);
+	pthread_join(llp_eth->resend_thread, NULL);
+	pthread_join(llp_eth->read_thread, NULL);
 	return 0;
 }
 

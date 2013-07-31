@@ -1,6 +1,9 @@
 #ifndef FIREFLY_TRANSPORT_ETH_POSIX_PRIVATE_H
 #define FIREFLY_TRANSPORT_ETH_POSIX_PRIVATE_H
 
+#define _POSIX_C_SOURCE (200112L) // Needed to define strerror_r().
+#include <pthread.h>
+
 #include <netpacket/packet.h>	// defines sockaddr_ll
 #include <signal.h>
 
@@ -31,6 +34,11 @@ struct transport_llp_eth_posix {
 	firefly_on_conn_recv_eth_posix_f on_conn_recv; /**< The callback to be
 													 called when a new
 													 connection is received. */
+	struct resend_queue *resend_queue; /**< The resend queue managing important
+										 packets. */
+	pthread_t read_thread; /**< The handle to the thread running the read loop. */
+	pthread_t resend_thread; /**< The handle to the thread running the resend
+							   loop. */
 };
 
 /**
@@ -42,6 +50,7 @@ struct firefly_transport_connection_eth_posix {
 	struct firefly_transport_llp *llp; /**< The \a llp this connection is
 										 associated with. */
 	int socket; /**< The socket. */
+	unsigned int timeout; /**< The time between resends on this connection. */
 };
 
 /**

@@ -689,9 +689,14 @@ bool firefly_channel_received(struct firefly_channel *chan)
 	return false;
 }
 
-void connection_opened(struct firefly_connection *conn)
+static void connection_opened(struct firefly_connection *conn)
 {
 	firefly_channel_open(conn);
+}
+
+static void connection_error(struct firefly_connection *conn)
+{
+	firefly_connection_close(conn);
 }
 
 void test_something()
@@ -700,8 +705,6 @@ void test_something()
 	int res;
 	pthread_t event_thread;
 	pthread_t mock_reader_thread;
-	pthread_t resend_thread;
-	pthread_t reader_thread;
 	int mock_socket = 0;
 	struct sockaddr_in local_addr;
 	memset(&local_addr, 0, sizeof(local_addr));
@@ -781,7 +784,7 @@ void test_something()
 	struct firefly_transport_llp *llp =
 		firefly_transport_llp_udp_posix_new(FIREFLY_UDP_PORT,
 				received_connection, events);
-	res = firefly_transport_udp_posix_run(llp, &reader_thread, &resend_thread);
+	res = firefly_transport_udp_posix_run(llp);
 	if (res) {
 		fprintf(stderr, "ERROR: starting reader/resend thread.\n");
 	}
@@ -794,7 +797,8 @@ void test_something()
 		.channel_rejected	= NULL,
 		.channel_restrict	= NULL,
 		.channel_restrict_info	= NULL,
-		.connection_opened = connection_opened
+		.connection_opened = connection_opened,
+		.connection_error = connection_error
 	};
 
 	firefly_connection_open(&conn_actions, NULL, events,
@@ -903,7 +907,7 @@ void test_something()
 			time_diff > RESEND_TIMEOUT + TIME_MAX_DIFF);
 	pthread_mutex_unlock(&mock_data_lock);
 
-	firefly_transport_udp_posix_stop(llp, &reader_thread, &resend_thread);
+	firefly_transport_udp_posix_stop(llp);
 	firefly_transport_llp_udp_posix_free(llp);
 	
 	// Stop firefly

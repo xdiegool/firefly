@@ -192,8 +192,6 @@ void *send_data_and_close(void *args)
 void *pong_main_thread(void *arg)
 {
 	int res;
-	pthread_t reader_thread;
-	pthread_t resend_thread;
 	struct thread_arg *ta;
 	struct firefly_transport_llp *llp;
 
@@ -207,7 +205,7 @@ void *pong_main_thread(void *arg)
 
 	llp = firefly_transport_llp_udp_posix_new(PONG_PORT,
 			pong_connection_received, event_queue);
-	res = firefly_transport_udp_posix_run(llp, &reader_thread, &resend_thread);
+	res = firefly_transport_udp_posix_run(llp);
 	if (res) fprintf(stderr, "ERROR: starting reader thread.\n");
 
 	// Signal to pingpong_main that pong is started so ping can start now.
@@ -220,7 +218,7 @@ void *pong_main_thread(void *arg)
 	while (!pong_done) pthread_cond_wait(&pong_done_signal, &pong_done_lock);
 	pthread_mutex_unlock(&pong_done_lock);
 
-	firefly_transport_udp_posix_stop(llp, &reader_thread, &resend_thread);
+	firefly_transport_udp_posix_stop(llp);
 	firefly_transport_llp_udp_posix_free(llp);
 	firefly_event_queue_posix_free(&event_queue);
 	pong_pass_test(TEST_DONE);

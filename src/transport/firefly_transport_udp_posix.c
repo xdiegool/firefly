@@ -265,41 +265,6 @@ void firefly_transport_udp_posix_write(unsigned char *data, size_t data_size,
 	}
 }
 
-void *firefly_transport_udp_posix_resend(void *args)
-{
-	struct resend_queue *rq;
-	unsigned char *data;
-	size_t size;
-	struct firefly_connection *conn;
-	unsigned char id;
-	int res;
-
-	rq = args;
-	while (true) {
-		int prev_state;
-
-		res = firefly_resend_wait(rq, &data, &size, &conn, &id);
-		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &prev_state);
-		if (res < 0) {
-			if (conn->actions->connection_error)
-				conn->actions->connection_error(conn);
-			firefly_connection_close(conn);
-		} else {
-			// TODO fix better way to resend,
-			// imprtant = false and id = NULL
-			// might break inthe future
-			firefly_transport_udp_posix_write(data, size, conn,
-					false, NULL);
-			free(data);
-			firefly_resend_readd(rq, id,
-					((struct firefly_transport_connection_udp_posix *)
-					conn->transport->context)->timeout);
-		}
-		pthread_setcancelstate(prev_state, NULL);
-	}
-	return NULL;
-}
-
 void *firefly_transport_udp_posix_read_run(void *args)
 {
 	struct firefly_transport_llp *llp;
@@ -311,44 +276,36 @@ void *firefly_transport_udp_posix_read_run(void *args)
 	return NULL;
 }
 
-int firefly_transport_udp_posix_run(struct firefly_transport_llp *llp,
-		pthread_t *reader, pthread_t *resend)
+int firefly_transport_udp_posix_run(struct firefly_transport_llp *llp)
 {
 	int res;
 	struct transport_llp_udp_posix *llp_udp;
 
 	llp_udp = llp->llp_platspec;
-	if (reader != NULL) {
-		res = pthread_create(reader, NULL,
-				firefly_transport_udp_posix_read_run, llp);
-		if (res < 0)
-			return res;
-	}
-	if (resend != NULL) {
-		res = pthread_create(resend, NULL,
-				     firefly_transport_udp_posix_resend,
-				     llp_udp->resend_queue);
-		if (res < 0) {
-			if (reader != NULL)
-				pthread_cancel(*reader);
-			return res;
-		}
+	res = pthread_create(&llp_udp->read_thread, NULL,
+			firefly_transport_udp_posix_read_run, llp);
+	if (res < 0)
+		return res;
+	res = pthread_create(&llp_udp->resend_thread, NULL,
+				 firefly_resend_run,
+				 llp_udp->resend_queue);
+	if (res < 0) {
+		if (&llp_udp->read_thread != NULL)
+			pthread_cancel(llp_udp->read_thread);
+		return res;
 	}
 	return 0;
 }
 
-int firefly_transport_udp_posix_stop(struct firefly_transport_llp *llp,
-		pthread_t *reader, pthread_t *resend)
+int firefly_transport_udp_posix_stop(struct firefly_transport_llp *llp)
 {
-	UNUSED_VAR(llp);
-	if (reader != NULL) {
-		pthread_cancel(*reader);
-		pthread_join(*reader, NULL);
-	}
-	if (resend != NULL) {
-		pthread_cancel(*resend);
-		pthread_join(*resend, NULL);
-	}
+	struct transport_llp_udp_posix *llp_udp;
+
+	llp_udp = llp->llp_platspec;
+	pthread_cancel(llp_udp->read_thread);
+	pthread_cancel(llp_udp->resend_thread);
+	pthread_join(llp_udp->resend_thread, NULL);
+	pthread_join(llp_udp->read_thread, NULL);
 	return 0;
 }
 

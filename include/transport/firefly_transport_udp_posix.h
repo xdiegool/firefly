@@ -18,6 +18,7 @@
  * @brief The default interval between resending important packets.
  */
 #define FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT (500)
+
 /**
  * @brief The default number of retries to send an important packet before
  * giving up.
@@ -96,38 +97,26 @@ struct firefly_transport_connection *firefly_transport_connection_udp_posix_new(
 
 /**
  * @brief Start reader and resend thread. Both will run until stopped with
- * firefly_transport_udp_posix_stop(). If either pthread_t argument is NULL the
- * corresponding thread will not be started.
+ * firefly_transport_udp_posix_stop().
  *
  * @param llp The LLP to run.
- * @param reader The handle to the reader thread. If NULL the reader thread will
- * not be started.
- * @param resend The handle to the resend thread. If NULL the resend thread will
- * not be started.
  * @return Integer indicating success or failure.
  * @retval 0 if successfull.
  * @retval <0 upon error.
  */
-int firefly_transport_udp_posix_run(struct firefly_transport_llp *llp,
-		pthread_t *reader, pthread_t *resend);
+int firefly_transport_udp_posix_run(struct firefly_transport_llp *llp);
 
 /**
  * @brief Stop reader and resend thread. Any thread to be stopped must have been
  * started with firefly_transport_udp_posix_run(), if not the result is
- * undefined. If either pthread_t argument is NULL the corresponding thread
- * will not be stopped.
+ * undefined.
  *
  * @param llp The LLP to stop.
- * @param reader The handle to the reader thread. If NULL the reader thread will
- * not be stopped.
- * @param resend The handle to the resend thread. If NULL the resend thread will
- * not be stopped.
  * @return Integer indicating success or failure.
  * @retval 0 if successfull.
  * @retval <0 upon error.
  */
-int firefly_transport_udp_posix_stop(struct firefly_transport_llp *llp,
-		pthread_t *reader, pthread_t *resend);
+int firefly_transport_udp_posix_stop(struct firefly_transport_llp *llp);
 
 /**
  * @brief Read data from the #firefly_transport_llp. Any read data will be
