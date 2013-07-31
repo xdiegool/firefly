@@ -159,8 +159,34 @@ void test_recv_connection()
 	event_execute_test(eq, 1);
 	CU_ASSERT_TRUE(good_conn_received);
 	event_execute_test(eq, 1);
+	firefly_transport_llp_udp_posix_free(llp);
+	event_execute_all_test(eq);
 	data_received = false;
 	good_conn_received = false;
+}
+
+void test_recv_conn_null_cb()
+{
+	struct firefly_transport_llp *llp = firefly_transport_llp_udp_posix_new(
+						local_port, NULL, eq);
+	struct sockaddr_in remote_addr;
+
+	/* Replace the ordinary data recv. callback. */
+	replace_protocol_data_received_cb(llp, protocol_data_received_repl);
+
+	// send data
+	send_data(&remote_addr, remote_port, send_buf, sizeof(send_buf));
+
+	mock_test_event_queue_reset(eq);
+	firefly_transport_udp_posix_read(llp);
+	CU_ASSERT_EQUAL(nbr_added_events, 1);
+
+	mock_test_event_queue_reset(eq);
+	event_execute_test(eq, 1);
+
+	CU_ASSERT_EQUAL(nbr_added_events, 0);
+	CU_ASSERT_FALSE(data_received);
+	data_received = false;
 	firefly_transport_llp_udp_posix_free(llp);
 	event_execute_all_test(eq);
 }

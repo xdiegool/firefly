@@ -41,6 +41,9 @@ int main()
 		(CU_add_test(trans_udp_posix, "test_recv_connection",
 				test_recv_connection) == NULL)
 			   ||
+		(CU_add_test(trans_udp_posix, "test_recv_conn_null_cb",
+				test_recv_conn_null_cb) == NULL)
+			   ||
 		(CU_add_test(trans_udp_posix, "test_recv_data",
 				test_recv_data) == NULL)
 			   ||

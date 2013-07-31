@@ -419,12 +419,13 @@ int firefly_transport_udp_posix_read_event(void *event_arg)
 
 	// Find existing connection or create new.
 	conn = find_connection(ev_arg->llp, &ev_arg->addr, connection_eq_inaddr);
-	if (conn == NULL && llp_udp->on_conn_recv != NULL) {
+	if (conn == NULL) {
 		char ip_addr[INET_ADDRSTRLEN];
 		sockaddr_in_ipaddr(&ev_arg->addr, ip_addr);
 		int64_t ev_id = 0;
-		if ((ev_id = llp_udp->on_conn_recv(ev_arg->llp, ip_addr,
-				sockaddr_in_port(&ev_arg->addr))) > 0) {
+		if (llp_udp->on_conn_recv != NULL &&
+				(ev_id = llp_udp->on_conn_recv(ev_arg->llp, ip_addr,
+					sockaddr_in_port(&ev_arg->addr))) > 0) {
 			return llp_udp->event_queue->offer_event_cb(llp_udp->event_queue,
 					FIREFLY_PRIORITY_HIGH,
 					firefly_transport_udp_posix_read_event,

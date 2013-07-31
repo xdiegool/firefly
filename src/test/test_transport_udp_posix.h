@@ -7,6 +7,7 @@ int init_suit_udp_posix();
 int clean_suit_udp_posix();
 
 void test_recv_connection();
+void test_recv_conn_null_cb();
 void test_recv_data();
 void test_recv_conn_and_data();
 void test_recv_conn_keep();
