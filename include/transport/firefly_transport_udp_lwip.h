@@ -47,6 +47,8 @@ typedef bool (*firefly_on_conn_recv_udp_lwip_f)(
  * bind to all known interfaces.
  * @param local_port The port to bind the new socket to.
  * @param on_conn_recv The callback to call when a new connection is received
+ * @param event_queue The event queue to associate with this
+ * #firefly_transport_llp.
  * @return A pointer to the created #firefly_transport_llp.
  */
 struct firefly_transport_llp *firefly_transport_llp_udp_lwip_new(
