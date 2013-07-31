@@ -107,7 +107,13 @@ struct firefly_transport_llp *firefly_transport_llp_udp_lwip_new(
 	llp_udp->event_queue = event_queue;
 
 	struct firefly_transport_llp *llp = malloc(sizeof(*llp));
-	FFLIF(!llp, FIREFLY_ERROR_ALLOC);
+	if (llp == NULL) {
+		FFL(FIREFLY_ERROR_ALLOC);
+		udp_remove(llp_udp->upcb);
+		free(llp_udp);
+		free(ip_lwip);
+		return NULL;
+	}
 
 	llp->llp_platspec = llp_udp;
 	llp->conn_list = NULL;
