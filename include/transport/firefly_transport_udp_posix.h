@@ -103,6 +103,7 @@ struct firefly_transport_connection *firefly_transport_connection_udp_posix_new(
  * @return Integer indicating success or failure.
  * @retval 0 if successfull.
  * @retval <0 upon error.
+ * @see #firefly_transport_udp_posix_stop()
  */
 int firefly_transport_udp_posix_run(struct firefly_transport_llp *llp);
 
@@ -115,6 +116,7 @@ int firefly_transport_udp_posix_run(struct firefly_transport_llp *llp);
  * @return Integer indicating success or failure.
  * @retval 0 if successfull.
  * @retval <0 upon error.
+ * @see #firefly_transport_udp_posix_run()
  */
 int firefly_transport_udp_posix_stop(struct firefly_transport_llp *llp);
 
