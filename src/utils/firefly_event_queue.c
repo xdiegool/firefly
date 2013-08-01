@@ -125,7 +125,6 @@ void firefly_event_return(struct firefly_event_queue *q,
 	if (q->event_pool_in_use > q->event_pool_size) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1,
 				"EVENT: Inconsistent state, more events in use than possible.");
-		exit(1);
 	} else {
 		q->event_pool_in_use--;
 		q->event_pool[q->event_pool_in_use] = *ev;
