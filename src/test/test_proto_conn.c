@@ -306,8 +306,9 @@ void test_conn_close_recv_any()
 
 	unsigned char mock_data[] = {1,2,3,4,5,6};
 	size_t len = firefly_event_queue_length(eq);
+	expected_error = FIREFLY_ERROR_PROTO_STATE;
 	protocol_data_received(conn, mock_data, sizeof(mock_data));
-	CU_ASSERT_FALSE(was_in_error);
+	CU_ASSERT_TRUE(was_in_error);
 	CU_ASSERT_EQUAL(len, firefly_event_queue_length(eq));
 	event_execute_test(eq, 3);
 
