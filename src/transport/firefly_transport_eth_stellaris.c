@@ -320,11 +320,13 @@ int firefly_transport_eth_stellaris_read_event(void *event_args)
 	conn = find_connection(llp, ev_a->eth_packet + ETH_SRC_OFFSET,
 			connection_eq_remmac);
 	if (conn == NULL) {
+		int64_t id = 0;
+		unsigned char *mac_addr = ev_a->eth_packet + ETH_SRC_OFFSET;
 		if (llp_eth->on_conn_recv != NULL &&
-				llp_eth->on_conn_recv(llp, ev_a->eth_packet + ETH_SRC_OFFSET)) {
+				(id = llp_eth->on_conn_recv(llp, mac_addr)) > 0) {
 			return llp_eth->event_queue->offer_event_cb(llp_eth->event_queue,
 					FIREFLY_PRIORITY_HIGH,
-					firefly_transport_eth_stellaris_read_event, ev_a, 0, NULL);
+					firefly_transport_eth_stellaris_read_event, ev_a, 1, &id);
 		}
 	} else {
 		protocol_data_received(conn,

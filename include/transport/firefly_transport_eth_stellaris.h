@@ -15,7 +15,6 @@
  * calling this function will be rescheduled. If no new connection was opened to
  * the supplied addres the data is discarded.
  *
- * Future: TODO
  * If a connection is opened, the id of the event as returned by
  * #firefly_connection_open must be returned. If no new connection is
  * opened 0 must be returned.
@@ -23,17 +22,13 @@
  * @param llp The \a llp the incomming connection is associated with.
  * @param mac_address The MAC addr of the remote node.
  * Currently:
- * @return \c bool Indicating if a connection was opened to the address or not.
- * @retval true if a new connection was opened.
- * @retval false if no new connection was opened.
  *
- * Future: TODO
  * @return Event id or 0.
  * @retval >0 A new connection was opened and the read data will propagate as
  * soon as the connection is completely open.
  * @retval 0 The new connection was refused and the read data is discarded.
  */
-typedef bool (*firefly_on_conn_recv_eth_stellaris)(
+typedef int64_t (*firefly_on_conn_recv_eth_stellaris)(
 		struct firefly_transport_llp *llp, unsigned char *mac_address);
 
 /**
