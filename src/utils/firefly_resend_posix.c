@@ -186,7 +186,8 @@ int firefly_resend_wait(struct resend_queue *rq,
 		if (res == NULL) {
 			pthread_cond_wait(&rq->sig, &rq->lock);
 		} else {
-			pthread_cond_timedwait(&rq->sig, &rq->lock, &res->resend_at);
+			struct timespec at = res->resend_at;
+			pthread_cond_timedwait(&rq->sig, &rq->lock, &at);
 		}
 		clock_gettime(CLOCK_REALTIME, &now);
 		res = rq->first;
