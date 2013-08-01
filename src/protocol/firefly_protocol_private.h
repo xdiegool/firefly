@@ -10,7 +10,14 @@
 
 #include "utils/firefly_event_queue.h"
 
+/**
+ * @brief A channel ID indicating that no channel ID has been set yet.
+ */
 #define CHANNEL_ID_NOT_SET		(-1)
+
+/**
+ * @brief The size of the writer buffer used by Labcomm.
+ */
 #define BUFFER_SIZE			(128)
 
 /**
@@ -28,40 +35,104 @@
  */
 #define FIREFLY_CONNECTION_CLOSED (0)
 
+/**
+ * @brief The priority of the connection close event.
+ */
 #define FIREFLY_CONNECTION_CLOSE_PRIORITY FIREFLY_PRIORITY_MEDIUM
 
+/**
+ * @brief A macro that, if defined, lets the user replace malloc() with
+ * their own version.
+ *
+ * If the macro is not defined, the regular malloc() function is used.
+ */
 #ifndef FIREFLY_MALLOC
 	#define FIREFLY_MALLOC(size) malloc(size)
 #else
 void *FIREFLY_MALLOC(size_t s);
 #endif
 
+/**
+ * @brief A macro that, if defined, lets the user replace free() with
+ * their own version.
+ *
+ * If the macro is not defined, the regular free() function is used.
+ */
 #ifndef FIREFLY_FREE
 	#define FIREFLY_FREE(ptr) free(ptr)
 #else
 void FIREFLY_FREE(void *ptr);
 #endif
 
+/**
+ * @brief A macro that should be used for any malloc's done when in
+ * runtime (i.e. not when setting up or tearing down stuff).
+ *
+ * If the user has not set the alloc_replacement function pointer, we
+ * fall back to using the #FIREFLY_MALLOC() macro above.
+ *
+ * @param conn The connection the malloc is performed for.
+ * @param size The size of the data block to be allocated.
+ *
+ * @return A pointer to the data block or NULL on failure.
+ * @retval NULL If there was an error allocating memory.
+ */
 #define FIREFLY_RUNTIME_MALLOC(conn, size)					\
 	(conn)->memory_replacements.alloc_replacement != NULL ?			\
 		(conn)->memory_replacements.alloc_replacement(conn, size) :	\
 		FIREFLY_MALLOC(size)
 
+/**
+ * @brief A macro that should be used to free any data allocated by
+ * #FIREFLY_RUNTIME_MALLOC() when in runtime (i.e. not when setting up
+ * or tearing down stuff).
+ *
+ * If the user has not set the free_replacement function pointer, we
+ * fall back to using the #FIREFLY_FREE() macro above.
+ *
+ * @param conn The connection the allocation was performed on.
+ * @param ptr The pointer to the data block to be freed.
+ */
 #define FIREFLY_RUNTIME_FREE(conn, ptr)						\
 	(conn)->memory_replacements.free_replacement != NULL ?			\
 		(conn)->memory_replacements.free_replacement(conn, ptr) : 	\
 		FIREFLY_FREE(ptr)
 
+/**
+ * @brief A macro for setting the read buffer through Labcomm's ioctl
+ * functionality.
+ */
 #define FIREFLY_LABCOMM_IOCTL_READER_SET_BUFFER					\
   LABCOMM_IOW('f', 0, void*)
 
+/**
+ * @brief A macro for informing that the next packet is important
+ * through Labcomm's ioctl functionality.
+ */
 #define FIREFLY_LABCOMM_IOCTL_TRANS_SET_IMPORTANT_ID				\
   LABCOMM_IOW('f', 1, unsigned char*)
 
+/**
+ * @brief Registers the protocol signatures that are needed by the
+ * protocol.
+ *
+ * @param enc The encoder to register protocol signatures on.
+ * @param dec The decoder to register protocol signatures on.
+ * @param conn The connection on which the signatures should be
+ * registered on.
+ */
 void reg_proto_sigs(struct labcomm_encoder *enc,
 		    struct labcomm_decoder *dec,
 		    struct firefly_connection *conn);
 
+/**
+ * @brief A prototype for the callback used by the transport layer to
+ * pass received data to the protocol layer.
+ *
+ * @param conn The connection the data is received on.
+ * @param data The data received.
+ * @param size The size of the data buffer.
+ */
 typedef void (* protocol_data_received_f)(struct firefly_connection *conn,
 					  unsigned char *data,
 					  size_t size);
@@ -71,27 +142,31 @@ typedef void (* protocol_data_received_f)(struct firefly_connection *conn,
  */
 struct channel_list_node {
 	struct channel_list_node *next;	/**< A pointer to the next list node. */
-	struct firefly_channel *chan;	/**< A pointer the the channel struct for this node. */
+	struct firefly_channel *chan;	/**< A pointer the channel struct for this node. */
 };
 
 /**
- * @brief Write data on the specified connection
+ * @brief A prototype for the function used to write data on the
+ * specified connection.
+ *
  * This is an interface implemented by all transport layers.
  *
  * @param data The data to be written.
  * @param data_size The size of the data to be written.
  * @param conn The #firefly_connection to write the data to.
- * @param important If true the packet must be resent until acked.
- * @param id If important is true the id is a return value and will contain the
- * identifier of the packet which must be used when acking the packet.
+ * @param important If true the packet must be re-sent until
+ * acknowledged.
+ * @param id If important is true the id is a return value and will
+ * contain the identifier of the packet which must be used when
+ * acknowleding the packet.
  */
 typedef void (* firefly_transport_connection_write_f)(unsigned char *data, size_t data_size,
 					struct firefly_connection *conn, bool important,
 					unsigned char *id);
 
 /**
- * @brief Inform transport that a packet is acked or should not be resent
- * anymore.
+ * @brief Inform transport that a packet is acknowledged and should not
+ * be resent anymore.
  *
  * @param pkg_id The id of the packet.
  * @param conn The #firefly_connection the packet is sent on.
@@ -100,25 +175,51 @@ typedef void (* firefly_transport_connection_ack_f)(unsigned char pkg_id,
 					struct firefly_connection *conn);
 
 /**
- * @brief TODO
+ * @brief A prototype of the function called from the protocol layer to
+ * setup transport layer specific stuff of the given
+ * #firefly_connection and add it to the connection list.
+ *
+ * @param conn The connection that is being opened.
+ *
+ * @return An int representing the success of the function.
+ * @retval 0 On success.
  */
 typedef int (*firefly_transport_connection_open_f)
 	(struct firefly_connection *conn);
 
 /**
- * @brief TODO
+ * @brief A prototype of the function called from the protocol layer to
+ * free transport layer specific stuff and remove the connection from
+ * the connection list.
+ *
+ * @param conn The connection to close and free.
+ *
+ * @return An int indicating the success or failure of the function.
+ * @retval 0 On success.
  */
 typedef int (*firefly_transport_connection_close_f)
 	(struct firefly_connection *conn);
 
+/**
+ * @brief a data structure containing function pointers to functions
+ * defined by the transport layer.
+ */
 struct firefly_transport_connection {
-	firefly_transport_connection_open_f open;/**< TODO */
-	firefly_transport_connection_close_f close;/**< TODO */
-	firefly_transport_connection_write_f write;/**< TODO */
+	firefly_transport_connection_open_f open;/**< Used when opening
+											   connections, see
+											   #firefly_transport_connection_open_f. */
+	firefly_transport_connection_close_f close;/**< Used when closing
+												 connections, see
+												 #firefly_transport_connection_close_f. */
+	firefly_transport_connection_write_f write;/**< Used when writing
+												 data, see
+												 #firefly_transport_connection_write_f. */
 	firefly_transport_connection_ack_f ack;/**< Inform transport that a packet
 											 is acked or should not be resent
-											 anymore. */
-	void *context;/**< TODO */
+											 anymore, see #firefly_transport_connection_ack_f. */
+	void *context;/**< A context used to pass data to the functions,
+					contains the platform specific
+					transport_connection_* type.  */
 };
 
 /**
@@ -135,7 +236,11 @@ struct firefly_connection {
 	struct channel_list_node		*chan_list;			/**< The list of channels associated with this connection. */
 	struct firefly_event_queue		*event_queue;			/**< The queue to which spawned events are added. */
 	int 					channel_id_counter;		/**< The unique id reserved to the next opened channel on the connection. */
-	struct firefly_memory_funcs		memory_replacements;
+	struct firefly_memory_funcs		memory_replacements; /**< A struct containing function
+														   pointers to runtime memory
+														   replacement functions. See
+														   #firefly_memory_funcs, #FIREFLY_RUNTIME_MALLOC and
+														   #FIREFLY_RUNTIME_FREE. */
 	void					*context;			/**< A reference to an optional, user defined context.  */
 	struct firefly_connection_actions 	*actions;			/**< Callbacks to the applicaiton. */
 	struct firefly_transport_connection *transport;	/**< Transport specific connection data. */
@@ -145,10 +250,14 @@ struct firefly_connection {
  * @brief A simple queue of important packets.
  */
 struct firefly_channel_important_queue {
-	struct firefly_event_send_sample *fess;
-	struct firefly_channel_important_queue *next;
+	struct firefly_event_send_sample *fess; /**< The data of this node. */
+	struct firefly_channel_important_queue *next; /**< The pointer to the next
+													element in the queue. */
 };
 
+/**
+ * @brief An enum of the different states a channel can be in.
+ */
 enum firefly_channel_state {FIREFLY_CHANNEL_READY, FIREFLY_CHANNEL_OPEN};
 
 /**
@@ -178,31 +287,111 @@ struct firefly_channel {
 	bool restricted_local;		/**< Neg. initiated locally.   */
 	bool restricted_remote;	/**< Neg. initiated remotely.  */
 };
+
+/**
+ * @brief Creates a new labcomm_writer for the provided channel
+ * (protocol layer).
+ *
+ * @param chan The channel to create the writer for.
+ *
+ * @return A pointer to the newly created labcomm_writer.
+ * @retval NULL On failure.
+ */
 struct labcomm_writer *protocol_labcomm_writer_new(
 		struct firefly_channel *chan);
+
+/**
+ * @brief Creates a new labcomm_writer for the provided connection
+ * (transport layer).
+ *
+ * @param conn The connection to create the writer for.
+ *
+ * @return A pointer to the newly created labcomm_writer.
+ * @retval NULL On failure.
+ */
 struct labcomm_writer *transport_labcomm_writer_new(
 		struct firefly_connection *conn);
-struct labcomm_reader *transport_labcomm_reader_new(
-		struct firefly_connection *conn);
+
+/**
+ * @brief Creates a new labcomm_reader for the provided connection
+ * (protocol layer).
+ *
+ * @param conn The connection to create a reader for.
+ *
+ * @return A pointer to the newly created labcomm_reader or NULL.
+ * @retval NULL On failure.
+ */
 struct labcomm_reader *protocol_labcomm_reader_new(
 		struct firefly_connection *conn);
+
+/**
+ * @brief Creates a new labcomm_reader for the provided connection
+ * (transport layer).
+ *
+ * @param conn The connection to create a reader for.
+ *
+ * @return A pointer to the newly created labcomm_reader or NULL.
+ * @retval NULL On failure.
+ */
+struct labcomm_reader *transport_labcomm_reader_new(
+		struct firefly_connection *conn);
+
+/**
+ * @brief Frees the provided labcomm_reader (protocol layer).
+ *
+ * @param r The labcomm_reader to free.
+ */
 void protocol_labcomm_reader_free(struct labcomm_reader *r);
+
+/**
+ * @brief Frees the provided labcomm_reader (transport layer).
+ *
+ * @param r The labcomm_reader to free.
+ */
+// TODO: Merge this with protocol_labcomm_reader_free since they do the
+// same thing? It's only internal stuff anyways.
 void transport_labcomm_reader_free(struct labcomm_reader *r);
+
+/**
+ * @brief Frees the provided labcomm_writer (protocol layer).
+ *
+ * @param w The labcomm_writer to free.
+ */
 void protocol_labcomm_writer_free(struct labcomm_writer *w);
+
+/**
+ * @brief Frees the provided labcomm_writer (transport layer).
+ *
+ * @param w The labcomm_writer to free.
+ */
+// TODO: Merge this with protocol_labcomm_writer_free since they do the
+// same thing? It's only internal stuff anyways.
 void transport_labcomm_writer_free(struct labcomm_writer *w);
 
 /**
+ * @brief The event that will be executed when closing a connection.
  *
- * This function will call the trasnport connection free callback if provided.
- * The transport layer is responsible for preventing future use of the
- * connection and prevent any concurrent use from multiple threads using the
- * transport layer. This means the transport layer must either make use of the
- * event queue, use mutexes/locks or any other form of preventing concurrency.
+ * @param event_arg The argument of the event, should be the
+ * #firefly_connection that should be closed (otherwise, it'll be 'ard
+ * to close it, won't it?).
+ *
+ * @return An int indicating the function's success or failure.
+ * @retval 0 On success
  */
 int firefly_connection_close_event(void *event_arg);
 
 /**
- * @brief TODO
+ * @brief Creates a new #firefly_connection with the provided data.
+ *
+ * @param actions The action struct with callbacks to the application.
+ * @param memory_replacements The struct containing memory replacement
+ * functions.
+ * @param event_queue The event queue.
+ * @param tc The #firefly_transport_connection with transport layer
+ * specific functions and data.
+ *
+ * @return The new #firefly_connection on success or NULL on failure.
+ * @retval NULL On failure.
  */
 struct firefly_connection *firefly_connection_new(
 		struct firefly_connection_actions *actions,
@@ -213,10 +402,23 @@ struct firefly_connection *firefly_connection_new(
 /**
  * @brief Frees a connection.
  *
- * @param conn The connection to free.
+ * The function first creates channel closed events for all channels and
+ * then frees the channel list. Then it frees all other resources of the
+ * connection.
+ *
+ * @param conn The connection to free. This will be set to NULL before
+ * returning.
  */
 void firefly_connection_free(struct firefly_connection **conn);
 
+/**
+ * @brief The event freeing a connection.
+ *
+ * @param event_arg The connection to free.
+ *
+ * @return An int indicating the success or failure of the function.
+ * @retval 0 On success.
+ */
 int firefly_connection_free_event(void *event_arg);
 
 /**
@@ -254,15 +456,13 @@ struct firefly_event_chan_open {
 };
 
 /**
- * @brief Open a channel on the connection. This is ment to be run in an event.
- *
- * A firefly_protocol_channel_open packet is sent with a reserved local id. The
- * firefly_channel struct is alocated and added to the chan_list of the
- * firefly_connection.
+ * @brief The event performing the opening of a channel on the
+ * connection.
  *
  * @param event_arg A firefly_event_chan_open.
  * @return Integer idicating the resutlt of the event.
  * @retval Negative integer upon error.
+ * @see #firefly_channel_open
  */
 int firefly_channel_open_event(void *event_arg);
 
@@ -270,20 +470,17 @@ int firefly_channel_open_event(void *event_arg);
  * @brief Sets opened state on channel and calls on_open callback if  the
  * channel was not already open.
  *
- * @param chan The channel to set opened state on
+ * @param chan The channel to set opened state on.
  */
 void firefly_channel_internal_opened(struct firefly_channel *chan);
 
 /**
- * @brief Free's and removes the firefly_channel from the firefly_connection.
- * This is ment to be run in an event.
+ * @brief The event that frees and removes the firefly_channel.
  *
- * The firefly_channel is removed from the chan_list of the firefly_connection
- * and free'd.
- *
- * @param event_arg The channel to be free'd.
- * @return Integer idicating the resutlt of the event.
+ * @param event_arg The channel to be freed.
+ * @return Integer indicating the result of the event.
  * @retval Negative integer upon error.
+ * @see #firefly_channel_close
  */
 int firefly_channel_closed_event(void *event_arg);
 
@@ -300,17 +497,22 @@ struct firefly_event_chan_close {
 };
 
 /**
- * @brief Sends a \c firefly_protocol_channel_close and pushes an event to free
- * and remove the channel from its firefly_connection.
+ * @brief The event sending a close packet for the provided channel
  *
  * @param event_arg A firefly_event_chan_close.
- * @return Integer idicating the resutlt of the event.
+ * @return Integer indicating the result of the event.
  * @retval Negative integer upon error.
+ * @see #firefly_channel_close
  */
 int firefly_channel_close_event(void *event_arg);
 
 /**
  * @brief The callback registered with LabComm used to receive channel request.
+ *
+ * The function copies the data to a new buffer and creates an event
+ * that will handle calling the correct callbacks to the application and
+ * sending the correct response packet depending on whether the user
+ * chooses to accept it or not.
  *
  * @param chan_req The decoded channel request
  * @param context The connection associated with the channel request.
@@ -328,21 +530,22 @@ struct firefly_event_chan_req_recv {
 };
 
 /**
- * @brief Parses the firefly_protocol_channel_request. Calls the
- * firefly_channel_accept_f of the firefly_connection if the request is valid.
- *
- * The request is parsed and a firefly_channel struct is allocated. The
- * firefly_channel_accept_f is called, if it returns true a
- * firefly_protocol_channel_response is sent acknowledging the request.
+ * @brief The event that parses the firefly_protocol_channel_request.
  *
  * @param event_arg A firefly_event_chan_req_recv.
  * @return Integer idicating the resutlt of the event.
  * @retval Negative integer upon error.
+ * @see #handle_channel_request
  */
 int handle_channel_request_event(void *event_arg);
 
 /**
  * @brief The callback registered with LabComm used to receive channel response.
+ *
+ * This function copies the data to a new buffer and creates a new event
+ * that will handle the rest. The event finds the correct channel and
+ * calls the correct callbacks to the application depending on the
+ * response (ACK or NAK).
  *
  * @param chan_res The decoded channel response.
  * @param context The connection associated with the channel response.
@@ -361,18 +564,22 @@ struct firefly_event_chan_res_recv {
 };
 
 /**
- * @brief The firefly_protocol_channel_repsonse is parsed and if valid the
- * firefly_channel_is_open_f is called and a firefly_protocol_channel_ack is
- * sent.
+ * @brief The event that parses a firefly_protocol_channel_repsonse.
  *
  * @param event_arg A firefly_event_chan_res_recv.
  * @return Integer idicating the resutlt of the event.
  * @retval Negative integer upon error.
+ * @see #handle_channel_response
  */
 int handle_channel_response_event(void *event_arg);
 
 /**
  * @brief The callback registered with LabComm used to receive channel ack.
+ *
+ * This function copies the data into new buffers and creates a new
+ * event handling the rest. The event will handle finding the correct
+ * channel and marking a packet as acknowledged. It also calls the
+ * correct callbacks to the application.
  *
  * @param chan_ack The decoded channel ack.
  * @param context The connection associated with the channel ack.
@@ -389,17 +596,19 @@ struct firefly_event_chan_ack_recv {
 };
 
 /**
- * @brief The firefly_protocol_channel_ack is parsed and if valid the
- * firefly_channel_is_open_f is called.
+ * @brief The event that parses a firefly_protocol_channel_ack.
  *
  * @param event_arg A firefly_event_chan_ack_recv.
  * @return Integer idicating the resutlt of the event.
  * @retval Negative integer upon error.
+ * @see #handle_channel_ack
  */
 int handle_channel_ack_event(void *event_arg);
 
 /**
  * @brief The callback registered with LabComm used to receive channel close.
+ *
+ * This function creates an event that handles the actual closing.
  *
  * @param chan_close The decoded channel close.
  * @param context The connection associated with the channel close.
@@ -409,6 +618,11 @@ void handle_channel_close(firefly_protocol_channel_close *chan_close,
 
 /**
  * @brief The callback registered with LabComm used to receive data sample.
+ *
+ * This function creates an event that handles the data sample. The
+ * event handles finding the correct channel, checking if the packet
+ * should be acknowledged, and lastly decode the user data inside the
+ * packet.
  *
  * @param data The decoded data sample.
  * @param context The connection associated with the received data.
@@ -426,12 +640,12 @@ struct firefly_event_recv_sample {
 };
 
 /**
- * @brief The firefly_protocol_data_sample is parsed and if valid the app data is
- * decoded.
+ * @brief The event that parses a firefly_protocol_data_sample.
  *
  * @param event_arg A firefly_event_recv_sample.
  * @return Integer idicating the resutlt of the event.
  * @retval Negative integer upon error.
+ * @see #handle_data_sample
  */
 int handle_data_sample_event(void *event_arg);
 
