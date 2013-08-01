@@ -120,7 +120,6 @@ if(NOT CMAKE_CROSSCOMPILING AND CUNIT_FOUND)
 	## PONG_ETH_MAIN {{{
 	add_executable(pong_eth_main
 		${Firefly_SOURCE_DIR}/test/pingpong/pingpong.c
-		${Firefly_SOURCE_DIR}/test/pingpong/pingpong_peth.c
 		${Firefly_SOURCE_DIR}/test/pingpong/pong_peth.c
 		${Firefly_SOURCE_DIR}/utils/firefly_event_queue_posix.c
 	)
@@ -133,7 +132,6 @@ if(NOT CMAKE_CROSSCOMPILING AND CUNIT_FOUND)
 	## PING_ETH_MAIN {{{
 	add_executable(ping_eth_main
 		${Firefly_SOURCE_DIR}/test/pingpong/pingpong.c
-		${Firefly_SOURCE_DIR}/test/pingpong/pingpong_peth.c
 		${Firefly_SOURCE_DIR}/test/pingpong/ping_peth.c
 		${Firefly_SOURCE_DIR}/utils/firefly_event_queue_posix.c
 	)
