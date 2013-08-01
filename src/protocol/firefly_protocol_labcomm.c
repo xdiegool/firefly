@@ -295,21 +295,33 @@ static const struct labcomm_writer_action proto_writer_action = {
 	.ioctl = proto_writer_ioctl
 };
 
+static struct labcomm_writer *labcomm_writer_new(void *context,
+		struct labcomm_writer_action const *actions)
+{
+	struct labcomm_writer *result;
+
+	result = FIREFLY_MALLOC(sizeof(*result));
+	if (result != NULL && context != NULL) {
+		result->context = context;
+		result->action = actions;
+	}
+
+	return result;
+}
+
 struct labcomm_writer *protocol_labcomm_writer_new(struct firefly_channel *chan)
 {
 	struct labcomm_writer *result;
 	struct protocol_writer_context *context;
 
-	result = FIREFLY_MALLOC(sizeof(*result));
 	context = FIREFLY_MALLOC(sizeof(*context));
-	if (result != NULL && context != NULL) {
+	result = labcomm_writer_new(context, &proto_writer_action);
+	if (context != NULL && result != NULL) {
 		context->chan = chan;
-		result->context = context;
-		result->action = &proto_writer_action;
 	} else {
+		FIREFLY_FREE(context);
 		FIREFLY_FREE(result);
 		result = NULL;
-		FIREFLY_FREE(context);
 	}
 
 	return result;
@@ -384,17 +396,15 @@ struct labcomm_writer *transport_labcomm_writer_new(
 	struct labcomm_writer *result;
 	struct transport_writer_context *context;
 
-	result = FIREFLY_MALLOC(sizeof(*result));
 	context = FIREFLY_MALLOC(sizeof(*context));
+	result = labcomm_writer_new(context, &trans_writer_action);
 	if (result != NULL && context != NULL) {
 		context->conn = conn;
 		context->important_id = NULL;
-		result->context = context;
-		result->action = &trans_writer_action;
 	} else {
+		FIREFLY_FREE(context);
 		FIREFLY_FREE(result);
 		result = NULL;
-		FIREFLY_FREE(context);
 	}
 
 	return result;
