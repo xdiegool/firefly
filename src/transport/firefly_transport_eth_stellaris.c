@@ -338,3 +338,10 @@ int firefly_transport_eth_stellaris_read_event(void *event_args)
 
 	return 0;
 }
+
+struct firefly_event_queue *firefly_transport_eth_stellaris_event_queue(
+		struct firefly_transport_llp *llp)
+{
+	struct transport_llp_eth_stellaris *llp_eth = llp->llp_platspec;
+	return llp_eth->event_queue;
+}

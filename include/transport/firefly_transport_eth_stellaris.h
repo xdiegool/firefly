@@ -90,4 +90,7 @@ firefly_transport_connection_eth_stellaris_new(
  */
 void firefly_transport_eth_stellaris_read(struct firefly_transport_llp *llp);
 
+struct firefly_event_queue *firefly_transport_eth_stellaris_event_queue(
+		struct firefly_transport_llp *llp);
+
 #endif
