@@ -4,7 +4,13 @@ set(firefly_src_files
 	${Firefly_SOURCE_DIR}/protocol/firefly_protocol_connection.c
 	${Firefly_SOURCE_DIR}/protocol/firefly_protocol_labcomm.c
 	${Firefly_SOURCE_DIR}/utils/firefly_errors_utils.c
+	${Firefly_PROJECT_DIR}/gen/firefly_protocol.c
 )
+
+set_property(SOURCE ${Firefly_PROJECT_DIR}/gen/firefly_protocol.c
+	PROPERTY COMPILE_FLAGS "-Wno-all -Wno-extra"
+)
+set_source_files_properties(${Firefly_PROJECT_DIR}/gen/firefly_protocol.c PROPERTIES GENERATED TRUE)
 
 if (CMAKE_CROSSCOMPILING)
 	set(firefly_name firefly-arm)
