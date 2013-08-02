@@ -122,6 +122,7 @@ int64_t pong_connection_received(struct firefly_transport_llp *llp,
 
 void pong_connection_error(struct firefly_connection *conn)
 {
+	UNUSED_VAR(conn);
 	printf("PONG ERROR: Connection error\n");
 	pthread_mutex_lock(&pong_done_lock);
 	pong_done = true;
@@ -141,6 +142,7 @@ void pong_chan_opened(struct firefly_channel *chan)
 
 void pong_chan_closed(struct firefly_channel *chan)
 {
+	UNUSED_VAR(chan);
 	pthread_mutex_lock(&pong_done_lock);
 	pong_done = true;
 	pthread_cond_signal(&pong_done_signal);

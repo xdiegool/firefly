@@ -84,6 +84,7 @@ void ping_chan_opened(struct firefly_channel *chan)
 
 void ping_chan_closed(struct firefly_channel *chan)
 {
+	UNUSED_VAR(chan);
 	pthread_mutex_lock(&ping_done_lock);
 	ping_done = true;
 	pthread_cond_signal(&ping_done_signal);
@@ -112,6 +113,7 @@ void ping_connection_opened(struct firefly_connection *conn)
 
 void ping_connection_error(struct firefly_connection *conn)
 {
+	UNUSED_VAR(conn);
 	printf("PING ERROR: Connection error\n");
 	pthread_mutex_lock(&ping_done_lock);
 	ping_done = true;
