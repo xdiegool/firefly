@@ -189,7 +189,7 @@ int main(int argc, char **argv)
 	struct firefly_transport_llp *llp =
 			firefly_transport_llp_eth_posix_new(iface, NULL, event_queue);
 
-	firefly_connection_open(&conn_actions, NULL, event_queue,
+	res = firefly_connection_open(&conn_actions, NULL, event_queue,
 			firefly_transport_connection_eth_posix_new(
 			llp, mac_addr, iface));
 	if (res < 0) fprintf(stderr, "PING ERROR: Open connection: %d.\n", res);

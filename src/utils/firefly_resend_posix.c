@@ -120,6 +120,7 @@ static inline struct resend_elem *firefly_resend_pop(
 
 void firefly_resend_readd(struct resend_queue *rq, unsigned char id)
 {
+	pthread_mutex_lock(&rq->lock);
 	struct resend_elem *re = firefly_resend_pop(rq, id);
 	if (re == NULL)
 		return;
@@ -212,6 +213,14 @@ int firefly_resend_wait(struct resend_queue *rq,
 	return result;
 }
 
+static void firefly_resend_cleanup(void *arg)
+{
+	struct resend_queue *rq;
+
+	rq = arg;
+	pthread_mutex_unlock(&rq->lock);
+}
+
 void *firefly_resend_run(void *args)
 {
 	struct resend_queue *rq;
@@ -222,6 +231,8 @@ void *firefly_resend_run(void *args)
 	int res;
 
 	rq = args;
+	pthread_cleanup_push(firefly_resend_cleanup, rq);
+
 	while (true) {
 		int prev_state;
 
@@ -238,5 +249,7 @@ void *firefly_resend_run(void *args)
 		}
 		pthread_setcancelstate(prev_state, NULL);
 	}
+
+	pthread_cleanup_pop(0);
 	return NULL;
 }
