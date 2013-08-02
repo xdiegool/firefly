@@ -33,6 +33,13 @@
 	- In firefly_connection_actions, channel_rejected should be merged
 	  with channel_error since the rejected is an error state (compare
 	  with sockets in Java where an exception is thrown on failure).
+	- Currently when closing everything there might be a double free if the app
+	  first calls firefly_connection_close and then
+	  firefly_transport_llp_*_free. This is due to the connection is not
+	  removed from the llp until freed so the llp might try to close an already
+	  closed connection. firefly_connection_close should be able to handle
+	  mutliple calls on the same connection, call error or ignore. llp free
+	  might check the open state of a connection before trying to close it.
 
 # TEST STUFF
 	- The eth_posix test suite fails infrequently on a ubu10.04 32b vm
