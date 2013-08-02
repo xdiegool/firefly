@@ -39,6 +39,7 @@ struct transport_llp_eth_posix {
 	pthread_t read_thread; /**< The handle to the thread running the read loop. */
 	pthread_t resend_thread; /**< The handle to the thread running the resend
 							   loop. */
+	bool running; /**< Whether or not the read loop should exit. */
 };
 
 /**

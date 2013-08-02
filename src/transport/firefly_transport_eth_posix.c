@@ -95,6 +95,7 @@ struct firefly_transport_llp *firefly_transport_llp_eth_posix_new(
 	llp_eth->resend_queue = firefly_resend_queue_new();
 	memset(&llp_eth->read_thread, 0, sizeof(llp_eth->read_thread));
 	memset(&llp_eth->resend_thread, 0, sizeof(llp_eth->read_thread));
+	llp_eth->running = false;
 
 	llp				= malloc(sizeof(*llp));
 	if (!llp) {
@@ -357,16 +358,16 @@ void *firefly_transport_eth_posix_read_run(void *arg)
 {
 	int prev_state;
 	struct firefly_transport_llp *llp;
+	struct transport_llp_eth_posix *llp_eth;
 	struct timeval tv = {
 		.tv_sec = 0,
 		.tv_usec = FIREFLY_TRANSPORT_ETH_POSIX_DEFAULT_TIMEOUT * 1000
 	};
 
 	llp = arg;
-	while (true) {
-		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &prev_state);
+	llp_eth = llp->llp_platspec;
+	while (llp_eth->running) {
 		firefly_transport_eth_posix_read(llp, &tv);
-		pthread_setcancelstate(prev_state, NULL);
 	}
 	return NULL;
 }
@@ -395,7 +396,7 @@ int firefly_transport_eth_posix_stop(struct firefly_transport_llp *llp)
 {
 	struct transport_llp_eth_posix *llp_eth;
 	llp_eth = llp->llp_platspec;
-	pthread_cancel(llp_eth->read_thread);
+	llp_eth->running = false;
 	pthread_cancel(llp_eth->resend_thread);
 	pthread_join(llp_eth->resend_thread, NULL);
 	pthread_join(llp_eth->read_thread, NULL);
