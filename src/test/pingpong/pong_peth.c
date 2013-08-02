@@ -69,7 +69,8 @@ void *send_data_and_close(void *args);
 bool pong_chan_on_restrict_request(struct firefly_channel *chan);
 void pong_chan_on_restrict_change(struct firefly_channel *chan,
 		enum restriction_transition rinfo);
-void ping_connection_opened(struct firefly_connection *conn);
+void pong_connection_opened(struct firefly_connection *conn);
+void pong_connection_error(struct firefly_connection *conn);
 
 struct firefly_connection_actions conn_actions = {
 	.channel_opened		= pong_chan_opened,
@@ -79,7 +80,8 @@ struct firefly_connection_actions conn_actions = {
 	.channel_rejected	= NULL,
 	.channel_restrict	= pong_chan_on_restrict_request,
 	.channel_restrict_info	= pong_chan_on_restrict_change,
-	.connection_opened = ping_connection_opened
+	.connection_opened = pong_connection_opened,
+	.connection_error = pong_connection_error
 };
 
 void pong_chan_on_restrict_change(struct firefly_channel *chan,
@@ -97,7 +99,7 @@ bool pong_chan_on_restrict_request(struct firefly_channel *chan)
 	return true;
 }
 
-void ping_connection_opened(struct firefly_connection *conn)
+void pong_connection_opened(struct firefly_connection *conn)
 {
 	UNUSED_VAR(conn);
 	pong_pass_test(CONNECTION_OPEN);
@@ -118,6 +120,15 @@ int64_t pong_connection_received(struct firefly_transport_llp *llp,
 	return 0;
 }
 
+void pong_connection_error(struct firefly_connection *conn)
+{
+	printf("PONG ERROR: Connection error\n");
+	pthread_mutex_lock(&pong_done_lock);
+	pong_done = true;
+	pthread_cond_signal(&pong_done_signal);
+	pthread_mutex_unlock(&pong_done_lock);
+}
+
 void pong_chan_opened(struct firefly_channel *chan)
 {
 	struct labcomm_encoder *enc = firefly_protocol_get_output_stream(chan);
@@ -130,8 +141,6 @@ void pong_chan_opened(struct firefly_channel *chan)
 
 void pong_chan_closed(struct firefly_channel *chan)
 {
-	firefly_connection_close(
-			firefly_channel_get_connection(chan));
 	pthread_mutex_lock(&pong_done_lock);
 	pong_done = true;
 	pthread_cond_signal(&pong_done_signal);

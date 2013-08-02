@@ -84,8 +84,6 @@ void ping_chan_opened(struct firefly_channel *chan)
 
 void ping_chan_closed(struct firefly_channel *chan)
 {
-	firefly_connection_close(
-			firefly_channel_get_connection(chan));
 	pthread_mutex_lock(&ping_done_lock);
 	ping_done = true;
 	pthread_cond_signal(&ping_done_signal);
@@ -112,6 +110,15 @@ void ping_connection_opened(struct firefly_connection *conn)
 	firefly_channel_open(conn);
 }
 
+void ping_connection_error(struct firefly_connection *conn)
+{
+	printf("PING ERROR: Connection error\n");
+	pthread_mutex_lock(&ping_done_lock);
+	ping_done = true;
+	pthread_cond_signal(&ping_done_signal);
+	pthread_mutex_unlock(&ping_done_lock);
+}
+
 struct firefly_connection_actions conn_actions = {
 	.channel_opened		= ping_chan_opened,
 	.channel_closed		= ping_chan_closed,
@@ -120,7 +127,8 @@ struct firefly_connection_actions conn_actions = {
 	.channel_rejected	= ping_channel_rejected,
 	.channel_restrict	= NULL,
 	.channel_restrict_info	= NULL,
-	.connection_opened = ping_connection_opened
+	.connection_opened = ping_connection_opened,
+	.connection_error = ping_connection_error
 };
 
 void *send_data(void *args)
@@ -193,7 +201,6 @@ int main(int argc, char **argv)
 	pthread_mutex_unlock(&ping_done_lock);
 
 	firefly_transport_eth_posix_stop(llp);
-
 	firefly_transport_llp_eth_posix_free(llp);
 
 	firefly_event_queue_posix_free(&event_queue);
