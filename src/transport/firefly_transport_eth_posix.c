@@ -378,6 +378,7 @@ int firefly_transport_eth_posix_run(struct firefly_transport_llp *llp)
 	struct transport_llp_eth_posix *llp_eth;
 
 	llp_eth = llp->llp_platspec;
+	llp_eth->running = true;
 	res = pthread_create(&llp_eth->read_thread, NULL,
 			firefly_transport_eth_posix_read_run, llp);
 	if (res < 0)
