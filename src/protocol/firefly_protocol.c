@@ -79,24 +79,6 @@ void reg_proto_sigs(struct labcomm_encoder *enc,
 	conn->transport = orig_transport;
 }
 
-void firefly_channel_open(struct firefly_connection *conn)
-{
-	int ret;
-
-	if (conn->open != FIREFLY_CONNECTION_OPEN) {
-		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
-			      "Can't open new channel on closed connection.\n");
-		return;
-	}
-
-	ret = conn->event_queue->offer_event_cb(conn->event_queue,
-						FIREFLY_PRIORITY_HIGH,
-						firefly_channel_open_event,
-						conn, 0, NULL);
-	if (ret < 0)
-		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Could not add event.");
-}
-
 int firefly_channel_open_event(void *event_arg)
 {
 	struct firefly_connection        *conn;
@@ -104,6 +86,13 @@ int firefly_channel_open_event(void *event_arg)
 	firefly_protocol_channel_request chan_req;
 
 	conn = event_arg;
+
+	if (conn->open != FIREFLY_CONNECTION_OPEN) {
+		if (conn->actions->channel_error != NULL)
+			conn->actions->channel_error(NULL, FIREFLY_ERROR_CONN_STATE,
+					  "Can't open new channel on closed connection.\n");
+		return -1;
+	}
 
 	chan = firefly_channel_new(conn);
 	if (!chan) {
@@ -128,6 +117,18 @@ int firefly_channel_open_event(void *event_arg)
 	return 0;
 }
 
+void firefly_channel_open(struct firefly_connection *conn)
+{
+	int64_t ret;
+
+	ret = conn->event_queue->offer_event_cb(conn->event_queue,
+						FIREFLY_PRIORITY_HIGH,
+						firefly_channel_open_event,
+						conn, 0, NULL);
+	if (ret < 0)
+		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Could not add event.");
+}
+
 static int64_t create_channel_closed_event(struct firefly_channel *chan,
 		unsigned int nbr_deps, const int64_t *deps)
 {
@@ -139,6 +140,21 @@ static int64_t create_channel_closed_event(struct firefly_channel *chan,
 	if (ret < 0)
 		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Could not add event.");
 	return ret;
+}
+
+int firefly_channel_close_event(void *event_arg)
+{
+	struct firefly_event_chan_close *fecc;
+	struct firefly_connection       *conn;
+
+	fecc = event_arg;
+	conn = fecc->conn;
+
+	labcomm_encode_firefly_protocol_channel_close(conn->transport_encoder,
+						      &fecc->chan_close);
+	FIREFLY_FREE(event_arg);
+
+	return 0;
 }
 
 int64_t firefly_channel_close(struct firefly_channel *chan)
@@ -171,21 +187,6 @@ int64_t firefly_channel_close(struct firefly_channel *chan)
 	}
 
 	return ret;
-}
-
-int firefly_channel_close_event(void *event_arg)
-{
-	struct firefly_event_chan_close *fecc;
-	struct firefly_connection       *conn;
-
-	fecc = event_arg;
-	conn = fecc->conn;
-
-	labcomm_encode_firefly_protocol_channel_close(conn->transport_encoder,
-						      &fecc->chan_close);
-	FIREFLY_FREE(event_arg);
-
-	return 0;
 }
 
 void protocol_data_received(struct firefly_connection *conn,

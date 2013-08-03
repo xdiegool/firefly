@@ -153,7 +153,8 @@ typedef void (* firefly_channel_restrict_info_f)(struct firefly_channel *chan,
  * @brief A prototype of the callback used when an error occurs on the
  * provided channel.
  *
- * @param chan The channel the error occurred on.
+ * @param chan The channel the error occurred on. NULL if the error is related
+ * to opening a channel.
  * @param reason The reason an error is called.
  * @param message An optional message explaining the error.
  * @see enum firefly_error

@@ -48,6 +48,8 @@ enum firefly_error {
 	/**< User has not set callback */
 	FIREFLY_ERROR_EVENT,
 	/**< Error relating to events */
+	FIREFLY_ERROR_CONN_STATE,
+	/**< Error due to bad state of a connection. */
 	FIREFLY_ERROR_LAST
 	/**< \b Must be the last enum element. firefly_error_get_str() depends on this.*/
 };
