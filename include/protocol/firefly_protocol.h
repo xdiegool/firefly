@@ -153,11 +153,10 @@ typedef void (* firefly_channel_restrict_info_f)(struct firefly_channel *chan,
  * @brief A prototype of the callback used when an error occurs on the
  * provided channel.
  *
- * @note Currently unused.
- *
- * TODO: Should provide some error information as well?
- *
  * @param chan The channel the error occurred on.
+ * @param reason The reason an error is called.
+ * @param message An optional message explaining the error.
+ * @see enum firefly_error
  */
 typedef void (* firefly_channel_error_f)(struct firefly_channel *chan,
 		enum firefly_error reason, const char *message);
@@ -166,13 +165,12 @@ typedef void (* firefly_channel_error_f)(struct firefly_channel *chan,
  * @brief A prototype of the callback used when an error occurs on the
  * provided connection.
  *
- * @note Currently unused.
- *
- * TODO: Should provide some error information as well?
- *
  * @param conn The connection the error occurred on.
+ * @param reason The reason an error is called.
+ * @param message An optional message explaining the error.
  * @retval true If the error should propagate to the channels.
  * @retval false otherwise.
+ * @see enum firefly_error
  */
 typedef bool (* firefly_connection_error_f)(struct firefly_connection *conn,
 		enum firefly_error reason, const char *message);
