@@ -111,14 +111,18 @@ void ping_connection_opened(struct firefly_connection *conn)
 	firefly_channel_open(conn);
 }
 
-void ping_connection_error(struct firefly_connection *conn)
+bool ping_connection_error(struct firefly_connection *conn,
+		enum firefly_error reason, const char *message)
 {
 	UNUSED_VAR(conn);
+	UNUSED_VAR(reason);
+	UNUSED_VAR(message);
 	printf("PING ERROR: Connection error\n");
 	pthread_mutex_lock(&ping_done_lock);
 	ping_done = true;
 	pthread_cond_signal(&ping_done_signal);
 	pthread_mutex_unlock(&ping_done_lock);
+	return false;
 }
 
 struct firefly_connection_actions conn_actions = {

@@ -306,8 +306,8 @@ void firefly_transport_eth_xeno_write(unsigned char *data, size_t data_size,
 			sizeof(*conn_eth->remote_addr));
 	if (err < 0) {
 		FFL(FIREFLY_ERROR_SOCKET);
-		if (conn->actions->connection_error)
-			conn->actions->connection_error(conn);
+		firefly_connection_raise_later(conn,
+				FIREFLY_ERROR_TRANS_WRITE, "rt_dev_sendto() failed");
 	}
 	if (important && id != NULL) {
 		// TODO

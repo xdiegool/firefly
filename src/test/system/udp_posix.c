@@ -694,9 +694,13 @@ static void connection_opened(struct firefly_connection *conn)
 	firefly_channel_open(conn);
 }
 
-static void connection_error(struct firefly_connection *conn)
+static bool connection_error(struct firefly_connection *conn,
+		enum firefly_error reason, const char *msg)
 {
+	UNUSED_VAR(reason);
+	UNUSED_VAR(msg);
 	firefly_connection_close(conn);
+	return false;
 }
 
 void test_something()

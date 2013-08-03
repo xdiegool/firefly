@@ -458,20 +458,20 @@ void test_event_dependencies_done()
 	int id_1 = 1;
 	int id_2 = 2;
 	int id_3 = 3;
-	int64_t dep_1[] = {4};
-	int64_t dep_2[] = {id_1, 5};
-	int64_t dep_3[] = {id_2, 6};
 	struct firefly_event_queue *q =
 		firefly_event_queue_new(firefly_event_add, 3, NULL);
 
+	int64_t dep_1[] = {4};
 	st = q->offer_event_cb(q, FIREFLY_PRIORITY_LOW, NULL, &id_1, 1, dep_1);
 	CU_ASSERT_EQUAL(st, 1);
 	CU_ASSERT_EQUAL(q->head->id, 1);
 	id = st;
+	int64_t dep_2[] = {id, 5};
 	st = q->offer_event_cb(q, FIREFLY_PRIORITY_MEDIUM, NULL, &id_2, 2, dep_2);
 	CU_ASSERT_EQUAL(st, 2);
 	CU_ASSERT_EQUAL(q->head->id, 2);
 	id = st;
+	int64_t dep_3[] = {id, 6};
 	st = q->offer_event_cb(q, FIREFLY_PRIORITY_HIGH, NULL, &id_3, 2, dep_3);
 	CU_ASSERT_EQUAL(st, 3);
 	CU_ASSERT_EQUAL(q->head->id, 3);

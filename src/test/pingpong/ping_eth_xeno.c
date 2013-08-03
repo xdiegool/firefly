@@ -90,6 +90,7 @@ void ping_chan_opened(struct firefly_channel *chan)
 
 void ping_chan_closed(struct firefly_channel *chan)
 {
+	UNUSED_VAR(chan);
 	int res = rt_task_set_mode(T_WARNSW, 0, NULL);
 	if (res != 0) {
 		fprintf(stderr, "Error set mode %d\n", res);

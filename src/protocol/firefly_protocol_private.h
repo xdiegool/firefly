@@ -112,6 +112,20 @@ void FIREFLY_FREE(void *ptr);
 #define FIREFLY_LABCOMM_IOCTL_TRANS_SET_IMPORTANT_ID				\
   LABCOMM_IOW('f', 1, unsigned char*)
 
+#define FF_ERRMSG_MAXLEN (128)
+
+#define FIREFLY_CONNECTION_RAISE(conn, reason, msg) \
+	do { \
+		bool prop = conn->actions->connection_error ? \
+			conn->actions->connection_error(conn, reason, msg) : false; \
+		for (struct channel_list_node *n = conn->chan_list; n != NULL && prop; \
+				n = n->next) { \
+			if (conn->actions->channel_error) \
+				conn->actions->channel_error(n->chan, reason, msg); \
+		} \
+	} while (false); \
+
+
 /**
  * @brief Registers the protocol signatures that are needed by the
  * protocol.
@@ -741,6 +755,15 @@ struct firefly_channel *remove_channel_from_connection(struct firefly_channel *c
  * @return The new uniqe channel ID.
  */
 int next_channel_id(struct firefly_connection *conn);
+
+/**
+ * @brief Raise the specified error on the specified connection from the event
+ * queue of the connection. Should only be called from outside events.
+ *
+ * @see #FIREFLY_CONNECTION_RAISE
+ */
+void firefly_connection_raise_later(struct firefly_connection *conn,
+		enum firefly_error reason, const char *msg);
 
 /**
  * @brief Gets and updates the sequence number used to identify important

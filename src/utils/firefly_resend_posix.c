@@ -215,14 +215,18 @@ int firefly_resend_wait(struct resend_queue *rq,
 
 static void firefly_resend_cleanup(void *arg)
 {
+	struct firefly_resend_loop_args *largs;
 	struct resend_queue *rq;
+	largs = arg;
+	rq = largs->rq;
 
-	rq = arg;
 	pthread_mutex_unlock(&rq->lock);
+	free(arg);
 }
 
 void *firefly_resend_run(void *args)
 {
+	struct firefly_resend_loop_args *largs;
 	struct resend_queue *rq;
 	unsigned char *data;
 	size_t size;
@@ -230,8 +234,10 @@ void *firefly_resend_run(void *args)
 	unsigned char id;
 	int res;
 
-	rq = args;
-	pthread_cleanup_push(firefly_resend_cleanup, rq);
+	largs = args;
+	pthread_cleanup_push(firefly_resend_cleanup, args);
+
+	rq = largs->rq;
 
 	while (true) {
 		int prev_state;
@@ -239,8 +245,8 @@ void *firefly_resend_run(void *args)
 		res = firefly_resend_wait(rq, &data, &size, &conn, &id);
 		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &prev_state);
 		if (res < 0) {
-			if (conn->actions->connection_error)
-				conn->actions->connection_error(conn);
+			if (largs->on_no_ack)
+				largs->on_no_ack(conn);
 		} else {
 			conn->transport->write(data, size, conn,
 					false, NULL);
@@ -250,6 +256,6 @@ void *firefly_resend_run(void *args)
 		pthread_setcancelstate(prev_state, NULL);
 	}
 
-	pthread_cleanup_pop(0);
+	pthread_cleanup_pop(1);
 	return NULL;
 }

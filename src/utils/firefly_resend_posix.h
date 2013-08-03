@@ -136,6 +136,16 @@ int firefly_resend_wait(struct resend_queue *rq, unsigned char **data,
 void firefly_resend_readd(struct resend_queue *rq, unsigned char id);
 
 /**
+ * @brief The argument to #firefly_resend_run.
+ */
+struct firefly_resend_loop_args {
+	struct resend_queue *rq; /**< The #resend_queue. */
+	void (*on_no_ack)(struct firefly_connection *conn); /**< A callback called
+														  when a packet is not
+														  acked in time. */
+};
+
+/**
  * @brief Run the resend loop.
  *
  * This loop will run forever and not return anything useful.

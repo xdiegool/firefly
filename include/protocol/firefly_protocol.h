@@ -10,6 +10,7 @@
 #include <stdbool.h>
 
 #include <utils/firefly_event_queue.h>
+#include <utils/firefly_errors.h>
 
 /**
  * @brief An opaque structure representing a channel.
@@ -158,7 +159,8 @@ typedef void (* firefly_channel_restrict_info_f)(struct firefly_channel *chan,
  *
  * @param chan The channel the error occurred on.
  */
-typedef void (* firefly_channel_error_f)(struct firefly_channel *chan);
+typedef void (* firefly_channel_error_f)(struct firefly_channel *chan,
+		enum firefly_error reason, const char *message);
 
 /**
  * @brief A prototype of the callback used when an error occurs on the
@@ -169,8 +171,11 @@ typedef void (* firefly_channel_error_f)(struct firefly_channel *chan);
  * TODO: Should provide some error information as well?
  *
  * @param conn The connection the error occurred on.
+ * @retval true If the error should propagate to the channels.
+ * @retval false otherwise.
  */
-typedef void (* firefly_connection_error_f)(struct firefly_connection *conn);
+typedef bool (* firefly_connection_error_f)(struct firefly_connection *conn,
+		enum firefly_error reason, const char *message);
 
 /**
  * @brief A prototype of the callback used when a new connection is
