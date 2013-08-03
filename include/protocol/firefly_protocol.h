@@ -94,7 +94,8 @@ void firefly_channel_open(struct firefly_connection *conn);
  * the connection's chan_list.
  *
  * @param chan The channel to close and free.
- * @return TODO
+ * @return The ID of the event freeing the channel.
+ * @retval <0 if failure.
  */
 int64_t firefly_channel_close(struct firefly_channel *chan);
 
@@ -238,7 +239,8 @@ int firefly_connection_open(
  *
  * @param conn The connection to close.
  *
- * @return TODO
+ * @return The ID of the first event performing the closing.
+ * @retval <0 on failure.
  */
 int64_t firefly_connection_close(struct firefly_connection *conn);
 

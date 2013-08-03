@@ -764,7 +764,10 @@ int firefly_channel_restrict_event(void *earg);
 int firefly_channel_unrestrict_event(void *earg);
 
 /**
- * @brief TODO
+ * @brief Internal function which will ack to the transport layer any non-acked
+ * important packet on the provided channel.
+ *
+ * @param chan All important packets of this channel will be acked.
  */
 void firefly_channel_ack(struct firefly_channel *chan);
 #endif
