@@ -44,6 +44,8 @@
 	  closed connection. firefly_connection_close should be able to handle
 	  mutliple calls on the same connection, call error or ignore. llp free
 	  might check the open state of a connection before trying to close it.
+	- Call accept callbacks before allocating the structs. Dont let unwanted
+	  requests affect current state of the application, needed for real time.
 
 # TEST STUFF
 	- The eth_posix test suite fails infrequently on a ubu10.04 32b vm
