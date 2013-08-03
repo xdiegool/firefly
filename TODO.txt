@@ -33,6 +33,10 @@
 	- In firefly_connection_actions, channel_rejected should be merged
 	  with channel_error since the rejected is an error state (compare
 	  with sockets in Java where an exception is thrown on failure).
+	- Consider letting connection_error callback return bool indicating whether
+	  or not to propagate the error to each channel as well. Would be useful if
+	  channels from multiple connections are bundled and the code using the
+	  channels are not aware of the connections. Possible use case: ExtCtrl
 	- Currently when closing everything there might be a double free if the app
 	  first calls firefly_connection_close and then
 	  firefly_transport_llp_*_free. This is due to the connection is not
