@@ -317,20 +317,15 @@ void test_conn_close_recv_any()
 	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 
-	struct firefly_channel *ch = firefly_channel_new(conn);
-	ch->remote_id = 0;
-	add_channel_to_connection(ch, conn);
-
 	firefly_connection_close(conn);
 	event_execute_test(eq, 1);
 
 	unsigned char mock_data[] = {1,2,3,4,5,6};
 	size_t len = firefly_event_queue_length(eq);
-	expected_error = FIREFLY_ERROR_PROTO_STATE;
 	protocol_data_received(conn, mock_data, sizeof(mock_data));
-	CU_ASSERT_TRUE(was_in_error);
+	CU_ASSERT_FALSE(was_in_error);
 	CU_ASSERT_EQUAL(len, firefly_event_queue_length(eq));
-	event_execute_test(eq, 3);
+	event_execute_test(eq, 1);
 
 	transport_sent = false;
 	was_in_error = false;

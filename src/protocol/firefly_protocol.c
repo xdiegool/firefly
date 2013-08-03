@@ -197,9 +197,6 @@ void protocol_data_received(struct firefly_connection *conn,
 				FIREFLY_LABCOMM_IOCTL_READER_SET_BUFFER,
 				data, size);
 		labcomm_decoder_decode_one(conn->transport_decoder);
-	} else {
-		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
-			      "Received data on closed conneciton.\n");
 	}
 }
 
