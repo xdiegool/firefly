@@ -123,20 +123,19 @@ void pong_connection_opened(struct firefly_connection *conn)
 	pong_pass_test(CONNECTION_OPEN);
 }
 
-bool pong_connection_received(
+int64_t pong_connection_received(
 		struct firefly_transport_llp *llp, char *mac_addr)
 {
 	/* If address is correct, open a connection. */
 	if (strncmp(mac_addr, ping_mac_addr, strlen(ping_mac_addr)) == 0) {
-		firefly_connection_open(&conn_actions,
+		return firefly_connection_open(&conn_actions,
 				firefly_transport_eth_xeno_memfuncs(), event_queue,
 				firefly_transport_connection_eth_xeno_new(
 				llp, mac_addr, pong_iface));
-		return true;
 	} else {
 		fprintf(stderr, "ERROR: Received unknown connection: %s\n",
 				mac_addr);
-		return false;
+		return 0;
 	}
 }
 
@@ -152,8 +151,6 @@ void pong_chan_opened(struct firefly_channel *chan)
 
 void pong_chan_closed(struct firefly_channel *chan)
 {
-	firefly_connection_close(
-			firefly_channel_get_connection(chan));
 	rt_sem_v(&pong_done_signal);
 	pong_pass_test(CHAN_CLOSE);
 }

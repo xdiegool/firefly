@@ -7,8 +7,6 @@ if(NOT CMAKE_CROSSCOMPILING)
 	)
 	target_link_libraries(transport-eth-posix gen-files)
 
-	message("-- Looking for Xenomai")
-	find_package(Xenomai)
 	if (XENOMAI_FOUND)
 		include_directories(${XENOMAI_INCLUDE_DIRS})
 		# Ethernet Xenomai

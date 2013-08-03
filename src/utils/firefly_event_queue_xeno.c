@@ -18,8 +18,9 @@ struct firefly_event_queue_xeno_context {
 	bool event_loop_stop;
 };
 
-int firefly_event_queue_xeno_add(struct firefly_event_queue *eq,
-		unsigned char prio, firefly_event_execute_f execute, void *context);
+int64_t firefly_event_queue_xeno_add(struct firefly_event_queue *eq,
+		unsigned char prio, firefly_event_execute_f execute, void *context,
+		unsigned int nbr_deps, const int64_t *deps);
 
 struct firefly_event_queue *firefly_event_queue_xeno_new(size_t pool_size,
 		int prio, RTIME timeout)
@@ -60,10 +61,11 @@ void firefly_event_queue_xeno_free(struct firefly_event_queue **eq)
 	firefly_event_queue_free(eq);
 }
 
-int firefly_event_queue_xeno_add(struct firefly_event_queue *eq,
-		unsigned char prio, firefly_event_execute_f execute, void *context)
+int64_t firefly_event_queue_xeno_add(struct firefly_event_queue *eq,
+		unsigned char prio, firefly_event_execute_f execute, void *context,
+		unsigned int nbr_deps, const int64_t *deps)
 {
-	int res = 0;
+	int64_t res = 0;
 	struct firefly_event_queue_xeno_context *ctx =
 		(struct firefly_event_queue_xeno_context *)
 		firefly_event_queue_get_context(eq);
@@ -83,8 +85,8 @@ int firefly_event_queue_xeno_add(struct firefly_event_queue *eq,
 		}
 		return res;
 	}
-	res = firefly_event_add(eq, prio, execute, context);
-	if (!res) {
+	res = firefly_event_add(eq, prio, execute, context, nbr_deps, deps);
+	if (res > 0) {
 		rt_sem_v(&ctx->event_count);
 	} else {
 		fprintf(stderr, "Could not add event.\n");

@@ -241,6 +241,9 @@ set(CMAKE_C_OUTPUT_EXTENSION_REPLACE 1)
 
 ## }}}
 
+message("-- Looking for Xenomai")
+find_package(Xenomai)
+
 ## INCLUDE {{{
 # Include subdirectories with their own CMake files:
 add_subdirectory(utils)

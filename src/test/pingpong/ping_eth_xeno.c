@@ -90,8 +90,11 @@ void ping_chan_opened(struct firefly_channel *chan)
 
 void ping_chan_closed(struct firefly_channel *chan)
 {
-	firefly_connection_close(
-			firefly_channel_get_connection(chan));
+	int res = rt_task_set_mode(T_WARNSW, 0, NULL);
+	if (res != 0) {
+		fprintf(stderr, "Error set mode %d\n", res);
+		return;
+	}
 	ping_pass_test(CHAN_CLOSE);
 	rt_sem_v(&ping_done_signal);
 }

@@ -143,6 +143,41 @@ if(NOT CMAKE_CROSSCOMPILING AND CUNIT_FOUND)
 	)
 	## }}}
 
+	if (XENOMAI_FOUND)
+		## PONG_ETH_XENO {{{
+		include_directories(${XENOMAI_INCLUDE_DIRS})
+		add_executable(pong_eth_xeno
+			${Firefly_SOURCE_DIR}/test/pingpong/pingpong.c
+			${Firefly_SOURCE_DIR}/test/pingpong/pingpong_eth_xeno.c
+			${Firefly_SOURCE_DIR}/test/pingpong/pong_eth_xeno.c
+			${Firefly_SOURCE_DIR}/utils/firefly_event_queue_xeno.c
+		)
+		set_target_properties(pong_eth_xeno
+			PROPERTIES COMPILE_FLAGS "-std=gnu99 -D_GNU_SOURCE -D_REENTRANT -D__XENO__"
+		)
+		target_link_libraries(pong_eth_xeno
+			firefly-werr transport-eth-xenomai labcomm
+			gen-files ${XENOMAI_LIBRARIES} rtdm pthread rt
+		)
+		## }}}
+
+		## PING_ETH_XENO {{{
+		add_executable(ping_eth_xeno
+			${Firefly_SOURCE_DIR}/test/pingpong/pingpong.c
+			${Firefly_SOURCE_DIR}/test/pingpong/pingpong_eth_xeno.c
+			${Firefly_SOURCE_DIR}/test/pingpong/ping_eth_xeno.c
+			${Firefly_SOURCE_DIR}/utils/firefly_event_queue_xeno.c
+		)
+		set_target_properties(ping_eth_xeno
+			PROPERTIES COMPILE_FLAGS "-std=gnu99 -D_GNU_SOURCE -D_REENTRANT -D__XENO__"
+		)
+		target_link_libraries(ping_eth_xeno
+			firefly-werr transport-eth-xenomai labcomm
+			gen-files ${XENOMAI_LIBRARIES} rtdm pthread rt
+		)
+		## }}}
+	endif (XENOMAI_FOUND)
+
 	## PINGPONG_MULTI_MAIN {{{
 	add_executable(pingpong_multi_main
 		${Firefly_SOURCE_DIR}/test/pingpong/pingpong_main.c

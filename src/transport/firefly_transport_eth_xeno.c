@@ -142,7 +142,7 @@ static void check_llp_free(struct firefly_transport_llp *llp)
 	struct transport_llp_eth_xeno *llp_eth;
 	if (llp->state == FIREFLY_LLP_CLOSING && llp->conn_list == NULL) {
 		llp_eth = llp->llp_platspec;
-		close(llp_eth->socket);
+		rt_dev_close(llp_eth->socket);
 		rt_heap_delete(&llp_eth->dyn_mem);
 		free(llp_eth);
 		free(llp);
