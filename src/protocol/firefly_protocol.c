@@ -400,6 +400,7 @@ int handle_channel_ack_event(void *event_arg)
 		firefly_channel_ack(chan);
 		firefly_channel_internal_opened(chan);
 	} else {
+		// TODO silently discard?
 		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
 			      "Received ack on non-existing channel.\n");
 	}
@@ -419,6 +420,7 @@ void handle_channel_close(firefly_protocol_channel_close *chan_close,
 	if (chan != NULL){
 		create_channel_closed_event(chan, 0, NULL);
 	} else {
+		// TODO silently discard?
 		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
 			      "Received closed on non-existing channel.\n");
 	}
@@ -500,6 +502,7 @@ int handle_data_sample_event(void *event_arg)
 	} else {
 		firefly_protocol_channel_close chan_close;
 
+		// TODO silently discard?
 		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
 			      "Received data sample on non-existing channel.\n");
 
@@ -542,10 +545,6 @@ void handle_ack(firefly_protocol_ack *ack, void *context)
 					FIREFLY_PRIORITY_HIGH,
 					send_data_sample_event, fess, 0, NULL);
 		}
-	} else if (chan->current_seqno > ack->seqno) {
-		// Do nothing, old ack
-	} else {
-		// TODO errornous packet
 	}
 }
 
