@@ -50,6 +50,11 @@
 	- Call accept callbacks before allocating the structs. Dont let unwanted
 	  requests affect current state of the application, needed for real time.
 	- Restrict feature does not ack packets locally.
+	- Restrict feature misshandles important. Only one packet at any time on a
+	  channel may be considered important. I there is any not yet acked
+	  important packet on a channel when a restrict request is called the
+	  important_id of that channel will be overridden and the previous
+	  important packet will never be acked to the transport layer.
 
 # TEST STUFF
 	- The eth_posix test suite fails infrequently on a ubu10.04 32b vm
