@@ -761,6 +761,7 @@ int channel_restrict_ack_event(void *context)
 				chan->conn->actions->channel_restrict_info) {
 			conn->actions->channel_restrict_info(chan, RESTRICTED);
 		} else {
+			// TODO typical channel error
 			firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
 				      "Got impossible restr. req.");
 		}
