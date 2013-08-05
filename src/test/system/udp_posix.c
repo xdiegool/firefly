@@ -798,7 +798,6 @@ void test_something()
 		.channel_closed		= firefly_channel_closed,
 		.channel_recv		= firefly_channel_received,
 		// New -v
-		.channel_rejected	= NULL,
 		.channel_restrict	= NULL,
 		.channel_restrict_info	= NULL,
 		.connection_opened = connection_opened,

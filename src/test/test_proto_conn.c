@@ -348,7 +348,6 @@ void test_conn_close_recv_chan_req_first()
 	struct firefly_connection_actions conn_actions = {
 		.channel_recv		= channel_accept_test,
 		.channel_opened		= NULL,
-		.channel_rejected	= NULL,
 		.channel_closed		= NULL,
 		.channel_restrict	= NULL,
 		.channel_restrict_info	= NULL

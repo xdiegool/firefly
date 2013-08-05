@@ -65,14 +65,6 @@ struct firefly_memory_funcs {
 };
 
 /**
- * @brief A prototype for the callback from the protocol layer called when a
- * channel request is rejected by the remote node.
- *
- * @param conn The connection on which the channel request was rejected.
- */
-typedef void (* firefly_channel_rejected_f)(struct firefly_connection *conn);
-
-/**
  * @brief Creates and offers an event to open a channel on the provided
  * connection.
  *
@@ -197,7 +189,6 @@ typedef void (* firefly_connection_opened_f)(struct firefly_connection *conn);
 struct firefly_connection_actions {
 	firefly_channel_accept_f	channel_recv;		/**< Called when a new channel is received. */
 	firefly_channel_is_open_f	channel_opened;		/**< Called when a channel has been opened. */
-	firefly_channel_rejected_f	channel_rejected;	/**< Called if this channel could not be opened due to remote node rejected it. */
 	firefly_channel_closed_f	channel_closed;		/**< Called when a channel has been closed. */
 	firefly_channel_restrict_f	channel_restrict;	/**< Called on incoming restriction request. */
 	firefly_channel_restrict_info_f	channel_restrict_info;	/**< Called on restriction status change. */

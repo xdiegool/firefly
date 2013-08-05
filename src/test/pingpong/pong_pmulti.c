@@ -69,7 +69,6 @@ struct firefly_connection_actions pong_udp_conn_actions = {
 	.channel_closed		= pong_udp_chan_closed,
 	.channel_recv		= pong_chan_received,
 	// New -v
-	.channel_rejected	= NULL,
 	.channel_restrict	= NULL,
 	.channel_restrict_info	= NULL,
 	.connection_opened = pong_pudp_connection_opened
@@ -129,12 +128,6 @@ bool pong_chan_received(struct firefly_channel *chan)
 {
 	UNUSED_VAR(chan);
 	return true;
-}
-
-void pong_channel_rejected(struct firefly_connection *conn)
-{
-	UNUSED_VAR(conn);
-	fprintf(stderr, "ERROR: Channel rejected.\n");
 }
 
 void pong_handle_pingpong_data(pingpong_data *data, void *ctx)
@@ -205,7 +198,6 @@ struct firefly_connection_actions pong_eth_conn_actions = {
 	.channel_closed		= pong_eth_chan_closed,
 	.channel_recv		= pong_chan_received,
 	// New -v
-	.channel_rejected	= NULL,
 	.channel_restrict	= NULL,
 	.channel_restrict_info	= NULL,
 	.connection_opened = pong_eth_connection_opened

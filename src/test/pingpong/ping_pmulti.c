@@ -99,10 +99,12 @@ bool ping_chan_received(struct firefly_channel *chan)
 	return true;
 }
 
-void ping_channel_rejected(struct firefly_connection *conn)
+static void ping_channel_error(struct firefly_channel *chan,
+		enum firefly_error reason, const char *msg)
 {
-	UNUSED_VAR(conn);
-	fprintf(stderr, "ERROR: Channel was rejected.\n");
+	UNUSED_VAR(chan);
+	if (reason == FIREFLY_ERROR_CHAN_REFUSED)
+		fprintf(stderr, "ERROR: Channel was rejected.\n%s\n", msg);
 }
 
 void ping_connection_opened(struct firefly_connection *conn)
@@ -116,8 +118,8 @@ struct firefly_connection_actions ping_eth_conn_actions = {
 	.channel_opened		= ping_chan_opened,
 	.channel_closed		= ping_chan_closed,
 	.channel_recv		= ping_chan_received,
+	.channel_error		= ping_channel_error,
 	// New -v
-	.channel_rejected	= NULL,
 	.channel_restrict	= NULL,
 	.channel_restrict_info	= NULL,
 	.connection_opened = ping_connection_opened
@@ -127,8 +129,8 @@ struct firefly_connection_actions ping_udp_conn_actions = {
 	.channel_opened		= ping_chan_opened,
 	.channel_closed		= ping_chan_closed,
 	.channel_recv		= ping_chan_received,
+	.channel_error		= ping_channel_error,
 	// New -v
-	.channel_rejected	= NULL,
 	.channel_restrict	= NULL,
 	.channel_restrict_info	= NULL,
 	.connection_opened = ping_connection_opened

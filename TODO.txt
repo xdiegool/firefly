@@ -30,9 +30,6 @@
 	- We need to go through all of Firefly and fix error handling. E.g.
 	  add something more than the (sometimes) existing error prints
 	  for when malloc() fails. (Fixed in POSIX transports.)
-	- In firefly_connection_actions, channel_rejected should be merged
-	  with channel_error since the rejected is an error state (compare
-	  with sockets in Java where an exception is thrown on failure).
 	- Consider letting connection_error callback return bool indicating whether
 	  or not to propagate the error to each channel as well. Would be useful if
 	  channels from multiple connections are bundled and the code using the

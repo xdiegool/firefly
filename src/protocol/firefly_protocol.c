@@ -351,8 +351,9 @@ int handle_channel_response_event(void *event_arg)
 
 		actions = chan->conn->actions;
 
-		if (actions != NULL && actions->channel_rejected != NULL)
-			actions->channel_rejected(fecrr->conn);
+		if (actions != NULL && actions->channel_error != NULL)
+			actions->channel_error(NULL, FIREFLY_ERROR_CHAN_REFUSED,
+					"Channel was refused by remote end.");
 		firefly_channel_ack(chan);
 		firefly_channel_free(remove_channel_from_connection(chan,
 								fecrr->conn));
