@@ -55,6 +55,7 @@ if(CMAKE_CROSSCOMPILING)
 	set(CMAKE_C_FLAGS
 		"${C_STD} "
 		"${ERR_FLAGS} -Wfloat-equal -Werror-implicit-function-declaration "
+		"-mthumb -mcpu=cortex-m3 -T../ft-sense/src/adc_freertos_lwip/standalone.ld"
 		"-ffunction-sections -fdata-sections "
 		"${MACROS_DEF} -DUART_BUFFERED -Dsprintf=usprintf "
 		"-Dsnprintf=usnprintf -Dvsnprintf=uvsnprintf -Dprintf=uipprintf "
