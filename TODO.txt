@@ -46,6 +46,7 @@
 	  might check the open state of a connection before trying to close it.
 	- Call accept callbacks before allocating the structs. Dont let unwanted
 	  requests affect current state of the application, needed for real time.
+	- Restrict feature does not ack packets locally.
 
 # TEST STUFF
 	- The eth_posix test suite fails infrequently on a ubu10.04 32b vm
