@@ -248,7 +248,10 @@ int handle_channel_request_event(void *event_arg)
 	fecrr = event_arg;
 	conn  = fecrr->conn;
 	chan  = find_channel_by_remote_id(conn, fecrr->chan_req.source_chan_id);
-	// TODO what if chan != NULL? Should we not reject the request?
+	/**
+	 * if chan != NULL the request was accepted but the response has probably
+	 * been lost. The response is important and will be sent again.
+	 */
 	if (chan == NULL) {
 		// Received Channel request.
 		chan = firefly_channel_new(conn);
