@@ -41,7 +41,6 @@ const char *firefly_error_get_str(enum firefly_error error_id)
 	return error_str;
 }
 
-// TODO use this for errors.
 void labcomm_error_to_ff_error(enum labcomm_error error_id, size_t nbr_va_args,
 									...)
 {

@@ -498,22 +498,11 @@ void firefly_channel_internal_opened(struct firefly_channel *chan);
  */
 int firefly_channel_closed_event(void *event_arg);
 
-/**
- * @brief The event argument of firefly_channel_close_event.
- */
-struct firefly_event_chan_close {
-	struct firefly_connection *conn; /**< The connection to send the packet
-						on. */
-	firefly_protocol_channel_close chan_close; /**< The packet to send,
-							must be correctly
-							initialized with id's.
-							*/
-};
 
 /**
  * @brief The event sending a close packet for the provided channel
  *
- * @param event_arg A firefly_event_chan_close.
+ * @param event_arg A \c struct #firefly_channel.
  * @return Integer indicating the result of the event.
  * @retval Negative integer upon error.
  * @see #firefly_channel_close

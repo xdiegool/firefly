@@ -110,6 +110,7 @@ void test_unexpected_ack()
 	CU_ASSERT_TRUE(was_in_error);
 	was_in_error = false; // Reset.
 	free(conn_open_write.data);
+	free(conn_recv_write.data);
 
 	mk_lc_and_reg_sigs_free(conn_open, conn_recv, eq);
 }
@@ -133,14 +134,10 @@ void test_unexpected_response()
 	expected_error = FIREFLY_ERROR_PROTO_STATE;
 	protocol_data_received(conn_open, conn_recv_write.data,
 						   conn_recv_write.size);
-
-	struct firefly_event *ev = firefly_event_pop(eq);
-	CU_ASSERT_PTR_NOT_NULL_FATAL(ev);
-	firefly_event_execute(ev);
-	firefly_event_return(eq, &ev);
+	event_execute_test(eq, 1);
+	CU_ASSERT_TRUE(was_in_error);
 
 	expected_error = FIREFLY_ERROR_FIRST; // Reset
-	CU_ASSERT_TRUE(was_in_error);
 	was_in_error = false; // Reset.
 	free(conn_open_write.data);
 	free(conn_recv_write.data);
