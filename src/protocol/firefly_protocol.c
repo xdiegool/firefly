@@ -727,10 +727,11 @@ int channel_restrict_ack_event(void *context)
 		return -1;
 	}
 	if (earg->rack.restricted) {
-		if (chan->restricted_local && chan->conn->actions &&
+		if (!chan->restricted_remote && chan->restricted_local &&
+				chan->conn->actions &&
 				chan->conn->actions->channel_restrict_info) {
 			conn->actions->channel_restrict_info(chan, RESTRICTED);
-		} else {
+		} else if (!chan->restricted_local) {
 			firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
 				      "Got impossible restr. req.");
 		}
@@ -740,7 +741,7 @@ int channel_restrict_ack_event(void *context)
 		t = chan->restricted_local ? RESTRICTION_DENIED : UNRESTRICTED;
 		if (conn->actions && conn->actions->channel_restrict_info)
 			conn->actions->channel_restrict_info(chan, t);
-		chan->restricted_local = 0;
+		chan->restricted_local = false;
 	}
 	chan->restricted_remote = earg->rack.restricted;
 	firefly_channel_ack(chan);

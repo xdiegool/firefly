@@ -25,6 +25,7 @@ void test_restrict_recv_dup();
 void test_unrestrict_recv();
 void test_unrestrict_recv_dup();
 void test_restrict_req();
+void test_restrict_req_dup();
 
 /* Test data exchange */
 void test_send_app_data();

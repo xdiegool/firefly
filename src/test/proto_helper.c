@@ -41,7 +41,6 @@ bool received_restrict_request = false;
 bool received_restrict_ack = false;
 bool received_important = false;
 bool conn_ack_called = false;
-unsigned char test_important_id = 0;
 
 struct tmp_data conn_open_write;
 struct tmp_data conn_recv_write;
@@ -111,6 +110,7 @@ void transport_ack_test(unsigned char id, struct firefly_connection *conn)
 {
 	UNUSED_VAR(conn);
 	CU_ASSERT_EQUAL(id, IMPORTANT_ID);
+	conn_ack_called = true;
 }
 
 void transport_write_test_decoder(unsigned char *data, size_t size,
@@ -118,16 +118,14 @@ void transport_write_test_decoder(unsigned char *data, size_t size,
 					   unsigned char *id)
 {
 	UNUSED_VAR(conn);
-	received_important = important && id != NULL;
-	if (received_important)
+	received_important = important;
+	if (received_important) {
+		CU_ASSERT_PTR_NOT_NULL_FATAL(id);
 		*id = IMPORTANT_ID;
+	}
 	labcomm_decoder_ioctl(test_dec, LABCOMM_IOCTL_READER_SET_BUFFER,
 			data, size);
 	labcomm_decoder_decode_one(test_dec);
-	if (important) {
-		CU_ASSERT_PTR_NOT_NULL_FATAL(id);
-		*id = 1;
-	}
 }
 
 bool chan_open_recv_accept_open(struct firefly_channel *chan)

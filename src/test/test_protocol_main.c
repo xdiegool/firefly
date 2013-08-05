@@ -152,6 +152,12 @@ int main()
 			(CU_add_test(chan_suite, "test_unrestrict_recv_dup",
 					test_unrestrict_recv_dup) == NULL)
 			||
+			(CU_add_test(chan_suite, "test_restrict_req",
+					test_restrict_req) == NULL)
+			||
+			(CU_add_test(chan_suite, "test_restrict_req_dup",
+					test_restrict_req_dup) == NULL)
+			||
 			(CU_add_test(chan_suite,
 					"test_transmit_app_data_over_mock_trans_layer",
 					test_transmit_app_data_over_mock_trans_layer)
