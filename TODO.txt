@@ -8,6 +8,9 @@
 		  left to move over to CMake.
 		- Make use of DEBUG vs RELEASE builds that enables or disables
 		  the CFLAGs -g and -O[0-3] (and possibly more).
+		- Currently, the cmake files are hard coded with ARM support,
+		  investigate how we can break out this into the ARM toolchain
+		  file.
 
 # HALF OPEN CONNECTION
     Impl. half open on connections, can send but not receive on a half
