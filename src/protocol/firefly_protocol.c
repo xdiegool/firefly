@@ -528,22 +528,6 @@ void handle_ack(firefly_protocol_ack *ack, void *context)
 	chan = find_channel_by_local_id(conn, ack->dest_chan_id);
 	if (chan != NULL && chan->current_seqno == ack->seqno && ack->seqno > 0) {
 		firefly_channel_ack(chan);
-		if (chan->important_queue != NULL) {
-			struct firefly_event_send_sample *fess;
-			struct firefly_channel_important_queue *tmp;
-
-			/*
-			 * If there are queued important packets,
-			 * send the next one.
-			 */
-			fess = chan->important_queue->fess;
-			tmp = chan->important_queue;
-			chan->important_queue = tmp->next;
-			FIREFLY_FREE(tmp);
-			conn->event_queue->offer_event_cb(conn->event_queue,
-					FIREFLY_PRIORITY_HIGH,
-					send_data_sample_event, fess, 0, NULL);
-		}
 	} else if (chan->current_seqno > ack->seqno) {
 		// Do nothing, old ack
 	} else {
@@ -759,6 +743,7 @@ int channel_restrict_ack_event(void *context)
 		chan->restricted_local = 0;
 	}
 	chan->restricted_remote = earg->rack.restricted;
+	firefly_channel_ack(chan);
 	FIREFLY_FREE(earg);
 
 	return 0;

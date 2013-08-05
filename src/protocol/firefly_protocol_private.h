@@ -250,9 +250,11 @@ struct firefly_connection {
  * @brief A simple queue of important packets.
  */
 struct firefly_channel_important_queue {
-	struct firefly_event_send_sample *fess; /**< The data of this node. */
 	struct firefly_channel_important_queue *next; /**< The pointer to the next
 													element in the queue. */
+	firefly_event_execute_f event; /**< The event responsible for sending the
+									 important packet. */
+	void *event_arg; /**< The argument to the event. */
 };
 
 /**
@@ -770,4 +772,19 @@ int firefly_channel_unrestrict_event(void *earg);
  * @param chan All important packets of this channel will be acked.
  */
 void firefly_channel_ack(struct firefly_channel *chan);
+
+/**
+ * @brief Enqueues an important packet if there is already another important
+ * packet on the channel.
+ *
+ * @param chan The channel to queue the packet on.
+ * @param event An event which will send the packet.
+ * @param event_arg The argument to the event.
+ * @return bool Indicating whether or not the packet needed to be queued or if
+ * it could be sent right away.
+ * @retval true if the packet was queued and may not be sent now.
+ * @retval false if the packet was not queued and may be sent right away.
+ */
+bool firefly_channel_enqueue_important(struct firefly_channel *chan,
+		firefly_event_execute_f event, void *event_arg);
 #endif

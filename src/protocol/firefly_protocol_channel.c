@@ -125,17 +125,20 @@ int firefly_channel_restrict_event(void *earg)
 		return -1; /* Already [in the process of beeing] restricted */
 	if (chan->restricted_remote)
 		return 0;  /* In process of answering remote request. */
-	chan->restricted_local = 1;
+	if (!firefly_channel_enqueue_important(chan,
+				firefly_channel_restrict_event, earg)) {
+		chan->restricted_local = true;
 
-	req.dest_chan_id   = chan->remote_id;
-	req.source_chan_id = chan->local_id;
-	req.restricted     = 1;
+		req.dest_chan_id   = chan->remote_id;
+		req.source_chan_id = chan->local_id;
+		req.restricted     = true;
 
-	tenc = chan->conn->transport_encoder;
-	labcomm_encoder_ioctl(tenc,
-			      FIREFLY_LABCOMM_IOCTL_TRANS_SET_IMPORTANT_ID,
-			      &chan->important_id);
-	labcomm_encode_firefly_protocol_channel_restrict_request(tenc, &req);
+		tenc = chan->conn->transport_encoder;
+		labcomm_encoder_ioctl(tenc,
+					  FIREFLY_LABCOMM_IOCTL_TRANS_SET_IMPORTANT_ID,
+					  &chan->important_id);
+		labcomm_encode_firefly_protocol_channel_restrict_request(tenc, &req);
+	}
 
 	return 0;
 }
@@ -167,17 +170,20 @@ int firefly_channel_unrestrict_event(void *earg)
 	if (!chan->restricted_remote)
 		return 0;  /* Previous request not completed.  */
 
-	chan->restricted_local = 0;
+	if (!firefly_channel_enqueue_important(chan,
+				firefly_channel_restrict_event, earg)) {
+		chan->restricted_local = false;
 
-	req.dest_chan_id   = chan->remote_id;
-	req.source_chan_id = chan->local_id;
-	req.restricted     = 0;
+		req.dest_chan_id   = chan->remote_id;
+		req.source_chan_id = chan->local_id;
+		req.restricted     = false;
 
-	tenc = chan->conn->transport_encoder;
-	labcomm_encoder_ioctl(tenc,
-			      FIREFLY_LABCOMM_IOCTL_TRANS_SET_IMPORTANT_ID,
-			      &chan->important_id);
-	labcomm_encode_firefly_protocol_channel_restrict_request(tenc, &req);
+		tenc = chan->conn->transport_encoder;
+		labcomm_encoder_ioctl(tenc,
+					  FIREFLY_LABCOMM_IOCTL_TRANS_SET_IMPORTANT_ID,
+					  &chan->important_id);
+		labcomm_encode_firefly_protocol_channel_restrict_request(tenc, &req);
+	}
 
 	return 0;
 }
@@ -192,9 +198,44 @@ void firefly_channel_internal_opened(struct firefly_channel *chan)
 
 void firefly_channel_ack(struct firefly_channel *chan)
 {
+	struct firefly_connection *conn;
+	struct firefly_channel_important_queue *tmp;
+
+	conn = chan->conn;
 	if (chan->important_id != 0 &&
 			chan->conn->transport != NULL &&
 			chan->conn->transport->ack != NULL)
 		chan->conn->transport->ack(chan->important_id, chan->conn);
 	chan->important_id = 0;
+	/*
+	 * If there are queued important packets, send the next one.
+	 */
+	if (chan->important_queue != NULL) {
+		tmp = chan->important_queue;
+		chan->important_queue = tmp->next;
+		conn->event_queue->offer_event_cb(conn->event_queue,
+				FIREFLY_PRIORITY_HIGH,
+				tmp->event, tmp->event_arg, 0, NULL);
+		FIREFLY_FREE(tmp);
+	}
+}
+
+bool firefly_channel_enqueue_important(struct firefly_channel *chan,
+		firefly_event_execute_f event, void *event_arg)
+{
+	if (chan->important_id != 0) {
+		struct firefly_channel_important_queue **last;
+
+		last = &chan->important_queue;
+		while (*last != NULL) {
+			last = &(*last)->next;
+		}
+		*last = FIREFLY_MALLOC(sizeof(**last));
+		(*last)->next = NULL;
+		(*last)->event_arg = event_arg;
+		(*last)->event = event;
+		return true;
+	} else {
+		return false;
+	}
 }
