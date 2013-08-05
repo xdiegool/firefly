@@ -58,7 +58,7 @@ if(CMAKE_CROSSCOMPILING)
 		"-ffunction-sections -fdata-sections "
 		"${MACROS_DEF} -DUART_BUFFERED -Dsprintf=usprintf "
 		"-Dsnprintf=usnprintf -Dvsnprintf=uvsnprintf -Dprintf=uipprintf "
-		"-Dmalloc=pvPortMalloc -Dcalloc=pvPortCalloc -Dfree=vPortFree "
+		"-DFIREFLY_MALLOC=pvPortMalloc -Dcalloc=pvPortCalloc -DFIREFLY_FREE=vPortFree "
 		"-DARM_CORTEXM3_CODESOURCERY -DLABCOMM_NO_STDIO "
 		"-DLABCOMM_COMPAT=\\\"labcomm_compat_arm_cortexm3.h\\\" "
 		"-DGCC_ARMCM3=1"

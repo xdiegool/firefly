@@ -97,7 +97,7 @@ CFLAGS_ARM = $(CFLAGS_COM) -Wfloat-equal -Werror-implicit-function-declaration \
 		  -D free=vPortFree \
 		  -D ARM_CORTEXM3_CODESOURCERY \
 		  -D LABCOMM_NO_STDIO \
-		  -DLABCOMM_COMPAT=\\\"labcomm_compat_arm_cortexm3.h\\\" \
+		  -DLABCOMM_COMPAT=\"labcomm_compat_arm_cortexm3.h\" \
 		  -D GCC_ARMCM3=1
 
 # Specify alternative memory allocation/deallocation functions
