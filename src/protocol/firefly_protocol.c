@@ -681,30 +681,16 @@ int channel_restrict_request_event(void *context)
 			 * Here it might be appropriate to call the info
 			 * callback too, despite it beeing redundant...
 			 */
-		} else {
-			/* Should not get dup. with reliable trans. */
-			firefly_error(FIREFLY_ERROR_PROTO_STATE, 3,
-				      "Got unneccessary restr. req. "
-				      "(at %s:%d)", __FILE__, __LINE__);
 		}
 	} else {
 		if (chan->restricted_local) {
 			/* Remotely initiated unrestrict. */
 			if (conn->actions && conn->actions->channel_restrict_info)
 				conn->actions->channel_restrict_info(chan, UNRESTRICTED);
-			chan->restricted_local = 0;
-		} else {
-			/* Should not get dup. with reliable trans. */
-			firefly_error(FIREFLY_ERROR_PROTO_STATE, 3,
-				      "Got unneccessary restr. req. "
-				      "(at %s:%d)", __FILE__, __LINE__);
+			chan->restricted_local = false;
 		}
 	}
 	resp.restricted = chan->restricted_local;
-
-	labcomm_encoder_ioctl(conn->transport_encoder,
-			      FIREFLY_LABCOMM_IOCTL_TRANS_SET_IMPORTANT_ID,
-			      &chan->important_id);
 
 	labcomm_encode_firefly_protocol_channel_restrict_ack(
 			conn->transport_encoder,

@@ -7,6 +7,8 @@
 #define ENCODER_WRITE_BUF_SIZE (128)
 #define DATA_SAMPLE_DATA_SIZE (128)
 
+#define IMPORTANT_ID (1)
+
 struct tmp_data {
 	unsigned char *data;
 	size_t size;

@@ -40,12 +40,16 @@ extern firefly_protocol_channel_request channel_request;
 extern firefly_protocol_channel_response channel_response;
 extern firefly_protocol_channel_ack channel_ack;
 extern firefly_protocol_channel_close channel_close;
+extern firefly_protocol_channel_restrict_request restrict_request;
+extern firefly_protocol_channel_restrict_ack restrict_ack;
 
 extern bool received_data_sample;
 extern bool received_channel_request;
 extern bool received_channel_response;
 extern bool received_channel_ack;
 extern bool received_channel_close;
+extern bool received_restrict_request;
+extern bool received_restrict_ack;
 
 int init_suit_proto_chan()
 {
@@ -669,6 +673,269 @@ void test_recv_app_data()
 	mock_test_event_queue_reset(eq);
 }
 
+static bool chan_restrict_called = false;
+static bool chan_restrict_accept = true;
+static bool test_chan_restrict(struct firefly_channel *chan)
+{
+	chan_restrict_called = true;
+	return chan_restrict_accept;
+}
+
+void test_restrict_recv()
+{
+	unsigned char *buf;
+	size_t buf_size;
+	struct firefly_connection_actions ca = {
+		.channel_restrict = test_chan_restrict
+	};
+	// Setup connection
+	struct firefly_connection *conn =
+		setup_test_conn_new(&ca, eq);
+
+	// create channel
+	struct firefly_channel *chan = firefly_channel_new(conn);
+	chan->remote_id = REMOTE_CHAN_ID;
+	add_channel_to_connection(chan, conn);
+
+	// create close channel packet
+	firefly_protocol_channel_restrict_request chan_rest;
+	chan_rest.dest_chan_id = conn->chan_list->chan->local_id;
+	chan_rest.source_chan_id = REMOTE_CHAN_ID;
+	chan_rest.restricted = true;
+	labcomm_encode_firefly_protocol_channel_restrict_request(test_enc, &chan_rest);
+
+	// give packet to protocol
+	chan_restrict_accept = true;
+	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
+			&buf, &buf_size);
+	protocol_data_received(conn, buf, buf_size);
+	event_execute_test(eq, 1);
+	// check callback called.
+	CU_ASSERT_TRUE(chan_restrict_called);
+	CU_ASSERT_TRUE(received_restrict_ack);
+	CU_ASSERT_EQUAL(restrict_ack.source_chan_id, chan->local_id);
+	CU_ASSERT_EQUAL(restrict_ack.dest_chan_id, chan->remote_id);
+	CU_ASSERT_TRUE(restrict_ack.restricted);
+	CU_ASSERT_TRUE(chan->restricted_remote);
+	CU_ASSERT_TRUE(chan->restricted_local);
+
+	// clean up
+	chan_restrict_called = false;
+	received_restrict_ack = false;
+	firefly_connection_close(conn);
+	event_execute_all_test(eq);
+	mock_test_event_queue_reset(eq);
+}
+
+void test_restrict_recv_dup()
+{
+	unsigned char *buf;
+	size_t buf_size;
+	struct firefly_connection_actions ca = {
+		.channel_restrict = test_chan_restrict
+	};
+	// Setup connection
+	struct firefly_connection *conn =
+		setup_test_conn_new(&ca, eq);
+
+	// create channel
+	struct firefly_channel *chan = firefly_channel_new(conn);
+	chan->remote_id = REMOTE_CHAN_ID;
+	add_channel_to_connection(chan, conn);
+	chan->restricted_local = true;
+	chan->restricted_remote = true;
+
+	// create close channel packet
+	firefly_protocol_channel_restrict_request chan_rest;
+	chan_rest.dest_chan_id = conn->chan_list->chan->local_id;
+	chan_rest.source_chan_id = REMOTE_CHAN_ID;
+	chan_rest.restricted = true;
+	labcomm_encode_firefly_protocol_channel_restrict_request(test_enc, &chan_rest);
+
+	// give packet to protocol
+	chan_restrict_accept = true;
+	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
+			&buf, &buf_size);
+	protocol_data_received(conn, buf, buf_size);
+	event_execute_test(eq, 1);
+	// check callback called.
+	CU_ASSERT_FALSE(chan_restrict_called);
+	CU_ASSERT_TRUE(received_restrict_ack);
+	CU_ASSERT_EQUAL(restrict_ack.source_chan_id, chan->local_id);
+	CU_ASSERT_EQUAL(restrict_ack.dest_chan_id, chan->remote_id);
+	CU_ASSERT_TRUE(restrict_ack.restricted);
+	CU_ASSERT_TRUE(chan->restricted_remote);
+	CU_ASSERT_TRUE(chan->restricted_local);
+
+	// clean up
+	chan_restrict_called = false;
+	received_restrict_ack = false;
+	firefly_connection_close(conn);
+	event_execute_all_test(eq);
+	mock_test_event_queue_reset(eq);
+}
+
+void test_restrict_recv_reject()
+{
+	unsigned char *buf;
+	size_t buf_size;
+	struct firefly_connection_actions ca = {
+		.channel_restrict = test_chan_restrict
+	};
+	// Setup connection
+	struct firefly_connection *conn =
+		setup_test_conn_new(&ca, eq);
+
+	// create channel
+	struct firefly_channel *chan = firefly_channel_new(conn);
+	chan->remote_id = REMOTE_CHAN_ID;
+	add_channel_to_connection(chan, conn);
+
+	// create close channel packet
+	firefly_protocol_channel_restrict_request chan_rest;
+	chan_rest.dest_chan_id = conn->chan_list->chan->local_id;
+	chan_rest.source_chan_id = REMOTE_CHAN_ID;
+	chan_rest.restricted = true;
+	labcomm_encode_firefly_protocol_channel_restrict_request(test_enc, &chan_rest);
+
+	// give packet to protocol
+	chan_restrict_accept = false;
+	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
+			&buf, &buf_size);
+	protocol_data_received(conn, buf, buf_size);
+	event_execute_test(eq, 1);
+	// check callback called.
+	CU_ASSERT_TRUE(chan_restrict_called);
+	CU_ASSERT_TRUE(received_restrict_ack);
+	CU_ASSERT_EQUAL(restrict_ack.source_chan_id, chan->local_id);
+	CU_ASSERT_EQUAL(restrict_ack.dest_chan_id, chan->remote_id);
+	CU_ASSERT_FALSE(restrict_ack.restricted);
+	CU_ASSERT_FALSE(chan->restricted_local);
+
+	// clean up
+	chan_restrict_called = false;
+	received_restrict_ack = false;
+	firefly_connection_close(conn);
+	event_execute_all_test(eq);
+	mock_test_event_queue_reset(eq);
+}
+
+static bool chan_restrict_info_called = false;
+static enum restriction_transition expected_restriction = RESTRICTED;
+static void test_chan_restrict_info(struct firefly_channel *chan,
+						 enum restriction_transition rinfo)
+{
+	chan_restrict_info_called = true;
+	CU_ASSERT_EQUAL(rinfo, expected_restriction);
+}
+
+void test_unrestrict_recv()
+{
+	unsigned char *buf;
+	size_t buf_size;
+	struct firefly_connection_actions ca = {
+		.channel_restrict = test_chan_restrict,
+		.channel_restrict_info = test_chan_restrict_info
+	};
+	// Setup connection
+	struct firefly_connection *conn =
+		setup_test_conn_new(&ca, eq);
+
+	// create channel
+	struct firefly_channel *chan = firefly_channel_new(conn);
+	chan->remote_id = REMOTE_CHAN_ID;
+	add_channel_to_connection(chan, conn);
+	chan->restricted_local = true;
+	chan->restricted_remote = true;
+
+	// create close channel packet
+	firefly_protocol_channel_restrict_request chan_rest;
+	chan_rest.dest_chan_id = conn->chan_list->chan->local_id;
+	chan_rest.source_chan_id = REMOTE_CHAN_ID;
+	chan_rest.restricted = false;
+	labcomm_encode_firefly_protocol_channel_restrict_request(test_enc, &chan_rest);
+
+	// give packet to protocol
+	chan_restrict_accept = false;
+	expected_restriction = UNRESTRICTED;
+	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
+			&buf, &buf_size);
+	protocol_data_received(conn, buf, buf_size);
+	event_execute_test(eq, 1);
+	// check callback called.
+	CU_ASSERT_FALSE(chan_restrict_called);
+	CU_ASSERT_TRUE(chan_restrict_info_called);
+	CU_ASSERT_TRUE(received_restrict_ack);
+	CU_ASSERT_EQUAL(restrict_ack.source_chan_id, chan->local_id);
+	CU_ASSERT_EQUAL(restrict_ack.dest_chan_id, chan->remote_id);
+	CU_ASSERT_FALSE(restrict_ack.restricted);
+	CU_ASSERT_FALSE(chan->restricted_remote);
+	CU_ASSERT_FALSE(chan->restricted_local);
+
+	// clean up
+	chan_restrict_called = false;
+	received_restrict_ack = false;
+	chan_restrict_info_called = false;
+	firefly_connection_close(conn);
+	event_execute_all_test(eq);
+	mock_test_event_queue_reset(eq);
+}
+
+void test_unrestrict_recv_dup()
+{
+	unsigned char *buf;
+	size_t buf_size;
+	struct firefly_connection_actions ca = {
+		.channel_restrict = test_chan_restrict,
+		.channel_restrict_info = test_chan_restrict_info
+	};
+	// Setup connection
+	struct firefly_connection *conn =
+		setup_test_conn_new(&ca, eq);
+
+	// create channel
+	struct firefly_channel *chan = firefly_channel_new(conn);
+	chan->remote_id = REMOTE_CHAN_ID;
+	add_channel_to_connection(chan, conn);
+	chan->restricted_local = false;
+	chan->restricted_remote = false;
+
+	// create close channel packet
+	firefly_protocol_channel_restrict_request chan_rest;
+	chan_rest.dest_chan_id = conn->chan_list->chan->local_id;
+	chan_rest.source_chan_id = REMOTE_CHAN_ID;
+	chan_rest.restricted = false;
+	labcomm_encode_firefly_protocol_channel_restrict_request(test_enc, &chan_rest);
+
+	// give packet to protocol
+	chan_restrict_accept = false;
+	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
+			&buf, &buf_size);
+	protocol_data_received(conn, buf, buf_size);
+	event_execute_test(eq, 1);
+	// check callback called.
+	CU_ASSERT_FALSE(chan_restrict_called);
+	CU_ASSERT_FALSE(chan_restrict_info_called);
+	CU_ASSERT_TRUE(received_restrict_ack);
+	CU_ASSERT_EQUAL(restrict_ack.source_chan_id, chan->local_id);
+	CU_ASSERT_EQUAL(restrict_ack.dest_chan_id, chan->remote_id);
+	CU_ASSERT_FALSE(restrict_ack.restricted);
+	CU_ASSERT_FALSE(chan->restricted_remote);
+	CU_ASSERT_FALSE(chan->restricted_local);
+
+	// clean up
+	chan_restrict_called = false;
+	received_restrict_ack = false;
+	chan_restrict_info_called = false;
+	firefly_connection_close(conn);
+	event_execute_all_test(eq);
+	mock_test_event_queue_reset(eq);
+}
+
+void test_restrict_req()
+{
+
+}
 
 /* Big test using mock transport layer. */
 struct data_space {

@@ -28,6 +28,8 @@ firefly_protocol_channel_response channel_response;
 firefly_protocol_channel_ack channel_ack;
 firefly_protocol_channel_close channel_close;
 firefly_protocol_ack ack;
+firefly_protocol_channel_restrict_request restrict_request;
+firefly_protocol_channel_restrict_ack restrict_ack;
 
 bool received_data_sample = false;
 bool received_channel_request = false;
@@ -35,6 +37,11 @@ bool received_channel_response = false;
 bool received_channel_ack = false;
 bool received_channel_close = false;
 bool received_ack = false;
+bool received_restrict_request = false;
+bool received_restrict_ack = false;
+bool received_important = false;
+bool conn_ack_called = false;
+unsigned char test_important_id = 0;
 
 struct tmp_data conn_open_write;
 struct tmp_data conn_recv_write;
@@ -102,8 +109,8 @@ void chan_opened_mock(struct firefly_channel *chan)
 
 void transport_ack_test(unsigned char id, struct firefly_connection *conn)
 {
-	UNUSED_VAR(id);
 	UNUSED_VAR(conn);
+	CU_ASSERT_EQUAL(id, IMPORTANT_ID);
 }
 
 void transport_write_test_decoder(unsigned char *data, size_t size,
@@ -111,8 +118,9 @@ void transport_write_test_decoder(unsigned char *data, size_t size,
 					   unsigned char *id)
 {
 	UNUSED_VAR(conn);
-	UNUSED_VAR(important);
-	UNUSED_VAR(id);
+	received_important = important && id != NULL;
+	if (received_important)
+		*id = IMPORTANT_ID;
 	labcomm_decoder_ioctl(test_dec, LABCOMM_IOCTL_READER_SET_BUFFER,
 			data, size);
 	labcomm_decoder_decode_one(test_dec);
@@ -211,6 +219,21 @@ void test_handle_ack(firefly_protocol_ack *d, void *ctx)
 	received_ack = true;
 }
 
+void test_handle_restrict_request(firefly_protocol_channel_restrict_request *d,
+		void *ctx)
+{
+	UNUSED_VAR(ctx);
+	memcpy(&restrict_request, d, sizeof(*d));
+	received_restrict_request = true;
+}
+
+void test_handle_restrict_ack(firefly_protocol_channel_restrict_ack *d, void *ctx)
+{
+	UNUSED_VAR(ctx);
+	memcpy(&restrict_ack, d, sizeof(*d));
+	received_restrict_ack = true;
+}
+
 int init_labcomm_test_enc_dec_custom(struct labcomm_reader *test_r,
 		struct labcomm_writer *test_w)
 {
@@ -238,6 +261,10 @@ int init_labcomm_test_enc_dec_custom(struct labcomm_reader *test_r,
 						test_handle_channel_close, NULL);
 	labcomm_decoder_register_firefly_protocol_ack(test_dec,
 						test_handle_ack, NULL);
+	labcomm_decoder_register_firefly_protocol_channel_restrict_request(test_dec,
+						test_handle_restrict_request, NULL);
+	labcomm_decoder_register_firefly_protocol_channel_restrict_ack(test_dec,
+						test_handle_restrict_ack, NULL);
 
 	void *buffer;
 	size_t buffer_size;
@@ -282,6 +309,21 @@ int init_labcomm_test_enc_dec_custom(struct labcomm_reader *test_r,
 	labcomm_decoder_ioctl(test_dec, LABCOMM_IOCTL_READER_SET_BUFFER,
 			buffer, buffer_size);
 	labcomm_decoder_decode_one(test_dec);
+
+	labcomm_encoder_register_firefly_protocol_channel_restrict_request(test_enc);
+	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
+			&buffer, &buffer_size);
+	labcomm_decoder_ioctl(test_dec, LABCOMM_IOCTL_READER_SET_BUFFER,
+			buffer, buffer_size);
+	labcomm_decoder_decode_one(test_dec);
+
+	labcomm_encoder_register_firefly_protocol_channel_restrict_ack(test_enc);
+	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
+			&buffer, &buffer_size);
+	labcomm_decoder_ioctl(test_dec, LABCOMM_IOCTL_READER_SET_BUFFER,
+			buffer, buffer_size);
+	labcomm_decoder_decode_one(test_dec);
+
 	return 0;
 }
 

@@ -137,6 +137,21 @@ int main()
 			(CU_add_test(chan_suite, "test_recv_app_data",
 					test_recv_app_data) == NULL)
 			||
+			(CU_add_test(chan_suite, "test_restrict_recv",
+					test_restrict_recv) == NULL)
+			||
+			(CU_add_test(chan_suite, "test_restrict_recv_reject",
+					test_restrict_recv_reject) == NULL)
+			||
+			(CU_add_test(chan_suite, "test_restrict_recv_dup",
+					test_restrict_recv_dup) == NULL)
+			||
+			(CU_add_test(chan_suite, "test_unrestrict_recv",
+					test_unrestrict_recv) == NULL)
+			||
+			(CU_add_test(chan_suite, "test_unrestrict_recv_dup",
+					test_unrestrict_recv_dup) == NULL)
+			||
 			(CU_add_test(chan_suite,
 					"test_transmit_app_data_over_mock_trans_layer",
 					test_transmit_app_data_over_mock_trans_layer)
