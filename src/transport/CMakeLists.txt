@@ -1,4 +1,11 @@
 if(NOT CMAKE_CROSSCOMPILING)
+
+	# Set targets to install
+	set(transport_install_libs
+		transport-eth-posix
+		transport-udp-posix
+	)
+
 	# Ethernet POSIX
 	add_library(transport-eth-posix
 		${Firefly_SOURCE_DIR}/transport/firefly_transport.c
@@ -21,6 +28,12 @@ if(NOT CMAKE_CROSSCOMPILING)
 			gen-files
 			${XENOMAI_LIBRARIES}
 		)
+
+		# Append xenomai to libs to install
+		set(transport_install_libs
+			${transport_install_libs}
+			transport-eth-xenomai
+		)
 	endif (XENOMAI_FOUND)
 
 	# UDP POSIX
@@ -30,9 +43,9 @@ if(NOT CMAKE_CROSSCOMPILING)
 		${Firefly_SOURCE_DIR}/utils/firefly_resend_posix.c
 	)
 	target_link_libraries(transport-udp-posix gen-files)
-endif(NOT CMAKE_CROSSCOMPILING)
 
-if(CMAKE_CROSSCOMPILING)
+else()
+
 	# Ethernet Stellaris
 	add_library(transport-eth-stellaris
 		${Firefly_SOURCE_DIR}/transport/firefly_transport.c
@@ -46,4 +59,14 @@ if(CMAKE_CROSSCOMPILING)
 		${Firefly_SOURCE_DIR}/transport/firefly_transport_udp_lwip.c
 	)
 	target_link_libraries(transport-udp-lwip gen-files)
-endif(CMAKE_CROSSCOMPILING)
+
+	# Set targets to install
+	set(transport_install_libs
+		transport-eth-stellaris
+		transport-udp-lwip
+	)
+endif(NOT CMAKE_CROSSCOMPILING)
+
+install(TARGETS ${transport_install_libs}
+	ARCHIVE DESTINATION lib
+)

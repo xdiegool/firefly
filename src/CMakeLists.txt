@@ -239,7 +239,6 @@ set(CMAKE_C_OUTPUT_EXTENSION_REPLACE 1)
 # foreach (_variableName ${_variableNames})
 #     message(STATUS "${_variableName}=${${_variableName}}")
 # endforeach()
-
 ## }}}
 
 message("-- Looking for Xenomai")
