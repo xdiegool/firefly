@@ -20,20 +20,9 @@
 	Refactor connection state to be an enum.
 
 # GENERAL STUFF THAT NEEDS FIXING
-	- In firefly_connection_actions there are two function pointers that
-	  handle errors; connection_error and channel_error. Neither lets the
-	  user know what the error was, only that an error occurred. This
-	  should be fixed. When it comes to connection_error, the enum
-	  firefly_errors should be used since these are already printed when
-	  an error occurs. The same enum could possibly be used for
-	  channel_error as well.
 	- We need to go through all of Firefly and fix error handling. E.g.
 	  add something more than the (sometimes) existing error prints
 	  for when malloc() fails. (Fixed in POSIX transports.)
-	- Consider letting connection_error callback return bool indicating whether
-	  or not to propagate the error to each channel as well. Would be useful if
-	  channels from multiple connections are bundled and the code using the
-	  channels are not aware of the connections. Possible use case: ExtCtrl
 	- Currently when closing everything there might be a double free if the app
 	  first calls firefly_connection_close and then
 	  firefly_transport_llp_*_free. This is due to the connection is not
