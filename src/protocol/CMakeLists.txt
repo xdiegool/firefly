@@ -4,6 +4,7 @@ set(firefly_src_files
 	${Firefly_SOURCE_DIR}/protocol/firefly_protocol_connection.c
 	${Firefly_SOURCE_DIR}/protocol/firefly_protocol_labcomm.c
 	${Firefly_SOURCE_DIR}/utils/firefly_errors_utils.c
+	${Firefly_SOURCE_DIR}/utils/firefly_event_queue.c
 	${Firefly_PROJECT_DIR}/gen/firefly_protocol.c
 )
 
@@ -26,5 +27,5 @@ if (NOT CMAKE_CROSSCOMPILING)
 		${firefly_src_files}
 		${Firefly_SOURCE_DIR}/utils/firefly_errors.c
 	)
-	target_link_libraries(firefly-werr gen-files event-queue)
+	target_link_libraries(firefly-werr gen-files)
 endif (NOT CMAKE_CROSSCOMPILING)
