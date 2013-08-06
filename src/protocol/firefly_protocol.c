@@ -356,10 +356,6 @@ int handle_channel_response_event(void *event_arg)
 		firefly_channel_send_channel_ack(fecrr->conn, chan,
 				fecrr->chan_res.source_chan_id);
 	} else if (chan != NULL) {
-		struct firefly_connection_actions *actions;
-
-		actions = chan->conn->actions;
-
 		firefly_channel_raise(chan, NULL, FIREFLY_ERROR_CHAN_REFUSED,
 				"Channel was refused by remote end.");
 		firefly_channel_ack(chan);

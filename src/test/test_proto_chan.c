@@ -687,6 +687,7 @@ static bool chan_restrict_called = false;
 static bool chan_restrict_accept = true;
 static bool test_chan_restrict(struct firefly_channel *chan)
 {
+	UNUSED_VAR(chan);
 	chan_restrict_called = true;
 	return chan_restrict_accept;
 }
@@ -696,6 +697,7 @@ static enum restriction_transition expected_restriction = RESTRICTED;
 static void test_chan_restrict_info(struct firefly_channel *chan,
 						 enum restriction_transition rinfo)
 {
+	UNUSED_VAR(chan);
 	chan_restrict_info_called = true;
 	CU_ASSERT_EQUAL(rinfo, expected_restriction);
 }
