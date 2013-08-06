@@ -155,7 +155,7 @@ int64_t firefly_channel_close(struct firefly_channel *chan)
 
 	conn = chan->conn;
 
-	fecc->conn = conn;
+	fecc->chan = chan;
 	fecc->chan_close.dest_chan_id = chan->remote_id;
 	fecc->chan_close.source_chan_id = chan->local_id;
 	ret = conn->event_queue->offer_event_cb(conn->event_queue,
@@ -177,9 +177,13 @@ int firefly_channel_close_event(void *event_arg)
 {
 	struct firefly_event_chan_close *fecc;
 	struct firefly_connection       *conn;
+	struct firefly_channel          *chan;
 
 	fecc = event_arg;
-	conn = fecc->conn;
+	chan = fecc->chan;
+	conn = chan->conn;
+
+	chan->state = FIREFLY_CHANNEL_CLOSED;
 
 	labcomm_encode_firefly_protocol_channel_close(conn->transport_encoder,
 						      &fecc->chan_close);
@@ -419,6 +423,7 @@ void handle_channel_close(firefly_protocol_channel_close *chan_close,
 	conn = context;
 	chan = find_channel_by_local_id(conn, chan_close->dest_chan_id);
 	if (chan != NULL){
+		chan->state = FIREFLY_CHANNEL_CLOSED;
 		create_channel_closed_event(chan, 0, NULL);
 	} else {
 		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,

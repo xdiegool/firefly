@@ -260,7 +260,11 @@ struct firefly_channel_important_queue {
 /**
  * @brief An enum of the different states a channel can be in.
  */
-enum firefly_channel_state {FIREFLY_CHANNEL_READY, FIREFLY_CHANNEL_OPEN};
+enum firefly_channel_state {
+	FIREFLY_CHANNEL_READY, /**< The channel opening. */
+	FIREFLY_CHANNEL_OPEN, /**< The channel is open. */
+	FIREFLY_CHANNEL_CLOSED /**< The channel is closed and will be freed. */
+};
 
 /**
  * @brief A structure representing a channel.
@@ -490,8 +494,7 @@ int firefly_channel_closed_event(void *event_arg);
  * @brief The event argument of firefly_channel_close_event.
  */
 struct firefly_event_chan_close {
-	struct firefly_connection *conn; /**< The connection to send the packet
-						on. */
+	struct firefly_channel *chan; /**< The channel to send the packet on. */
 	firefly_protocol_channel_close chan_close; /**< The packet to send,
 							must be correctly
 							initialized with id's.

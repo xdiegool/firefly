@@ -332,6 +332,7 @@ void test_important_mult_simultaneously()
 	event_execute_test(eq, 1);
 	struct firefly_channel *chan = firefly_channel_new(conn);
 	add_channel_to_connection(chan, conn);
+	chan->state = FIREFLY_CHANNEL_OPEN;
 
 	firefly_protocol_ack ack_pkt;
 	ack_pkt.dest_chan_id = chan->local_id;

@@ -60,12 +60,21 @@ struct firefly_channel *firefly_channel_new(struct firefly_connection *conn)
 
 void firefly_channel_free(struct firefly_channel *chan)
 {
+	struct firefly_channel_important_queue *node;
+	struct firefly_channel_important_queue *tmp;
 	if (!chan)
 		return;
 	if (chan->proto_decoder)
 		labcomm_decoder_free(chan->proto_decoder);
 	if (chan->proto_encoder)
 		labcomm_encoder_free(chan->proto_encoder);
+	node = chan->important_queue;
+	while (node != NULL) {
+		tmp = node;
+		node = node->next;
+		FIREFLY_FREE(tmp->event_arg);
+		FIREFLY_FREE(tmp);
+	}
 	FIREFLY_FREE(chan);
 }
 
@@ -208,9 +217,11 @@ void firefly_channel_ack(struct firefly_channel *chan)
 		chan->conn->transport->ack(chan->important_id, chan->conn);
 	chan->important_id = 0;
 	/*
-	 * If there are queued important packets, send the next one.
+	 * If there are queued important packets and the channel is open,
+	 * send the next one.
 	 */
-	if (chan->important_queue != NULL) {
+	if (chan->state == FIREFLY_CHANNEL_OPEN &&
+			chan->important_queue != NULL) {
 		tmp = chan->important_queue;
 		chan->important_queue = tmp->next;
 		conn->event_queue->offer_event_cb(conn->event_queue,
