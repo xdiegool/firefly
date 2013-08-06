@@ -122,6 +122,7 @@ void firefly_resend_readd(struct resend_queue *rq, unsigned char id)
 {
 	pthread_mutex_lock(&rq->lock);
 	struct resend_elem *re = firefly_resend_pop(rq, id);
+	pthread_mutex_unlock(&rq->lock);
 	if (re == NULL)
 		return;
 
@@ -130,6 +131,7 @@ void firefly_resend_readd(struct resend_queue *rq, unsigned char id)
 
 	timespec_add_ms(&re->resend_at, re->timeout);
 	re->prev = NULL;
+	pthread_mutex_lock(&rq->lock);
 	if (rq->last == NULL) {
 		rq->first = re;
 	} else {
