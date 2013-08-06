@@ -217,9 +217,7 @@ static int proto_writer_start(struct labcomm_writer *w, void *context,
 
 	if (!value && ctx->chan->restricted_local) {
 		/* Until we get the updated lc, just print an error. */
-		char msg[FF_ERRMSG_MAXLEN];
-		msg[0] = 0;
-		strcat(msg, "Encoding signature on restricted channel: ");
+		char msg[FF_ERRMSG_MAXLEN] = "Encoding signature on restricted channel: ";
 		strncat(msg, signature->name, FF_ERRMSG_MAXLEN - 43);
 		firefly_channel_raise(ctx->chan, NULL, FIREFLY_ERROR_PROTO_STATE, msg);
 
