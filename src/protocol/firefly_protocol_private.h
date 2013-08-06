@@ -120,8 +120,7 @@ void FIREFLY_FREE(void *ptr);
 			conn->actions->connection_error(conn, reason, msg) : false; \
 		for (struct channel_list_node *n = conn->chan_list; n != NULL && prop; \
 				n = n->next) { \
-			if (conn->actions->channel_error) \
-				conn->actions->channel_error(n->chan, reason, msg); \
+			firefly_channel_raise(n->chan, NULL, reason, msg); \
 		} \
 	} while (false); \
 
@@ -272,7 +271,11 @@ struct firefly_channel_important_queue {
 /**
  * @brief An enum of the different states a channel can be in.
  */
-enum firefly_channel_state {FIREFLY_CHANNEL_READY, FIREFLY_CHANNEL_OPEN};
+enum firefly_channel_state {
+	FIREFLY_CHANNEL_READY,
+	FIREFLY_CHANNEL_OPEN,
+	FIREFLY_CHANNEL_ERROR
+};
 
 /**
  * @brief A structure representing a channel.
@@ -752,6 +755,20 @@ int next_channel_id(struct firefly_connection *conn);
  * @see #FIREFLY_CONNECTION_RAISE
  */
 void firefly_connection_raise_later(struct firefly_connection *conn,
+		enum firefly_error reason, const char *msg);
+
+/**
+ * @brief Call channel_error callback on the given connection with the given
+ * channel.
+ *
+ * @param chan The channel. May be NULL if the connection is not.
+ * @param conn The connection. Only required if channel is NULL.
+ * @param reason The type or error to raise.
+ * @param msg The error message.
+ * @see firefly_channel_error_f
+ */
+void firefly_channel_raise(
+		struct firefly_channel *chan, struct firefly_connection *conn,
 		enum firefly_error reason, const char *msg);
 
 /**

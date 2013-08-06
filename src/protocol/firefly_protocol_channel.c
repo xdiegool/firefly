@@ -198,3 +198,15 @@ void firefly_channel_ack(struct firefly_channel *chan)
 		chan->conn->transport->ack(chan->important_id, chan->conn);
 	chan->important_id = 0;
 }
+
+void firefly_channel_raise(
+		struct firefly_channel *chan, struct firefly_connection *conn,
+		enum firefly_error reason, const char *msg)
+{
+	if (!conn && chan)
+		conn = chan->conn;
+	if (chan)
+		chan->state = FIREFLY_CHANNEL_ERROR;
+	if (conn && conn->actions && conn->actions->channel_error)
+		conn->actions->channel_error(chan, reason, msg);
+}

@@ -104,8 +104,7 @@ int firefly_channel_open_event(void *event_arg)
 	conn = event_arg;
 
 	if (conn->open != FIREFLY_CONNECTION_OPEN) {
-		if (conn->actions->channel_error != NULL)
-			conn->actions->channel_error(NULL, FIREFLY_ERROR_CONN_STATE,
+		firefly_channel_raise(NULL, conn, FIREFLY_ERROR_CONN_STATE,
 					  "Can't open new channel on closed connection.\n");
 		return -1;
 	}
@@ -360,9 +359,8 @@ int handle_channel_response_event(void *event_arg)
 
 		actions = chan->conn->actions;
 
-		if (actions != NULL && actions->channel_error != NULL)
-			actions->channel_error(chan, FIREFLY_ERROR_CHAN_REFUSED,
-					"Channel was refused by remote end.");
+		firefly_channel_raise(chan, NULL, FIREFLY_ERROR_CHAN_REFUSED,
+				"Channel was refused by remote end.");
 		firefly_channel_ack(chan);
 		firefly_channel_free(remove_channel_from_connection(chan,
 								fecrr->conn));
@@ -761,9 +759,8 @@ int channel_restrict_ack_event(void *context)
 				chan->conn->actions->channel_restrict_info) {
 			conn->actions->channel_restrict_info(chan, RESTRICTED);
 		} else {
-			// TODO typical channel error
-			firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
-				      "Got impossible restr. req.");
+			firefly_channel_raise(chan, NULL,
+					FIREFLY_ERROR_PROTO_STATE, "Inconsistent restrict state.");
 		}
 	} else {
 		enum restriction_transition t;

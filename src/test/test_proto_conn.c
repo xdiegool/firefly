@@ -244,7 +244,10 @@ void test_conn_close_send_data()
 		.close = NULL,
 		.context = &conn
 	};
-	int res = firefly_connection_open(NULL, NULL, eq, &test_trsp_conn);
+	struct firefly_connection_actions actions = {
+		.channel_error = test_channel_error
+	};
+	int res = firefly_connection_open(&actions, NULL, eq, &test_trsp_conn);
 	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 
