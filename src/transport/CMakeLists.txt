@@ -14,8 +14,8 @@ if(NOT CMAKE_CROSSCOMPILING)
 	)
 	target_link_libraries(transport-eth-posix gen-files)
 
-	if (XENOMAI_FOUND)
-		include_directories(${XENOMAI_INCLUDE_DIRS})
+	if (XENOMAI_FOUND AND RTNET_FOUND)
+		include_directories(${XENOMAI_INCLUDE_DIRS} ${RTNET_INCLUDE_DIRS})
 		# Ethernet Xenomai
 		add_library(transport-eth-xenomai
 			${Firefly_SOURCE_DIR}/transport/firefly_transport.c
@@ -34,7 +34,7 @@ if(NOT CMAKE_CROSSCOMPILING)
 			${transport_install_libs}
 			transport-eth-xenomai
 		)
-	endif (XENOMAI_FOUND)
+	endif (XENOMAI_FOUND AND RTNET_FOUND)
 
 	# UDP POSIX
 	add_library(transport-udp-posix

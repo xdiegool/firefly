@@ -243,6 +243,8 @@ set(CMAKE_C_OUTPUT_EXTENSION_REPLACE 1)
 
 message("-- Looking for Xenomai")
 find_package(Xenomai)
+message("-- Looking for RTNet")
+find_package(RTNet)
 
 ## INCLUDE {{{
 # Include subdirectories with their own CMake files:
