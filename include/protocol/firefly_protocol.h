@@ -10,6 +10,7 @@
 #include <stdbool.h>
 
 #include <utils/firefly_event_queue.h>
+#include <utils/firefly_errors.h>
 
 /**
  * @brief An opaque structure representing a channel.
@@ -62,14 +63,6 @@ struct firefly_memory_funcs {
 	firefly_alloc_f alloc_replacement;
 	firefly_free_f free_replacement;
 };
-
-/**
- * @brief A prototype for the callback from the protocol layer called when a
- * channel request is rejected by the remote node.
- *
- * @param conn The connection on which the channel request was rejected.
- */
-typedef void (* firefly_channel_rejected_f)(struct firefly_connection *conn);
 
 /**
  * @brief Creates and offers an event to open a channel on the provided
@@ -152,25 +145,28 @@ typedef void (* firefly_channel_restrict_info_f)(struct firefly_channel *chan,
  * @brief A prototype of the callback used when an error occurs on the
  * provided channel.
  *
- * @note Currently unused.
- *
- * TODO: Should provide some error information as well?
- *
- * @param chan The channel the error occurred on.
+ * @param chan The channel the error occurred on. NULL if the error is related
+ * to opening a channel.
+ * @param reason The reason an error is called.
+ * @param message An optional message explaining the error.
+ * @see enum firefly_error
  */
-typedef void (* firefly_channel_error_f)(struct firefly_channel *chan);
+typedef void (* firefly_channel_error_f)(struct firefly_channel *chan,
+		enum firefly_error reason, const char *message);
 
 /**
  * @brief A prototype of the callback used when an error occurs on the
  * provided connection.
  *
- * @note Currently unused.
- *
- * TODO: Should provide some error information as well?
- *
  * @param conn The connection the error occurred on.
+ * @param reason The reason an error is called.
+ * @param message An optional message explaining the error.
+ * @retval true If the error should propagate to the channels.
+ * @retval false otherwise.
+ * @see enum firefly_error
  */
-typedef void (* firefly_connection_error_f)(struct firefly_connection *conn);
+typedef bool (* firefly_connection_error_f)(struct firefly_connection *conn,
+		enum firefly_error reason, const char *message);
 
 /**
  * @brief A prototype of the callback used when a new connection is
@@ -193,7 +189,6 @@ typedef void (* firefly_connection_opened_f)(struct firefly_connection *conn);
 struct firefly_connection_actions {
 	firefly_channel_accept_f	channel_recv;		/**< Called when a new channel is received. */
 	firefly_channel_is_open_f	channel_opened;		/**< Called when a channel has been opened. */
-	firefly_channel_rejected_f	channel_rejected;	/**< Called if this channel could not be opened due to remote node rejected it. */
 	firefly_channel_closed_f	channel_closed;		/**< Called when a channel has been closed. */
 	firefly_channel_restrict_f	channel_restrict;	/**< Called on incoming restriction request. */
 	firefly_channel_restrict_info_f	channel_restrict_info;	/**< Called on restriction status change. */

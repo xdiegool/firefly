@@ -79,22 +79,20 @@ void reg_proto_sigs(struct labcomm_encoder *enc,
 	conn->transport = orig_transport;
 }
 
-void firefly_channel_open(struct firefly_connection *conn)
+void firefly_unknown_dest(struct firefly_connection *conn,
+		int src_id, int dest_id)
 {
-	int ret;
+	UNUSED_VAR(conn);
+	firefly_protocol_channel_close chan_close;
 
-	if (conn->open != FIREFLY_CONNECTION_OPEN) {
-		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
-			      "Can't open new channel on closed connection.\n");
-		return;
-	}
+	firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
+			  "Received open channel on non-existing channel");
 
-	ret = conn->event_queue->offer_event_cb(conn->event_queue,
-						FIREFLY_PRIORITY_HIGH,
-						firefly_channel_open_event,
-						conn, 0, NULL);
-	if (ret < 0)
-		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Could not add event.");
+	chan_close.dest_chan_id = src_id;
+	chan_close.source_chan_id = dest_id;
+
+	labcomm_encode_firefly_protocol_channel_close(conn->transport_encoder,
+						      &chan_close);
 }
 
 int firefly_channel_open_event(void *event_arg)
@@ -104,6 +102,12 @@ int firefly_channel_open_event(void *event_arg)
 	firefly_protocol_channel_request chan_req;
 
 	conn = event_arg;
+
+	if (conn->open != FIREFLY_CONNECTION_OPEN) {
+		firefly_channel_raise(NULL, conn, FIREFLY_ERROR_CONN_STATE,
+					  "Can't open new channel on closed connection.\n");
+		return -1;
+	}
 
 	chan = firefly_channel_new(conn);
 	if (!chan) {
@@ -128,6 +132,18 @@ int firefly_channel_open_event(void *event_arg)
 	return 0;
 }
 
+void firefly_channel_open(struct firefly_connection *conn)
+{
+	int64_t ret;
+
+	ret = conn->event_queue->offer_event_cb(conn->event_queue,
+						FIREFLY_PRIORITY_HIGH,
+						firefly_channel_open_event,
+						conn, 0, NULL);
+	if (ret < 0)
+		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Could not add event.");
+}
+
 static int64_t create_channel_closed_event(struct firefly_channel *chan,
 		unsigned int nbr_deps, const int64_t *deps)
 {
@@ -141,55 +157,44 @@ static int64_t create_channel_closed_event(struct firefly_channel *chan,
 	return ret;
 }
 
+int firefly_channel_close_event(void *event_arg)
+{
+	struct firefly_connection       *conn;
+	struct firefly_channel			*chan;
+	firefly_protocol_channel_close chan_close;
+
+	chan = event_arg;
+	conn = chan->conn;
+
+	chan->state = FIREFLY_CHANNEL_CLOSED;
+
+	chan_close.dest_chan_id = chan->remote_id;
+	chan_close.source_chan_id = chan->local_id;
+
+	labcomm_encode_firefly_protocol_channel_close(conn->transport_encoder,
+						      &chan_close);
+	return 0;
+}
+
 int64_t firefly_channel_close(struct firefly_channel *chan)
 {
-	struct firefly_event_chan_close *fecc;
 	struct firefly_connection *conn;
 	int64_t ret;
 
-	fecc = FIREFLY_MALLOC(sizeof(*fecc));
-	if (!fecc) {
-		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Could not create event.");
-		return -1;
-	}
-
 	conn = chan->conn;
 
-	fecc->chan = chan;
-	fecc->chan_close.dest_chan_id = chan->remote_id;
-	fecc->chan_close.source_chan_id = chan->local_id;
 	ret = conn->event_queue->offer_event_cb(conn->event_queue,
 						FIREFLY_PRIORITY_HIGH,
 						firefly_channel_close_event,
-						fecc, 0, NULL);
+						chan, 0, NULL);
 	if (ret < 0) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1,
 			      "Could not add event to queue.");
-		FIREFLY_FREE(fecc);
 	} else {
 		ret = create_channel_closed_event(chan, 1, &ret);
 	}
 
 	return ret;
-}
-
-int firefly_channel_close_event(void *event_arg)
-{
-	struct firefly_event_chan_close *fecc;
-	struct firefly_connection       *conn;
-	struct firefly_channel          *chan;
-
-	fecc = event_arg;
-	chan = fecc->chan;
-	conn = chan->conn;
-
-	chan->state = FIREFLY_CHANNEL_CLOSED;
-
-	labcomm_encode_firefly_protocol_channel_close(conn->transport_encoder,
-						      &fecc->chan_close);
-	FIREFLY_FREE(event_arg);
-
-	return 0;
 }
 
 void protocol_data_received(struct firefly_connection *conn,
@@ -200,9 +205,6 @@ void protocol_data_received(struct firefly_connection *conn,
 				FIREFLY_LABCOMM_IOCTL_READER_SET_BUFFER,
 				data, size);
 		labcomm_decoder_decode_one(conn->transport_decoder);
-	} else {
-		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
-			      "Received data on closed conneciton.\n");
 	}
 }
 
@@ -246,6 +248,10 @@ int handle_channel_request_event(void *event_arg)
 	fecrr = event_arg;
 	conn  = fecrr->conn;
 	chan  = find_channel_by_remote_id(conn, fecrr->chan_req.source_chan_id);
+	/**
+	 * if chan != NULL the request was accepted but the response has probably
+	 * been lost. The response is important and will be sent again.
+	 */
 	if (chan == NULL) {
 		// Received Channel request.
 		chan = firefly_channel_new(conn);
@@ -338,14 +344,11 @@ int handle_channel_response_event(void *event_arg)
 	chan = find_channel_by_local_id(fecrr->conn,
 					fecrr->chan_res.dest_chan_id);
 
-	// TODO reconsider reporting this error, silently discard?
 	if (chan == NULL) {
-		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
-				  "Received open channel on non-existing channel");
-	}
-
-	if (fecrr->chan_res.ack) {
-		if (chan != NULL && chan->remote_id == CHANNEL_ID_NOT_SET) {
+		firefly_unknown_dest(fecrr->conn, fecrr->chan_res.source_chan_id,
+				fecrr->chan_res.dest_chan_id);
+	} else if (fecrr->chan_res.ack) {
+		if (chan->remote_id == CHANNEL_ID_NOT_SET) {
 			chan->remote_id = fecrr->chan_res.source_chan_id;
 			firefly_channel_ack(chan);
 			firefly_channel_internal_opened(chan);
@@ -357,8 +360,8 @@ int handle_channel_response_event(void *event_arg)
 
 		actions = chan->conn->actions;
 
-		if (actions != NULL && actions->channel_rejected != NULL)
-			actions->channel_rejected(fecrr->conn);
+		firefly_channel_raise(chan, NULL, FIREFLY_ERROR_CHAN_REFUSED,
+				"Channel was refused by remote end.");
 		firefly_channel_ack(chan);
 		firefly_channel_free(remove_channel_from_connection(chan,
 								fecrr->conn));
@@ -406,8 +409,8 @@ int handle_channel_ack_event(void *event_arg)
 		firefly_channel_ack(chan);
 		firefly_channel_internal_opened(chan);
 	} else {
-		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
-			      "Received ack on non-existing channel.\n");
+		firefly_unknown_dest(fecar->conn, fecar->chan_ack.source_chan_id,
+				fecar->chan_ack.dest_chan_id);
 	}
 	FIREFLY_FREE(event_arg);
 
@@ -426,6 +429,7 @@ void handle_channel_close(firefly_protocol_channel_close *chan_close,
 		chan->state = FIREFLY_CHANNEL_CLOSED;
 		create_channel_closed_event(chan, 0, NULL);
 	} else {
+		// TODO silently discard?
 		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
 			      "Received closed on non-existing channel.\n");
 	}
@@ -505,17 +509,8 @@ int handle_data_sample_event(void *event_arg)
 					&ack_pkt);
 		}
 	} else {
-		firefly_protocol_channel_close chan_close;
-
-		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
-			      "Received data sample on non-existing channel.\n");
-
-		/* Notify the other party of their mistake. */
-		chan_close.dest_chan_id   = fers->data.src_chan_id;
-		chan_close.source_chan_id = fers->data.dest_chan_id;
-		labcomm_encode_firefly_protocol_channel_close(
-				fers->conn->transport_encoder,
-				&chan_close);
+		firefly_unknown_dest(fers->conn, fers->data.src_chan_id,
+				fers->data.dest_chan_id);
 	}
 
 	FIREFLY_RUNTIME_FREE(fers->conn, fers->data.app_enc_data.a);
@@ -531,12 +526,10 @@ void handle_ack(firefly_protocol_ack *ack, void *context)
 
 	conn = context;
 	chan = find_channel_by_local_id(conn, ack->dest_chan_id);
-	if (chan != NULL && chan->current_seqno == ack->seqno && ack->seqno > 0) {
+	if (chan == NULL) {
+		firefly_unknown_dest(conn, ack->src_chan_id, ack->dest_chan_id);
+	} else if (chan->current_seqno == ack->seqno && ack->seqno > 0) {
 		firefly_channel_ack(chan);
-	} else if (chan->current_seqno > ack->seqno) {
-		// Do nothing, old ack
-	} else {
-		// TODO errornous packet
 	}
 }
 
@@ -650,7 +643,8 @@ int channel_restrict_request_event(void *context)
 	conn = earg->conn;
 	chan = find_channel_by_local_id(conn, earg->rreq.dest_chan_id);
 	if (!chan) {
-		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1, "Unknown id");
+		firefly_unknown_dest(conn, earg->rreq.source_chan_id,
+				earg->rreq.dest_chan_id);
 		FIREFLY_FREE(earg);
 		return -1;
 	}
@@ -727,7 +721,8 @@ int channel_restrict_ack_event(void *context)
 	conn = earg->conn;
 	chan = find_channel_by_local_id(conn, earg->rack.dest_chan_id);
 	if (!chan) {
-		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1, "Unknown id");
+		firefly_unknown_dest(conn, earg->rack.source_chan_id,
+				earg->rack.dest_chan_id);
 		FIREFLY_FREE(context);
 		return -1;
 	}
@@ -737,8 +732,8 @@ int channel_restrict_ack_event(void *context)
 				chan->conn->actions->channel_restrict_info) {
 			conn->actions->channel_restrict_info(chan, RESTRICTED);
 		} else if (!chan->restricted_local) {
-			firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
-				      "Got impossible restr. req.");
+			firefly_channel_raise(chan, NULL,
+					FIREFLY_ERROR_PROTO_STATE, "Inconsistent restrict state.");
 		}
 	} else {
 		enum restriction_transition t;

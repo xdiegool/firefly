@@ -553,7 +553,6 @@ void test_important_handshake_recv()
 	struct firefly_connection_actions conn_actions = {
 		.channel_recv		= important_handshake_chan_acc,
 		.channel_opened		= important_handshake_chan_open,
-		.channel_rejected	= NULL,
 		.channel_closed		= NULL,
 		.channel_restrict	= NULL,
 		.channel_restrict_info	= NULL
@@ -611,7 +610,6 @@ void test_important_handshake_recv_errors()
 	struct firefly_connection_actions conn_actions = {
 		.channel_recv		= important_handshake_chan_acc,
 		.channel_opened		= important_handshake_chan_open,
-		.channel_rejected	= NULL,
 		.channel_closed		= NULL,
 		.channel_restrict	= NULL,
 		.channel_restrict_info	= NULL
@@ -687,7 +685,6 @@ void test_important_handshake_open()
 	struct firefly_connection_actions conn_actions = {
 		.channel_recv		= important_handshake_chan_acc,
 		.channel_opened		= important_handshake_chan_open,
-		.channel_rejected	= NULL,
 		.channel_closed		= NULL,
 		.channel_restrict	= NULL,
 		.channel_restrict_info	= NULL
@@ -741,7 +738,6 @@ void test_important_handshake_open_errors()
 	struct firefly_connection_actions conn_actions = {
 		.channel_recv		= important_handshake_chan_acc,
 		.channel_opened		= important_handshake_chan_open,
-		.channel_rejected	= NULL,
 		.channel_closed		= NULL,
 		.channel_restrict	= NULL,
 		.channel_restrict_info	= NULL

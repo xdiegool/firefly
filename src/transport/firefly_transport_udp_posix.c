@@ -240,8 +240,8 @@ void firefly_transport_udp_posix_write(unsigned char *data, size_t data_size,
 		     sizeof(*conn_udp->remote_addr));
 	if (res == -1) {
 		firefly_error(FIREFLY_ERROR_TRANS_WRITE, 1, "sendto() failed");
-		if (conn->actions->connection_error)
-			conn->actions->connection_error(conn);
+		firefly_connection_raise_later(conn,
+				FIREFLY_ERROR_TRANS_WRITE, "sendto() failed");
 	}
 	if (important) {
 		unsigned char *new_data;
@@ -276,22 +276,33 @@ void *firefly_transport_udp_posix_read_run(void *args)
 	return NULL;
 }
 
+static void resend_on_no_ack(struct firefly_connection *conn)
+{
+	firefly_connection_raise_later(conn, FIREFLY_ERROR_TRANS_WRITE, NULL);
+}
+
 int firefly_transport_udp_posix_run(struct firefly_transport_llp *llp)
 {
 	int res;
 	struct transport_llp_udp_posix *llp_udp;
+	struct firefly_resend_loop_args *largs;
 
 	llp_udp = llp->llp_platspec;
 	res = pthread_create(&llp_udp->read_thread, NULL,
 			firefly_transport_udp_posix_read_run, llp);
 	if (res < 0)
 		return res;
+	largs = malloc(sizeof(*largs));
+	if (!largs) {
+		pthread_cancel(llp_udp->read_thread);
+		return -1;
+	}
+	largs->rq = llp_udp->resend_queue;
+	largs->on_no_ack = resend_on_no_ack;
 	res = pthread_create(&llp_udp->resend_thread, NULL,
-				 firefly_resend_run,
-				 llp_udp->resend_queue);
+				 firefly_resend_run, largs);
 	if (res < 0) {
-		if (&llp_udp->read_thread != NULL)
-			pthread_cancel(llp_udp->read_thread);
+		pthread_cancel(llp_udp->read_thread);
 		return res;
 	}
 	return 0;

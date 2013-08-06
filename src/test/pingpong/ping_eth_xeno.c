@@ -90,6 +90,7 @@ void ping_chan_opened(struct firefly_channel *chan)
 
 void ping_chan_closed(struct firefly_channel *chan)
 {
+	UNUSED_VAR(chan);
 	int res = rt_task_set_mode(T_WARNSW, 0, NULL);
 	if (res != 0) {
 		fprintf(stderr, "Error set mode %d\n", res);
@@ -106,10 +107,12 @@ bool ping_chan_received(struct firefly_channel *chan)
 	return false;
 }
 
-void ping_channel_rejected(struct firefly_connection *conn)
+static void ping_channel_error(struct firefly_channel *chan,
+		enum firefly_error reason, const char *msg)
 {
-	UNUSED_VAR(conn);
-	fprintf(stderr, "ERROR: Channel was rejected.\n");
+	UNUSED_VAR(chan);
+	if (reason == FIREFLY_ERROR_CHAN_REFUSED)
+		fprintf(stderr, "ERROR: Channel was rejected.\n%s\n", msg);
 }
 
 void ping_channel_restrict_change(struct firefly_channel *chan,
@@ -138,8 +141,8 @@ struct firefly_connection_actions conn_actions = {
 	.channel_opened		= ping_chan_opened,
 	.channel_closed		= ping_chan_closed,
 	.channel_recv		= ping_chan_received,
+	.channel_error		= ping_channel_error,
 	// New -v
-	.channel_rejected	= ping_channel_rejected,
 	.channel_restrict	= NULL,
 	.channel_restrict_info	= ping_channel_restrict_change,
 	.connection_opened = ping_connection_opened

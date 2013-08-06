@@ -102,7 +102,6 @@ struct firefly_connection_actions pong_actions = {
 	.channel_closed		= pong_chan_closed,
 	.channel_recv		= pong_chan_received,
 	// New -v
-	.channel_rejected	= NULL,
 	.channel_restrict	= pong_chan_restr,
 	.channel_restrict_info	= pong_chan_restr_info,
 	.connection_opened = pong_connection_opened

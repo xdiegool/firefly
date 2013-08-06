@@ -217,11 +217,11 @@ static int proto_writer_start(struct labcomm_writer *w, void *context,
 
 	if (!value && ctx->chan->restricted_local) {
 		/* Until we get the updated lc, just print an error. */
-		firefly_error(FIREFLY_ERROR_PROTO_STATE, 2,
-			      "BAD! Encoding signature '%s' on restr chan!\n",
-			      signature->name);
+		char msg[FF_ERRMSG_MAXLEN] = "Encoding signature on restricted channel: ";
+		strncat(msg, signature->name, FF_ERRMSG_MAXLEN - 43);
+		firefly_channel_raise(ctx->chan, NULL, FIREFLY_ERROR_PROTO_STATE, msg);
 
-		return 0;	/* TODO: Some retval the new lc will pass. */
+		return -EINVAL;	/* TODO: Some retval the new lc will pass. */
 	}
 
 	return 0;
@@ -238,8 +238,8 @@ static int proto_writer_end(struct labcomm_writer *w, void *context)
 	conn = chan->conn;
 
 	if (conn->open != FIREFLY_CONNECTION_OPEN) {
-		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
-				"Cannot send data on a closed connection.\n");
+		firefly_channel_raise(ctx->chan, NULL, FIREFLY_ERROR_PROTO_STATE,
+				"Cannot send data on a closed connection.");
 		return -EINVAL;
 	}
 
@@ -428,7 +428,7 @@ int send_data_sample_event(void *event_arg)
 	chan = fess->chan;
 	restr = chan->restricted_local && chan->restricted_remote;
 	if (restr && fess->data.important) {
-		firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
+		firefly_channel_raise(chan, NULL, FIREFLY_ERROR_PROTO_STATE,
 		       "Important sample sent on restricted channel");
 	}
 	/*

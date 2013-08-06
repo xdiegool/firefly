@@ -117,10 +117,13 @@ void ping_chan_closed(struct firefly_channel *chan)
 	pthread_mutex_unlock(&ping_done_lock);
 }
 
-void ping_channel_rejected(struct firefly_connection *conn)
+static void ping_channel_error(struct firefly_channel *chan,
+		enum firefly_error reason, const char *msg)
 {
-	UNUSED_VAR(conn);
-	warnx("Channel was rejected.");
+	UNUSED_VAR(chan);
+	UNUSED_VAR(msg);
+	if (reason == FIREFLY_ERROR_CHAN_REFUSED)
+		warnx("Channel was rejected.");
 }
 
 void *send_data(void *args)
@@ -151,8 +154,8 @@ struct firefly_connection_actions ping_actions = {
 	.channel_opened		= ping_chan_opened,
 	.channel_closed		= ping_chan_closed,
 	.channel_recv		= NULL,
+	.channel_error		= ping_channel_error,
 	// New -v
-	.channel_rejected	= ping_channel_rejected,
 	.channel_restrict	= NULL,
 	.channel_restrict_info	= ping_chan_restr_info,
 	.connection_opened = ping_connection_opened

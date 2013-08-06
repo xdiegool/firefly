@@ -70,6 +70,18 @@ int clean_suit_proto_chan()
 	return 0; // Success.
 }
 
+extern bool was_in_error;
+extern enum firefly_error expected_error;
+
+static void test_channel_error(struct firefly_channel *chan,
+		enum firefly_error reason, const char *msg)
+{
+	UNUSED_VAR(chan);
+	UNUSED_VAR(msg);
+	was_in_error = true;
+	CU_ASSERT_EQUAL(expected_error, reason);
+}
+
 extern bool chan_opened_called;
 
 #define MAX_TESTED_ID (10)
@@ -288,20 +300,13 @@ void test_chan_recv_reject()
 	mock_test_event_queue_reset(eq);
 }
 
-static bool chan_rejected_called = false;
-void chan_open_chan_rejected(struct firefly_connection *conn)
-{
-	UNUSED_VAR(conn);
-	chan_rejected_called = true;
-}
-
 void test_chan_open_rejected()
 {
 	unsigned char *buf;
 	size_t buf_size;
 	struct firefly_connection_actions ca = {
 		.channel_opened   = chan_opened_mock,
-		.channel_rejected = chan_open_chan_rejected
+		.channel_error = test_channel_error
 	};	// Setup connection
 	struct firefly_connection *conn =
 		setup_test_conn_new(&ca, eq);
@@ -328,6 +333,8 @@ void test_chan_open_rejected()
 	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
 			&buf, &buf_size);
 	protocol_data_received(conn, buf, buf_size);
+
+	expected_error = FIREFLY_ERROR_CHAN_REFUSED;
 	ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	firefly_event_execute(ev);
@@ -338,10 +345,10 @@ void test_chan_open_rejected()
 	CU_ASSERT_PTR_NULL(conn->chan_list);
 	// test resources are destroyed again
 	CU_ASSERT_FALSE(chan_opened_called);
-	CU_ASSERT_TRUE(chan_rejected_called);
+	CU_ASSERT_TRUE(was_in_error);
 
 	// Clean up
-	chan_rejected_called = false;
+	was_in_error = false;
 	chan_opened_called = false;
 	firefly_connection_close(conn);
 	event_execute_all_test(eq);
@@ -1201,7 +1208,6 @@ void mock_ack(unsigned char id, struct firefly_connection *conn) {
 struct firefly_connection_actions conn_actions = {
 	.channel_recv = should_accept_chan,
 	.channel_opened = chan_was_opened,
-	.channel_rejected = NULL,
 	.channel_closed = chan_was_closed,
 	.channel_restrict = NULL,
 	.channel_restrict_info = NULL

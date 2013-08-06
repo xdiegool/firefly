@@ -243,8 +243,8 @@ void firefly_transport_eth_posix_write(unsigned char *data, size_t data_size,
 			sizeof(*tcep->remote_addr));
 	if (err < 0) {
 		FFL(FIREFLY_ERROR_SOCKET);
-		if (conn->actions->connection_error)
-			conn->actions->connection_error(conn);
+		firefly_connection_raise_later(conn,
+				FIREFLY_ERROR_TRANS_WRITE, "sendto() failed");
 	}
 	if (important && id != NULL) {
 		unsigned char *new_data;
@@ -356,7 +356,6 @@ int firefly_transport_eth_posix_read_event(void *event_args)
 
 void *firefly_transport_eth_posix_read_run(void *arg)
 {
-	int prev_state;
 	struct firefly_transport_llp *llp;
 	struct transport_llp_eth_posix *llp_eth;
 	struct timeval tv = {
@@ -372,10 +371,16 @@ void *firefly_transport_eth_posix_read_run(void *arg)
 	return NULL;
 }
 
+static void resend_on_no_ack(struct firefly_connection *conn)
+{
+	firefly_connection_raise_later(conn, FIREFLY_ERROR_TRANS_WRITE, NULL);
+}
+
 int firefly_transport_eth_posix_run(struct firefly_transport_llp *llp)
 {
 	int res;
 	struct transport_llp_eth_posix *llp_eth;
+	struct firefly_resend_loop_args *largs;
 
 	llp_eth = llp->llp_platspec;
 	llp_eth->running = true;
@@ -383,11 +388,17 @@ int firefly_transport_eth_posix_run(struct firefly_transport_llp *llp)
 			firefly_transport_eth_posix_read_run, llp);
 	if (res < 0)
 		return res;
+	largs = malloc(sizeof(*largs));
+	if (!largs) {
+		llp_eth->running = false;
+		return -1;
+	}
+	largs->rq = llp_eth->resend_queue;
+	largs->on_no_ack = resend_on_no_ack;
 	res = pthread_create(&llp_eth->resend_thread, NULL,
-				 firefly_resend_run,
-				 llp_eth->resend_queue);
+				 firefly_resend_run, largs);
 	if (res < 0) {
-		pthread_cancel(llp_eth->read_thread);
+		llp_eth->running = false;
 		return res;
 	}
 	return 0;

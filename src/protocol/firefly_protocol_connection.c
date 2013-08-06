@@ -4,7 +4,11 @@
  */
 
 #include <protocol/firefly_protocol.h>
+
+#include <string.h>
+
 #include <utils/firefly_errors.h>
+
 
 #include "protocol/firefly_protocol_private.h"
 #include "utils/firefly_event_queue_private.h"
@@ -227,7 +231,6 @@ void *firefly_connection_get_context(struct firefly_connection *conn)
 	return conn->context;
 }
 
-/* TODO: At some point this might be done when creating a new conn. */
 void firefly_connection_set_context(struct firefly_connection * const conn,
 				    void * const context)
 {
@@ -238,4 +241,42 @@ struct firefly_event_queue *firefly_connection_get_event_queue(
 		struct firefly_connection *conn)
 {
 	return conn->event_queue;
+}
+
+struct firefly_connection_raise_arg {
+	struct firefly_connection *conn;
+	enum firefly_error reason;
+	char msg[FF_ERRMSG_MAXLEN + 1];
+};
+
+static int firefly_connection_raise_event(void *args)
+{
+	struct firefly_connection_raise_arg *err_args;
+	err_args = args;
+	FIREFLY_CONNECTION_RAISE(err_args->conn, err_args->reason, err_args->msg);
+	FIREFLY_RUNTIME_FREE(err_args->conn, args);
+	return 0;
+}
+
+void firefly_connection_raise_later(struct firefly_connection *conn,
+		enum firefly_error reason, const char *msg)
+{
+	struct firefly_connection_raise_arg *args;
+	args = FIREFLY_RUNTIME_MALLOC(conn, sizeof(*args));
+	if (!args) {
+		FFL(FIREFLY_ERROR_ALLOC);
+		return;
+	}
+	args->conn = conn;
+	args->reason = reason;
+	if (msg) {
+		strncpy(args->msg, msg, FF_ERRMSG_MAXLEN);
+		args->msg[FF_ERRMSG_MAXLEN] = '\0';
+	} else {
+		memset(args->msg, 0, FF_ERRMSG_MAXLEN + 1);
+	}
+
+	conn->event_queue->offer_event_cb(conn->event_queue,
+				FIREFLY_PRIORITY_HIGH, firefly_connection_raise_event,
+				args, 0, NULL);
 }

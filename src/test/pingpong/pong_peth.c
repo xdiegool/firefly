@@ -70,14 +70,14 @@ bool pong_chan_on_restrict_request(struct firefly_channel *chan);
 void pong_chan_on_restrict_change(struct firefly_channel *chan,
 		enum restriction_transition rinfo);
 void pong_connection_opened(struct firefly_connection *conn);
-void pong_connection_error(struct firefly_connection *conn);
+bool pong_connection_error(struct firefly_connection *conn,
+		enum firefly_error reason, const char *message);
 
 struct firefly_connection_actions conn_actions = {
 	.channel_opened		= pong_chan_opened,
 	.channel_closed		= pong_chan_closed,
 	.channel_recv		= pong_chan_received,
 	// New -v
-	.channel_rejected	= NULL,
 	.channel_restrict	= pong_chan_on_restrict_request,
 	.channel_restrict_info	= pong_chan_on_restrict_change,
 	.connection_opened = pong_connection_opened,
@@ -120,14 +120,18 @@ int64_t pong_connection_received(struct firefly_transport_llp *llp,
 	return 0;
 }
 
-void pong_connection_error(struct firefly_connection *conn)
+bool pong_connection_error(struct firefly_connection *conn,
+		enum firefly_error reason, const char *message)
 {
 	UNUSED_VAR(conn);
+	UNUSED_VAR(reason);
+	UNUSED_VAR(message);
 	printf("PONG ERROR: Connection error\n");
 	pthread_mutex_lock(&pong_done_lock);
 	pong_done = true;
 	pthread_cond_signal(&pong_done_signal);
 	pthread_mutex_unlock(&pong_done_lock);
+	return false;
 }
 
 void pong_chan_opened(struct firefly_channel *chan)

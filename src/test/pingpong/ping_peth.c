@@ -99,10 +99,12 @@ bool ping_chan_received(struct firefly_channel *chan)
 	return false;
 }
 
-void ping_channel_rejected(struct firefly_connection *conn)
+static void ping_channel_error(struct firefly_channel *chan,
+		enum firefly_error reason, const char *msg)
 {
-	UNUSED_VAR(conn);
-	fprintf(stderr, "ERROR: Channel was rejected.\n");
+	UNUSED_VAR(chan);
+	if (reason == FIREFLY_ERROR_CHAN_REFUSED)
+		fprintf(stderr, "ERROR: Channel was rejected.\n%s\n", msg);
 }
 
 void ping_connection_opened(struct firefly_connection *conn)
@@ -111,22 +113,26 @@ void ping_connection_opened(struct firefly_connection *conn)
 	firefly_channel_open(conn);
 }
 
-void ping_connection_error(struct firefly_connection *conn)
+bool ping_connection_error(struct firefly_connection *conn,
+		enum firefly_error reason, const char *message)
 {
 	UNUSED_VAR(conn);
+	UNUSED_VAR(reason);
+	UNUSED_VAR(message);
 	printf("PING ERROR: Connection error\n");
 	pthread_mutex_lock(&ping_done_lock);
 	ping_done = true;
 	pthread_cond_signal(&ping_done_signal);
 	pthread_mutex_unlock(&ping_done_lock);
+	return false;
 }
 
 struct firefly_connection_actions conn_actions = {
 	.channel_opened		= ping_chan_opened,
 	.channel_closed		= ping_chan_closed,
 	.channel_recv		= ping_chan_received,
+	.channel_error		= ping_channel_error,
 	// New -v
-	.channel_rejected	= ping_channel_rejected,
 	.channel_restrict	= NULL,
 	.channel_restrict_info	= NULL,
 	.connection_opened = ping_connection_opened,

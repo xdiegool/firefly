@@ -3,6 +3,7 @@
 #include "CUnit/Basic.h"
 
 #include <utils/firefly_event_queue.h>
+#include <utils/cppmacros.h>
 
 unsigned int nbr_added_events = 0;
 int64_t test_event_ids[50];
@@ -49,6 +50,7 @@ int64_t mock_test_event_add(struct firefly_event_queue *eq, unsigned char prio,
 
 void mock_test_event_queue_reset(struct firefly_event_queue *eq)
 {
+	UNUSED_VAR(eq);
 	nbr_added_events = 0;
 	memset(test_event_ids, 0, sizeof(test_event_ids));
 	memset(test_event_deps, 0, sizeof(test_event_deps));

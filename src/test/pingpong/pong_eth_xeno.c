@@ -91,7 +91,6 @@ struct firefly_connection_actions conn_actions = {
 	.channel_closed		= pong_chan_closed,
 	.channel_recv		= pong_chan_received,
 	// New -v
-	.channel_rejected	= NULL,
 	.channel_restrict	= pong_chan_on_restrict_request,
 	.channel_restrict_info	= pong_chan_on_restrict_change,
 	.connection_opened = pong_connection_opened
@@ -115,11 +114,13 @@ void pong_chan_on_restrict_change(struct firefly_channel *chan,
 
 bool pong_chan_on_restrict_request(struct firefly_channel *chan)
 {
+	UNUSED_VAR(chan);
 	return true;
 }
 
 void pong_connection_opened(struct firefly_connection *conn)
 {
+	UNUSED_VAR(conn);
 	pong_pass_test(CONNECTION_OPEN);
 }
 
@@ -151,6 +152,7 @@ void pong_chan_opened(struct firefly_channel *chan)
 
 void pong_chan_closed(struct firefly_channel *chan)
 {
+	UNUSED_VAR(chan);
 	rt_sem_v(&pong_done_signal);
 	pong_pass_test(CHAN_CLOSE);
 }

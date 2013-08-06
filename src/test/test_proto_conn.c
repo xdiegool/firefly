@@ -41,6 +41,25 @@ int clean_suit_proto_conn()
 extern bool was_in_error;
 extern enum firefly_error expected_error;
 
+static bool test_connection_error(struct firefly_connection *conn,
+		enum firefly_error reason, const char *msg)
+{
+	UNUSED_VAR(conn);
+	UNUSED_VAR(msg);
+	was_in_error = true;
+	CU_ASSERT_EQUAL(expected_error, reason);
+	return false;
+}
+
+static void test_channel_error(struct firefly_channel *chan,
+		enum firefly_error reason, const char *msg)
+{
+	UNUSED_VAR(chan);
+	UNUSED_VAR(msg);
+	was_in_error = true;
+	CU_ASSERT_EQUAL(expected_error, reason);
+}
+
 static bool plat_freed = false;
 
 static int free_plat_conn_test(struct firefly_connection *conn)
@@ -187,22 +206,23 @@ void test_conn_close_open_chan()
 		.close = NULL,
 		.context = &conn
 	};
-	int res = firefly_connection_open(NULL, NULL, eq, &test_trsp_conn);
+	struct firefly_connection_actions actions = {
+		.channel_error = test_channel_error
+	};
+	int res = firefly_connection_open(&actions, NULL, eq, &test_trsp_conn);
 	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 
-	struct firefly_channel *ch = firefly_channel_new(conn);
-	ch->remote_id = 0;
-	add_channel_to_connection(ch, conn);
-
 	firefly_connection_close(conn);
-	event_execute_test(eq, 3);
+	event_execute_test(eq, 1);
 	struct firefly_event *close_ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NOT_NULL_FATAL(close_ev);
 
-	expected_error = FIREFLY_ERROR_PROTO_STATE;
+	expected_error = FIREFLY_ERROR_CONN_STATE;
 	firefly_channel_open(conn);
+	event_execute_test(eq, 1);
 	CU_ASSERT_TRUE(was_in_error);
+	CU_ASSERT_FALSE(transport_sent);
 	struct firefly_event *ev = firefly_event_pop(eq);
 	CU_ASSERT_PTR_NULL(ev);
 
@@ -224,7 +244,10 @@ void test_conn_close_send_data()
 		.close = NULL,
 		.context = &conn
 	};
-	int res = firefly_connection_open(NULL, NULL, eq, &test_trsp_conn);
+	struct firefly_connection_actions actions = {
+		.channel_error = test_channel_error
+	};
+	int res = firefly_connection_open(&actions, NULL, eq, &test_trsp_conn);
 	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 
@@ -297,20 +320,15 @@ void test_conn_close_recv_any()
 	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 
-	struct firefly_channel *ch = firefly_channel_new(conn);
-	ch->remote_id = 0;
-	add_channel_to_connection(ch, conn);
-
 	firefly_connection_close(conn);
 	event_execute_test(eq, 1);
 
 	unsigned char mock_data[] = {1,2,3,4,5,6};
 	size_t len = firefly_event_queue_length(eq);
-	expected_error = FIREFLY_ERROR_PROTO_STATE;
 	protocol_data_received(conn, mock_data, sizeof(mock_data));
-	CU_ASSERT_TRUE(was_in_error);
+	CU_ASSERT_FALSE(was_in_error);
 	CU_ASSERT_EQUAL(len, firefly_event_queue_length(eq));
-	event_execute_test(eq, 3);
+	event_execute_test(eq, 1);
 
 	transport_sent = false;
 	was_in_error = false;
@@ -333,7 +351,6 @@ void test_conn_close_recv_chan_req_first()
 	struct firefly_connection_actions conn_actions = {
 		.channel_recv		= channel_accept_test,
 		.channel_opened		= NULL,
-		.channel_rejected	= NULL,
 		.channel_closed		= NULL,
 		.channel_restrict	= NULL,
 		.channel_restrict_info	= NULL

@@ -112,6 +112,19 @@ void FIREFLY_FREE(void *ptr);
 #define FIREFLY_LABCOMM_IOCTL_TRANS_SET_IMPORTANT_ID				\
   LABCOMM_IOW('f', 1, unsigned char*)
 
+#define FF_ERRMSG_MAXLEN (128)
+
+#define FIREFLY_CONNECTION_RAISE(conn, reason, msg) \
+	do { \
+		bool prop = conn->actions->connection_error ? \
+			conn->actions->connection_error(conn, reason, msg) : false; \
+		for (struct channel_list_node *n = conn->chan_list; n != NULL && prop; \
+				n = n->next) { \
+			firefly_channel_raise(n->chan, NULL, reason, msg); \
+		} \
+	} while (false); \
+
+
 /**
  * @brief Registers the protocol signatures that are needed by the
  * protocol.
@@ -263,7 +276,8 @@ struct firefly_channel_important_queue {
 enum firefly_channel_state {
 	FIREFLY_CHANNEL_READY, /**< The channel opening. */
 	FIREFLY_CHANNEL_OPEN, /**< The channel is open. */
-	FIREFLY_CHANNEL_CLOSED /**< The channel is closed and will be freed. */
+	FIREFLY_CHANNEL_CLOSED, /**< The channel is closed and will be freed. */
+	FIREFLY_CHANNEL_ERROR
 };
 
 /**
@@ -491,20 +505,9 @@ void firefly_channel_internal_opened(struct firefly_channel *chan);
 int firefly_channel_closed_event(void *event_arg);
 
 /**
- * @brief The event argument of firefly_channel_close_event.
- */
-struct firefly_event_chan_close {
-	struct firefly_channel *chan; /**< The channel to send the packet on. */
-	firefly_protocol_channel_close chan_close; /**< The packet to send,
-							must be correctly
-							initialized with id's.
-							*/
-};
-
-/**
  * @brief The event sending a close packet for the provided channel
  *
- * @param event_arg A firefly_event_chan_close.
+ * @param event_arg A \c struct #firefly_channel.
  * @return Integer indicating the result of the event.
  * @retval Negative integer upon error.
  * @see #firefly_channel_close
@@ -746,6 +749,29 @@ struct firefly_channel *remove_channel_from_connection(struct firefly_channel *c
  * @return The new uniqe channel ID.
  */
 int next_channel_id(struct firefly_connection *conn);
+
+/**
+ * @brief Raise the specified error on the specified connection from the event
+ * queue of the connection. Should only be called from outside events.
+ *
+ * @see #FIREFLY_CONNECTION_RAISE
+ */
+void firefly_connection_raise_later(struct firefly_connection *conn,
+		enum firefly_error reason, const char *msg);
+
+/**
+ * @brief Call channel_error callback on the given connection with the given
+ * channel.
+ *
+ * @param chan The channel. May be NULL if the connection is not.
+ * @param conn The connection. Only required if channel is NULL.
+ * @param reason The type or error to raise.
+ * @param msg The error message.
+ * @see firefly_channel_error_f
+ */
+void firefly_channel_raise(
+		struct firefly_channel *chan, struct firefly_connection *conn,
+		enum firefly_error reason, const char *msg);
 
 /**
  * @brief Gets and updates the sequence number used to identify important

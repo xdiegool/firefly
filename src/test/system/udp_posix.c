@@ -696,9 +696,13 @@ static void connection_opened(struct firefly_connection *conn)
 	firefly_channel_open(conn);
 }
 
-static void connection_error(struct firefly_connection *conn)
+static bool connection_error(struct firefly_connection *conn,
+		enum firefly_error reason, const char *msg)
 {
+	UNUSED_VAR(reason);
+	UNUSED_VAR(msg);
 	firefly_connection_close(conn);
+	return false;
 }
 
 void test_something()
@@ -796,7 +800,6 @@ void test_something()
 		.channel_closed		= firefly_channel_closed,
 		.channel_recv		= firefly_channel_received,
 		// New -v
-		.channel_rejected	= NULL,
 		.channel_restrict	= NULL,
 		.channel_restrict_info	= NULL,
 		.connection_opened = connection_opened,
