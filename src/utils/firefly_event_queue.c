@@ -119,6 +119,7 @@ struct firefly_event *firefly_event_take(struct firefly_event_queue *q)
 	return ev;
 }
 
+/* The queue must be locked when calling this function. */
 void firefly_event_return(struct firefly_event_queue *q,
 		struct firefly_event **ev)
 {

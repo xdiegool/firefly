@@ -612,7 +612,9 @@ void *event_thread_main(void *args)
 		pthread_mutex_unlock(&eq_s->eq_lock);
 		if (ev != NULL) {
 			firefly_event_execute(ev);
+			pthread_mutex_lock(&eq_s->eq_lock);
 			firefly_event_return(eq, &ev);
+			pthread_mutex_unlock(&eq_s->eq_lock);
 		}
 	}
 	return NULL;
