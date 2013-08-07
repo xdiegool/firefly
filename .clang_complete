@@ -3,3 +3,4 @@
 -I .
 -I src
 -I /usr/include/xenomai
+-I /usr/local/rtnet/include
