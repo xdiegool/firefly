@@ -84,7 +84,8 @@ struct firefly_transport_connection *firefly_transport_connection_eth_xeno_new(
  * This function is blocking.
  *
  * @param llp The Link Layer Port to read data from.
- * @param timeout The time to wait for new data before aborting.
+ * @param timeout The time to wait (in nanoseconds) for new data before
+ * aborting.
  * @see firefly_on_conn_recv_eth_xeno
  */
 void firefly_transport_eth_xeno_read(struct firefly_transport_llp *llp,
