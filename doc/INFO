@@ -1,21 +1,118 @@
-# Firefly introduction
+Lund University                                             Erik Jansson
+July 2013                                                   Erik Westrup
+                                                            Oscar Olsson
+                                                          Tommy Olofsson
 
-## What is Firefly?
-Firefly is a framework and protocol that is used to communicate serialized data
-between two nodes. It builds upon the Labcomm protocol, which is by design a one
-way protocol, and extends it to enable two way communication over different
-transport medium.
+                          Firefly Description
+                               Version 1
 
-The protocol specification is fairly simple by design to avoid any overhead when
-used in a setting with real time demands. There is a BNF-description of the
-protocol.
-// TODO Update BNF-file!
 
-There are reference implementations for three different application examples as
-well as four different transport mediums (UDP and Ethernet on Posix and
-FreeRTOS/Stellaris).
+Status of this Memo
 
-## WARNING
-The library's interface is still not set in stone and very prone to changes. Do
-_NOT_ consider this as stable yet!
+   This document provides information for the Internet community. It
+   does not specify an Internet standard of any kind. Distribution of
+   this document is not restricted.
+
+   This work is licensed under the Creative Commons Attribution 3.0
+   Unported License. To view a copy of this license, visit
+   http://creativecommons.org/licenses/by/3.0/ or send a letter to
+   Creative Commons, 444 Castro Street, Suite 900, Mountain View,
+   California, 94041, USA.
+
+
+Abstract
+
+   This document provides an introduction to the Firefly library as well
+   as the underlying technologies. This document notably does not cover
+   the Firefly protocol, see PROTOCOL for an explanation of that.
+
+
+Table of Contents
+
+   1      Introduction
+   2      Terms
+   3      Underlying Technology
+
+   9      References
+   10     Acknowledgements
+   11     Authors' Addresses
+   12     Full Copyright Statement
+
+
+1  Introduction
+
+   Firefly is hybrid between a framework, a library and a protocol that
+   is used to communicate serialized data of arbitrary types between two
+   nodes. The framework deals with settings up channels between the
+   nodes and communicate the status of those channels to the
+   application. The application is free to choose whichever underlying
+   protocol to use (e.g. TCP, UDP, Ethernet).
+
+   The library is asynchronous and written with speed, flexibility and
+   real time applications in mind. It is written in ISO C99 to make sure
+   that the portability and speed requirements are met.
+
+
+2  Terms
+
+   A couple of different terms may need a definition before delving
+   deeper into the library:
+
+      Node
+         A computer of some sort running an application which utilizes
+         the Firefly library.
+      Transport medium
+         A combination of network protocol and platform which must be
+         implemented. Example implementations are provided for some
+         general platforms such as Ethernet and UDP on POSIX systems.
+         The transport medium is decoupled from the library to allow
+         applications the flexibility to choose the best suitable one.
+      Connection
+         A connection between two nodes. Connections are identified on
+         each node by the current transport layer's address (e.g. IP or
+         MAC addresses). Thus, two nodes typically has one connection
+         between them.
+      Channel
+         A channel over which data of specific types is transferred.
+         Channels live inside connections and the library provides some
+         ability to set properties on channels.
+      Encoder
+         A Labcomm structure which is used to encode the messages. Each
+         channel has one encoder.
+      Decoder
+         Equal to encoder but is used to decode messages. Each channel
+         has one decoder.
+
+
+3  Underlying Technology
+
+   Firefly builds upon the Labcomm marshalling (or serialization)
+   library to transfer custom data types. Labcomm is by design one-way
+   and Firefly extends it to enable two-way communication over arbitrary
+   transport mediums.
+
+
+9  References
+
+   ...
+
+
+10  Acknowledgements
+
+   ...
+
+
+11  Authors' Addresses
+
+   Erik Jansson
+   Email: erikjansson90@gmail.com
+
+   Erik Westrup
+   Email: erik.westrup@gmail.com
+
+   Oscar Olsson
+   Email: osse.olsson@gmail.com
+
+   Tommy Olofsson
+   Email: tommy.olofsson.90@gmail.com
 

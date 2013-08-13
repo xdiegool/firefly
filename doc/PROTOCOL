@@ -1,0 +1,217 @@
+Lund University                                             Erik Jansson
+July 2013                                                   Erik Westrup
+                                                            Oscar Olsson
+                                                          Tommy Olofsson
+
+                          Firefly Description                           
+                               Version 1
+
+
+Status of this Memo
+
+   This document provides information for the Internet community. It
+   does not specify an Internet standard of any kind. Distribution of
+   this document is not restricted.
+
+   This work is licensed under the Creative Commons Attribution 3.0
+   Unported License. To view a copy of this license, visit
+   http://creativecommons.org/licenses/by/3.0/ or send a letter to
+   Creative Commons, 444 Castro Street, Suite 900, Mountain View,
+   California, 94041, USA.
+
+
+Abstract
+
+   This document provides an explanation of the Firefly protocol. It
+   does not detail anything about the structure of the Firefly library
+   itself, that is covered in the INFO file.
+
+
+Table of Contents
+
+   1      Introduction
+   2      Terms
+
+   9      References
+   10     Acknowledgements
+   11     Authors' Addresses
+   12     Full Copyright Statement
+
+
+1  Introduction
+
+   The Firefly protocol is a custom protocol developed to suit the
+   library and to support it's functions. The protocol specification
+   is fairly simple by design to avoid any overhead when used in a
+   setting with real time demands. There is a BNF-description of the
+   protocol somewhere.
+
+   # TODO: Update BNF-desc.
+
+1.1 Requirements
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED",  "MAY", and "OPTIONAL" in this
+   document are to be interpreted as described in RFC 2119 [1].
+
+
+1.2  Terminology
+
+      Node
+         A node is an application of some sort utilising the Firefly
+         library to communicate.
+      Connection
+         Connections are representations of one-to-one communications
+         between nodes. A connection has some state with it, most
+         notably the addresses of the two communicating nodes (which
+         varies depending on which underlying protocol is used) and a
+         list of the channels on the connection.
+      Channel
+         A channel lives inside a connection and can be thought of as a
+         pipe through which messages of specific types are transferred.
+         A channel can have multiple data types registered on it and a
+         connection can have multiple channels simultaneously.
+
+
+1.3 Overall Operation
+
+   The protocol is an application level protocol that borrows some
+   features from TCP and can is similar in features but more
+   lightweight. It is also different in the regard that it can operate
+   on top of a range of different protocols at different levels. E.g. it
+   can operate on top of TCP, UDP, or even directly on top of Ethernet.
+   Because it can operate on top of a wide range of different protocols,
+   it has several optional features, some of which might not be
+   necessary for some protocols.
+
+   The primary features are:
+
+      - Setting up connections between nodes running Firefly.
+      - Negotiating channels between nodes running Firefly.
+      - Transfer information about what data is to be transferred on a
+        channel.
+
+   Unlike TCP, the Firefly protocol does not send a continuous stream of
+   data, but rather messages of specific types. A typical protocol
+   session can be as follows:
+
+      [Node 1] Channel request ->                         [Node 2]
+      [Node 1]              <- Channel response (ack/nak) [Node 2]
+      [Node 1] Channel acknowledgement ->                 [Node 2]
+      [Node 1] Channel acknowledgement ->                 [Node 2]
+                      ... Application specific ...
+      [Node 1] Channel close ->                           [Node 2]
+
+   The application specific part varies but the rest is fairly typical
+   of the most implementations.
+
+   Each operation of the protocol is its own special protocol message.
+   These resemble C structs and are encoded by Labcomm (see the INFO
+   document for more on how Labcomm is used by Firefly).
+
+
+2  Detailed Operation
+
+   All messages in the protocol MUST be encoded and decoded according to
+   the Labcomm format.
+
+2.1 Opening Channels
+   
+   The node wishing to open a channel MUST send a channel_request
+   message of the following structure:
+
+      {
+         int dest_chan_id;
+         int source_chan_id;
+      }
+
+   The dest_chan_id MUST be set to -1 and the source_chan_id may be
+   chosen freely. It is however REQUIRED that no two channels have the
+   same ID on one connection. The channel IDs MUST also fit into 32 bit
+   signed integers. Implementations SHOULD choose positive numbers as
+   channel IDs.
+
+2.2 Receiving Channel Request
+
+   When receiving a channel_request, the receiver MUST check that the
+   remote ID chosen by the remote node does not already exist on the
+   connection the request was received on. Only if this is satisfied
+   SHALL the receiver accept the request and the application be asked
+   whether to accept or deny the channel.
+
+   If the application accepted the request, the node MUST send a
+   channel_response message of the following structure:
+
+      {
+         int dest_chan_id;
+         int source_chan_id;
+         boolean ack;
+      }
+
+   The source_chan_id may be freely chosen (with the same restrictions
+   as described in section 2.1), dest_chan_id MUST be set to the ID
+   chosen by the other node and the ack flag MUST be set to true.
+
+   If the application does not accept the channel request, the node MUST
+   send a channel_response message with the source_chan_id field set to
+   -1, the dest_chan_id field set to the other node's ID and the ack
+   flag set to false.
+
+2.3 Acknowledging Channel Response
+
+   When receiving a channel_response message, the node MUST check the
+   dest_chan_id exists locally. If it doesn't, the node MUST discard the
+   message. If the node already has a channel on the same connection
+   with the ID the remote node chose (i.e. the ID in the source_chan_id
+   field), it MUST reply with a channel_ack message with the ack flag
+   set to false, the source_chan_id field set to the channel ID it had
+   chosen and the dest_chan_id field set to the faulty value provided by
+   the other node. If it does not have a channel with that ID on the
+   connection, the node MUST reply with a similar channel_ack message
+   but with the ack flag set to true. This three-way handshake exists to
+   negotiate channel IDs that both nodes accept.
+
+   If the responding node rejected the channel, the requesting node MUST
+   drop the channel and try to perform a new channel_request. In this
+   case, the value of the source_chan_id will be set to -1.
+
+2.4 Closing Channels
+
+   When closing a channel, the initiating node MUST send a channel_close
+   message of the following structure:
+
+      {
+         int dest_chan_id;
+         int source_chan_id;
+      }
+
+   The dest_chan_id field MUST be set to the ID the remote node chose
+   when negotiating the channel. The source_chan_id field MUST be set to
+   the ID this node chose when negotiating the channel.
+
+
+9  References
+
+   [1] Bradner, S., "Key words for use in RFCs to Indicate Requirement
+       Levels", BCP 14, RFC 2119, March 1997.
+
+
+10  Acknowledgements
+
+   ...
+
+
+11  Authors' Addresses
+
+   Erik Jansson
+   Email: erikjansson90@gmail.com
+
+   Erik Westrup
+   Email: erik.westrup@gmail.com
+
+   Oscar Olsson
+   Email: osse.olsson@gmail.com
+
+   Tommy Olofsson
+   Email: tommy.olofsson.90@gmail.com
+
