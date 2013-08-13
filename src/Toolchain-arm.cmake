@@ -1,5 +1,5 @@
 # Directories:
-set(FT_SENSE_DIR ${Firefly_SOURCE_DIR}/../../ft-sense)
+set(FT_SENSE_DIR ${Firefly_SOURCE_DIR}/../../robot/ft-sense)
 set(LDSCRIPT ${FT_SENSE_DIR}/src/adc_freertos_lwip/standalone.ld)
 set(RTOS_BASE ${FT_SENSE_DIR}/lib/freertos)
 set(RTOS_SOURCE_DIR ${RTOS_BASE}/Source)
@@ -53,5 +53,5 @@ include_directories(${CMAKE_FIND_ROOT_PATH})
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM BOTH)
 
 # Same as above but for libraries and include files:
-set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
-set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY BOTH)
+set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE BOTH)
