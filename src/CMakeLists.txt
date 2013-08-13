@@ -31,10 +31,8 @@ set(DOC_GEN_DIR ${DOC_DIR}/gen)
 set(DOC_GEN_API_DIR ${DOC_GEN_DIR}/api)
 Set(DOC_GEN_FULL_DIR ${DOC_GEN_DIR}/full)
 
-# Labcomm directories:
-set(LABCOMM_DIR ${Firefly_PROJECT_DIR}/../lib/labcomm)
-set(LABCOMMC ${LABCOMM_DIR}/compiler/labComm.jar)
-set(LABCOMM_INC_DIR ${LABCOMM_DIR}/lib/c/)
+# Labcomm compiler:
+set(LABCOMMC ${Firefly_PROJECT_DIR}/tools/labComm.jar)
 
 # Tell CMake to output library and executables directly in the build
 # directory:
@@ -43,12 +41,27 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${Firefly_BINARY_DIR})
 
 # Append our own CMake modules path:
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${Firefly_PROJECT_DIR}/cmake_modules)
+
+# Tell CMake that we prefer static libraries before dynamic ones:
+set(CMAKE_FIND_LIBRARY_SUFFIXES ".a;.so")
+## }}}
+
+## FIND LIBRARIES {{{
+message("-- Looking for Xenomai")
+find_package(Xenomai)
+message("-- Looking for RTNet")
+find_package(RTNet)
+message("-- Looking for Labcomm")
+find_package(LabComm)
+
+# Add Labcomm lib dir.
+link_directories(${LINK_DIRECTORIES} ${LABCOMM_LIBRARIES})
 ## }}}
 
 ## FLAGS {{{
 set(C_STD "-std=c99")
-set(ERR_FLAGS "-Wall -Wextra -Wno-missing-field-initializers")
-set(MACROS_DEF "-DDEBUG -DLABCOMM_ENCODER_LINEAR_SEARCH")
+set(ERR_FLAGS "-Wall -Wextra")
+set(MACROS_DEF "-DDEBUG")
 
 if(CMAKE_CROSSCOMPILING)
 	# CFLAGS when cross compiling to the ARM-card:
@@ -78,7 +91,6 @@ endif(CMAKE_CROSSCOMPILING)
 # they are generated before trying to generate files with Labcomm.
 add_custom_command(
 	OUTPUT ${GEN_DIR}
-	DEPENDS ${LABCOMMC} ${LABCOMM_INC_DIR}/liblabcomm.a
 	COMMAND mkdir -p ${GEN_DIR}
 )
 # Custom commands to generate files from .lc files:
@@ -117,32 +129,6 @@ set_target_properties(gen-files
 	PROPERTIES COMPILE_FLAGS "-Wno-all -Wno-extra"
 )
 
-# Custom command to build the Labcomm compiler:
-add_custom_command(
-	OUTPUT ${LABCOMMC}
-	COMMAND ant -f ${LABCOMM_DIR}/compiler/build.xml jar
-)
-
-# Custom command to build the static Labcomm library:
-if (NOT CMAKE_CROSSCOMPILING)
-	add_custom_command(
-		OUTPUT ${LABCOMM_INC_DIR}/liblabcomm.a
-		COMMAND make -C ${LABCOMM_INC_DIR} -e LABCOMM_NO_EXPERIMENTAL=true CFLAGS=\"-g -O0 -D LABCOMM_ENCODER_LINEAR_SEARCH -I.\" liblabcomm.a
-	)
-else ()
-	add_custom_command(
-		OUTPUT ${LABCOMM_INC_DIR}/liblabcomm.a
-		COMMAND make -C ${LABCOMM_INC_DIR}
-				-e CC=${CROSS_COMPILER_ARM} -e LABCOMM_NO_EXPERIMENTAL=true
-				CFLAGS=\"-Os -g -Wfloat-equal -Werror-implicit-function-declaration -Wno-missing-field-initializers
-				-mthumb -mcpu=cortex-m3 -ffunction-sections -fdata-sections
-				-Dmalloc=pvPortMalloc -Dcalloc=pvPortCalloc -Dfree=vPortFree
-				-DARM_CORTEXM3_CODESOURCERY -DLABCOMM_NO_STDIO -DLABCOMM_ENCODER_LINEAR_SEARCH
-				-DLABCOMM_COMPAT=\\\\"\\"labcomm_compat_arm_cortexm3.h\\\\"\\"
-				-I.\" liblabcomm.a
-	)
-endif ()
-
 # Custom commands to build tags files for vim/emacs.
 add_custom_target(tags
 	DEPENDS tags-vim tags-emacs
@@ -154,17 +140,10 @@ add_custom_target(tags-emacs
 	COMMAND ctags --recurse --tag-relative=yes -e -f ../TAGS ..
 )
 
-# Custom command to clean everything:
+# Custom command to clean more than clean:
 add_custom_target(cleaner
-	COMMAND make clean &&
-			rm -fr ${Firefly_PROJECT_DIR}/build/* &&
+	COMMAND rm -fr ${Firefly_PROJECT_DIR}/build/* &&
 			rm -fr ${TEST_FILES_DIR} &&
-			echo -n \"--Cleaning LabComm...\" &&
-			make -C ${LABCOMM_INC_DIR} distclean &&
-			echo \" OK!\" &&
-			echo -n \"--Cleaning LabComm compiler...\" &&
-			cd ${LABCOMM_DIR}/compiler; ant clean  &&
-			echo \" OK!\"
 )
 
 
@@ -225,7 +204,7 @@ add_custom_command(
 ## MISC {{{
 # Specify which directories should be searched for header files:
 include_directories(
-	${LABCOMM_INC_DIR}
+	${LABCOMM_INCLUDE_DIRS}
 	${INC_DIR}
 	${Firefly_PROJECT_DIR}
 	${Firefly_SOURCE_DIR}
@@ -235,16 +214,11 @@ include_directories(
 set(CMAKE_C_OUTPUT_EXTENSION_REPLACE 1)
 
 # Dump variables available to cmake, good for debugging:
-# get_cmake_property(_variableNames VARIABLES)
-# foreach (_variableName ${_variableNames})
-#     message(STATUS "${_variableName}=${${_variableName}}")
-# endforeach()
+ #get_cmake_property(_variableNames VARIABLES)
+ #foreach (_variableName ${_variableNames})
+	 #message(STATUS "${_variableName}=${${_variableName}}")
+ #endforeach()
 ## }}}
-
-message("-- Looking for Xenomai")
-find_package(Xenomai)
-message("-- Looking for RTNet")
-find_package(RTNet)
 
 ## INCLUDE {{{
 # Include subdirectories with their own CMake files:
