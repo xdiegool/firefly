@@ -11,6 +11,7 @@ if(NOT CMAKE_CROSSCOMPILING)
 		${Firefly_SOURCE_DIR}/transport/firefly_transport.c
 		${Firefly_SOURCE_DIR}/transport/firefly_transport_eth_posix.c
 		${Firefly_SOURCE_DIR}/utils/firefly_resend_posix.c
+		${Firefly_SOURCE_DIR}/utils/firefly_event_queue_posix.c
 	)
 	target_link_libraries(transport-eth-posix gen-files)
 
@@ -41,6 +42,7 @@ if(NOT CMAKE_CROSSCOMPILING)
 		${Firefly_SOURCE_DIR}/transport/firefly_transport.c
 		${Firefly_SOURCE_DIR}/transport/firefly_transport_udp_posix.c
 		${Firefly_SOURCE_DIR}/utils/firefly_resend_posix.c
+		${Firefly_SOURCE_DIR}/utils/firefly_event_queue_posix.c
 	)
 	target_link_libraries(transport-udp-posix gen-files)
 
