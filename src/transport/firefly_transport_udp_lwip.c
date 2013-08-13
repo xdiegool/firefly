@@ -211,8 +211,8 @@ void firefly_transport_udp_lwip_write(unsigned char *data, size_t data_size,
 			conn_udp->remote_port);
 	if (err != ERR_OK) {
 		FFL(FIREFLY_ERROR_TRANS_WRITE);
-		if (conn->actions->connection_error)
-			conn->actions->connection_error(conn);
+		firefly_connection_raise_later(conn,
+				FIREFLY_ERROR_TRANS_WRITE, "udp_sendto() failed");
 	}
 	pbuf_free(pbuf);
 	if (important && id != NULL) {
