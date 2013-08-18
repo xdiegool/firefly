@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>SimpleExampleUDP</AssemblyName>
+    <!--<ProjectGuid>{755CD5A6-C48E-4D35-B0BE-8EC0FDE1A2A1}</ProjectGuid>-->
+    <!-- Properties which affect the build process -->
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <OutputPath>bin\Debug\</OutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+	  <Reference Include="LabComm">
+		  <HintPath>..\lib\LabComm.dll</HintPath>
+	  </Reference>
+	  <Reference Include="Firefly">
+		  <HintPath>..\bin\Debug\Firefly.dll</HintPath>
+	  </Reference>
+	  <Reference Include="System">
+	  </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="SimpleExampleUDP.cs" />
+	<Compile Include="..\..\..\gen\pingpong.cs" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>
