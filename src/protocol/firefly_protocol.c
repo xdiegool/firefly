@@ -497,8 +497,8 @@ int handle_data_sample_event(void *event_arg)
 		if (fers->data.important) {
 			firefly_protocol_ack ack_pkt;
 
-			ack_pkt.dest_chan_id = chan->local_id;
-			ack_pkt.src_chan_id = chan->remote_id;
+			ack_pkt.dest_chan_id = chan->remote_id;
+			ack_pkt.src_chan_id = chan->local_id;
 			ack_pkt.seqno = fers->data.seqno;
 			labcomm_encode_firefly_protocol_ack(
 					chan->conn->transport_encoder,
