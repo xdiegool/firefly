@@ -12,8 +12,8 @@ struct firefly_channel *firefly_channel_new(struct firefly_connection *conn)
 	struct labcomm_writer  *writer;
 
 	chan = FIREFLY_MALLOC(sizeof(*chan));
-	reader = protocol_labcomm_reader_new(conn);
-	writer = protocol_labcomm_writer_new(chan);
+	reader = protocol_labcomm_reader_new(conn, conn->lc_memory);
+	writer = protocol_labcomm_writer_new(chan, conn->lc_memory);
 	if (!chan || !reader || !writer) {
 		FFL(FIREFLY_ERROR_ALLOC);
 		protocol_labcomm_reader_free(reader);
@@ -22,8 +22,8 @@ struct firefly_channel *firefly_channel_new(struct firefly_connection *conn)
 
 		return NULL;
 	}
-	proto_decoder = labcomm_decoder_new(reader, NULL);
-	proto_encoder = labcomm_encoder_new(writer, NULL);
+	proto_decoder = labcomm_decoder_new(reader, NULL, conn->lc_memory, NULL);
+	proto_encoder = labcomm_encoder_new(writer, NULL, conn->lc_memory, NULL);
 	if (!proto_decoder || !proto_encoder) {
 		FFL(FIREFLY_ERROR_ALLOC);
 		if (chan->proto_decoder)

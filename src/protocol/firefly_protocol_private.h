@@ -254,6 +254,7 @@ struct firefly_connection {
 														   replacement functions. See
 														   #firefly_memory_funcs, #FIREFLY_RUNTIME_MALLOC and
 														   #FIREFLY_RUNTIME_FREE. */
+	struct labcomm_memory *lc_memory;
 	void					*context;			/**< A reference to an optional, user defined context.  */
 	struct firefly_connection_actions 	*actions;			/**< Callbacks to the applicaiton. */
 	struct firefly_transport_connection *transport;	/**< Transport specific connection data. */
@@ -313,12 +314,13 @@ struct firefly_channel {
  * (protocol layer).
  *
  * @param chan The channel to create the writer for.
+ * @param mem The memory struct used internally by labcomm.
  *
  * @return A pointer to the newly created labcomm_writer.
  * @retval NULL On failure.
  */
 struct labcomm_writer *protocol_labcomm_writer_new(
-		struct firefly_channel *chan);
+		struct firefly_channel *chan, struct labcomm_memory *mem);
 
 /**
  * @brief Creates a new labcomm_writer for the provided connection
@@ -337,12 +339,13 @@ struct labcomm_writer *transport_labcomm_writer_new(
  * (protocol layer).
  *
  * @param conn The connection to create a reader for.
+ * @param mem The memory struct used internally by labcomm.
  *
  * @return A pointer to the newly created labcomm_reader or NULL.
  * @retval NULL On failure.
  */
 struct labcomm_reader *protocol_labcomm_reader_new(
-		struct firefly_connection *conn);
+		struct firefly_connection *conn, struct labcomm_memory *mem);
 
 /**
  * @brief Creates a new labcomm_reader for the provided connection
@@ -816,4 +819,8 @@ void firefly_channel_ack(struct firefly_channel *chan);
  */
 bool firefly_channel_enqueue_important(struct firefly_channel *chan,
 		firefly_event_execute_f event, void *event_arg);
+
+struct labcomm_memory *firefly_labcomm_memory_new(
+		struct firefly_connection *conn);
+void firefly_labcomm_memory_free(struct labcomm_memory *mem);
 #endif
