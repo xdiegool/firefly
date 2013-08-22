@@ -3,6 +3,7 @@ using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Collections.Generic;
+using System.Linq;
 using se.lth.control.labcomm;
 
 namespace se.lth.cs.firefly {
@@ -25,6 +26,7 @@ namespace se.lth.cs.firefly {
 		private ConnectionEncoder enc;
 		private ConnectionDecoder dec;
 		private List<Channel> channels;
+        private int nextChanID;
 
 		public event ChannelAccept Accept;
 
@@ -34,6 +36,7 @@ namespace se.lth.cs.firefly {
 			enc = new ConnectionEncoder(stream, this);
 			dec = new ConnectionDecoder(stream);
 			channels = new List<Channel>();
+            this.nextChanID = 0;
 		}
 
 		public Connection(Stream outStream, Stream inStream)
@@ -74,7 +77,8 @@ namespace se.lth.cs.firefly {
 		public void Close()
 		{
 			lock (this.channels) {
-				this.channels.ForEach(delegate(Channel chan)
+                List<Channel> tmp = new List<Channel>(this.channels);
+				tmp.ForEach(delegate(Channel chan)
 						{
 							chan.Close();
 						}
@@ -84,7 +88,7 @@ namespace se.lth.cs.firefly {
 		
 		public void OpenChannel(Channel chan)
 		{
-			chan.localID = 1;
+			chan.localID = this.nextChanID++;
 			lock (this.channels) {
 				channels.Add(chan);
 			}
@@ -99,7 +103,7 @@ namespace se.lth.cs.firefly {
 		{
 			bool accepted = false;
 			Channel chan = new Channel(this);
-			chan.localID = 1;
+            chan.localID = this.nextChanID++;
 			chan.remoteID = val.source_chan_id;
 			if (Accept != null)
 				accepted = Accept(chan);
@@ -159,9 +163,10 @@ namespace se.lth.cs.firefly {
 		{
 			lock (this.channels) {
 				Channel chan = getChannel(val.dest_chan_id);
-				if (chan != null) {
+                if (chan != null)
+                {
+                    this.channels.Remove(chan);
 					chan.WasClosed();
-					this.channels.Remove(chan);
 				}
 			}
 		}
@@ -247,11 +252,7 @@ namespace se.lth.cs.firefly {
 		private Channel getChannel(int id)
 		{
 			Channel res = null;
-			channels.ForEach(delegate(Channel chan)
-				{
-					if (chan.localID == id)
-						res = chan;
-				});
+            res = this.channels.Where(c => c.localID == id).First();
 			return res;
 		}
 

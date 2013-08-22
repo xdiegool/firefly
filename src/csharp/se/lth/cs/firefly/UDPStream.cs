@@ -33,8 +33,8 @@ namespace se.lth.cs.firefly {
 			{
 				while ((Length - Position) < length)
 					Monitor.Wait(this);
-				Console.Out.WriteLine("INStream: Pos {0}, Len {1}, Cap {2}",
-						Position, Length, Capacity);
+                //Console.Out.WriteLine("INStream: Pos {0}, Len {1}, Cap {2}",
+                //        Position, Length, Capacity);
 				int res = 0;
 				res = base.Read(data, offset, length);
 				return res;
@@ -131,19 +131,42 @@ namespace se.lth.cs.firefly {
 			}
 		}
 
+        public void RemoveNode(IPEndPoint ep)
+        {
+            lock (inStreams) { lock (outStreams) {
+                if (this.inStreams.ContainsKey(ep)) {
+                    try {
+                        this.inStreams[ep].Close();
+                    } catch {}
+                    this.inStreams.Remove(ep);
+                }
+                if (this.outStreams.ContainsKey(ep)) {
+                    try {
+                        this.outStreams[ep].Close();
+                    } catch {}
+                    this.outStreams.Remove(ep);
+                }
+            } }
+        }
+
 		public void Close()
 		{
-			lock (inStreams) { lock (outStreams) {
-				this.closed = true;
-				this.client.Close();
-				foreach (UDPInputStream s in this.inStreams.Values) {
-					s.Close();
-				}
-				foreach (UDPOutputStream s in this.outStreams.Values) {
-					s.Close();
-				}
-			} }
-
+            lock (inStreams)
+            {
+                lock (outStreams)
+                {
+                    this.closed = true;
+                    this.client.Close();
+                    foreach (UDPInputStream s in this.inStreams.Values)
+                    {
+                        s.Close();
+                    }
+                    foreach (UDPOutputStream s in this.outStreams.Values)
+                    {
+                        s.Close();
+                    }
+                }
+            }
 		}
 	}
 }
