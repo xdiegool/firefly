@@ -144,21 +144,20 @@ void protocol_labcomm_reader_free(struct labcomm_reader *r)
 }
 
 struct labcomm_reader *transport_labcomm_reader_new(
-		struct firefly_connection *conn)
+		struct firefly_connection *conn, struct labcomm_memory *mem)
 {
-	return protocol_labcomm_reader_new(conn);
+	return protocol_labcomm_reader_new(conn, mem);
 }
 
 void transport_labcomm_reader_free(struct labcomm_reader *r)
 {
 	FIREFLY_FREE(r);
 }
-
-static int comm_writer_alloc(struct labcomm_writer *w, void *context,
-		struct labcomm_encoder *encoder, char *labcomm_version)
+static int comm_writer_alloc(struct labcomm_writer *w,
+		struct labcomm_writer_action_context *action_context,
+		char *labcomm_version)
 {
-	UNUSED_VAR(context);
-	UNUSED_VAR(encoder);
+	UNUSED_VAR(action_context);
 	UNUSED_VAR(labcomm_version);
 
 	w->data_size	= BUFFER_SIZE;
@@ -175,36 +174,39 @@ static int comm_writer_alloc(struct labcomm_writer *w, void *context,
 	return w->error;
 }
 
-static int comm_writer_free(struct labcomm_writer *w, void *context)
+static int comm_writer_free(struct labcomm_writer *w,
+		struct labcomm_writer_action_context *action_context)
 {
 	FIREFLY_FREE(w->data);
-	FIREFLY_FREE(context);
+	FIREFLY_FREE(action_context);
 	FIREFLY_FREE(w);
 
 	return 0;
 }
 
-static int comm_writer_flush(struct labcomm_writer *w, void *context)
+static int comm_writer_flush(struct labcomm_writer *w,
+		struct labcomm_writer_action_context *action_context)
 {
 	int result;
 
-	UNUSED_VAR(context);
+	UNUSED_VAR(action_context);
 	result = w->count - w->pos;
 
 	return (result < 0) ? -ENOMEM : result;
 }
 
-static int proto_writer_start(struct labcomm_writer *w, void *context,
-		struct labcomm_encoder *encoder, int index,
-		struct labcomm_signature *signature, void *value)
+static int proto_writer_start(struct labcomm_writer *w,
+		struct labcomm_writer_action_context *action_context,
+		int index,
+		struct labcomm_signature *signature,
+		void *value)
 {
 	struct protocol_writer_context *ctx;
 
-	UNUSED_VAR(encoder);
 	UNUSED_VAR(index);
 	UNUSED_VAR(signature);
 
-	ctx = context;
+	ctx = action_context->context;
 	ctx->important = (value == NULL);
 	w->pos = 0;
 
@@ -220,13 +222,14 @@ static int proto_writer_start(struct labcomm_writer *w, void *context,
 	return 0;
 }
 
-static int proto_writer_end(struct labcomm_writer *w, void *context)
+static int proto_writer_end(struct labcomm_writer *w,
+		struct labcomm_writer_action_context *action_context)
 {
 	struct protocol_writer_context *ctx;
 	struct firefly_channel *chan;
 	struct firefly_connection *conn;
 
-	ctx  = context;
+	ctx  = action_context->context;
 	chan = ctx->chan;
 	conn = chan->conn;
 
@@ -267,16 +270,19 @@ static int proto_writer_end(struct labcomm_writer *w, void *context)
 	return 0;
 }
 
-static int proto_writer_ioctl(struct labcomm_writer *w, void *context,
-		int action, struct labcomm_signature *signature, va_list arg)
+static int proto_writer_ioctl(struct labcomm_writer *w,
+           struct labcomm_writer_action_context *action_context, int index,
+	   struct labcomm_signature *signature, uint32_t ioctl_action,
+	   va_list args)
 {
 	UNUSED_VAR(w);
-	UNUSED_VAR(context);
-	UNUSED_VAR(action);
+	UNUSED_VAR(action_context);
+	UNUSED_VAR(index);
 	UNUSED_VAR(signature);
-	UNUSED_VAR(arg);
-	int result = -ENOTSUP;
-	return result;
+	UNUSED_VAR(ioctl_action);
+	UNUSED_VAR(args);
+
+	return -ENOTSUP;
 }
 
 static const struct labcomm_writer_action proto_writer_action = {
@@ -336,41 +342,48 @@ void protocol_labcomm_writer_free(struct labcomm_writer *w)
 	FIREFLY_FREE(w);
 }
 
-static int trans_writer_start(struct labcomm_writer *w, void *context,
-		struct labcomm_encoder *encoder, int index,
-		struct labcomm_signature *signature, void *value)
+static int trans_writer_start(struct labcomm_writer *w,
+		struct labcomm_writer_action_context *action_context,
+		int index, struct labcomm_signature *signature, void *value)
 {
 	UNUSED_VAR(w);
-	UNUSED_VAR(context);
-	UNUSED_VAR(encoder);
+	UNUSED_VAR(action_context);
 	UNUSED_VAR(index);
 	UNUSED_VAR(signature);
 	UNUSED_VAR(value);
 	return 0;
 }
 
-static int trans_writer_end(struct labcomm_writer *w, void *context)
+static int trans_writer_end(struct labcomm_writer *w,
+		struct labcomm_writer_action_context *action_context)
 {
 	struct transport_writer_context *ctx;
-	ctx = (struct transport_writer_context *) context;
-	ctx->conn->transport->write(w->data, w->pos, ctx->conn,
+	struct firefly_connection *conn;
+
+	ctx = action_context->context;
+	conn = ctx->conn;
+	conn->transport->write(w->data, w->pos, conn,
 			ctx->important_id != NULL, ctx->important_id);
 	ctx->important_id = NULL;
 	w->pos = 0;
+
 	return 0;
 }
 
-static int trans_writer_ioctl(struct labcomm_writer *w, void *context,
-		int action, struct labcomm_signature *signature, va_list arg)
+static int trans_writer_ioctl(struct labcomm_writer *w,
+		struct labcomm_writer_action_context *action_context,
+		int index, struct labcomm_signature *signature,
+		uint32_t ioctl_action, va_list arg)
 {
 	struct transport_writer_context *ctx;
 	int result;
 
 	UNUSED_VAR(w);
 	UNUSED_VAR(signature);
-	ctx = context;
+	UNUSED_VAR(index);
+	ctx = action_context->context;
 
-	switch (action) {
+	switch (ioctl_action) {
 	case FIREFLY_LABCOMM_IOCTL_TRANS_SET_IMPORTANT_ID: {
 		result = 0;
 		ctx->important_id = va_arg(arg, unsigned char*);
@@ -392,13 +405,13 @@ static const struct labcomm_writer_action trans_writer_action = {
 };
 
 struct labcomm_writer *transport_labcomm_writer_new(
-		struct firefly_connection *conn)
+		struct firefly_connection *conn, struct labcomm_memory *mem)
 {
 	struct labcomm_writer *result;
 	struct transport_writer_context *context;
 
 	context = FIREFLY_MALLOC(sizeof(*context));
-	result = labcomm_writer_new(context, &trans_writer_action);
+	result = labcomm_writer_new(context, &trans_writer_action, mem);
 	if (result != NULL && context != NULL) {
 		context->conn = conn;
 		context->important_id = NULL;
@@ -414,7 +427,7 @@ struct labcomm_writer *transport_labcomm_writer_new(
 void transport_labcomm_writer_free(struct labcomm_writer *w)
 {
 	if (w != NULL) {
-		FIREFLY_FREE(w->context);
+		FIREFLY_FREE(w->action_context);
 	}
 	FIREFLY_FREE(w);
 }

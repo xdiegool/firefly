@@ -332,7 +332,7 @@ struct labcomm_writer *protocol_labcomm_writer_new(
  * @retval NULL On failure.
  */
 struct labcomm_writer *transport_labcomm_writer_new(
-		struct firefly_connection *conn);
+		struct firefly_connection *conn, struct labcomm_memory *mem);
 
 /**
  * @brief Creates a new labcomm_reader for the provided connection
@@ -357,7 +357,7 @@ struct labcomm_reader *protocol_labcomm_reader_new(
  * @retval NULL On failure.
  */
 struct labcomm_reader *transport_labcomm_reader_new(
-		struct firefly_connection *conn);
+		struct firefly_connection *conn, struct labcomm_memory *mem);
 
 /**
  * @brief Frees the provided labcomm_reader (protocol layer).
