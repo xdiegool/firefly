@@ -49,8 +49,9 @@ static int proto_reader_fill(struct labcomm_reader *r,
 
 	UNUSED_VAR(context);
 	result = r->count - r->pos;
+	r->error = (result <= 0 || r->data == NULL) ? -1 : 0;
 
-	return (result < 0 || r->data == NULL) ? -ENOMEM : result;
+	return result;
 }
 
 static int proto_reader_start(struct labcomm_reader *r,
@@ -59,11 +60,13 @@ static int proto_reader_start(struct labcomm_reader *r,
 		struct labcomm_signature *signature,
 		void *value)
 {
+	UNUSED_VAR(context);
 	UNUSED_VAR(local_index);
 	UNUSED_VAR(remote_index);
 	UNUSED_VAR(signature);
 	UNUSED_VAR(value);
-	return proto_reader_fill(r, context);
+
+	return r->count - r->pos;
 }
 
 static int proto_reader_end(struct labcomm_reader *r,
@@ -178,6 +181,7 @@ static int comm_writer_free(struct labcomm_writer *w,
 		struct labcomm_writer_action_context *action_context)
 {
 	FIREFLY_FREE(w->data);
+	FIREFLY_FREE(action_context->context);
 	FIREFLY_FREE(action_context);
 	FIREFLY_FREE(w);
 
@@ -203,12 +207,12 @@ static int proto_writer_start(struct labcomm_writer *w,
 {
 	struct protocol_writer_context *ctx;
 
+	UNUSED_VAR(w);
 	UNUSED_VAR(index);
 	UNUSED_VAR(signature);
 
 	ctx = action_context->context;
 	ctx->important = (value == NULL);
-	w->pos = 0;
 
 	if (!value && ctx->chan->restricted_local) {
 		/* Until we get the updated lc, just print an error. */
@@ -335,11 +339,7 @@ struct labcomm_writer *protocol_labcomm_writer_new(struct firefly_channel *chan,
 
 void protocol_labcomm_writer_free(struct labcomm_writer *w)
 {
-	if (w != NULL) {
-		FIREFLY_FREE(w->action_context->context);
-		FIREFLY_FREE(w->action_context);
-	}
-	FIREFLY_FREE(w);
+	comm_writer_free(w, w->action_context);
 }
 
 static int trans_writer_start(struct labcomm_writer *w,
@@ -426,10 +426,7 @@ struct labcomm_writer *transport_labcomm_writer_new(
 
 void transport_labcomm_writer_free(struct labcomm_writer *w)
 {
-	if (w != NULL) {
-		FIREFLY_FREE(w->action_context);
-	}
-	FIREFLY_FREE(w);
+	comm_writer_free(w, w->action_context);
 }
 
 int send_data_sample_event(void *event_arg)

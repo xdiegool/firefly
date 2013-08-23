@@ -2,7 +2,6 @@
 #include "protocol/firefly_protocol_private.h"
 
 #include <string.h>
-#include <stdio.h>
 #include <errno.h>
 #include <stdbool.h>
 

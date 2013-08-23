@@ -4,8 +4,7 @@
 #include <stdio.h>
 #include <labcomm.h>
 #include <labcomm_ioctl.h>
-#include <labcomm_static_buffer_writer.h>
-#include <labcomm_static_buffer_reader.h>
+#include <labcomm_default_memory.h>
 #include "CUnit/Basic.h"
 #include <stdbool.h>
 
@@ -14,6 +13,8 @@
 #include <utils/firefly_errors.h>
 #include <utils/firefly_event_queue.h>
 
+#include "test/labcomm_static_buffer_writer.h"
+#include "test/labcomm_static_buffer_reader.h"
 #include "test/test_labcomm_utils.h"
 #include "utils/cppmacros.h"
 #include "test/event_helper.h"
@@ -92,10 +93,11 @@ struct firefly_connection *setup_test_conn_new(
 		CU_FAIL_FATAL("Could not create connection.\n");
 	}
 	// Set some stuff that firefly_init_conn doesn't do
-	labcomm_register_error_handler_encoder(conn->transport_encoder,
-			handle_labcomm_error);
-	labcomm_register_error_handler_decoder(conn->transport_decoder,
-			handle_labcomm_error);
+	// TODO: Fix this when labcomm gets error handling back
+	/* labcomm_register_error_handler_encoder(conn->transport_encoder,*/
+	/*                 handle_labcomm_error);*/
+	/* labcomm_register_error_handler_decoder(conn->transport_decoder,*/
+	/*                 handle_labcomm_error);*/
 	return conn;
 }
 
@@ -123,6 +125,8 @@ void transport_write_test_decoder(unsigned char *data, size_t size,
 		CU_ASSERT_PTR_NOT_NULL_FATAL(id);
 		*id = IMPORTANT_ID;
 	}
+	CU_ASSERT_PTR_NOT_NULL_FATAL(data);
+	CU_ASSERT_FATAL(size > 0);
 	labcomm_decoder_ioctl(test_dec, LABCOMM_IOCTL_READER_SET_BUFFER,
 			data, size);
 	labcomm_decoder_decode_one(test_dec);
@@ -235,17 +239,21 @@ void test_handle_restrict_ack(firefly_protocol_channel_restrict_ack *d, void *ct
 int init_labcomm_test_enc_dec_custom(struct labcomm_reader *test_r,
 		struct labcomm_writer *test_w)
 {
-	test_enc = labcomm_encoder_new(test_w, NULL);
+	test_enc = labcomm_encoder_new(test_w, NULL, labcomm_default_memory,
+			NULL);
 	if (test_enc == NULL) {
 		return 1;
 	}
-	labcomm_register_error_handler_encoder(test_enc, handle_labcomm_error);
+	// TODO: Fix when labcomm gets error handling back
+	/* labcomm_register_error_handler_encoder(test_enc, handle_labcomm_error);*/
 
-	test_dec = labcomm_decoder_new(test_r, NULL);
+	test_dec = labcomm_decoder_new(test_r, NULL, labcomm_default_memory,
+			NULL);
 	if (test_dec == NULL) {
 		CU_FAIL("Test decoder was null\n");
 	}
-	labcomm_register_error_handler_decoder(test_dec, handle_labcomm_error);
+	// TODO: Fix when labcomm gets error handling back
+	/* labcomm_register_error_handler_decoder(test_dec, handle_labcomm_error);*/
 
 	labcomm_decoder_register_firefly_protocol_data_sample(test_dec,
 						test_handle_data_sample, NULL);
@@ -327,8 +335,11 @@ int init_labcomm_test_enc_dec_custom(struct labcomm_reader *test_r,
 
 int init_labcomm_test_enc_dec()
 {
-	struct labcomm_writer *test_w = labcomm_static_buffer_writer_new();
-	struct labcomm_reader *test_r = labcomm_static_buffer_reader_new();
+	struct labcomm_writer *test_w;
+	struct labcomm_reader *test_r;
+
+	test_r = labcomm_static_buffer_reader_new(labcomm_default_memory);
+	test_w = labcomm_static_buffer_writer_new();
 	return init_labcomm_test_enc_dec_custom(test_r, test_w);
 }
 

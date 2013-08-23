@@ -14,6 +14,7 @@
 #include "CUnit/Console.h"
 #include <fcntl.h>
 #include <labcomm.h>
+#include <labcomm_default_memory.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
@@ -87,20 +88,27 @@ void test_encode_decode_protocol()
 	conn.transport = &test_trsp_conn;
 
 	// Construct decoder.
-	struct labcomm_decoder *decoder =
-		labcomm_decoder_new(transport_labcomm_reader_new(&conn), NULL);
+	struct labcomm_reader *r;
+	struct labcomm_decoder *decoder;
+	r = transport_labcomm_reader_new(&conn, labcomm_default_memory);
+	decoder = labcomm_decoder_new(r, NULL, labcomm_default_memory, NULL);
 	if (decoder == NULL) {
 		CU_FAIL("Could not allocate LabComm encoder or decoder.");
 	}
-	labcomm_register_error_handler_decoder(decoder, handle_labcomm_error);
+	// TODO: Fix when labcomm gets error handling back
+	/* labcomm_register_error_handler_decoder(decoder, handle_labcomm_error);*/
+
 	conn.transport_decoder = decoder;
 	// Construct encoder.
-	struct labcomm_encoder *encoder =
-		labcomm_encoder_new(transport_labcomm_writer_new(&conn), NULL);
+	struct labcomm_writer *w;
+	struct labcomm_encoder *encoder;
+	w = transport_labcomm_writer_new(&conn, labcomm_default_memory);
+	encoder = labcomm_encoder_new(w, NULL, labcomm_default_memory, NULL);
 	if (encoder == NULL) {
 		CU_FAIL("Could not allocate LabComm encoder or decoder.");
 	}
-	labcomm_register_error_handler_encoder(encoder, handle_labcomm_error);
+	// TODO: Fix when labcomm gets error handling back
+	/* labcomm_register_error_handler_encoder(encoder, handle_labcomm_error);*/
 	conn.transport_encoder = encoder;
 
 	// The decoder must have been created before this!
@@ -134,28 +142,37 @@ void test_encode_decode_app()
 	conn.memory_replacements.free_replacement = NULL;
 
 	// Construct decoder.
+	struct labcomm_reader *r;
+	r = transport_labcomm_reader_new(&conn, labcomm_default_memory);
 	conn.transport_decoder =
-		labcomm_decoder_new(transport_labcomm_reader_new(&conn), NULL);
+			labcomm_decoder_new(r, NULL, labcomm_default_memory, NULL);
 	if (conn.transport_decoder == NULL) {
 		CU_FAIL("Could not allocate LabComm encoder or decoder.");
 	}
-	labcomm_register_error_handler_decoder(conn.transport_decoder, handle_labcomm_error);
+	// TODO: Fix when labcomm gets error handling back
+	/* labcomm_register_error_handler_decoder(conn.transport_decoder, handle_labcomm_error);*/
+
 	// Construct encoder.
+	struct labcomm_writer *w;
+	w = transport_labcomm_writer_new(&conn, labcomm_default_memory);
 	conn.transport_encoder =
-		labcomm_encoder_new(transport_labcomm_writer_new(&conn), NULL);
+		labcomm_encoder_new(w, NULL, labcomm_default_memory, NULL);
 	if (conn.transport_encoder == NULL) {
 		CU_FAIL("Could not allocate LabComm encoder or decoder.");
 	}
-	labcomm_register_error_handler_encoder(conn.transport_encoder, handle_labcomm_error);
+	// TODO: Fix when labcomm gets error handling back
+	/* labcomm_register_error_handler_encoder(conn.transport_encoder, handle_labcomm_error);*/
 
 	conn.event_queue = eq;
 
 	struct firefly_channel chan = {0};
 
+	r = protocol_labcomm_reader_new(&conn, labcomm_default_memory);
 	chan.proto_decoder =
-		labcomm_decoder_new(protocol_labcomm_reader_new(&conn), NULL);
+		labcomm_decoder_new(r, NULL, labcomm_default_memory, NULL);
+	w = protocol_labcomm_writer_new(&chan, labcomm_default_memory);
 	chan.proto_encoder =
-		labcomm_encoder_new(protocol_labcomm_writer_new(&chan), NULL);
+		labcomm_encoder_new(w, NULL, labcomm_default_memory, NULL);
 	chan.local_id			= 1;
 	chan.remote_id			= chan.local_id;
 	chan.important_queue	= NULL;

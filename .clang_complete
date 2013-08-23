@@ -1,5 +1,5 @@
 -I include
--I ../lib/labcomm/lib/c
+-I ../labcomm/lib/c
 -I .
 -I src
 -I /usr/include/xenomai
