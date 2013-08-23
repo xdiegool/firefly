@@ -6,6 +6,7 @@ gen/
 testfiles/
 .clang_complete
 TAGS
+tags
 data.enc
 sig.enc
 .*.swp
