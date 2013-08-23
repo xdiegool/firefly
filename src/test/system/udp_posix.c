@@ -88,7 +88,7 @@ static int mock_firefly_reader_alloc(struct labcomm_reader *r,
 static int mock_firefly_reader_free(struct labcomm_reader *r,
 		struct labcomm_reader_action_context *action_context)
 {
-	UNUSED_VAR(action_context);
+	free(action_context);
 	free(r->data);
 	free(r);
 	return 0;
@@ -117,9 +117,9 @@ static int mock_firefly_reader_fill(struct labcomm_reader *r,
 		if (result == -1) {
 			return result;
 		}
-		r->count = pkg_len;
+		r->count = result;
 	}
-	return result < 0 ? -ENOMEM : result;
+	return result <= 0 ? -ENOMEM : result;
 }
 
 static int mock_firefly_reader_start(struct labcomm_reader *r,
@@ -132,7 +132,7 @@ static int mock_firefly_reader_start(struct labcomm_reader *r,
 	UNUSED_VAR(remote_index);
 	UNUSED_VAR(signature);
 	UNUSED_VAR(value);
-	return mock_firefly_reader_fill(r, action_context);
+	return r->count - r->pos;
 }
 
 static int mock_firefly_reader_end(struct labcomm_reader *r,
@@ -183,6 +183,7 @@ struct labcomm_reader *mock_firefly_labcomm_reader_new(int *fd)
 		cont->context = fd;
 		cont->action = &mock_firefly_reader_action;
 		result->action_context = cont;
+		result->memory = labcomm_default_memory;
 	}
 	return result;
 }
@@ -219,6 +220,7 @@ static int mock_firefly_writer_free(struct labcomm_writer *w,
 				struct labcomm_writer_action_context *action_context)
 {
 	free(w->data);
+	free(action_context->context);
 	free(action_context);
 	free(w);
 	return 0;
@@ -302,6 +304,7 @@ struct labcomm_writer *mock_firefly_labcomm_writer_new(
 		action_context->context = context;
 		action_context->action = &mock_firefly_writer_action;
 		result->action_context = action_context;
+		result->memory = labcomm_default_memory;
 	} else {
 		free(result);
 		result = NULL;
@@ -429,7 +432,7 @@ static int mock_firefly_app_reader_alloc(struct labcomm_reader *r,
 static int mock_firefly_app_reader_free(struct labcomm_reader *r,
 		struct labcomm_reader_action_context *action_context)
 {
-	UNUSED_VAR(action_context);
+	free(action_context);
 	free(r);
 	return 0;
 }
@@ -464,7 +467,7 @@ static int mock_firefly_app_reader_start(struct labcomm_reader *r,
 	UNUSED_VAR(remote_index);
 	UNUSED_VAR(signature);
 	UNUSED_VAR(value);
-	return mock_firefly_app_reader_fill(r, action_context);
+	return r->count - r->pos;
 }
 
 static const struct labcomm_reader_action mock_firefly_app_reader_action = {
@@ -488,6 +491,7 @@ struct labcomm_reader *mock_firefly_labcomm_app_reader_new(
 		action_context->context = d;
 		action_context->action = &mock_firefly_app_reader_action;
 		result->action_context = action_context;
+		result->memory = labcomm_default_memory;
 	}
 	return result;
 }
@@ -776,7 +780,8 @@ void test_something()
 	struct labcomm_decoder *mock_data_in;
 	mock_out = labcomm_encoder_new(mock_firefly_labcomm_writer_new(mock_socket,
 				&local_addr, &remote_addr), NULL, labcomm_default_memory, NULL);
-	mock_in = labcomm_decoder_new(mock_firefly_labcomm_reader_new(&mock_socket),
+	mock_in = labcomm_decoder_new(
+			mock_firefly_labcomm_reader_new(&mock_socket),
 			NULL, labcomm_default_memory, NULL);
 	mock_data_in = labcomm_decoder_new(mock_firefly_labcomm_app_reader_new(
 				&current_packet), NULL, labcomm_default_memory, NULL);
