@@ -136,13 +136,13 @@ namespace se.lth.cs.firefly {
 		{
 			lock (this._restrictLock) {
 				if (this.restrictedLocal == restricted) {
-					Console.Out.WriteLine("Channel: Ignoring restrict request");
+					//Console.Out.WriteLine("Channel: Ignoring restrict request");
 					return;
 				}
 			}
 			lock (this.importantQueue) {
 				if (importantBusy) {
-					Console.Out.WriteLine("Chan: queueing restrict request for {0}", restricted);
+					//Console.Out.WriteLine("Chan: queueing restrict request for {0}", restricted);
 					this.importantQueue.Add(
 						delegate() {
 							lock (this._restrictLock) {
@@ -233,7 +233,9 @@ namespace se.lth.cs.firefly {
 					try {
 						this.dec.runOne();
 					}
-					catch (EndOfStreamException e) { }
+					catch (EndOfStreamException e) {
+						//Console.Out.WriteLine("Channel: Decoder Error, " + e.Message);
+					}
 					this.decStream.SetLength(0);
 					if (seqno != 0) {
 						this.Conn.SendAck(this, seqno);

@@ -33,8 +33,8 @@ namespace se.lth.cs.firefly {
 			{
 				while ((Length - Position) < length)
 					Monitor.Wait(this);
-                //Console.Out.WriteLine("INStream: Pos {0}, Len {1}, Cap {2}",
-                //        Position, Length, Capacity);
+				//Console.Out.WriteLine("INStream: Pos {0}, Len {1}, Cap {2}",
+						//Position, Length, Capacity);
 				int res = 0;
 				res = base.Read(data, offset, length);
 				return res;
