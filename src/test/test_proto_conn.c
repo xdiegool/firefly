@@ -7,12 +7,12 @@
 #include <stdbool.h>
 #include <labcomm.h>
 #include <labcomm_ioctl.h>
-#include <labcomm_static_buffer_writer.h>
 
 #include "test/test_labcomm_utils.h"
 #include "test/proto_helper.h"
 #include "test/event_helper.h"
 #include "protocol/firefly_protocol_private.h"
+#include "test/labcomm_static_buffer_writer.h"
 #include <utils/firefly_errors.h>
 #include "utils/cppmacros.h"
 
@@ -41,15 +41,15 @@ int clean_suit_proto_conn()
 extern bool was_in_error;
 extern enum firefly_error expected_error;
 
-static bool test_connection_error(struct firefly_connection *conn,
-		enum firefly_error reason, const char *msg)
-{
-	UNUSED_VAR(conn);
-	UNUSED_VAR(msg);
-	was_in_error = true;
-	CU_ASSERT_EQUAL(expected_error, reason);
-	return false;
-}
+/* static bool test_connection_error(struct firefly_connection *conn,*/
+/*                 enum firefly_error reason, const char *msg)*/
+/* {*/
+/*         UNUSED_VAR(conn);*/
+/*         UNUSED_VAR(msg);*/
+/*         was_in_error = true;*/
+/*         CU_ASSERT_EQUAL(expected_error, reason);*/
+/*         return false;*/
+/* }*/
 
 static void test_channel_error(struct firefly_channel *chan,
 		enum firefly_error reason, const char *msg)

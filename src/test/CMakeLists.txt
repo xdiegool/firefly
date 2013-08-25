@@ -11,6 +11,8 @@ if(NOT CMAKE_CROSSCOMPILING AND CUNIT_FOUND)
 
 	## Test helper library {{{
 	add_library(test_helpers
+		${Firefly_SOURCE_DIR}/test/labcomm_static_buffer_reader.c
+		${Firefly_SOURCE_DIR}/test/labcomm_static_buffer_writer.c
 		${Firefly_SOURCE_DIR}/test/error_helper.c
 		${Firefly_SOURCE_DIR}/test/proto_helper.c
 		${Firefly_SOURCE_DIR}/test/event_helper.c
@@ -29,8 +31,8 @@ if(NOT CMAKE_CROSSCOMPILING AND CUNIT_FOUND)
 		${Firefly_SOURCE_DIR}/test/test_proto_errors.c
 	)
 	target_link_libraries(test_protocol_main
-		cunit ${LABCOMM_LIBRARIES}
-		firefly gen-files test_helpers
+		cunit firefly gen-files test_helpers
+		${LABCOMM_LIBRARIES}
 	)
 	add_test(test_protocol_main test_protocol_main)
 	## }}}
@@ -45,9 +47,9 @@ if(NOT CMAKE_CROSSCOMPILING AND CUNIT_FOUND)
 		${Firefly_SOURCE_DIR}/utils/firefly_errors_utils.c
 	)
 	target_link_libraries(test_transport_main
-		cunit ${LABCOMM_LIBRARIES}
-		transport-udp-posix firefly gen-files test_helpers
-		pthread rt
+		cunit transport-udp-posix firefly
+		gen-files test_helpers
+		${LABCOMM_LIBRARIES} pthread rt
 	)
 	add_test(test_transport_main test_transport_main)
 	## }}}
@@ -61,10 +63,9 @@ if(NOT CMAKE_CROSSCOMPILING AND CUNIT_FOUND)
 		${Firefly_SOURCE_DIR}/test/event_helper.c
 		${Firefly_SOURCE_DIR}/utils/firefly_errors_utils.c
 	)
-	target_link_libraries(test_transport_eth_posix_main 
-		cunit ${LABCOMM_LIBRARIES}
-		transport-eth-posix firefly gen-files test_helpers
-		pthread rt
+	target_link_libraries(test_transport_eth_posix_main
+		cunit transport-eth-posix firefly gen-files test_helpers
+		${LABCOMM_LIBRARIES} pthread rt
 	)
 	add_test(test_transport_eth_posix_main test_transport_eth_posix_main)
 	## }}}
@@ -74,7 +75,7 @@ if(NOT CMAKE_CROSSCOMPILING AND CUNIT_FOUND)
 		${Firefly_SOURCE_DIR}/test/test_event_main.c
 		${Firefly_SOURCE_DIR}/utils/firefly_event_queue.c
 	)
-	target_link_libraries(test_event_main 
+	target_link_libraries(test_event_main
 		cunit test_helpers
 	)
 	add_test(test_event_main test_event_main)
@@ -85,7 +86,7 @@ if(NOT CMAKE_CROSSCOMPILING AND CUNIT_FOUND)
 		${Firefly_SOURCE_DIR}/test/test_resend_posix.c
 		${Firefly_SOURCE_DIR}/utils/firefly_resend_posix.c
 	)
-	target_link_libraries(test_resend_posix 
+	target_link_libraries(test_resend_posix
 		cunit test_helpers rt
 	)
 	add_test(test_resend_posix test_resend_posix)
@@ -102,9 +103,9 @@ if(NOT CMAKE_CROSSCOMPILING AND CUNIT_FOUND)
 		${Firefly_SOURCE_DIR}/utils/firefly_event_queue_posix.c
 		${Firefly_SOURCE_DIR}/utils/firefly_resend_posix.c
 	)
-	target_link_libraries(pingpong_main 
-		firefly-werr transport-udp-posix ${LABCOMM_LIBRARIES} cunit
-		gen-files pthread rt
+	target_link_libraries(pingpong_main
+		firefly-werr transport-udp-posix cunit
+		gen-files ${LABCOMM_LIBRARIES} pthread rt
 	)
 	## }}}
 
@@ -114,9 +115,9 @@ if(NOT CMAKE_CROSSCOMPILING AND CUNIT_FOUND)
 		${Firefly_SOURCE_DIR}/test/test_labcomm_utils.c
 		${Firefly_SOURCE_DIR}/utils/firefly_resend_posix.c
 	)
-	target_link_libraries(udp_posix 
-		firefly transport-udp-posix ${LABCOMM_LIBRARIES} cunit
-		gen-files test_helpers pthread rt
+	target_link_libraries(udp_posix
+		firefly transport-udp-posix cunit
+		gen-files test_helpers ${LABCOMM_LIBRARIES} pthread rt
 	)
 	## }}}
 
@@ -126,9 +127,9 @@ if(NOT CMAKE_CROSSCOMPILING AND CUNIT_FOUND)
 		${Firefly_SOURCE_DIR}/test/pingpong/pong_peth.c
 		${Firefly_SOURCE_DIR}/utils/firefly_event_queue_posix.c
 	)
-	target_link_libraries(pong_eth_main 
-		firefly-werr transport-eth-posix ${LABCOMM_LIBRARIES} cunit
-		gen-files pthread rt
+	target_link_libraries(pong_eth_main
+		firefly-werr transport-eth-posix cunit
+		gen-files ${LABCOMM_LIBRARIES} pthread rt
 	)
 	## }}}
 
@@ -138,9 +139,9 @@ if(NOT CMAKE_CROSSCOMPILING AND CUNIT_FOUND)
 		${Firefly_SOURCE_DIR}/test/pingpong/ping_peth.c
 		${Firefly_SOURCE_DIR}/utils/firefly_event_queue_posix.c
 	)
-	target_link_libraries(ping_eth_main 
-		firefly-werr transport-eth-posix ${LABCOMM_LIBRARIES} cunit
-		gen-files pthread rt
+	target_link_libraries(ping_eth_main
+		firefly-werr transport-eth-posix cunit
+		gen-files ${LABCOMM_LIBRARIES} pthread rt
 	)
 	## }}}
 
@@ -157,8 +158,8 @@ if(NOT CMAKE_CROSSCOMPILING AND CUNIT_FOUND)
 			PROPERTIES COMPILE_FLAGS "-std=gnu99 -D_GNU_SOURCE -D_REENTRANT -D__XENO__"
 		)
 		target_link_libraries(pong_eth_xeno
-			firefly-werr transport-eth-xenomai ${LABCOMM_LIBRARIES}
-			gen-files ${XENOMAI_LIBRARIES} rtdm pthread rt
+			firefly-werr transport-eth-xenomai
+			gen-files ${XENOMAI_LIBRARIES} rtdm ${LABCOMM_LIBRARIES} pthread rt
 		)
 		## }}}
 
@@ -173,8 +174,8 @@ if(NOT CMAKE_CROSSCOMPILING AND CUNIT_FOUND)
 			PROPERTIES COMPILE_FLAGS "-std=gnu99 -D_GNU_SOURCE -D_REENTRANT -D__XENO__"
 		)
 		target_link_libraries(ping_eth_xeno
-			firefly-werr transport-eth-xenomai ${LABCOMM_LIBRARIES}
-			gen-files ${XENOMAI_LIBRARIES} rtdm pthread rt
+			firefly-werr transport-eth-xenomai
+			gen-files ${XENOMAI_LIBRARIES} rtdm ${LABCOMM_LIBRARIES} pthread rt
 		)
 		## }}}
 	endif (XENOMAI_FOUND)
@@ -188,9 +189,9 @@ if(NOT CMAKE_CROSSCOMPILING AND CUNIT_FOUND)
 		${Firefly_SOURCE_DIR}/test/pingpong/ping_pmulti.c
 		${Firefly_SOURCE_DIR}/utils/firefly_event_queue_posix.c
 	)
-	target_link_libraries(pingpong_multi_main 
+	target_link_libraries(pingpong_multi_main
 		firefly-werr transport-udp-posix transport-eth-posix
-		${LABCOMM_LIBRARIES} cunit gen-files pthread rt
+		cunit gen-files ${LABCOMM_LIBRARIES} pthread rt
 	)
 	## }}}
 

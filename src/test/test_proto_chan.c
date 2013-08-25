@@ -4,9 +4,7 @@
 
 #include <labcomm.h>
 #include <labcomm_ioctl.h>
-#include <labcomm_static_buffer_reader.h>
-#include <labcomm_static_buffer_writer.h>
-
+#include <labcomm_default_memory.h>
 #include <stdbool.h>
 #include <stdio.h>
 
@@ -19,6 +17,8 @@
 #include "test/proto_helper.h"
 #include "test/event_helper.h"
 #include "protocol/firefly_protocol_private.h"
+#include "test/labcomm_static_buffer_writer.h"
+#include "test/labcomm_static_buffer_reader.h"
 #include "test/test_labcomm_utils.h"
 #include "utils/cppmacros.h"
 
@@ -556,9 +556,12 @@ void test_send_app_data()
 	ch->remote_id = REMOTE_CHAN_ID;
 	add_channel_to_connection(ch, conn);
 
-	test_dec_2 = labcomm_decoder_new(labcomm_static_buffer_reader_new(), NULL);
-	labcomm_register_error_handler_decoder(test_dec_2,
-			handle_labcomm_error);
+	struct labcomm_reader *r;
+	r = labcomm_static_buffer_reader_new(labcomm_default_memory);
+	test_dec_2 = labcomm_decoder_new(r, NULL, labcomm_default_memory, NULL);
+	// TODO: Fix when labcomm gets error handling back
+	/* labcomm_register_error_handler_decoder(test_dec_2,*/
+	/*                 handle_labcomm_error);*/
 	labcomm_decoder_register_test_test_var(test_dec_2,
 			handle_test_test_var, NULL);
 
@@ -574,6 +577,8 @@ void test_send_app_data()
 	CU_ASSERT_EQUAL(ch->local_id, data_sample.src_chan_id);
 	CU_ASSERT_EQUAL(ch->remote_id, data_sample.dest_chan_id);
 
+	CU_ASSERT_PTR_NOT_NULL_FATAL(data_sample.app_enc_data.a);
+	CU_ASSERT_FATAL(data_sample.app_enc_data.n_0 > 0);
 	labcomm_decoder_ioctl(test_dec_2, LABCOMM_IOCTL_READER_SET_BUFFER,
 			data_sample.app_enc_data.a,
 			data_sample.app_enc_data.n_0);
@@ -608,7 +613,10 @@ void test_recv_app_data()
 	struct firefly_event *ev;
 
 	struct labcomm_encoder *data_encoder;
-	data_encoder = labcomm_encoder_new(labcomm_static_buffer_writer_new(), NULL);
+	struct labcomm_writer *w;
+	w = labcomm_static_buffer_writer_new(labcomm_default_memory);
+	data_encoder = labcomm_encoder_new(w, NULL, labcomm_default_memory,
+			NULL);
 
 	// Setup connection
 	struct firefly_connection_actions ca = {0};
@@ -1245,10 +1253,11 @@ struct firefly_connection *setup_conn(int conn_n,
 	void *err_cb;
 	err_cb = handle_labcomm_error;
 	//err_cb = NULL;
-	labcomm_register_error_handler_encoder(tcon->transport_encoder,
-					   	   err_cb);
-	labcomm_register_error_handler_decoder(tcon->transport_decoder,
-						   err_cb);
+	// TODO: Fix when labcomm_gets error handling back
+	/* labcomm_register_error_handler_encoder(tcon->transport_encoder,*/
+	/*                                               err_cb);*/
+	/* labcomm_register_error_handler_decoder(tcon->transport_decoder,*/
+	/*                                            err_cb);*/
 
 	return tcon;
 }

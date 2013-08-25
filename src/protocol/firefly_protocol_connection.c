@@ -30,33 +30,37 @@ struct firefly_connection *firefly_connection_new(
 		struct firefly_transport_connection *tc)
 {
 	struct firefly_connection *conn;
+	struct labcomm_memory *lc_mem;
 	struct labcomm_encoder *transport_encoder;
 	struct labcomm_decoder *transport_decoder;
 	struct labcomm_reader  *reader;
 	struct labcomm_writer  *writer;
 
 	conn = FIREFLY_MALLOC(sizeof(*conn));
-	if (conn == NULL) {
+	lc_mem = firefly_labcomm_memory_new(conn);
+	if (conn == NULL || lc_mem == NULL) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 3,
 			      "memory allocation failed %s:%d",
 			      __FUNCTION__, __LINE__);
 		FIREFLY_FREE(conn);
+		firefly_labcomm_memory_free(lc_mem);
 		return NULL;
 	}
 	conn->actions = actions;
-	reader = transport_labcomm_reader_new(conn);
-	writer = transport_labcomm_writer_new(conn);
-	if (reader == NULL || writer == NULL) {
+	reader = transport_labcomm_reader_new(conn, lc_mem);
+	writer = transport_labcomm_writer_new(conn, lc_mem);
+	if (reader == NULL || writer == NULL || lc_mem == NULL) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 3,
 			      "memory allocation failed %s:%d",
 			      __FUNCTION__, __LINE__);
 		transport_labcomm_reader_free(reader);
 		transport_labcomm_writer_free(writer);
 		FIREFLY_FREE(conn);
+		firefly_labcomm_memory_free(lc_mem);
 		return NULL;
 	}
-	transport_encoder = labcomm_encoder_new(writer, NULL);
-	transport_decoder = labcomm_decoder_new(reader, NULL);
+	transport_decoder = labcomm_decoder_new(reader, NULL, lc_mem, NULL);
+	transport_encoder = labcomm_encoder_new(writer, NULL, lc_mem, NULL);
 
 	if (transport_encoder == NULL || transport_decoder == NULL) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 3,
@@ -70,20 +74,23 @@ struct firefly_connection *firefly_connection_new(
 			labcomm_decoder_free(transport_decoder);
 		else
 			transport_labcomm_reader_free(reader);
+		firefly_labcomm_memory_free(lc_mem);
 		FIREFLY_FREE(conn);
 		return NULL;
 	}
-	conn->event_queue		= event_queue;
-	conn->chan_list			= NULL;
-	conn->channel_id_counter	= 0;
-	conn->transport_encoder		= transport_encoder;
-	conn->transport_decoder		= transport_decoder;
+	conn->event_queue        = event_queue;
+	conn->chan_list          = NULL;
+	conn->channel_id_counter = 0;
+	conn->transport_encoder  = transport_encoder;
+	conn->transport_decoder  = transport_decoder;
+	conn->lc_memory          = lc_mem;
 
-	labcomm_register_error_handler_encoder(conn->transport_encoder,
-			labcomm_error_to_ff_error);
+	// TODO: Fix this once Labcomm re-gets error handling
+	/* labcomm_register_error_handler_encoder(conn->transport_encoder,*/
+	/*                 labcomm_error_to_ff_error);*/
 
-	labcomm_register_error_handler_decoder(conn->transport_decoder,
-			labcomm_error_to_ff_error);
+	/* labcomm_register_error_handler_decoder(conn->transport_decoder,*/
+	/*                 labcomm_error_to_ff_error);*/
 
 	if (memory_replacements) {
 		conn->memory_replacements.alloc_replacement =
@@ -193,6 +200,7 @@ void firefly_connection_free(struct firefly_connection **conn)
 	if ((*conn)->transport_decoder != NULL) {
 		labcomm_decoder_free((*conn)->transport_decoder);
 	}
+	firefly_labcomm_memory_free((*conn)->lc_memory);
 	FIREFLY_FREE(*conn);
 	*conn = NULL;
 }

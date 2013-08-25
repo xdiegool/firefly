@@ -12,8 +12,8 @@ struct firefly_channel *firefly_channel_new(struct firefly_connection *conn)
 	struct labcomm_writer  *writer;
 
 	chan = FIREFLY_MALLOC(sizeof(*chan));
-	reader = protocol_labcomm_reader_new(conn);
-	writer = protocol_labcomm_writer_new(chan);
+	reader = protocol_labcomm_reader_new(conn, conn->lc_memory);
+	writer = protocol_labcomm_writer_new(chan, conn->lc_memory);
 	if (!chan || !reader || !writer) {
 		FFL(FIREFLY_ERROR_ALLOC);
 		protocol_labcomm_reader_free(reader);
@@ -22,8 +22,8 @@ struct firefly_channel *firefly_channel_new(struct firefly_connection *conn)
 
 		return NULL;
 	}
-	proto_decoder = labcomm_decoder_new(reader, NULL);
-	proto_encoder = labcomm_encoder_new(writer, NULL);
+	proto_decoder = labcomm_decoder_new(reader, NULL, conn->lc_memory, NULL);
+	proto_encoder = labcomm_encoder_new(writer, NULL, conn->lc_memory, NULL);
 	if (!proto_decoder || !proto_encoder) {
 		FFL(FIREFLY_ERROR_ALLOC);
 		if (chan->proto_decoder)
@@ -37,10 +37,11 @@ struct firefly_channel *firefly_channel_new(struct firefly_connection *conn)
 		return NULL;
 	}
 
-	labcomm_register_error_handler_encoder(proto_encoder,
-			labcomm_error_to_ff_error);
-	labcomm_register_error_handler_decoder(proto_decoder,
-			labcomm_error_to_ff_error);
+	// TODO: Fix this once Labcomm re-gets error handling
+	/* labcomm_register_error_handler_encoder(proto_encoder,*/
+	/*                 labcomm_error_to_ff_error);*/
+	/* labcomm_register_error_handler_decoder(proto_decoder,*/
+	/*                 labcomm_error_to_ff_error);*/
 
 	chan->local_id			= next_channel_id(conn);
 	chan->remote_id			= CHANNEL_ID_NOT_SET;

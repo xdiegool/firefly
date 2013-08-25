@@ -5,8 +5,6 @@
 #include <limits.h>
 #include <labcomm.h>
 #include <labcomm_ioctl.h>
-#include <labcomm_static_buffer_reader.h>
-#include <labcomm_static_buffer_writer.h>
 
 #include <utils/firefly_event_queue.h>
 #include <utils/cppmacros.h>
@@ -15,6 +13,8 @@
 
 #include <protocol/firefly_protocol_private.h>
 #include "test/event_helper.h"
+#include "test/labcomm_static_buffer_writer.h"
+#include "test/labcomm_static_buffer_reader.h"
 #include "test/proto_helper.h"
 
 #define TEST_IMPORTANT_ID 1

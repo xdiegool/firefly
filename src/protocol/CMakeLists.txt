@@ -2,6 +2,7 @@
 set(firefly_src_files
 	${Firefly_SOURCE_DIR}/protocol/firefly_protocol.c
 	${Firefly_SOURCE_DIR}/protocol/firefly_protocol_channel.c
+	${Firefly_SOURCE_DIR}/protocol/firefly_protocol_memory.c
 	${Firefly_SOURCE_DIR}/protocol/firefly_protocol_connection.c
 	${Firefly_SOURCE_DIR}/protocol/firefly_protocol_labcomm.c
 	${Firefly_SOURCE_DIR}/utils/firefly_errors_utils.c
