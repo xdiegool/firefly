@@ -15,17 +15,6 @@
 #include <utils/firefly_event_queue.h>
 
 /**
- * @brief The default interval between resending important packets.
- */
-#define FIREFLY_TRANSPORT_TCP_POSIX_DEFAULT_TIMEOUT (500)
-
-/**
- * @brief The default number of retries to send an important packet before
- * giving up.
- */
-#define FIREFLY_TRANSPORT_TCP_POSIX_DEFAULT_RETRIES (5)
-
-/**
  * @brief This callback will be called when a new connection is received.
  *
  * This function is implemented by the application layer. It will be called
@@ -45,7 +34,7 @@
  * @retval 0 The new connection was refused and the read data is discarded.
  */
 typedef int64_t (*firefly_on_conn_recv_ptcp)(
-		struct firefly_transport_llp *llp,
+		struct firefly_transport_llp *llp, int socket,
 		const char *ip_addr, unsigned short port);
 
 /**
@@ -81,9 +70,11 @@ void firefly_transport_llp_tcp_posix_free(struct firefly_transport_llp *llp);
  * #firefly_connection_open().
  *
  * @param llp The \c #firefly_transport_llp to associate the data with.
+ * @param existing_socket An existing socket to use, should only be used when
+ * called from the context of the #firefly_on_conn_recv_ptcp callback (where the
+ * socket is received as a parameter from the transport layer).
  * @param remote_ipaddr The IP address to connect to.
  * @param remote_port The port to connect to.
- * @param timeout The time in ms between resends.
  * @return The transport specific data ready to be supplied as argument to
  * #firefly_connection_open().
  * @retval NULL upon failure.
@@ -91,31 +82,33 @@ void firefly_transport_llp_tcp_posix_free(struct firefly_transport_llp *llp);
  */
 struct firefly_transport_connection *firefly_transport_connection_tcp_posix_new(
 		struct firefly_transport_llp *llp,
+		int existing_socket,
 		const char *remote_ipaddr,
-		unsigned short remote_port,
-		unsigned int timeout);
+		unsigned short remote_port);
 
 /**
- * @brief Start reader and resend thread. Both will run until stopped with
+ * @brief Start reader and resend thread. It will run until stopped with
  * firefly_transport_tcp_posix_stop().
  *
  * @param llp The LLP to run.
- * @return Integer indicating success or failure.
+ * @return Integer indicating success or failure. If it failed, errno contains
+ * the error code (same as pthread_create's).
  * @retval 0 if successfull.
- * @retval <0 upon error.
+ * @retval != 0 upon error.
  * @see #firefly_transport_tcp_posix_stop()
  */
 int firefly_transport_tcp_posix_run(struct firefly_transport_llp *llp);
 
 /**
- * @brief Stop reader and resend thread. Any thread to be stopped must have been
- * started with firefly_transport_tcp_posix_run(), if not the result is
- * undefined.
+ * @brief Stop reader thread.
+ *
+ * #firefly_transport_tcp_posix_run() must have been run before calling this
+ * function, if not the result is undefined.
  *
  * @param llp The LLP to stop.
  * @return Integer indicating success or failure.
  * @retval 0 if successfull.
- * @retval <0 upon error.
+ * @retval != 0 upon error.
  * @see #firefly_transport_tcp_posix_run()
  */
 int firefly_transport_tcp_posix_stop(struct firefly_transport_llp *llp);

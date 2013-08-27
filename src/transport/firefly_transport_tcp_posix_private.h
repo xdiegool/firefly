@@ -8,6 +8,7 @@
 
 #include <transport/firefly_transport.h>
 #include <signal.h>
+#include <sys/select.h>
 
 #include <utils/firefly_event_queue.h>
 #include <utils/firefly_resend_posix.h>
@@ -18,98 +19,34 @@
  * @brief TCP specific link layer port data.
  */
 struct transport_llp_tcp_posix {
-	int local_tcp_socket; /**< The file descriptor of the TCP socket */
-	struct sockaddr_in *local_addr; /**< The address the socket is bound to. */
-	firefly_on_conn_recv_ptcp on_conn_recv; /**< The callback to be called when
-											  a new connection is received. */
-	struct firefly_event_queue *event_queue; /**< The event queue to push new
-											   events on. */
-	struct resend_queue *resend_queue; /**< The resend queue managing important
-										 packets. */
-	pthread_t read_thread; /**< The handle to the thread running the read loop. */
-	pthread_t resend_thread; /**< The handle to the thread running the resend
-							   loop. */
+	int local_tcp_socket;                    /**< fd of the listening socket */
+	int max_sock;                            /**< Max socket to select() on */
+	fd_set master_set;                       /**< fd_set to select() on */
+	struct sockaddr_in *local_addr;          /**< Address the socket is bound to */
+	firefly_on_conn_recv_ptcp on_conn_recv;  /**< Callback when receiving new connection */
+	struct firefly_event_queue *event_queue; /**< Event queue */
+	pthread_t read_thread;                   /**< Thread running the read loop */
 };
 
 /**
  * @brief TCP specific connection related data.
  */
 struct firefly_transport_connection_tcp_posix {
-	struct sockaddr_in *remote_addr; /**< The address of the remote node of this
-									   connection */
-	int socket; /**< The socket file descriptor associated with this
-				  connection. */
-	struct firefly_transport_llp *llp; /**< The \a llp this connection is
-										 associated with. */
-	unsigned int timeout; /**< The time between resends on this connection. */
+	struct sockaddr_in *remote_addr;   /**< Remote node's address for this connection */
+	int socket;                        /**< Socket fd for this connection. */
+	struct firefly_transport_llp *llp; /**< The llp this connection exists on. */
 };
 
 /**
  * @brief The argument type of a read event.
  */
 struct firefly_event_llp_read_tcp_posix {
-	struct firefly_transport_llp *llp; /**< The llp the data was read on. */
-	struct sockaddr_in addr; /**< The address the data was sent from. */
-	size_t len; /**< The number of bytes in the data field. */
-	unsigned char data[]; /**< The read data. */
+	struct firefly_transport_llp *llp; /**< The llp the data was read on */
+	struct sockaddr_in addr;           /**< Address the data was sent from */
+	int socket;                        /**< Socket the data was received on */
+	size_t len;                        /**< Number of bytes in the data field */
+	unsigned char data[];              /**< The read data. */
 };
-
-/**
- * @brief The event handling any read data.
- *
- * @param event_arg See #firefly_event_llp_read_tcp_posix.
- * @see #firefly_transport_tcp_posix_read()
- */
-int firefly_transport_tcp_posix_read_event(void *event_arg);
-
-/**
- * @brief The event handling llp free.
- *
- * @param event_arg The #firefly_transport_llp to free.
- * @see #firefly_transport_llp_tcp_posix_free().
- */
-int firefly_transport_llp_tcp_posix_free_event(void *event_arg);
-
-/**
- * @brief Compares the \c struct #firefly_connection with the specified address.
- *
- * @param conn The \c struct #firefly_connection to compare the address of.
- * @param context The address of the connection to find, must be of type
- * \c struct \c sockaddr_in.
- * @retval true if the address supplied matches the addrss of
- * the \c struct #firefly_connection.
- * @retval false otherwise
- */
-bool connection_eq_inaddr(struct firefly_connection *conn, void *context);
-
-
-/**
- * @brief Compares two \c struct \c sockaddr_in.
- *
- * @param one The first element.
- * @param other The second element to compare against the first.
- * @retval true if the two addresses are equal with respect to ip address and
- * port number.
- * @retval false otherwise.
- */
-bool sockaddr_in_eq(struct sockaddr_in *one, struct sockaddr_in *other);
-
-/**
- * @brief Get the ip address of a \c struct \c sockaddr_in as a string.
- * 
- * @param addr The \c struct \c sockaddr_in.
- * @param ip_addr The preallocated memory to save the string in.
- * @warning The string ip_addr must be at least of length \c INET_ADDRSTRLEN.
- */
-void sockaddr_in_ipaddr(struct sockaddr_in *addr, char *ip_addr);
-
-/**
- * @brief Get the port number in an struct sockaddr_in.
- * 
- * @param addr The \c struct \c sockaddr_in
- * @return The port number.
- */
-unsigned short sockaddr_in_port(struct sockaddr_in *addr);
 
 /**
  * @brief Write data on the specified connection. Implements
@@ -118,23 +55,11 @@ unsigned short sockaddr_in_port(struct sockaddr_in *addr);
  * @param data The data to be written.
  * @param data_size The size of the data to be written.
  * @param conn The connection to written the data on.
- * @param important If true the packet will be resent until it is acked by
- * calling #firefly_transport_tcp_posix_ack or max retries is reached.
- * @param id The variable to save the resend packed id in.
+ * @param important If true the packet is considered important, unused in TCP.
+ * @param id The variable to save the resend packed id in, unused in TCP.
  * @see #firefly_transport_connection_write_f()
  */
 void firefly_transport_tcp_posix_write(unsigned char *data, size_t data_size,
 		struct firefly_connection *conn, bool important, unsigned char *id);
-
-/**
- * @brief Ack an important packed. Removes the packet from the resend queue.
- * Implements #firefly_transport_connection_ack_f()
- *
- * @param pkt_id The id previously set by #firefly_transport_tcp_posix_write.
- * @param conn The connection the packet was sent on.
- * @see #firefly_transport_connection_ack_f()
- */
-void firefly_transport_tcp_posix_ack(unsigned char pkt_id,
-		struct firefly_connection *conn);
 
 #endif
