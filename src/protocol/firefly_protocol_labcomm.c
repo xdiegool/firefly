@@ -24,6 +24,17 @@ struct transport_writer_context {
 	unsigned char *important_id;
 };
 
+struct transport_reader_list {
+	unsigned char *data;
+	size_t len;
+	struct transport_reader_list *next;
+};
+
+struct transport_reader_context {
+	struct transport_reader_list *read;
+	struct transport_reader_list *to_read;
+};
+
 static int proto_reader_alloc(struct labcomm_reader *r,
 			struct labcomm_reader_action_context *context, 
 		    char *version)
@@ -126,7 +137,7 @@ struct labcomm_reader *protocol_labcomm_reader_new(
 	struct labcomm_reader_action_context *action_context;
 
 	result = FIREFLY_MALLOC(sizeof(*result));
-	action_context = FIREFLY_MALLOC(sizeof(*result));
+	action_context = FIREFLY_MALLOC(sizeof(*action_context));
 	if (result != NULL && action_context != NULL) {
 		action_context->context = conn;
 		action_context->action = &proto_reader_action;
@@ -146,16 +157,147 @@ void protocol_labcomm_reader_free(struct labcomm_reader *r)
 	FIREFLY_FREE(r);
 }
 
-struct labcomm_reader *transport_labcomm_reader_new(
-		struct firefly_connection *conn, struct labcomm_memory *mem)
+static int trans_reader_alloc(struct labcomm_reader *r,
+							  struct labcomm_reader_action_context *context,
+							  char *version)
 {
-	return protocol_labcomm_reader_new(conn, mem);
+	UNUSED_VAR(context);
+	UNUSED_VAR(version);
+	UNUSED_VAR(r);
+	return 0;
+}
+
+static int trans_reader_free(struct labcomm_reader *r,
+							 struct labcomm_reader_action_context *context)
+{
+	UNUSED_VAR(context);
+	transport_labcomm_reader_free(r);
+	return 0;
+}
+
+static int trans_reader_fill(struct labcomm_reader *r,
+							 struct labcomm_reader_action_context *context)
+{
+	int result;
+
+	UNUSED_VAR(context);
+	result = r->count - r->pos;
+	r->error = (result <= 0 || r->data == NULL) ? -1 : 0;
+
+	return result;
+}
+
+static int trans_reader_start(struct labcomm_reader *r,
+							  struct labcomm_reader_action_context *context,
+							  int local_index, int remote_index,
+							  struct labcomm_signature *signature,
+							  void *value)
+{
+	UNUSED_VAR(context);
+	UNUSED_VAR(local_index);
+	UNUSED_VAR(remote_index);
+	UNUSED_VAR(signature);
+	UNUSED_VAR(value);
+
+	return r->count - r->pos;
+}
+
+static int trans_reader_end(struct labcomm_reader *r,
+						    struct labcomm_reader_action_context *action_context)
+{
+	UNUSED_VAR(r);
+	UNUSED_VAR(action_context);
+	return 0;
+}
+
+static int trans_reader_ioctl(struct labcomm_reader *r,
+							struct labcomm_reader_action_context *action_context,
+							int local_index, int remote_index,
+							struct labcomm_signature *signature,
+							uint32_t ioctl_action, va_list args)
+{
+	UNUSED_VAR(local_index);
+	UNUSED_VAR(remote_index);
+	UNUSED_VAR(signature);
+
+	int result;
+	struct transport_reader_context *reader_context;
+
+	reader_context = action_context->context;
+
+	// TODO: Impl. stuff here
+
+	switch (ioctl_action) {
+	case FIREFLY_LABCOMM_IOCTL_READER_SET_BUFFER: {
+		void *buffer;
+		size_t size;
+
+		buffer = va_arg(args, void*);
+		size = va_arg(args, size_t);
+
+		r->data = buffer;
+		r->data_size = size;
+		r->count = size;
+		r->pos = 0;
+		result = 0;
+		} break;
+	default:
+		result = -ENOTSUP;
+		break;
+	}
+	return result;
+}
+
+static const struct labcomm_reader_action trans_reader_action = {
+	.alloc = trans_reader_alloc,
+	.free  = trans_reader_free,
+	.start = trans_reader_start,
+	.fill  = trans_reader_fill,
+	.end   = trans_reader_end,
+	.ioctl = trans_reader_ioctl,
+};
+
+struct labcomm_reader *transport_labcomm_reader_new(
+		struct firefly_connection *conn,
+		struct labcomm_memory *mem)
+{
+	UNUSED_VAR(conn);
+
+	struct labcomm_reader *reader;
+	struct labcomm_reader_action_context *action_context;
+	struct transport_reader_context *reader_context;
+
+	reader         = FIREFLY_MALLOC(sizeof(*reader));
+	action_context = FIREFLY_MALLOC(sizeof(*action_context));
+	reader_context = FIREFLY_MALLOC(sizeof(*reader_context));
+	if (reader != NULL && action_context != NULL && reader_context != NULL)
+	{
+	/* TODO: Impl. stuff here:*/
+	/*     reader_context->read    = NULL;*/
+	/*     reader_context->to_read = NULL;*/
+
+		action_context->context = reader_context;;
+		action_context->action  = &trans_reader_action;
+		action_context->next    = NULL;
+
+		reader->action_context  = action_context;
+		reader->memory          = mem;
+	} else {
+		FIREFLY_FREE(reader);
+		FIREFLY_FREE(reader_context);
+		FIREFLY_FREE(action_context);
+	}
+
+	return reader;
 }
 
 void transport_labcomm_reader_free(struct labcomm_reader *r)
 {
+	FIREFLY_FREE(r->action_context->context);
+	FIREFLY_FREE(r->action_context);
 	FIREFLY_FREE(r);
 }
+
 static int comm_writer_alloc(struct labcomm_writer *w,
 		struct labcomm_writer_action_context *action_context,
 		char *labcomm_version)
@@ -428,6 +570,7 @@ void transport_labcomm_writer_free(struct labcomm_writer *w)
 {
 	comm_writer_free(w, w->action_context);
 }
+
 
 int send_data_sample_event(void *event_arg)
 {
