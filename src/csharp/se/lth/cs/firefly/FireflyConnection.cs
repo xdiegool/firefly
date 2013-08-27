@@ -55,21 +55,21 @@ namespace se.lth.cs.firefly {
 				// error
 			}
 			this.state = State.OPEN;
-			data_sample.register(enc);
+            data_sample.register(enc);
+            ack.register(enc);
 			channel_request.register(enc);
 			channel_response.register(enc);
 			channel_ack.register(enc);
 			channel_close.register(enc);
-			ack.register(enc);
 			channel_restrict_request.register(enc);
 			channel_restrict_ack.register(enc);
 
-			data_sample.register(dec, this);
+            data_sample.register(dec, this);
+            ack.register(dec, this);
 			channel_request.register(dec, this);
 			channel_response.register(dec, this);
 			channel_ack.register(dec, this);
 			channel_close.register(dec, this);
-			ack.register(dec, this);
 			channel_restrict_request.register(dec, this);
 			channel_restrict_ack.register(dec, this);
 		}
