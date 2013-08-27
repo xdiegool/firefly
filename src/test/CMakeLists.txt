@@ -109,6 +109,23 @@ if(NOT CMAKE_CROSSCOMPILING AND CUNIT_FOUND)
 	)
 	## }}}
 
+	## PINGPONG_MAIN {{{
+	add_executable(pingpong_main_tcp
+		${Firefly_SOURCE_DIR}/test/pingpong/pingpong_main_tcp.c
+		${Firefly_SOURCE_DIR}/test/pingpong/pingpong_ptcp.c
+		${Firefly_SOURCE_DIR}/test/pingpong/pingpong.c
+		${Firefly_SOURCE_DIR}/test/pingpong/pong_ptcp.c
+		${Firefly_SOURCE_DIR}/test/pingpong/ping_ptcp.c
+		${Firefly_SOURCE_DIR}/test/test_labcomm_utils.c
+		${Firefly_SOURCE_DIR}/utils/firefly_event_queue_posix.c
+		${Firefly_SOURCE_DIR}/utils/firefly_resend_posix.c
+	)
+	target_link_libraries(pingpong_main_tcp
+		firefly-werr transport-tcp-posix cunit
+		gen-files ${LABCOMM_LIBRARIES} pthread rt
+	)
+	## }}}
+
 	## UDP_POSIX {{{
 	add_executable(udp_posix
 		${Firefly_SOURCE_DIR}/test/system/udp_posix.c
