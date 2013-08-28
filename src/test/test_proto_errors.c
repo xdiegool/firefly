@@ -109,7 +109,6 @@ void test_unexpected_ack()
 	expected_error = FIREFLY_ERROR_FIRST; // Reset
 	CU_ASSERT_TRUE(was_in_error);
 	was_in_error = false; // Reset.
-	free(conn_open_write.data);
 	free(conn_recv_write.data);
 
 	mk_lc_and_reg_sigs_free(conn_open, conn_recv, eq);
@@ -140,7 +139,6 @@ void test_unexpected_response()
 	expected_error = FIREFLY_ERROR_FIRST; // Reset
 	was_in_error = false; // Reset.
 	free(conn_open_write.data);
-	free(conn_recv_write.data);
 
 	mk_lc_and_reg_sigs_free(conn_open, conn_recv, eq);
 }
@@ -199,9 +197,6 @@ void test_unexpected_data_sample()
 	expected_error = FIREFLY_ERROR_FIRST; // Reset
 	was_in_error = false; // Reset.
 
-	free(conn_recv_write.data);
-	free(conn_open_write.data);
-
 	mk_lc_and_reg_sigs_free(conn_open, conn_recv, eq);
 	free(app_data);
 }
@@ -228,7 +223,6 @@ void test_unexpected_channel_close()
 	expected_error = FIREFLY_ERROR_FIRST; // Reset
 	CU_ASSERT_TRUE(was_in_error);
 	was_in_error = false; // Reset.
-	free(conn_open_write.data);
 
 	mk_lc_and_reg_sigs_free(conn_open, conn_recv, eq);
 }

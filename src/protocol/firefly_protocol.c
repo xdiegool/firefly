@@ -24,7 +24,9 @@ static void signature_trans_write(unsigned char *data, size_t size,
 {
 	UNUSED_VAR(important);
 	UNUSED_VAR(id);
-	protocol_data_received(conn, data, size);
+	unsigned char *cpy_data = FIREFLY_RUNTIME_MALLOC(conn, size);
+	memcpy(cpy_data, data, size);
+	protocol_data_received(conn, cpy_data, size);
 }
 
 static struct firefly_transport_connection sig_transport = {

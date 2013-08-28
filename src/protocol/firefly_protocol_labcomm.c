@@ -31,6 +31,7 @@ struct transport_reader_list {
 };
 
 struct transport_reader_context {
+	struct firefly_connection *conn;
 	struct transport_reader_list *read;
 	struct transport_reader_list *to_read;
 };
@@ -157,6 +158,104 @@ void protocol_labcomm_reader_free(struct labcomm_reader *r)
 	FIREFLY_FREE(r);
 }
 
+static int trans_reader_append_buffer(struct labcomm_reader *r,
+		unsigned char *data, size_t len)
+{
+	struct transport_reader_context *ctx;
+	struct transport_reader_list *le;
+	struct transport_reader_list **next;
+	ctx = r->action_context->context;
+	le = FIREFLY_RUNTIME_MALLOC(ctx->conn, sizeof(*le));
+	if (le == NULL)
+		return -1;
+	le->data = data;
+	le->len = len;
+	le->next = NULL;
+	for (next = &ctx->to_read; *next != NULL; next = &(*next)->next) {}
+	*next = le;
+	return 0;
+}
+
+static int trans_reader_next_buffer(struct labcomm_reader *r)
+{
+	struct transport_reader_context *ctx;
+	struct transport_reader_list *le;
+	struct transport_reader_list **next;
+	unsigned char *tmp_data;
+	size_t tmp_len;
+	ctx = r->action_context->context;
+	if (ctx->to_read == NULL)
+		return -1;
+	// Pop buffer from to_read list
+	le = ctx->to_read;
+	ctx->to_read = le->next;
+	// temporarily save buffer
+	tmp_data = le->data;
+	tmp_len = le->len;
+	// Reuse buffer struct to save current buffer in backstack
+	le->data = r->data;
+	le->len = r->count;
+	// Save current buffer in backstack
+	for (next = &ctx->read; *next != NULL; next = &(*next)->next) {}
+	*next = le;
+	// Set popped buffer as current buffer
+	r->data = tmp_data;
+	r->count = tmp_len;
+	r->pos = 0;
+	return 0;
+}
+
+/*
+ * This function pops the backstack back in the to_read list. It is done by
+ * first replacing the current buffer with the bottom (first in list) buffer.
+ * The replaced buffer is the pushed to the beginning of the to_read list and
+ * then the entire backstack is pushed as is to the beginning of the to_read
+ * list.
+ */
+static void trans_reader_pop_backstack(struct labcomm_reader *r)
+{
+	struct transport_reader_context *ctx;
+	struct transport_reader_list *le;
+	struct transport_reader_list **next;
+	unsigned char *tmp_data;
+	size_t tmp_len;
+	ctx = r->action_context->context;
+	if (ctx->read == NULL)
+		return;
+	le = ctx->read;
+
+	// Switch current buffer and first buffer in backstack
+	ctx->read = le->next;
+	tmp_data = r->data;
+	tmp_len = r->count;
+	r->data = le->data;
+	r->count = le->len;
+	le->data = tmp_data;
+	le->len = tmp_len;
+	// Get previous buffer in backstack, the last one in the list
+	for (next = &ctx->read; *next != NULL; next = &(*next)->next) {}
+	// Let the previous buffer point to the current
+	*next = le;
+	// Let the current buffer point to the next in to_read;
+	le->next = ctx->to_read;
+	// Push the backstack to beginning of to_read
+	ctx->to_read = ctx->read;
+	ctx->read = NULL;
+}
+
+static void trans_reader_free_backstack(struct labcomm_reader *r)
+{
+	struct transport_reader_context *ctx;
+	struct transport_reader_list *le;
+	ctx = r->action_context->context;
+	while (ctx->read != NULL) {
+		le = ctx->read;
+		ctx->read = le->next;
+		FIREFLY_RUNTIME_FREE(ctx->conn, le->data);
+		FIREFLY_RUNTIME_FREE(ctx->conn, le);
+	}
+}
+
 static int trans_reader_alloc(struct labcomm_reader *r,
 							  struct labcomm_reader_action_context *context,
 							  char *version)
@@ -178,11 +277,18 @@ static int trans_reader_free(struct labcomm_reader *r,
 static int trans_reader_fill(struct labcomm_reader *r,
 							 struct labcomm_reader_action_context *context)
 {
-	int result;
-
 	UNUSED_VAR(context);
+	int result;
+	if (r->error < 0)
+		return r->error;
+
 	result = r->count - r->pos;
-	r->error = (result <= 0 || r->data == NULL) ? -1 : 0;
+	if (result <= 0) {
+		r->error = trans_reader_next_buffer(r);
+	}
+	if (r->error < 0) {
+		trans_reader_pop_backstack(r);
+	}
 
 	return result;
 }
@@ -205,8 +311,16 @@ static int trans_reader_start(struct labcomm_reader *r,
 static int trans_reader_end(struct labcomm_reader *r,
 						    struct labcomm_reader_action_context *action_context)
 {
-	UNUSED_VAR(r);
-	UNUSED_VAR(action_context);
+	struct transport_reader_context *ctx;
+	ctx = action_context->context;
+	if (r->pos >= r->count && trans_reader_next_buffer(r) < 0 && r->data != NULL) {
+		struct firefly_connection *conn = ctx->conn;
+		FIREFLY_RUNTIME_FREE(conn, r->data);
+		r->data = NULL;
+		r->count = 0;
+		r->pos = 0;
+	}
+	trans_reader_free_backstack(r);
 	return 0;
 }
 
@@ -216,16 +330,12 @@ static int trans_reader_ioctl(struct labcomm_reader *r,
 							struct labcomm_signature *signature,
 							uint32_t ioctl_action, va_list args)
 {
+	UNUSED_VAR(action_context);
 	UNUSED_VAR(local_index);
 	UNUSED_VAR(remote_index);
 	UNUSED_VAR(signature);
 
 	int result;
-	struct transport_reader_context *reader_context;
-
-	reader_context = action_context->context;
-
-	// TODO: Impl. stuff here
 
 	switch (ioctl_action) {
 	case FIREFLY_LABCOMM_IOCTL_READER_SET_BUFFER: {
@@ -235,10 +345,18 @@ static int trans_reader_ioctl(struct labcomm_reader *r,
 		buffer = va_arg(args, void*);
 		size = va_arg(args, size_t);
 
-		r->data = buffer;
-		r->data_size = size;
-		r->count = size;
-		r->pos = 0;
+		if (r->data == NULL) {
+			r->data = buffer;
+			r->data_size = size;
+			r->count = size;
+			r->pos = 0;
+		} else {
+			trans_reader_append_buffer(r, buffer, size);
+		}
+		if (r->error) {
+			r->error = 0;
+			r->pos = 0;
+		}
 		result = 0;
 		} break;
 	default:
@@ -261,8 +379,6 @@ struct labcomm_reader *transport_labcomm_reader_new(
 		struct firefly_connection *conn,
 		struct labcomm_memory *mem)
 {
-	UNUSED_VAR(conn);
-
 	struct labcomm_reader *reader;
 	struct labcomm_reader_action_context *action_context;
 	struct transport_reader_context *reader_context;
@@ -272,11 +388,11 @@ struct labcomm_reader *transport_labcomm_reader_new(
 	reader_context = FIREFLY_MALLOC(sizeof(*reader_context));
 	if (reader != NULL && action_context != NULL && reader_context != NULL)
 	{
-	/* TODO: Impl. stuff here:*/
-	/*     reader_context->read    = NULL;*/
-	/*     reader_context->to_read = NULL;*/
+		reader_context->read    = NULL;
+		reader_context->to_read = NULL;
+		reader_context->conn    = conn;
 
-		action_context->context = reader_context;;
+		action_context->context = reader_context;
 		action_context->action  = &trans_reader_action;
 		action_context->next    = NULL;
 

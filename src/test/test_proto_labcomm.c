@@ -68,8 +68,10 @@ void transport_write_udp_posix_mock(unsigned char *data, size_t data_size,
 {
 	UNUSED_VAR(important);
 	UNUSED_VAR(id);
+	unsigned char *cpy_data = malloc(data_size);
+	memcpy(cpy_data, data, data_size);
 	labcomm_decoder_ioctl(conn->transport_decoder,
-			FIREFLY_LABCOMM_IOCTL_READER_SET_BUFFER, data, data_size);
+			FIREFLY_LABCOMM_IOCTL_READER_SET_BUFFER, cpy_data, data_size);
 	labcomm_decoder_decode_one(conn->transport_decoder);
 	last_written_size = data_size;
 }
@@ -86,6 +88,8 @@ void test_encode_decode_protocol()
 {
 	struct firefly_connection conn;
 	conn.transport = &test_trsp_conn;
+	conn.memory_replacements.alloc_replacement = NULL;
+	conn.memory_replacements.free_replacement = NULL;
 
 	// Construct decoder.
 	struct labcomm_reader *r;
