@@ -34,6 +34,7 @@ struct transport_reader_context {
 	struct firefly_connection *conn;
 	struct transport_reader_list *read;
 	struct transport_reader_list *to_read;
+	int last_end_pos;
 };
 
 static int proto_reader_alloc(struct labcomm_reader *r,
@@ -313,12 +314,19 @@ static int trans_reader_end(struct labcomm_reader *r,
 {
 	struct transport_reader_context *ctx;
 	ctx = action_context->context;
-	if (r->pos >= r->count && trans_reader_next_buffer(r) < 0 && r->data != NULL) {
-		struct firefly_connection *conn = ctx->conn;
-		FIREFLY_RUNTIME_FREE(conn, r->data);
-		r->data = NULL;
-		r->count = 0;
-		r->pos = 0;
+	if (r->pos >= r->count) {
+		if (trans_reader_next_buffer(r) < 0) {
+			if (r->data != NULL) {
+				struct firefly_connection *conn = ctx->conn;
+				FIREFLY_RUNTIME_FREE(conn, r->data);
+				r->data = NULL;
+				r->count = 0;
+				r->pos = 0;
+			}
+		}
+		ctx->last_end_pos = 0;
+	} else {
+		ctx->last_end_pos = r->pos;
 	}
 	trans_reader_free_backstack(r);
 	return 0;
@@ -330,12 +338,13 @@ static int trans_reader_ioctl(struct labcomm_reader *r,
 							struct labcomm_signature *signature,
 							uint32_t ioctl_action, va_list args)
 {
-	UNUSED_VAR(action_context);
 	UNUSED_VAR(local_index);
 	UNUSED_VAR(remote_index);
 	UNUSED_VAR(signature);
 
 	int result;
+	struct transport_reader_context *ctx;
+	ctx = action_context->context;
 
 	switch (ioctl_action) {
 	case FIREFLY_LABCOMM_IOCTL_READER_SET_BUFFER: {
@@ -355,7 +364,7 @@ static int trans_reader_ioctl(struct labcomm_reader *r,
 		}
 		if (r->error) {
 			r->error = 0;
-			r->pos = 0;
+			r->pos = ctx->last_end_pos;
 		}
 		result = 0;
 		} break;
@@ -390,6 +399,7 @@ struct labcomm_reader *transport_labcomm_reader_new(
 	{
 		reader_context->read    = NULL;
 		reader_context->to_read = NULL;
+		reader_context->last_end_pos = 0;
 		reader_context->conn    = conn;
 
 		action_context->context = reader_context;
