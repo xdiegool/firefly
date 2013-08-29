@@ -205,7 +205,9 @@ void protocol_data_received(struct firefly_connection *conn,
 		labcomm_decoder_ioctl(conn->transport_decoder,
 				FIREFLY_LABCOMM_IOCTL_READER_SET_BUFFER,
 				data, size);
-		labcomm_decoder_decode_one(conn->transport_decoder);
+		int res = 0;
+		while (res >= 0)
+			res = labcomm_decoder_decode_one(conn->transport_decoder);
 	}
 }
 

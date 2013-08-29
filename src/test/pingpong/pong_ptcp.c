@@ -91,6 +91,7 @@ void pong_chan_restr_info(struct firefly_channel *chan,
 bool pong_chan_restr(struct firefly_channel *chan)
 {
 	UNUSED_VAR(chan);
+	printf("PONG: chan restriction accepted\n");
 
 	pong_pass_test(CHAN_RESTRICTED);
 
@@ -109,7 +110,7 @@ struct firefly_connection_actions pong_actions = {
 
 void pong_connection_opened(struct firefly_connection *conn)
 {
-	printf("conn opened\n");
+	printf("PONG: conn opened\n");
 	UNUSED_VAR(conn);
 	pong_pass_test(CONNECTION_OPEN);
 }
@@ -150,7 +151,7 @@ void pong_chan_opened(struct firefly_channel *chan)
 
 void pong_chan_closed(struct firefly_channel *chan)
 {
-	printf("chan closed\n");
+	printf("PONG: chan closed\n");
 	pong_pass_test(CHAN_CLOSE);
 	firefly_connection_close(firefly_channel_get_connection(chan));
 	pthread_mutex_lock(&pong_done_lock);
@@ -162,7 +163,7 @@ void pong_chan_closed(struct firefly_channel *chan)
 bool pong_chan_received(struct firefly_channel *chan)
 {
 	UNUSED_VAR(chan);
-	printf("chan recv\n");
+	printf("PONG: chan recv\n");
 	pong_pass_test(CHAN_RECEIVE);
 
 	return true;
@@ -170,13 +171,14 @@ bool pong_chan_received(struct firefly_channel *chan)
 
 void pong_channel_rejected(struct firefly_connection *conn)
 {
-	printf("chan rej\n");
+	printf("PONG: chan rej\n");
 	UNUSED_VAR(conn);
 	fprintf(stderr, "ERROR: Channel rejected.\n");
 }
 
 void pong_handle_pingpong_data(pingpong_data *data, void *ctx)
 {
+	printf("PONG: recieved data\n");
 	UNUSED_VAR(data);
 	pong_pass_test(DATA_RECEIVE);
 	send_data_and_close(ctx);

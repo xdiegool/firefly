@@ -79,10 +79,12 @@ void ping_chan_restr_info(struct firefly_channel *chan,
 	switch (restr) {
 	case UNRESTRICTED:
 		/* Done */
+		printf("PING: chan unrestricted\n");
 		ping_pass_test(CHAN_UNRESTRICTED);
 		firefly_channel_close(chan);
 		break;
 	case RESTRICTED:
+		printf("PING: chan restricted\n");
 		ping_pass_test(CHAN_RESTRICTED);
 		/* Send data */
 		send_data(chan);
@@ -147,11 +149,10 @@ void *send_data(void *args)
 void ping_handle_pingpong_data(pingpong_data *data, void *ctx)
 {
 	UNUSED_VAR(ctx);
-
+	printf("PING: recieved data\n");
 	if (*data == PONG_DATA)
 		ping_pass_test(DATA_RECEIVE);
 	firefly_channel_unrestrict(ctx);
-
 }
 
 struct firefly_connection_actions ping_actions = {
