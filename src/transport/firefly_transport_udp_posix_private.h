@@ -45,24 +45,6 @@ struct firefly_transport_connection_udp_posix {
 };
 
 /**
- * @brief The argument type of a read event.
- */
-struct firefly_event_llp_read_udp_posix {
-	struct firefly_transport_llp *llp; /**< The llp the data was read on. */
-	struct sockaddr_in addr; /**< The address the data was sent from. */
-	size_t len; /**< The number of bytes in the data field. */
-	unsigned char data[]; /**< The read data. */
-};
-
-/**
- * @brief The event handling any read data.
- *
- * @param event_arg See #firefly_event_llp_read_udp_posix.
- * @see #firefly_transport_udp_posix_read()
- */
-int firefly_transport_udp_posix_read_event(void *event_arg);
-
-/**
  * @brief The event handling llp free.
  *
  * @param event_arg The #firefly_transport_llp to free.

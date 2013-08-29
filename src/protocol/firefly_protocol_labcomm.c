@@ -196,6 +196,7 @@ static int trans_reader_next_buffer(struct labcomm_reader *r)
 	// Reuse buffer struct to save current buffer in backstack
 	le->data = r->data;
 	le->len = r->count;
+	le->next = NULL;
 	// Save current buffer in backstack
 	for (next = &ctx->read; *next != NULL; next = &(*next)->next) {}
 	*next = le;
@@ -280,8 +281,9 @@ static int trans_reader_fill(struct labcomm_reader *r,
 {
 	UNUSED_VAR(context);
 	int result;
-	if (r->error < 0)
+	if (r->error < 0) {
 		return r->error;
+	}
 
 	result = r->count - r->pos;
 	if (result <= 0) {
@@ -315,14 +317,12 @@ static int trans_reader_end(struct labcomm_reader *r,
 	struct transport_reader_context *ctx;
 	ctx = action_context->context;
 	if (r->pos >= r->count) {
-		if (trans_reader_next_buffer(r) < 0) {
-			if (r->data != NULL) {
-				struct firefly_connection *conn = ctx->conn;
-				FIREFLY_RUNTIME_FREE(conn, r->data);
-				r->data = NULL;
-				r->count = 0;
-				r->pos = 0;
-			}
+		if (trans_reader_next_buffer(r) < 0 && r->data != NULL) {
+			struct firefly_connection *conn = ctx->conn;
+			FIREFLY_RUNTIME_FREE(conn, r->data);
+			r->data = NULL;
+			r->count = 0;
+			r->pos = 0;
 		}
 		ctx->last_end_pos = 0;
 	} else {

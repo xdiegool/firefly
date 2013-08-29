@@ -216,8 +216,15 @@ void test_encode_decode_app()
 static int nbr_test_vars = 0;
 void test_fragments_handle_test_var(test_test_var *v, void *c)
 {
-	/*printf(" test_test_var: %d ", *v);*/
 	CU_ASSERT_EQUAL(*v, nbr_test_vars++);
+}
+
+void test_fragments_handle_test_var_large(test_test_var_large *v, void *c)
+{
+	for (int i = 0; i < 10; i++) {
+		CU_ASSERT_EQUAL(v->data.a[i], nbr_test_vars);
+	}
+	nbr_test_vars++;
 }
 
 void test_decode_large_protocol_fragments()
@@ -292,20 +299,16 @@ void test_decode_large_protocol_fragments()
 	size_t last_frag_size = full_buf_size - 6*frag_size;
 	frags[6] = malloc(last_frag_size);
 	memcpy(frags[6], full_buf + 6*frag_size, last_frag_size);
-	/*for (i = 0; i < 7; i++) { printf("frag %d: %p\n", i, frags[i]); }*/
 	int dec_res = 0;
 	for (i = 0; i < 6; i++) {
-		/*printf("Adding buffer %d\n", i);*/
 		labcomm_decoder_ioctl(conn.transport_decoder,
 				FIREFLY_LABCOMM_IOCTL_READER_SET_BUFFER,
 				frags[i], frag_size);
 		while (dec_res >= 0) {
-			/*printf("Decoding\n");*/
 			dec_res = labcomm_decoder_decode_one(conn.transport_decoder);
 		}
 		dec_res = 0;
 	}
-	/*printf("Adding buffer %d\n", 6);*/
 	labcomm_decoder_ioctl(conn.transport_decoder,
 			FIREFLY_LABCOMM_IOCTL_READER_SET_BUFFER,
 			frags[6], last_frag_size);
@@ -319,5 +322,103 @@ void test_decode_large_protocol_fragments()
 	labcomm_decoder_free(conn.transport_decoder);
 	successfully_decoded = false;
 	nbr_test_vars = 0;
+	firefly_event_queue_free(&eq);
+}
+
+void test_decode_small_protocol_fragments()
+{
+	struct firefly_event_queue *eq = firefly_event_queue_new(firefly_event_add,
+			10, NULL);
+	struct firefly_connection conn;
+	conn.transport = &test_trsp_conn;
+	conn.open = FIREFLY_CONNECTION_OPEN;
+	conn.memory_replacements.alloc_replacement = NULL;
+	conn.memory_replacements.free_replacement = NULL;
+
+	// Construct decoder.
+	struct labcomm_reader *r;
+	r = transport_labcomm_reader_new(&conn, labcomm_default_memory);
+	conn.transport_decoder =
+			labcomm_decoder_new(r, NULL, labcomm_default_memory, NULL);
+	if (conn.transport_decoder == NULL) {
+		CU_FAIL("Could not allocate LabComm encoder or decoder.");
+	}
+	// TODO: Fix when labcomm gets error handling back
+	/* labcomm_register_error_handler_decoder(conn.transport_decoder, handle_labcomm_error);*/
+
+	// Construct encoder.
+	struct labcomm_writer *w;
+	struct labcomm_encoder *test_enc;
+	w = labcomm_static_buffer_writer_new();
+	test_enc = labcomm_encoder_new(w, NULL, labcomm_default_memory, NULL);
+	if (test_enc == NULL) {
+		CU_FAIL("Could not allocate LabComm encoder or decoder.");
+	}
+	// TODO: Fix when labcomm gets error handling back
+	/* labcomm_register_error_handler_encoder(conn.transport_encoder, handle_labcomm_error);*/
+
+	conn.event_queue = eq;
+
+	unsigned char full_buf[512];
+	size_t full_buf_size = 0;
+	unsigned char *buf;
+	size_t buf_size;
+	int i;
+	int res;
+	labcomm_decoder_register_test_test_var_large(conn.transport_decoder,
+			test_fragments_handle_test_var_large, &i);
+	labcomm_encoder_register_test_test_var_large(test_enc);
+	res = labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
+			&buf, &buf_size);
+	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_RESET_BUFFER);
+	CU_ASSERT_EQUAL_FATAL(res, 0);
+	memcpy(full_buf + full_buf_size, buf, buf_size);
+	full_buf_size += buf_size;
+	free(buf);
+
+	test_test_var_large v;
+	for (i = 0; i < 7; i++) {
+		for (int j = 0; j < 10; j++) {
+			v.data.a[j] = i;
+		}
+		labcomm_encode_test_test_var_large(test_enc, &v);
+		res = labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
+				&buf, &buf_size);
+		labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_RESET_BUFFER);
+		CU_ASSERT_EQUAL_FATAL(res, 0);
+		memcpy(full_buf + full_buf_size, buf, buf_size);
+		full_buf_size += buf_size;
+		free(buf);
+	}
+	size_t frag_size = full_buf_size / 19;
+	unsigned char *frags[19];
+	for (i = 0; i < 18; i++) {
+		frags[i] = malloc(frag_size);
+		memcpy(frags[i], full_buf + i*frag_size, frag_size);
+	}
+	size_t last_frag_size = full_buf_size - 18*frag_size;
+	frags[18] = malloc(last_frag_size);
+	memcpy(frags[18], full_buf + 18*frag_size, last_frag_size);
+	int dec_res = 0;
+	for (i = 0; i < 18; i++) {
+		labcomm_decoder_ioctl(conn.transport_decoder,
+				FIREFLY_LABCOMM_IOCTL_READER_SET_BUFFER,
+				frags[i], frag_size);
+		while (dec_res >= 0) {
+			dec_res = labcomm_decoder_decode_one(conn.transport_decoder);
+		}
+		dec_res = 0;
+	}
+	labcomm_decoder_ioctl(conn.transport_decoder,
+			FIREFLY_LABCOMM_IOCTL_READER_SET_BUFFER,
+			frags[18], last_frag_size);
+	while (dec_res >= 0) {
+		dec_res = labcomm_decoder_decode_one(conn.transport_decoder);
+	}
+	CU_ASSERT_EQUAL(nbr_test_vars, 7);
+
+	labcomm_encoder_free(test_enc);
+	labcomm_decoder_free(conn.transport_decoder);
+	successfully_decoded = false;
 	firefly_event_queue_free(&eq);
 }

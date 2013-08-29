@@ -73,7 +73,11 @@ int firefly_transport_udp_lwip_read_event(void *event_arg)
 		}
 		free(ip_str);
 	} else {
-		ev_a->llp->protocol_data_received_cb(conn, ev_a->p->payload, ev_a->p->len);
+		unsigned char *data = malloc(ev_a->p->len);
+		if (data) {
+			memcpy(data, ev_a->p->payload, ev_a->p->len);
+			ev_a->llp->protocol_data_received_cb(conn, data, ev_a->p->len);
+		}
 	}
 	pbuf_free(ev_a->p);
 	free(ev_a);

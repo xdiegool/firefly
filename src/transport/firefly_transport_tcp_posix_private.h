@@ -38,17 +38,6 @@ struct firefly_transport_connection_tcp_posix {
 };
 
 /**
- * @brief The argument type of a read event.
- */
-struct firefly_event_llp_read_tcp_posix {
-	struct firefly_transport_llp *llp; /**< The llp the data was read on */
-	struct sockaddr_in addr;           /**< Address the data was sent from */
-	int socket;                        /**< Socket the data was received on */
-	size_t len;                        /**< Number of bytes in the data field */
-	unsigned char data[];              /**< The read data. */
-};
-
-/**
  * @brief Write data on the specified connection. Implements
  * #firefly_transport_connection_write_f.
  *

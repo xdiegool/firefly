@@ -95,7 +95,6 @@ static int statbuf_ioctl(struct labcomm_writer *w,
 			result = 0;
 			} break;
 		case LABCOMM_IOCTL_WRITER_RESET_BUFFER:
-			puts("resetting!");
 			w->pos = 0;
 			result = 0;
 			break;

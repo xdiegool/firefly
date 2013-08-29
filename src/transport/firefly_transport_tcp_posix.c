@@ -385,6 +385,14 @@ int firefly_transport_tcp_posix_stop(struct firefly_transport_llp *llp)
 	return res;
 }
 
+struct firefly_event_llp_read_tcp_posix {
+	struct firefly_transport_llp *llp;
+	struct sockaddr_in addr;
+	int socket;
+	size_t len;
+	unsigned char *data;
+};
+
 static int read_event(void *event_arg)
 {
 	struct firefly_event_llp_read_tcp_posix *ev_arg;
@@ -476,7 +484,12 @@ void firefly_transport_tcp_posix_read(struct firefly_transport_llp *llp)
 			ev_arg = malloc(sizeof(*ev_arg) + pkg_len);
 			if (!ev_arg) {
 				FFL(FIREFLY_ERROR_ALLOC);
-
+				return;
+			}
+			ev_arg->data = malloc(pkg_len);
+			if (!ev_arg->data) {
+				FFL(FIREFLY_ERROR_ALLOC);
+				free(ev_arg);
 				return;
 			}
 

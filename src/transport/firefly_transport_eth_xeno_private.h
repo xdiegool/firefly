@@ -47,24 +47,6 @@ struct firefly_transport_connection_eth_xeno {
 };
 
 /**
- * @brief The argument type of a read event.
- */
-struct firefly_event_llp_read_eth_xeno {
-	struct firefly_transport_llp *llp; /**< The llp the data was read on. */
-	struct sockaddr_ll addr; /**< The address the data was sent from. */
-	size_t len; /**< The number of bytes in the data field. */
-	unsigned char *data; /**< The read data. */
-};
-
-/**
- * @brief The event handling any read data.
- *
- * @param event_arg See #firefly_event_llp_read_eth_xeno.
- * @see #firefly_transport_eth_xeno_read()
- */
-int firefly_transport_eth_xeno_read_event(void *event_arg);
-
-/**
  * @brief The event handling llp free.
  *
  * @param event_arg The #firefly_transport_llp to free.
