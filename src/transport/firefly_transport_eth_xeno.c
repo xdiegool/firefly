@@ -321,6 +321,39 @@ void firefly_transport_eth_xeno_ack(unsigned char pkt_id,
 	UNUSED_VAR(conn);
 }
 
+struct firefly_event_llp_read_eth_xeno {
+	struct firefly_transport_llp *llp;
+	struct sockaddr_ll addr;
+	size_t len;
+	unsigned char *data;
+};
+
+static int firefly_transport_eth_xeno_read_event(void *event_args)
+{
+	struct firefly_event_llp_read_eth_xeno *ev_a = event_args;
+	struct transport_llp_eth_xeno *llp_eth = ev_a->llp->llp_platspec;
+
+	struct firefly_connection *conn = find_connection(ev_a->llp, &ev_a->addr,
+			connection_eq_addr);
+	if (conn == NULL) {
+		char mac_addr[18];
+		get_mac_addr(&ev_a->addr, mac_addr);
+		int64_t ev_id = 0;
+		if (llp_eth->on_conn_recv != NULL &&
+				(ev_id = llp_eth->on_conn_recv(ev_a->llp, mac_addr)) > 0) {
+			return llp_eth->event_queue->offer_event_cb(llp_eth->event_queue,
+					FIREFLY_PRIORITY_HIGH,
+					firefly_transport_eth_xeno_read_event, ev_a, 1, &ev_id);
+		} else {
+			xeno_mem_free_llp(ev_a->llp, ev_a->data);
+		}
+	} else {
+		ev_a->llp->protocol_data_received_cb(conn, ev_a->data, ev_a->len);
+	}
+	xeno_mem_free_llp(ev_a->llp, ev_a);
+	return 0;
+}
+
 void firefly_transport_eth_xeno_read(struct firefly_transport_llp *llp,
 		int64_t *timeout)
 {
@@ -370,31 +403,6 @@ void firefly_transport_eth_xeno_read(struct firefly_transport_llp *llp,
 	llp_eth->event_queue->offer_event_cb(llp_eth->event_queue,
 			FIREFLY_PRIORITY_HIGH,
 			firefly_transport_eth_xeno_read_event, ev_arg, 0, NULL);
-}
-
-int firefly_transport_eth_xeno_read_event(void *event_args)
-{
-	struct firefly_event_llp_read_eth_xeno *ev_a = event_args;
-	struct transport_llp_eth_xeno *llp_eth = ev_a->llp->llp_platspec;
-
-	struct firefly_connection *conn = find_connection(ev_a->llp, &ev_a->addr,
-			connection_eq_addr);
-	if (conn == NULL) {
-		char mac_addr[18];
-		get_mac_addr(&ev_a->addr, mac_addr);
-		int64_t ev_id = 0;
-		if (llp_eth->on_conn_recv != NULL &&
-				(ev_id = llp_eth->on_conn_recv(ev_a->llp, mac_addr)) > 0) {
-			return llp_eth->event_queue->offer_event_cb(llp_eth->event_queue,
-					FIREFLY_PRIORITY_HIGH,
-					firefly_transport_eth_xeno_read_event, ev_a, 1, &ev_id);
-		}
-	} else {
-		ev_a->llp->protocol_data_received_cb(conn, ev_a->data, ev_a->len);
-	}
-	xeno_mem_free_llp(ev_a->llp, ev_a->data);
-	xeno_mem_free_llp(ev_a->llp, ev_a);
-	return 0;
 }
 
 void get_mac_addr(struct sockaddr_ll *addr, char *mac_addr)

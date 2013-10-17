@@ -274,6 +274,45 @@ void firefly_transport_eth_posix_ack(unsigned char pkt_id,
 	firefly_resend_remove(llpep->resend_queue, pkt_id);
 }
 
+struct firefly_event_llp_read_eth_posix {
+	struct firefly_transport_llp *llp;
+	struct sockaddr_ll addr;
+	size_t len;
+	unsigned char *data;
+};
+
+static int firefly_transport_eth_posix_read_event(void *event_args)
+{
+	struct firefly_event_llp_read_eth_posix *ev_a;
+	struct transport_llp_eth_posix *llp_eth;
+	struct firefly_connection *conn;
+
+	ev_a = event_args;
+	llp_eth = ev_a->llp->llp_platspec;
+	conn = find_connection(ev_a->llp, &ev_a->addr, connection_eq_addr);
+	if (conn == NULL) {
+		char mac_addr[MACADDR_STRLEN];
+		get_mac_addr(&ev_a->addr, mac_addr);
+		int64_t ev_id = 0;
+		if (llp_eth->on_conn_recv != NULL &&
+				(ev_id = llp_eth->on_conn_recv(ev_a->llp, mac_addr)) > 0) {
+			/* Connection accepted; reschedule event. */
+			return llp_eth->event_queue->offer_event_cb(
+					llp_eth->event_queue,
+					FIREFLY_PRIORITY_HIGH,
+					firefly_transport_eth_posix_read_event,
+					ev_a, 1, &ev_id);
+		} else {
+			free(ev_a->data);
+		}
+	} else {
+		ev_a->llp->protocol_data_received_cb(conn, ev_a->data, ev_a->len);
+	}
+	free(ev_a);
+
+	return 0;
+}
+
 void firefly_transport_eth_posix_read(struct firefly_transport_llp *llp,
 		struct timeval *tv)
 {
@@ -309,8 +348,13 @@ void firefly_transport_eth_posix_read(struct firefly_transport_llp *llp,
 			      __FUNCTION__, err_buf);
 		return;
 	}
-	ev_arg = malloc(sizeof(*ev_arg) + res);
+	ev_arg = malloc(sizeof(*ev_arg));
 	if (!ev_arg) {
+		FFL(FIREFLY_ERROR_ALLOC);
+		return;
+	}
+	ev_arg->data = malloc(res);
+	if (!ev_arg->data) {
 		FFL(FIREFLY_ERROR_ALLOC);
 		return;
 	}
@@ -322,36 +366,6 @@ void firefly_transport_eth_posix_read(struct firefly_transport_llp *llp,
 	llp_eth->event_queue->offer_event_cb(llp_eth->event_queue,
 			FIREFLY_PRIORITY_HIGH,
 			firefly_transport_eth_posix_read_event, ev_arg, 0, NULL);
-}
-
-int firefly_transport_eth_posix_read_event(void *event_args)
-{
-	struct firefly_event_llp_read_eth_posix *ev_a;
-	struct transport_llp_eth_posix *llp_eth;
-	struct firefly_connection *conn;
-
-	ev_a = event_args;
-	llp_eth = ev_a->llp->llp_platspec;
-	conn = find_connection(ev_a->llp, &ev_a->addr, connection_eq_addr);
-	if (conn == NULL) {
-		char mac_addr[MACADDR_STRLEN];
-		get_mac_addr(&ev_a->addr, mac_addr);
-		int64_t ev_id = 0;
-		if (llp_eth->on_conn_recv != NULL &&
-				(ev_id = llp_eth->on_conn_recv(ev_a->llp, mac_addr)) > 0) {
-			/* Connection accepted; reschedule event. */
-			return llp_eth->event_queue->offer_event_cb(
-					llp_eth->event_queue,
-					FIREFLY_PRIORITY_HIGH,
-					firefly_transport_eth_posix_read_event,
-					ev_a, 1, &ev_id);
-		}
-	} else {
-		ev_a->llp->protocol_data_received_cb(conn, ev_a->data, ev_a->len);
-	}
-	free(ev_a);
-
-	return 0;
 }
 
 void *firefly_transport_eth_posix_read_run(void *arg)

@@ -1,0 +1,71 @@
+{
+	<pthread_create_leak>
+	Memcheck:Leak
+	fun:calloc
+	fun:_dl_allocate_tls
+	fun:pthread_create@@GLIBC_2.2.5
+}
+
+{
+	<pthread_cancel_leak>
+	Memcheck:Leak
+	fun:malloc
+	fun:_dl_map_object
+	fun:dl_open_worker
+	fun:_dl_catch_error
+	fun:_dl_open
+	fun:do_dlopen
+	fun:_dl_catch_error
+	fun:__libc_dlopen_mode
+	fun:pthread_cancel_init
+	fun:pthread_cancel
+}
+
+{
+	<pthread_cancel_leak_2>
+	Memcheck:Leak
+	fun:malloc
+	fun:_dl_new_object
+	fun:_dl_map_object_from_fd
+	fun:_dl_map_object
+	fun:dl_open_worker
+	fun:_dl_catch_error
+	fun:_dl_open
+	fun:do_dlopen
+	fun:_dl_catch_error
+	fun:__libc_dlopen_mode
+	fun:pthread_cancel_init
+	fun:pthread_cancel
+}
+{
+	<pthread_cancel_leak_3>
+	Memcheck:Leak
+	fun:calloc
+	fun:_dl_new_object
+	fun:_dl_map_object_from_fd
+	fun:_dl_map_object
+	fun:dl_open_worker
+	fun:_dl_catch_error
+	fun:_dl_open
+	fun:do_dlopen
+	fun:_dl_catch_error
+	fun:__libc_dlopen_mode
+	fun:pthread_cancel_init
+	fun:pthread_cancel
+}
+{
+	<pthread_cancel_leak_4>
+	Memcheck:Leak
+	fun:calloc
+	fun:_dl_check_map_versions
+	fun:dl_open_worker
+	fun:_dl_catch_error
+	fun:_dl_open
+	fun:do_dlopen
+	fun:_dl_catch_error
+	fun:__libc_dlopen_mode
+	fun:pthread_cancel_init
+	fun:pthread_cancel
+	fun:firefly_transport_tcp_posix_stop
+	fun:ping_main_thread
+}

@@ -67,6 +67,14 @@ int main()
 			(CU_add_test(labcomm_suite,
 					"test_encode_decode_app",
 					test_encode_decode_app) == NULL)
+			||
+			(CU_add_test(labcomm_suite,
+					"test_decode_large_protocol_fragments",
+					test_decode_large_protocol_fragments) == NULL)
+			||
+			(CU_add_test(labcomm_suite,
+					"test_decode_small_protocol_fragments",
+					test_decode_small_protocol_fragments) == NULL)
 		) {
 		CU_cleanup_registry();
 		return CU_get_error();

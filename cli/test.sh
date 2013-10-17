@@ -18,7 +18,7 @@ UNIT_TEST_PROGS="../build/test/test_event_main
 UNIT_TEST_ROOT_PROGS="../build/test/test_transport_eth_posix_main
 ../build/test/test_transport_eth_posix_main"
 
-SYSTEM_TEST_PROGS="../build/test/pingpong_main ../build/test/udp_posix"
+SYSTEM_TEST_PROGS="../build/test/pingpong_main ../build/test/pingpong_main_tcp ../build/test/udp_posix"
 # TODO: Should these (below) run at all on a single computer?
 SYSTEM_TEST_ROOT_PROGS="../build/test/pong_eth_main ../build/test/ping_eth_main
 ../build/test/pingpong_multi_main"
@@ -45,7 +45,7 @@ fi
 if [[ "${RUN_SYSTEM_TESTS}" -eq 1 ]]; then
 	for prog in ${SYSTEM_TEST_PROGS}; do
 		echo "=========================>BEGIN TEST: ${prog}";
-		valgrind --quiet --error-exitcode=1 --leak-check=full --show-reachable=yes $prog;
+		valgrind --gen-suppressions=all --suppressions=./pthreads.supp --quiet --error-exitcode=1 --leak-check=full --show-reachable=yes $prog;
 		test "$?" -ne 0 && echo "FAILURE: Program exited with failure status." >&2 && break;
 		echo "=========================>END TEST: ${prog}";
 	done

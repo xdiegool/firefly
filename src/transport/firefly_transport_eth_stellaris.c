@@ -327,13 +327,14 @@ int firefly_transport_eth_stellaris_read_event(void *event_args)
 			return llp_eth->event_queue->offer_event_cb(llp_eth->event_queue,
 					FIREFLY_PRIORITY_HIGH,
 					firefly_transport_eth_stellaris_read_event, ev_a, 1, &id);
+		} else {
+			free(ev_a->eth_packet);
 		}
 	} else {
 		protocol_data_received(conn,
 				ev_a->eth_packet + ETH_DATA_OFFSET,
 				ev_a->len - ETH_HEADER_LEN);
 	}
-	free(ev_a->eth_packet);
 	free(ev_a);
 
 	return 0;

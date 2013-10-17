@@ -280,6 +280,7 @@ int init_labcomm_test_enc_dec_custom(struct labcomm_reader *test_r,
 	labcomm_decoder_ioctl(test_dec, LABCOMM_IOCTL_READER_SET_BUFFER,
 			buffer, buffer_size);
 	labcomm_decoder_decode_one(test_dec);
+	free(buffer);
 
 	labcomm_encoder_register_firefly_protocol_channel_request(test_enc);
 	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
@@ -287,6 +288,7 @@ int init_labcomm_test_enc_dec_custom(struct labcomm_reader *test_r,
 	labcomm_decoder_ioctl(test_dec, LABCOMM_IOCTL_READER_SET_BUFFER,
 			buffer, buffer_size);
 	labcomm_decoder_decode_one(test_dec);
+	free(buffer);
 
 	labcomm_encoder_register_firefly_protocol_channel_response(test_enc);
 	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
@@ -294,6 +296,7 @@ int init_labcomm_test_enc_dec_custom(struct labcomm_reader *test_r,
 	labcomm_decoder_ioctl(test_dec, LABCOMM_IOCTL_READER_SET_BUFFER,
 			buffer, buffer_size);
 	labcomm_decoder_decode_one(test_dec);
+	free(buffer);
 
 	labcomm_encoder_register_firefly_protocol_channel_ack(test_enc);
 	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
@@ -301,6 +304,7 @@ int init_labcomm_test_enc_dec_custom(struct labcomm_reader *test_r,
 	labcomm_decoder_ioctl(test_dec, LABCOMM_IOCTL_READER_SET_BUFFER,
 			buffer, buffer_size);
 	labcomm_decoder_decode_one(test_dec);
+	free(buffer);
 
 	labcomm_encoder_register_firefly_protocol_channel_close(test_enc);
 	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
@@ -308,6 +312,7 @@ int init_labcomm_test_enc_dec_custom(struct labcomm_reader *test_r,
 	labcomm_decoder_ioctl(test_dec, LABCOMM_IOCTL_READER_SET_BUFFER,
 			buffer, buffer_size);
 	labcomm_decoder_decode_one(test_dec);
+	free(buffer);
 
 	labcomm_encoder_register_firefly_protocol_ack(test_enc);
 	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
@@ -315,6 +320,7 @@ int init_labcomm_test_enc_dec_custom(struct labcomm_reader *test_r,
 	labcomm_decoder_ioctl(test_dec, LABCOMM_IOCTL_READER_SET_BUFFER,
 			buffer, buffer_size);
 	labcomm_decoder_decode_one(test_dec);
+	free(buffer);
 
 	labcomm_encoder_register_firefly_protocol_channel_restrict_request(test_enc);
 	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
@@ -322,6 +328,7 @@ int init_labcomm_test_enc_dec_custom(struct labcomm_reader *test_r,
 	labcomm_decoder_ioctl(test_dec, LABCOMM_IOCTL_READER_SET_BUFFER,
 			buffer, buffer_size);
 	labcomm_decoder_decode_one(test_dec);
+	free(buffer);
 
 	labcomm_encoder_register_firefly_protocol_channel_restrict_ack(test_enc);
 	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
@@ -329,6 +336,7 @@ int init_labcomm_test_enc_dec_custom(struct labcomm_reader *test_r,
 	labcomm_decoder_ioctl(test_dec, LABCOMM_IOCTL_READER_SET_BUFFER,
 			buffer, buffer_size);
 	labcomm_decoder_decode_one(test_dec);
+	free(buffer);
 
 	return 0;
 }

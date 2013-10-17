@@ -2,6 +2,9 @@ sample int test_var;
 sample int test_var_2;
 sample int test_var_3;
 sample struct {
+	int data[10];
+} test_var_large;
+sample struct {
 	long sec;
 	long nsec;
 } time_sample;

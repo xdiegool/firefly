@@ -320,6 +320,45 @@ int firefly_transport_udp_posix_stop(struct firefly_transport_llp *llp)
 	return 0;
 }
 
+struct firefly_event_llp_read_udp_posix {
+	struct firefly_transport_llp *llp;
+	struct sockaddr_in addr;
+	size_t len;
+	unsigned char *data;
+};
+
+static int firefly_transport_udp_posix_read_event(void *event_arg)
+{
+	struct firefly_event_llp_read_udp_posix *ev_arg;
+	struct transport_llp_udp_posix *llp_udp;
+	struct firefly_connection *conn;
+
+	ev_arg = event_arg;
+	llp_udp = ev_arg->llp->llp_platspec;
+
+	// Find existing connection or create new.
+	conn = find_connection(ev_arg->llp, &ev_arg->addr, connection_eq_inaddr);
+	if (conn == NULL) {
+		char ip_addr[INET_ADDRSTRLEN];
+		sockaddr_in_ipaddr(&ev_arg->addr, ip_addr);
+		int64_t ev_id = 0;
+		if (llp_udp->on_conn_recv != NULL &&
+				(ev_id = llp_udp->on_conn_recv(ev_arg->llp, ip_addr,
+					sockaddr_in_port(&ev_arg->addr))) > 0) {
+			return llp_udp->event_queue->offer_event_cb(llp_udp->event_queue,
+					FIREFLY_PRIORITY_HIGH,
+					firefly_transport_udp_posix_read_event,
+					ev_arg, 1, &ev_id);
+		} else {
+			free(ev_arg->data);
+		}
+	} else {
+		ev_arg->llp->protocol_data_received_cb(conn, ev_arg->data, ev_arg->len);
+	}
+	free(ev_arg);
+	return 0;
+}
+
 void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 {
 	struct transport_llp_udp_posix *llp_udp;
@@ -350,8 +389,14 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 		FFL(FIREFLY_ERROR_SOCKET);
 		pkg_len = 0;
 	}
-	ev_arg = malloc(sizeof(*ev_arg) + pkg_len);
+	ev_arg = malloc(sizeof(*ev_arg));
 	if (!ev_arg) {
+		FFL(FIREFLY_ERROR_ALLOC);
+		free(ev_arg);
+		return;
+	}
+	ev_arg->data = malloc(pkg_len);
+	if (!ev_arg->data) {
 		FFL(FIREFLY_ERROR_ALLOC);
 		free(ev_arg);
 		return;
@@ -374,36 +419,6 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 			FIREFLY_PRIORITY_HIGH,
 			firefly_transport_udp_posix_read_event,
 			ev_arg, 0, NULL);
-}
-
-int firefly_transport_udp_posix_read_event(void *event_arg)
-{
-	struct firefly_event_llp_read_udp_posix *ev_arg;
-	struct transport_llp_udp_posix *llp_udp;
-	struct firefly_connection *conn;
-
-	ev_arg = event_arg;
-	llp_udp = ev_arg->llp->llp_platspec;
-
-	// Find existing connection or create new.
-	conn = find_connection(ev_arg->llp, &ev_arg->addr, connection_eq_inaddr);
-	if (conn == NULL) {
-		char ip_addr[INET_ADDRSTRLEN];
-		sockaddr_in_ipaddr(&ev_arg->addr, ip_addr);
-		int64_t ev_id = 0;
-		if (llp_udp->on_conn_recv != NULL &&
-				(ev_id = llp_udp->on_conn_recv(ev_arg->llp, ip_addr,
-					sockaddr_in_port(&ev_arg->addr))) > 0) {
-			return llp_udp->event_queue->offer_event_cb(llp_udp->event_queue,
-					FIREFLY_PRIORITY_HIGH,
-					firefly_transport_udp_posix_read_event,
-					ev_arg, 1, &ev_id);
-		}
-	} else {
-		ev_arg->llp->protocol_data_received_cb(conn, ev_arg->data, ev_arg->len);
-	}
-	free(ev_arg);
-	return 0;
 }
 
 bool sockaddr_in_eq(struct sockaddr_in *one, struct sockaddr_in *other)

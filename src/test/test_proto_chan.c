@@ -394,7 +394,6 @@ void test_chan_open_recv()
 	firefly_event_execute(ev);
 	firefly_event_return(eq, &ev);
 
-	free_tmp_data(&conn_open_write);
 	CU_ASSERT_TRUE(conn_recv_accept_called);
 	protocol_data_received(conn_open, conn_recv_write.data,
 			conn_recv_write.size);
@@ -405,10 +404,8 @@ void test_chan_open_recv()
 	CU_ASSERT_TRUE(chan_opened_called);
 	chan_opened_called = false;
 
-	free_tmp_data(&conn_recv_write);
 	protocol_data_received(conn_recv, conn_open_write.data,
 			conn_open_write.size);
-	free_tmp_data(&conn_open_write);
 	ev = firefly_event_pop(eq);
 	firefly_event_execute(ev);
 	firefly_event_return(eq, &ev);
@@ -649,6 +646,7 @@ void test_recv_app_data()
 	proto_sign_pkt.app_enc_data.n_0 = buf_size;
 
 	labcomm_encode_firefly_protocol_data_sample(test_enc, &proto_sign_pkt);
+	free(buf);
 	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
 			&buf, &buf_size);
 	protocol_data_received(conn, buf, buf_size);
@@ -671,6 +669,7 @@ void test_recv_app_data()
 	proto_data_pkt.app_enc_data.n_0 = buf_size;
 
 	labcomm_encode_firefly_protocol_data_sample(test_enc, &proto_data_pkt);
+	free(buf);
 	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
 			&buf, &buf_size);
 	protocol_data_received(conn, buf, buf_size);
@@ -1065,6 +1064,8 @@ void test_restrict_req_dup()
 	chan_restrict_info_called = false;
 
 	// Once more
+	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
+			&buf, &buf_size);
 	protocol_data_received(conn, buf, buf_size);
 	event_execute_test(eq, 1);
 	// check callback called.
@@ -1180,7 +1181,6 @@ size_t read_connection_mock(struct firefly_connection *conns[], int conn_n)
 	protocol_data_received(conns[conn_n], read_pkg->data,
 			read_pkg->data_size);
 	read_size = read_pkg->data_size;
-	free(read_pkg->data);
 	free(read_pkg);
 
 	return read_size;
@@ -1604,7 +1604,6 @@ void test_chan_open_close_multiple()
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	firefly_event_execute(ev);
 	firefly_event_return(eq, &ev);
-	free_tmp_data(&conn_open_write);
 	CU_ASSERT_TRUE(chan_accept_called);
 	chan_accept_called = false;
 
@@ -1617,10 +1616,8 @@ void test_chan_open_close_multiple()
 	CU_ASSERT_TRUE(chan_opened_called);
 	chan_opened_called = false;
 
-	free_tmp_data(&conn_recv_write);
 	protocol_data_received(conn_recv, conn_open_write.data,
 			conn_open_write.size);
-	free_tmp_data(&conn_open_write);
 	ev = firefly_event_pop(eq);
 	firefly_event_execute(ev);
 	firefly_event_return(eq, &ev);
@@ -1650,7 +1647,6 @@ void test_chan_open_close_multiple()
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	firefly_event_execute(ev);
 	firefly_event_return(eq, &ev);
-	free_tmp_data(&conn_recv_write);
 
 	CU_ASSERT_TRUE(chan_accept_called);
 	chan_accept_called = false;
@@ -1660,13 +1656,11 @@ void test_chan_open_close_multiple()
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	firefly_event_execute(ev);
 	firefly_event_return(eq, &ev);
-	free_tmp_data(&conn_open_write);
 	CU_ASSERT_TRUE(chan_opened_called);
 	chan_opened_called = false;
 
 	protocol_data_received(conn_open, conn_recv_write.data,
 			conn_recv_write.size);
-	free_tmp_data(&conn_recv_write);
 	ev = firefly_event_pop(eq);
 	firefly_event_execute(ev);
 	firefly_event_return(eq, &ev);
@@ -1735,7 +1729,6 @@ void test_chan_open_close_multiple()
 	firefly_event_return(eq, &ev);
 	protocol_data_received(conn_recv, conn_open_write.data,
 			conn_open_write.size);
-	free_tmp_data(&conn_open_write);
 	ev = firefly_event_pop(eq);
 	firefly_event_execute(ev);
 	firefly_event_return(eq, &ev);
@@ -1747,7 +1740,6 @@ void test_chan_open_close_multiple()
 	firefly_event_return(eq, &ev);
 	protocol_data_received(conn_recv, conn_open_write.data,
 			conn_open_write.size);
-	free_tmp_data(&conn_open_write);
 	ev = firefly_event_pop(eq);
 	firefly_event_execute(ev);
 	firefly_event_return(eq, &ev);
@@ -1759,7 +1751,6 @@ void test_chan_open_close_multiple()
 	firefly_event_return(eq, &ev);
 	protocol_data_received(conn_open, conn_recv_write.data,
 			conn_recv_write.size);
-	free_tmp_data(&conn_recv_write);
 	ev = firefly_event_pop(eq);
 	firefly_event_execute(ev);
 	firefly_event_return(eq, &ev);
@@ -1771,7 +1762,6 @@ void test_chan_open_close_multiple()
 	firefly_event_return(eq, &ev);
 	protocol_data_received(conn_open, conn_recv_write.data,
 			conn_recv_write.size);
-	free_tmp_data(&conn_recv_write);
 	ev = firefly_event_pop(eq);
 	firefly_event_execute(ev);
 	firefly_event_return(eq, &ev);
@@ -1785,7 +1775,6 @@ void test_chan_open_close_multiple()
 	firefly_event_return(eq, &ev);
 	protocol_data_received(conn_recv, conn_open_write.data,
 			conn_open_write.size);
-	free_tmp_data(&conn_open_write);
 	ev = firefly_event_pop(eq);
 	firefly_event_execute(ev);
 	firefly_event_return(eq, &ev);
@@ -1799,7 +1788,6 @@ void test_chan_open_close_multiple()
 	firefly_event_return(eq, &ev);
 	protocol_data_received(conn_recv, conn_open_write.data,
 			conn_open_write.size);
-	free_tmp_data(&conn_open_write);
 	ev = firefly_event_pop(eq);
 	firefly_event_execute(ev);
 	firefly_event_return(eq, &ev);
@@ -1813,7 +1801,6 @@ void test_chan_open_close_multiple()
 	firefly_event_return(eq, &ev);
 	protocol_data_received(conn_open, conn_recv_write.data,
 			conn_recv_write.size);
-	free_tmp_data(&conn_recv_write);
 	ev = firefly_event_pop(eq);
 	firefly_event_execute(ev);
 	firefly_event_return(eq, &ev);
@@ -1827,7 +1814,6 @@ void test_chan_open_close_multiple()
 	firefly_event_return(eq, &ev);
 	protocol_data_received(conn_open, conn_recv_write.data,
 			conn_recv_write.size);
-	free_tmp_data(&conn_recv_write);
 	ev = firefly_event_pop(eq);
 	firefly_event_execute(ev);
 	firefly_event_return(eq, &ev);
@@ -1853,7 +1839,6 @@ void test_chan_open_close_multiple()
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	firefly_event_execute(ev);
 	firefly_event_return(eq, &ev);
-	free_tmp_data(&conn_open_write);
 
 	// Test only one channel remains
 	CU_ASSERT_PTR_NULL(conn_open->chan_list->next);
@@ -1880,7 +1865,6 @@ void test_chan_open_close_multiple()
 	CU_ASSERT_PTR_NOT_NULL(ev);
 	firefly_event_execute(ev);
 	firefly_event_return(eq, &ev);
-	free_tmp_data(&conn_open_write);
 	// Test no channel remains
 	CU_ASSERT_PTR_NULL(conn_open->chan_list);
 	CU_ASSERT_PTR_NULL(conn_recv->chan_list);

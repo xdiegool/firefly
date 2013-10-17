@@ -39,4 +39,5 @@ void protocol_data_received_repl(struct firefly_connection *conn,
 		CU_ASSERT_PTR_EQUAL(data_recv_expected_conn, conn);
 	}
 	data_received = true;
+	free(data);
 }

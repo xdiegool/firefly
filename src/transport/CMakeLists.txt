@@ -46,6 +46,15 @@ if(NOT CMAKE_CROSSCOMPILING)
 	)
 	target_link_libraries(transport-udp-posix gen-files)
 
+	# TCP POSIX
+	add_library(transport-tcp-posix
+		${Firefly_SOURCE_DIR}/transport/firefly_transport.c
+		${Firefly_SOURCE_DIR}/transport/firefly_transport_tcp_posix.c
+		${Firefly_SOURCE_DIR}/utils/firefly_resend_posix.c
+		${Firefly_SOURCE_DIR}/utils/firefly_event_queue_posix.c
+	)
+	target_link_libraries(transport-tcp-posix gen-files)
+
 else()
 
 	# Ethernet Stellaris

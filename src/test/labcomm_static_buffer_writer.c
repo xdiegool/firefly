@@ -89,12 +89,12 @@ static int statbuf_ioctl(struct labcomm_writer *w,
 		case LABCOMM_IOCTL_WRITER_GET_BUFFER: {
 			void **buf = va_arg(arg, void**);
 			size_t *size = va_arg(arg, size_t*);
-			*buf = w->data;
+			*buf = malloc(w->pos);
 			*size = w->pos;
+			memcpy(*buf, w->data, w->pos);
 			result = 0;
 			} break;
 		case LABCOMM_IOCTL_WRITER_RESET_BUFFER:
-			puts("resetting!");
 			w->pos = 0;
 			result = 0;
 			break;

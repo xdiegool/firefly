@@ -488,10 +488,10 @@ void test_important_recv_duplicate()
 	sample_pkt.src_chan_id = chan->remote_id;
 	sample_pkt.seqno = 1;
 	sample_pkt.important = true;
-	sample_pkt.app_enc_data.a = malloc(buf_size);
-	memcpy(sample_pkt.app_enc_data.a, buf, buf_size);
+	sample_pkt.app_enc_data.a = buf;
 	sample_pkt.app_enc_data.n_0 = buf_size;
 	labcomm_encode_firefly_protocol_data_sample(test_enc, &sample_pkt);
+	free(buf);
 	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
 			&buf, &buf_size);
 	protocol_data_received(conn, buf, buf_size);
@@ -500,8 +500,6 @@ void test_important_recv_duplicate()
 	CU_ASSERT_TRUE(received_ack);
 	CU_ASSERT_EQUAL(ack.seqno, 1);
 	CU_ASSERT_EQUAL(chan->remote_seqno, 1);
-
-	free(sample_pkt.app_enc_data.a);
 
 	test_test_var app_data = 1;
 	labcomm_encode_test_test_var(test_enc, &app_data);
@@ -511,10 +509,10 @@ void test_important_recv_duplicate()
 	sample_pkt.src_chan_id = chan->remote_id;
 	sample_pkt.seqno = 1;
 	sample_pkt.important = true;
-	sample_pkt.app_enc_data.a = malloc(buf_size);
-	memcpy(sample_pkt.app_enc_data.a, buf, buf_size);
+	sample_pkt.app_enc_data.a = buf;
 	sample_pkt.app_enc_data.n_0 = buf_size;
 	labcomm_encode_firefly_protocol_data_sample(test_enc, &sample_pkt);
+	free(buf);
 
 	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
 			&buf, &buf_size);
@@ -524,8 +522,6 @@ void test_important_recv_duplicate()
 	CU_ASSERT_TRUE(received_ack);
 	CU_ASSERT_EQUAL(ack.seqno, 1);
 	CU_ASSERT_EQUAL(chan->remote_seqno, 1);
-
-	free(sample_pkt.app_enc_data.a);
 
 	mock_transport_written = false;
 	mock_transport_acked = false;
@@ -645,6 +641,8 @@ void test_important_handshake_recv_errors()
 	mock_transport_written = false;
 	handshake_chan_recv_called = false;
 
+	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
+			&buf, &buf_size);
 	protocol_data_received(conn, buf, buf_size);
 	event_execute_test(eq, 1);
 
@@ -668,6 +666,8 @@ void test_important_handshake_recv_errors()
 	mock_transport_acked = false;
 	mock_transport_written = false;
 
+	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
+			&buf, &buf_size);
 	protocol_data_received(conn, buf, buf_size);
 	event_execute_test(eq, 1);
 	CU_ASSERT_FALSE(mock_transport_written);
@@ -782,6 +782,8 @@ void test_important_handshake_open_errors()
 	mock_transport_acked = false;
 	handshake_chan_open_called = false;
 
+	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
+			&buf, &buf_size);
 	protocol_data_received(conn, buf, buf_size);
 	ps.important = false;
 	event_execute_test(eq, 1);

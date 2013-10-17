@@ -47,6 +47,15 @@ struct firefly_connection *firefly_connection_new(
 		return NULL;
 	}
 	conn->actions = actions;
+	if (memory_replacements) {
+		conn->memory_replacements.alloc_replacement =
+			memory_replacements->alloc_replacement;
+		conn->memory_replacements.free_replacement =
+			memory_replacements->free_replacement;
+	} else {
+		conn->memory_replacements.alloc_replacement = NULL;
+		conn->memory_replacements.free_replacement = NULL;
+	}
 	reader = transport_labcomm_reader_new(conn, lc_mem);
 	writer = transport_labcomm_writer_new(conn, lc_mem);
 	if (reader == NULL || writer == NULL || lc_mem == NULL) {
@@ -92,15 +101,6 @@ struct firefly_connection *firefly_connection_new(
 	/* labcomm_register_error_handler_decoder(conn->transport_decoder,*/
 	/*                 labcomm_error_to_ff_error);*/
 
-	if (memory_replacements) {
-		conn->memory_replacements.alloc_replacement =
-			memory_replacements->alloc_replacement;
-		conn->memory_replacements.free_replacement =
-			memory_replacements->free_replacement;
-	} else {
-		conn->memory_replacements.alloc_replacement = NULL;
-		conn->memory_replacements.free_replacement = NULL;
-	}
 	conn->transport = tc;
 	conn->open = FIREFLY_CONNECTION_OPEN;
 
