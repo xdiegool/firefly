@@ -30,7 +30,7 @@ if(RTNET_ROOT_DIR)
 	find_path(RTNET_INCLUDE_DIR		NAMES ${header_NAME}			PATHS ${RTNET_ROOT_DIR}/include PATH_SUFFIXES rtnet NO_DEFAULT_PATH)
 else(RTNET_ROOT_DIR)
 	# Use default CMake search process (plus hard coded path...)
-	find_path(RTNET_INCLUDE_DIR		NAMES ${header_NAME}			PATHS /usr/local/rtnet/include PATH_SUFFIXES rtnet )
+	find_path(RTNET_INCLUDE_DIR		NAMES ${header_NAME}			PATHS /usr/local/rtnet/include /usr/include/xenomai/ PATH_SUFFIXES rtnet )
 endif(RTNET_ROOT_DIR)
 
 set(RTNET_PROCESS_INCLUDES RTNET_INCLUDE_DIR)
