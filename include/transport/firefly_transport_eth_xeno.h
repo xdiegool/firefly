@@ -5,6 +5,12 @@
 #include <sys/time.h>
 
 /**
+ * @brief The default read timeout (in nanoseconds, i.e. 500ms) between
+ * resending important packets.
+ */
+#define FIREFLY_TRANSPORT_ETH_XENO_DEFAULT_TIMEOUT (500000000)
+
+/**
  * @brief This callback will be called when a new connection is received.
  *
  * This function is implemented by the application layer. It will be called
@@ -90,6 +96,32 @@ struct firefly_transport_connection *firefly_transport_connection_eth_xeno_new(
  */
 void firefly_transport_eth_xeno_read(struct firefly_transport_llp *llp,
 		int64_t *timeout);
+
+
+/**
+ * @brief Start reader and resend thread. Both will run until stopped with
+ * firefly_transport_eth_xeno_stop().
+ *
+ * @param llp The LLP to run.
+ * @return Integer indicating success or failure.
+ * @retval 0 if successfull.
+ * @retval <0 upon error.
+ * @see #firefly_transport_eth_xeno_stop()
+ */
+int firefly_transport_eth_xeno_run(struct firefly_transport_llp *llp);
+
+/**
+ * @brief Stop reader and resend thread. Any thread to be stopped must have been
+ * started with firefly_transport_eth_xeno_run(), if not the result is
+ * undefined.
+ *
+ * @param llp The LLP to stop.
+ * @return Integer indicating success or failure.
+ * @retval 0 if successfull.
+ * @retval <0 upon error.
+ * @see #firefly_transport_eth_xeno_run()
+ */
+int firefly_transport_eth_xeno_stop(struct firefly_transport_llp *llp);
 
 /**
  * @brief Get the struct with implementations of each memory function as

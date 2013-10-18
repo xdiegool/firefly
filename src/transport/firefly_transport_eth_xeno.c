@@ -16,6 +16,7 @@
 #include <native/task.h>
 #include <rtnet.h>
 #include <native/timer.h>
+#include <native/mutex.h>
 #include <rtdm/rtdm.h>
 
 #include <sys/select.h>		// defines fd_set
@@ -37,6 +38,9 @@
 
 #define ERROR_STR_MAX_LEN      (256)
 #define XENO_HEAP_SIZE			(1024)
+
+#define EVENT_LOOP_PRIO		(55)
+#define READER_TASK_PRIO	(50)
 
 struct firefly_transport_llp *firefly_transport_llp_eth_xeno_new(
 		const char *iface_name,
@@ -305,7 +309,6 @@ void firefly_transport_eth_xeno_write(unsigned char *data, size_t data_size,
 			(struct sockaddr *)conn_eth->remote_addr,
 			sizeof(*conn_eth->remote_addr));
 	if (err < 0) {
-		FFL(FIREFLY_ERROR_SOCKET);
 		firefly_connection_raise_later(conn,
 				FIREFLY_ERROR_TRANS_WRITE, "rt_dev_sendto() failed");
 	}
@@ -378,8 +381,8 @@ void firefly_transport_eth_xeno_read(struct firefly_transport_llp *llp,
 	} else if (res < 0) {
 		char err_buf[ERROR_STR_MAX_LEN];
 		strerror_r(-res, err_buf, ERROR_STR_MAX_LEN);
-		firefly_error(FIREFLY_ERROR_SOCKET, 4,
-			      "recvfrom() failed in %s().\n%s, %s\n",
+		firefly_error(FIREFLY_ERROR_SOCKET, 3,
+			      "recvfrom() failed in %s().\n%s\n",
 			      __FUNCTION__, err_buf);
 		return;
 	}
@@ -403,6 +406,78 @@ void firefly_transport_eth_xeno_read(struct firefly_transport_llp *llp,
 	llp_eth->event_queue->offer_event_cb(llp_eth->event_queue,
 			FIREFLY_PRIORITY_HIGH,
 			firefly_transport_eth_xeno_read_event, ev_arg, 0, NULL);
+}
+
+static void read_thread_run(void *arg)
+{
+	struct firefly_transport_llp *llp;
+	struct transport_llp_eth_xeno *llp_eth;
+	int64_t timeout;
+	bool running;
+
+	llp = arg;
+	llp_eth = llp->llp_platspec;
+	timeout = FIREFLY_TRANSPORT_ETH_XENO_DEFAULT_TIMEOUT;
+	running = true;
+
+	do {
+		firefly_transport_eth_xeno_read(llp, &timeout);
+
+		rt_mutex_acquire(&llp_eth->run_mutex, TM_INFINITE);
+		running = llp_eth->running;
+		rt_mutex_release(&llp_eth->run_mutex);
+	} while (running);
+}
+
+
+int firefly_transport_eth_xeno_run(struct firefly_transport_llp *llp)
+{
+	int res;
+	struct transport_llp_eth_xeno *llp_eth;
+	// TODO: Add resend loop
+	/* struct firefly_resend_loop_args *largs;*/
+
+	llp_eth = llp->llp_platspec;
+	llp_eth->running = true;
+	res = rt_task_create(&llp_eth->read_thread, "reader_task", 0,
+			READER_TASK_PRIO, T_FPU|T_JOINABLE);
+	if (res < 0)
+		return res;
+
+	res = rt_mutex_create(&llp_eth->run_mutex, "run_mutex");
+	if (res < 0) {
+		llp_eth->running = false;
+		rt_task_delete(&llp_eth->read_thread);
+		return res;
+	}
+
+	res = rt_task_start(&llp_eth->read_thread, read_thread_run, llp);
+
+	/* largs = malloc(sizeof(*largs));*/
+	/* if (!largs) {*/
+	/*         llp_eth->running = false;*/
+	/*         return -1;*/
+	/* }*/
+	/* largs->rq = llp_eth->resend_queue;*/
+	/* largs->on_no_ack = resend_on_no_ack;*/
+	/* res = pthread_create(&llp_eth->resend_thread, NULL,*/
+	/*                          firefly_resend_run, largs);*/
+
+	return res;
+}
+
+int firefly_transport_eth_xeno_stop(struct firefly_transport_llp *llp)
+{
+	int res;
+	struct transport_llp_eth_xeno *llp_eth;
+
+	llp_eth = llp->llp_platspec;
+
+	rt_mutex_acquire(&llp_eth->run_mutex, TM_INFINITE);
+	llp_eth->running = false;
+	rt_mutex_release(&llp_eth->run_mutex);
+	res = rt_task_join(&llp_eth->read_thread);
+	return res;
 }
 
 void get_mac_addr(struct sockaddr_ll *addr, char *mac_addr)

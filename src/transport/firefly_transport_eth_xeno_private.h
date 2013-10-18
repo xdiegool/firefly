@@ -8,6 +8,8 @@
 #include <netpacket/packet.h>	// defines sockaddr_ll
 #include <signal.h>
 #include <native/heap.h>
+#include <native/task.h>
+#include <native/mutex.h>
 
 /**
  * @brief The protocol specified in every firefly packet. This is used to filter
@@ -31,6 +33,14 @@ struct transport_llp_eth_xeno {
 	firefly_on_conn_recv_eth_xeno on_conn_recv; /**< The callback to be
 													 called when a new
 													 connection is received. */
+	struct resend_queue *resend_queue; /**< The resend queue managing important
+											packets. */
+	RT_TASK read_thread; /**< The handle to the thread running the read loop. */
+	RT_MUTEX run_mutex;
+	RT_TASK resend_thread; /**< The handle to the thread running the resend
+								loop. */
+	bool running; /**< Whether or not the read loop should exit. */
+
 	RT_HEAP dyn_mem; /**< The heap implementing real time allocation of dynamic
 					   memory. */
 };
