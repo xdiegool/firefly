@@ -1,0 +1,34 @@
+<project name="Firefly" basedir="." default="jar">
+	<property name="build" value="build" />
+	<property name="dist" value="dist" />
+	<property name="ffjar" value="${dist}/firefly.jar" />
+	<property name="labcomm" value="../../../labcomm.devel/lib/java/labcomm.jar" />
+
+	<target name="clean">
+		<delete dir="${build}" />
+		<delete dir="${dist}" />
+	</target>
+
+	<target name="init">
+		<mkdir dir="${build}" />
+		<mkdir dir="${dist}" />
+	</target>
+
+	<target name="compile" depends="init">
+		<javac srcdir=".:" destdir="${build}">
+		  <classpath>
+			<pathelement location="${labcomm}" />
+		  </classpath>
+		</javac>
+	</target>
+
+	<target name="jar" depends="compile">
+		<jar basedir="${build}" destfile="${ffjar}">
+			<zipfileset excludes="META-INF/*" src="${labcomm}" />
+			<!--<manifest> -->
+			<!--	<attribute name="Main-Class" value="" /> -->
+			<!--</manifest> -->
+		</jar>
+	</target>
+
+</project>
