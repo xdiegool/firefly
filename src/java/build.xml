@@ -15,7 +15,7 @@
 	</target>
 
 	<target name="compile" depends="init">
-		<javac srcdir=".:" destdir="${build}">
+		<javac srcdir=".:" destdir="${build}" includeantruntime="false">
 		  <classpath>
 			<pathelement location="${labcomm}" />
 		  </classpath>
