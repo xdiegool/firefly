@@ -2,11 +2,19 @@
 	<property name="build" value="build" />
 	<property name="dist" value="dist" />
 	<property name="ffjar" value="${dist}/firefly.jar" />
+
+	<!-- TODO: Include these files later. -->
 	<property name="labcomm" value="../../../labcomm.devel/lib/java/labcomm.jar" />
+	<property name="labcommc" value="../../../labcomm.devel/compiler/labComm.jar" />
+
+	<property name="lcproto" value=" ../../lc/firefly_protocol.lc" />
+	<property name="gendir" value="genproto" />
+	<property name="genpkg" value="genproto" />
 
 	<target name="clean">
 		<delete dir="${build}" />
 		<delete dir="${dist}" />
+		<delete dir="${gendir}" />
 	</target>
 
 	<target name="init">
@@ -14,7 +22,7 @@
 		<mkdir dir="${dist}" />
 	</target>
 
-	<target name="compile" depends="init">
+	<target name="compile" depends="init,lcgen">
 		<javac srcdir=".:" destdir="${build}" includeantruntime="false">
 		  <classpath>
 			<pathelement location="${labcomm}" />
@@ -29,6 +37,12 @@
 			<!--	<attribute name="Main-Class" value="" /> -->
 			<!--</manifest> -->
 		</jar>
+	</target>
+
+	<target name="lcgen">
+        <java jar="${labcommc}" fork="true">
+		  <arg line="--java=${gendir} --javapackage=${genpkg} ${lcproto}" />
+		</java>
 	</target>
 
 </project>
