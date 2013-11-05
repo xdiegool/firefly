@@ -8,6 +8,7 @@ import se.lth.control.labcomm.LabCommDecoderChannel;
 import java.net.Socket;
 import java.io.OutputStream;
 import java.io.InputStream;
+import java.io.IOException;
 
 public class TCPConnection extends Connection implements
 							   ack.Handler,
@@ -30,7 +31,7 @@ public class TCPConnection extends Connection implements
 	// private LabCommDecoderChannel topDecoder;
 	// private LabCommEncoderChannel topEncoder;
 
-	public TCPConnection(Socket sock) {
+	public TCPConnection(Socket sock) throws IOException {
 		this.sock = sock;
 		bottomDecoder = new ConnectionDecoder(sock.getInputStream());
 		bottomEncoder = new ConnectionEncoder(sock.getOutputStream(),
@@ -93,13 +94,14 @@ public class TCPConnection extends Connection implements
 		public void run() {
 			while (!interrupted()) {
 				try {
-					System.out.println("Running decoder.");
 					dec.runOne();
-				} catch (java.io.EOFException e) {
-					System.out.println("Decoder reached end of file.");
+					} catch (java.io.EOFException e) {
+						System.out.println("Decoder reached end of file.");
+					} catch (Exception e) {
+					// TODO: handle
 				}
 			}
-
 		}
+
 	}
 }
