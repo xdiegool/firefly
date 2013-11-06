@@ -2,11 +2,14 @@ package example;
 
 import se.lth.cs.firefly.*;
 
+import java.io.IOException;
+
 public class Ping implements Runnable, FireflyApplication {
 	private boolean conn_open;
 	private boolean chan_open;
 
 	// Callbacks
+	public boolean channelAccept(Connection connection) { return true; }
 	public void channelOpened() {}
 	public void channelClosed() {}
 	public void channelRestrict() {}
@@ -18,10 +21,12 @@ public class Ping implements Runnable, FireflyApplication {
 	public void run() {
 		try {
 			reallyRun();
-		} catch (InterruptedException e) { }
+		} catch (InterruptedException e) {
+		} catch (IOException e) {
+		}
 	}
 
-	private void reallyRun() throws InterruptedException {
+	private void reallyRun() throws InterruptedException, IOException {
 		TCPConnectionMultiplexer connMux = new TCPConnectionMultiplexer(this);
 		Connection conn = connMux.openConnection(null, 8080); // Loopback
 		conn.openChannel();

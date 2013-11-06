@@ -10,7 +10,7 @@ import java.net.UnknownHostException;
 public class TCPConnectionMultiplexer {
 	private ServerSocket ssock;
 	private Reader reader;
-	private FireflyApplication delegate	;
+	private FireflyApplication delegate;
 
 	private ArrayList<Connection> connections;
 
@@ -33,7 +33,7 @@ public class TCPConnectionMultiplexer {
 		throws UnknownHostException, IOException
 	{
 		Socket sock = new Socket(host, port);
-		TCPConnection conn = new TCPConnection(sock);
+		TCPConnection conn = new TCPConnection(sock, delegate);
 		addConnection(conn);
 
 		return conn;
@@ -53,7 +53,7 @@ public class TCPConnectionMultiplexer {
 				// Make udp-ish with selectors?
 				try {
 					Socket s = ssock.accept();
-					TCPConnection c = new TCPConnection(s);
+					TCPConnection c = new TCPConnection(s, delegate);
 					// coannections.append(c);
 					TCPConnectionMultiplexer.this.addConnection(c);
 				} catch (IOException e) {
