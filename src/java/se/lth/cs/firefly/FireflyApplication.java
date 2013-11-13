@@ -5,7 +5,7 @@ public interface FireflyApplication {
 	// Want blocking ops?
 	public boolean channelAccept(Connection connection);
 	public void channelOpened();
-	public void channelClosed();
+	public void channelClosed(Channel chan);
 	public void channelRestrict();
 	public void channelStatus();
 	public void channelError();

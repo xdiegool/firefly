@@ -9,13 +9,14 @@ public class Ping implements Runnable, FireflyApplication {
 	private boolean chan_open;
 
 	// Callbacks
-	public boolean channelAccept(Connection connection) { return true; }
+	public boolean channelAccept(Connection connection) { return false; }
 	public void channelOpened() {}
 	public void channelClosed() {}
 	public void channelRestrict() {}
 	public void channelStatus() {}
 	public void channelError() {}
 	public void connectionError() {}
+	public void channelClosed(Channel chan) {}
 
 
 	public void run() {

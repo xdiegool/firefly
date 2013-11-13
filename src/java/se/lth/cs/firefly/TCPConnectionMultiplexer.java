@@ -20,7 +20,7 @@ public class TCPConnectionMultiplexer {
 		this.delegate = delegate;
 		connections = new ArrayList<Connection>();
 		ssock = new ServerSocket(port);
-		reader = new Reader();
+		reader = new Reader(delegate);
 		reader.start();
 	}
 
@@ -44,20 +44,32 @@ public class TCPConnectionMultiplexer {
 		synchronized (connections) {
 			connections.add(conn);
 		}
-		// TODO: Callback?
 	}
 
 	private class Reader extends Thread {
+		private FireflyServer srv;
+
+		public Reader(FireflyServer srv) {
+			this.srv = srv;
+		}
+
 		public void run() {
 			while (!interrupted()) {
 				// Make udp-ish with selectors?
 				try {
 					Socket s = ssock.accept();
-					TCPConnection c = new TCPConnection(s, delegate);
-					// coannections.append(c);
-					TCPConnectionMultiplexer.this.addConnection(c);
+					boolean conf;
+					String ha = s.getInetAddress().getHostAddress();
+					Debug.log("Incoming " + ha);
+					conf = srv.acceptConnection(ha);
+					if (conf) {
+						TCPConnection c = new TCPConnection(s, delegate);
+						TCPConnectionMultiplexer.this.addConnection(c);
+					} else {
+						s.close();
+					}
 				} catch (IOException e) {
-					// TODO: handle
+					Debug.die();
 				}
 			}
 		}
