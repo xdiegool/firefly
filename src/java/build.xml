@@ -3,6 +3,9 @@
 	<property name="dist" value="dist" />
 	<property name="ffjar" value="${dist}/firefly.jar" />
 
+	<property name="pongjar" value="${dist}/pong.jar" />
+	<property name="pingjar" value="${dist}/ping.jar" />
+
 	<!-- TODO: Include these files later. -->
 	<property name="labcomm" value="../../../labcomm.devel/lib/java/labcomm.jar" />
 	<property name="labcommc" value="../../../labcomm.devel/compiler/labComm.jar" />
@@ -10,6 +13,11 @@
 	<property name="lcproto" value=" ../../lc/firefly_protocol.lc" />
 	<property name="gendir" value="genproto" />
 	<property name="genpkg" value="genproto" />
+
+	<property name="lcpingpong" value=" ../../lc/pingpong.lc" />
+	<property name="gendir_pp" value="lc_gen" />
+	<property name="genpkg_pp" value="lc_gen" />
+
 
 	<target name="clean">
 		<delete dir="${build}" />
@@ -22,7 +30,7 @@
 		<mkdir dir="${dist}" />
 	</target>
 
-	<target name="compile" depends="init,lcgen">
+	<target name="compile" depends="init,lcProtoGen,lcPingPongGen">
 		<javac srcdir=".:" destdir="${build}" includeantruntime="false">
 		  <classpath>
 			<pathelement location="${labcomm}" />
@@ -38,10 +46,35 @@
 			<!--</manifest> -->
 		</jar>
 	</target>
-
-	<target name="lcgen">
+	<target name="lcProtoGen">
         <java jar="${labcommc}" fork="true">
 		  <arg line="--java=${gendir} --javapackage=${genpkg} ${lcproto}" />
+		</java>
+	</target>
+
+	<!-- Example application -->
+
+	<target name="pong" depends="jar, lcPingPongGen">
+		<jar basedir="${build}" destfile="${pongjar}">
+			<zipfileset excludes="META-INF/*" src="${ffjar}" />
+			<manifest>
+				<attribute name="Main-Class" value="example.Pong" />
+			</manifest>
+		</jar>
+	</target>
+
+	<target name="ping" depends="jar, lcPingPongGen">
+		<jar basedir="${build}" destfile="${pingjar}">
+			<zipfileset excludes="META-INF/*" src="${ffjar}" />
+			<manifest>
+				<attribute name="Main-Class" value="example.Ping" />
+			</manifest>
+		</jar>
+	</target>
+
+	<target name="lcPingPongGen">
+        <java jar="${labcommc}" fork="true">
+		  <arg line="--java=${gendir_pp} --javapackage=${genpkg_pp} ${lcpingpong}" />
 		</java>
 	</target>
 

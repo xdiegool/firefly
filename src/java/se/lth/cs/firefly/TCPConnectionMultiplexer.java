@@ -69,7 +69,7 @@ public class TCPConnectionMultiplexer {
 						s.close();
 					}
 				} catch (IOException e) {
-					Debug.die();
+					Debug.errx("IO broke: " + e);
 				}
 			}
 		}

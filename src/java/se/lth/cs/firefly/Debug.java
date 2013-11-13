@@ -1,16 +1,16 @@
 package se.lth.cs.firefly;
 
-class Debug {
+public class Debug {
 	public static void log(String msg) {
 		System.out.println(msg);
 	}
 
-	public static void err(String msg) {
+	public static void errx(String msg) {
 		System.err.println(msg);
+		System.exit(1);
 	}
 
-	public static void die() {
-		System.err.println("Terminating, bye!");
-		System.exit(1);
+	public static void warnx(String msg) {
+		System.err.println(msg);
 	}
 }

@@ -59,22 +59,32 @@ public class TCPConnection extends Connection implements
 
 	// 1
 	public synchronized void openChannel() throws IOException {
-		Channel chan = new Channel(nextChannelID);
+		Channel chan = new Channel(nextChannelID, this);
 		channel_request req = new channel_request();
 		req.source_chan_id = nextChannelID;
 		channel_request.encode(bottomEncoder, req);
 		nextChannelID++;
 	}
 
+	public void closeChannel(Channel chan) throws IOException{
+		channel_close cc = new channel_close();
+		cc.source_chan_id = chan.getLocalID();
+		cc.dest_chan_id = chan.getRemoteID();
+		channel_close.encode(bottomEncoder, cc);
+	}
+
 	// LabComm callbacks for generated protocol. Might move.
 	public void handle_ack(ack value) {
+		// Data ack not used with TCP.
 	}
 
 	public void handle_channel_ack(channel_ack value) {
 		Channel chan = channels.get(value.dest_chan_id);
 		if (value.ack) {
 			chan.setOpen();
+			delegate.channelOpened(chan);
 		} else {
+			delegate.channelClosed(chan);
 			chan.setClosed();
 			channels.remove (value.dest_chan_id);
 		}
@@ -106,7 +116,7 @@ public class TCPConnection extends Connection implements
 		channel_response resp = new channel_response();
 		resp.dest_chan_id = req.source_chan_id;
 		if (delegate.channelAccept(this)) {
-			Channel chan = new Channel(nextChannelID);
+			Channel chan = new Channel(nextChannelID, this);
 			resp.source_chan_id = nextChannelID;
 			channels.put(nextChannelID, chan);
 			resp.ack = true;

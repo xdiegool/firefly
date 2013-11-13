@@ -14,5 +14,6 @@ public abstract class Connection {
 		channels = new HashMap<Integer, Channel>();
 	}
 
-	public abstract void openChannel() throws IOException ;
+	public abstract void openChannel() throws IOException;
+	public abstract void closeChannel(Channel chan) throws IOException;
 }
