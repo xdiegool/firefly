@@ -9,7 +9,12 @@
 #include <utils/firefly_event_queue.h>
 
 #include <stdbool.h>
+
+#ifdef LABCOMM_COMPAT
+#include LABCOMM_COMPAT
+#else
 #include <stdint.h>
+#endif
 
 /**
  * @brief An event queue

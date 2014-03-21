@@ -1,19 +1,20 @@
-if(NOT CMAKE_CROSSCOMPILING)
+if(NOT CMAKE_CROSSCOMPILING OR VXWORKS_COMPILING)
 
-	# Set targets to install
-	set(transport_install_libs
-		transport-eth-posix
-		transport-udp-posix
-	)
 
-	# Ethernet POSIX
-	add_library(transport-eth-posix
-		${Firefly_SOURCE_DIR}/transport/firefly_transport.c
-		${Firefly_SOURCE_DIR}/transport/firefly_transport_eth_posix.c
-		${Firefly_SOURCE_DIR}/utils/firefly_resend_posix.c
-		${Firefly_SOURCE_DIR}/utils/firefly_event_queue_posix.c
-	)
-	target_link_libraries(transport-eth-posix gen-files)
+	if (NOT VXWORKS_COMPILING)
+		# Ethernet POSIX
+		add_library(transport-eth-posix
+			${Firefly_SOURCE_DIR}/transport/firefly_transport.c
+			${Firefly_SOURCE_DIR}/transport/firefly_transport_eth_posix.c
+			${Firefly_SOURCE_DIR}/utils/firefly_resend_posix.c
+			${Firefly_SOURCE_DIR}/utils/firefly_event_queue_posix.c
+		)
+		set(transport_install_libs
+			${transport_install_libs}
+			transport-eth-posix
+		)
+		target_link_libraries(transport-eth-posix gen-files)
+	endif (NOT VXWORKS_COMPILING)
 
 	if (XENOMAI_FOUND AND RTNET_FOUND)
 		include_directories(${XENOMAI_INCLUDE_DIRS} ${RTNET_INCLUDE_DIRS})
@@ -38,23 +39,35 @@ if(NOT CMAKE_CROSSCOMPILING)
 		)
 	endif (XENOMAI_FOUND AND RTNET_FOUND)
 
-	# UDP POSIX
-	add_library(transport-udp-posix
-		${Firefly_SOURCE_DIR}/transport/firefly_transport.c
-		${Firefly_SOURCE_DIR}/transport/firefly_transport_udp_posix.c
-		${Firefly_SOURCE_DIR}/utils/firefly_resend_posix.c
-		${Firefly_SOURCE_DIR}/utils/firefly_event_queue_posix.c
-	)
-	target_link_libraries(transport-udp-posix gen-files)
+	if (NOT VXWORKS_COMPILING)
+		# UDP POSIX
+		add_library(transport-udp-posix
+			${Firefly_SOURCE_DIR}/transport/firefly_transport.c
+			${Firefly_SOURCE_DIR}/transport/firefly_transport_udp_posix.c
+			${Firefly_SOURCE_DIR}/utils/firefly_resend_posix.c
+			${Firefly_SOURCE_DIR}/utils/firefly_event_queue_posix.c
+		)
+		target_link_libraries(transport-udp-posix gen-files)
+		set(transport_install_libs
+			${transport_install_libs}
+			transport-udp-posix
+		)
+	endif (NOT VXWORKS_COMPILING)
 
-	# TCP POSIX
-	add_library(transport-tcp-posix
-		${Firefly_SOURCE_DIR}/transport/firefly_transport.c
-		${Firefly_SOURCE_DIR}/transport/firefly_transport_tcp_posix.c
-		${Firefly_SOURCE_DIR}/utils/firefly_resend_posix.c
-		${Firefly_SOURCE_DIR}/utils/firefly_event_queue_posix.c
-	)
-	target_link_libraries(transport-tcp-posix gen-files)
+	if (NOT VXWORKS_COMPILING)
+		# TCP POSIX
+		add_library(transport-tcp-posix
+			${Firefly_SOURCE_DIR}/transport/firefly_transport.c
+			${Firefly_SOURCE_DIR}/transport/firefly_transport_tcp_posix.c
+			${Firefly_SOURCE_DIR}/utils/firefly_resend_posix.c
+			${Firefly_SOURCE_DIR}/utils/firefly_event_queue_posix.c
+		)
+		target_link_libraries(transport-tcp-posix gen-files)
+		set(transport_install_libs
+			${transport_install_libs}
+			transport-tcp-posix
+		)
+	endif (NOT VXWORKS_COMPILING)
 
 else()
 
@@ -77,7 +90,7 @@ else()
 		transport-eth-stellaris
 		transport-udp-lwip
 	)
-endif(NOT CMAKE_CROSSCOMPILING)
+endif(NOT CMAKE_CROSSCOMPILING OR VXWORKS_COMPILING)
 
 install(TARGETS ${transport_install_libs}
 	ARCHIVE DESTINATION lib
