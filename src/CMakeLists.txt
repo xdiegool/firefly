@@ -130,6 +130,7 @@ add_library(gen-files
 	${Firefly_PROJECT_DIR}/gen/firefly_protocol.c
 	${Firefly_PROJECT_DIR}/gen/pingpong.c
 )
+
 # Tell CMake that the files above are generated at compile time,
 # otherwise CMake complains about missing files when generating
 # build files:

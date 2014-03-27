@@ -39,7 +39,7 @@ if(NOT CMAKE_CROSSCOMPILING OR VXWORKS_COMPILING)
 		)
 	endif (XENOMAI_FOUND AND RTNET_FOUND)
 
-	if (NOT VXWORKS_COMPILING)
+	# if (NOT VXWORKS_COMPILING)
 		# UDP POSIX
 		add_library(transport-udp-posix
 			${Firefly_SOURCE_DIR}/transport/firefly_transport.c
@@ -52,7 +52,7 @@ if(NOT CMAKE_CROSSCOMPILING OR VXWORKS_COMPILING)
 			${transport_install_libs}
 			transport-udp-posix
 		)
-	endif (NOT VXWORKS_COMPILING)
+	# endif (NOT VXWORKS_COMPILING)
 
 	if (NOT VXWORKS_COMPILING)
 		# TCP POSIX
