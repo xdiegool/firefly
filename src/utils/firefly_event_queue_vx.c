@@ -1,0 +1,139 @@
+#define _VX_C_SOURCE (200112L)
+
+#include <semLib.h>
+#include <taskLib.h>
+#include <stdio.h>
+#include <utils/firefly_event_queue_vx.h>
+#include <utils/firefly_event_queue.h>
+
+struct firefly_event_queue_vx_context {
+	SEM_ID lock;
+	SEM_ID signal;
+	int tid_event_loop;
+	bool event_loop_stop;
+};
+
+int64_t firefly_event_queue_vx_add(struct firefly_event_queue *eq,
+		unsigned char prio, firefly_event_execute_f execute, void *context,
+		unsigned int nbr_deps, const int64_t *deps);
+
+struct firefly_event_queue *firefly_event_queue_vx_new(size_t pool_size)
+{
+	struct firefly_event_queue_vx_context *ctx;
+	struct firefly_event_queue *eq = NULL;
+
+	if ((ctx = malloc(sizeof(*ctx)))) {
+		ctx->lock = semMCreate(SEM_INVERSION_SAFE);
+		ctx->signal = semCCreate(0, 0);
+		if (!ctx->lock || !ctx->signal)
+			printf("fail to create sem\n");
+		ctx->event_loop_stop = 0;
+		eq = firefly_event_queue_new(firefly_event_queue_vx_add, pool_size, ctx);
+		if (!eq) {
+			semDelete(ctx->lock);
+			semDelete(ctx->signal);
+			free(ctx);
+		}
+	}
+
+	return eq;
+}
+
+void firefly_event_queue_vx_free(struct firefly_event_queue **eq)
+{
+	struct firefly_event_queue_vx_context *ctx;
+
+	ctx = firefly_event_queue_get_context(*eq);
+
+	/* firefly_event_queue_vx_stop(*eq); */
+	semDelete(ctx->lock);
+	semDelete(ctx->signal);
+	free(ctx);
+	firefly_event_queue_free(eq);
+}
+
+int64_t firefly_event_queue_vx_add(struct firefly_event_queue *eq,
+		unsigned char prio, firefly_event_execute_f execute, void *context,
+		unsigned int nbr_deps, const int64_t *deps)
+{
+	int res = 0;
+	struct firefly_event_queue_vx_context *ctx;
+
+	
+	ctx = firefly_event_queue_get_context(eq);
+	semTake(ctx->lock, WAIT_FOREVER);
+	res = firefly_event_add(eq, prio, execute, context, nbr_deps, deps);
+	if (res > 0) {
+		semGive(ctx->signal);
+	}
+	semGive(ctx->lock);
+
+	return res;
+}
+
+void *firefly_event_vx_thread_main(void *args)
+{
+	struct firefly_event_queue *eq;
+	struct firefly_event_queue_vx_context *ctx;
+	struct firefly_event *ev = NULL;
+	int event_left;
+	bool finish;
+
+	eq = args;
+	ctx = firefly_event_queue_get_context(eq);
+	semTake(ctx->lock, WAIT_FOREVER);
+	event_left = firefly_event_queue_length(eq);
+	finish = ctx->event_loop_stop;
+	semGive(ctx->lock);
+
+	while (!finish || event_left > 0) {
+		semTake(ctx->lock, WAIT_FOREVER);
+		event_left = firefly_event_queue_length(eq);
+		finish = ctx->event_loop_stop;
+		while (event_left <= 0 && !finish) {
+			semTake(ctx->signal, WAIT_FOREVER);
+			finish = ctx->event_loop_stop;
+			event_left = firefly_event_queue_length(eq);
+		}
+		ev = firefly_event_pop(eq);
+		semGive(ctx->lock);
+		if (ev) {
+			firefly_event_execute(ev);
+			semTake(ctx->lock, WAIT_FOREVER);
+			firefly_event_return(eq, &ev);
+			semGive(ctx->lock);
+		}
+	}
+
+	return NULL;
+}
+
+int firefly_event_queue_vx_run(struct firefly_event_queue *eq)
+{
+	int res;
+	struct firefly_event_queue_vx_context *ctx;
+
+	ctx = firefly_event_queue_get_context(eq);
+	res = taskSpawn("ff_event_task", 254, 0, 20000,
+					firefly_event_vx_thread_main,
+					(int) eq, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+	ctx->tid_event_loop = res;
+
+	return 0;					/* TODO: Do properly. */
+}
+
+int firefly_event_queue_vx_stop(struct firefly_event_queue *eq)
+{
+	struct firefly_event_queue_vx_context *ctx;
+
+	ctx = firefly_event_queue_get_context(eq);
+
+	semTake(ctx->lock, WAIT_FOREVER);
+	ctx->event_loop_stop = true;
+	semGive(ctx->signal);
+
+	semGive(ctx->lock);
+	taskDelete(ctx->tid_event_loop);
+
+	return 0;
+}

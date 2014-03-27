@@ -18,12 +18,19 @@
 #include <sys/ioctl.h>
 
 #ifdef LABCOMM_COMPAT
+
 #include <selectLib.h>
 #include <sockLib.h>
 #include <inetLib.h>
 #include <ioLib.h>
+#include <taskLib.h>
+#include <utils/firefly_resend_vx.h>
+
 #else
+
 #include <sys/select.h>
+#include <utils/firefly_resend_posix.h>
+
 #endif
 
 #include <signal.h>
@@ -32,7 +39,6 @@
 #include <utils/firefly_errors.h>
 #include <utils/firefly_event_queue.h>
 
-#include <utils/firefly_resend_posix.h>
 #include "utils/firefly_event_queue_private.h"
 #include "protocol/firefly_protocol_private.h"
 #include "transport/firefly_transport_private.h"
@@ -303,24 +309,47 @@ int firefly_transport_udp_posix_run(struct firefly_transport_llp *llp)
 	struct firefly_resend_loop_args *largs;
 
 	llp_udp = llp->llp_platspec;
+	largs = malloc(sizeof(*largs));
+	if (!largs)
+		return -1;
+	largs->rq = llp_udp->resend_queue;
+	largs->on_no_ack = resend_on_no_ack;
+
+	/* TODO: Clean this up. */
+#ifndef LABCOMM_COMPAT
 	res = pthread_create(&llp_udp->read_thread, NULL,
 			firefly_transport_udp_posix_read_run, llp);
 	if (res < 0)
-		return res;
-	largs = malloc(sizeof(*largs));
-	if (!largs) {
-		pthread_cancel(llp_udp->read_thread);
-		return -1;
-	}
-	largs->rq = llp_udp->resend_queue;
-	largs->on_no_ack = resend_on_no_ack;
+		goto fail;
 	res = pthread_create(&llp_udp->resend_thread, NULL,
 				 firefly_resend_run, largs);
-	if (res < 0) {
-		pthread_cancel(llp_udp->read_thread);
-		return res;
-	}
+	if (res < 0)
+		goto ptfail;
 	return 0;
+ ptfail:
+	pthread_cancel(llp_udp->read_thread);
+	goto fail;
+#else
+	res = taskSpawn("ff_read_thread", 254, 0, 20000,
+					firefly_transport_udp_posix_read_run,
+					0, 0, 0, 0, 0, 0, 0, 0, 0, 0); /* TODO: arg */
+	if (res == ERROR)
+		goto fail;
+	llp_udp->tid_read = res;
+	res = taskSpawn("ff_resend_thread", 254, 0, 20000,
+					firefly_resend_run,
+					0, 0, 0, 0, 0, 0, 0, 0, 0, 0); /* TODO: arg */
+	if (res == ERROR)
+		goto vxfail;
+	llp_udp->tid_resend = res;
+	return 0;
+ vxfail:
+	taskDelete(llp_udp->tid_read);
+	goto fail;
+#endif
+ fail:
+	free(largs);
+	return res;
 }
 
 int firefly_transport_udp_posix_stop(struct firefly_transport_llp *llp)
@@ -328,10 +357,16 @@ int firefly_transport_udp_posix_stop(struct firefly_transport_llp *llp)
 	struct transport_llp_udp_posix *llp_udp;
 
 	llp_udp = llp->llp_platspec;
+
+#ifndef LABCOMM_COMPAT
 	pthread_cancel(llp_udp->read_thread);
 	pthread_cancel(llp_udp->resend_thread);
 	pthread_join(llp_udp->resend_thread, NULL);
 	pthread_join(llp_udp->read_thread, NULL);
+#else
+	taskDelete(llp_udp->tid_read);
+	taskDelete(llp_udp->tid_resend);
+#endif
 	return 0;
 }
 
