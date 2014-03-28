@@ -100,7 +100,8 @@ struct firefly_transport_llp *firefly_transport_llp_udp_posix_new(
 		char err_buf[ERROR_STR_MAX_LEN];
 
 #ifdef LABCOMM_COMPAT
-		err_buf[0] = '\0';
+		strerror_r(errno, err_buf); /* GERONIMO! */
+		err_buf[ERROR_STR_MAX_LEN-1] = '\0';
 #else
 		strerror_r(errno, err_buf, sizeof(err_buf));
 #endif
@@ -142,14 +143,18 @@ void firefly_transport_llp_udp_posix_free(struct firefly_transport_llp *llp)
 
 static void check_llp_free(struct firefly_transport_llp *llp)
 {
-	struct transport_llp_udp_posix *llp_udp;
 	if (llp->state == FIREFLY_LLP_CLOSING && llp->conn_list == NULL) {
+		struct transport_llp_udp_posix *llp_udp;
+
 		llp_udp = llp->llp_platspec;
 		close(llp_udp->local_udp_socket);
+		printf("socket CLOSED\n");
 		free(llp_udp->local_addr);
 		firefly_resend_queue_free(llp_udp->resend_queue);
 		free(llp_udp);
 		free(llp);
+	} else {
+		printf("Failed to close llp properly!");
 	}
 }
 
@@ -167,6 +172,7 @@ int firefly_transport_llp_udp_posix_free_event(void *event_arg)
 		head = head->next;
 	}
 	check_llp_free(llp);
+
 	return 0;
 }
 

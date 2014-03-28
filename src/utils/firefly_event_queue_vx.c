@@ -8,7 +8,8 @@
 
 struct firefly_event_queue_vx_context {
 	SEM_ID lock;
-	SEM_ID signal;
+	SEM_ID signal;				/* New items in queue. */
+	SEM_ID dead;
 	int tid_event_loop;
 	bool event_loop_stop;
 };
@@ -44,6 +45,11 @@ struct firefly_event_queue *firefly_event_queue_vx_new(size_t pool_size)
 			printf("fail to create csem.\n");
 			goto fail;
 		}
+		ctx->dead = semBCreate(SEM_Q_FIFO, SEM_EMPTY);
+		if (!ctx->dead) {
+			printf("fail to create bsem.\n");
+			goto fail;
+		}
 		ctx->event_loop_stop = 0;
 		eq = firefly_event_queue_new(firefly_event_queue_vx_add, pool_size, ctx);
 		if (!eq)
@@ -56,6 +62,8 @@ struct firefly_event_queue *firefly_event_queue_vx_new(size_t pool_size)
 		semDelete(ctx->lock);
 	if (ctx->signal)
 		semDelete(ctx->signal);
+	if (ctx->dead)
+		semDelete(ctx->dead);
 	free(ctx);
 	if (eq)
 		firefly_event_queue_vx_free(&eq);
@@ -109,11 +117,14 @@ void *firefly_event_vx_thread_main(void *args)
 	semGive(ctx->lock);
 
 	while (!finish || event_left > 0) {
+		/* TODO: Clean up. Posix version was weird. */
 		semTake(ctx->lock, WAIT_FOREVER);
 		event_left = firefly_event_queue_length(eq);
 		finish = ctx->event_loop_stop;
 		while (event_left <= 0 && !finish) {
+			semGive(ctx->lock);
 			semTake(ctx->signal, WAIT_FOREVER);
+			semTake(ctx->lock, WAIT_FOREVER);
 			finish = ctx->event_loop_stop;
 			event_left = firefly_event_queue_length(eq);
 		}
@@ -129,6 +140,10 @@ void *firefly_event_vx_thread_main(void *args)
 			semGive(ctx->lock);
 		}
 	}
+
+	/* semTake(ctx->lock, WAIT_FOREVER); */
+	semGive(ctx->dead);
+	/* semGive(ctx->lock); */
 
 	return NULL;
 }
@@ -160,8 +175,11 @@ int firefly_event_queue_vx_stop(struct firefly_event_queue *eq)
 	semTake(ctx->lock, WAIT_FOREVER);
 	ctx->event_loop_stop = true;
 	semGive(ctx->lock);
-	semGive(ctx->signal);
+	semGive(ctx->signal);	/* Signal ev. task to die. */
 
+	printf("eq not done yet...\n");
+	semTake(ctx->dead, WAIT_FOREVER);
+	printf("eq done!\n");
 	ret = taskDelete(ctx->tid_event_loop);
 	if (ret == ERROR) {
 		printf("Failed to delete eq task.\n");
