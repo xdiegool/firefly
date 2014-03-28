@@ -338,13 +338,15 @@ int firefly_transport_udp_posix_run(struct firefly_transport_llp *llp)
 #else
 	res = taskSpawn("ff_read_thread", 254, 0, 20000,
 					firefly_transport_udp_posix_read_run,
-					0, 0, 0, 0, 0, 0, 0, 0, 0, 0); /* TODO: arg */
+					(int) llp,
+					0, 0, 0, 0, 0, 0, 0, 0, 0); /* TODO: arg */
 	if (res == ERROR)
 		goto fail;
 	llp_udp->tid_read = res;
 	res = taskSpawn("ff_resend_thread", 254, 0, 20000,
 					firefly_resend_run,
-					0, 0, 0, 0, 0, 0, 0, 0, 0, 0); /* TODO: arg */
+					(int) largs,
+					0, 0, 0, 0, 0, 0, 0, 0, 0); /* TODO: arg */
 	if (res == ERROR)
 		goto vxfail;
 	llp_udp->tid_resend = res;
