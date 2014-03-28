@@ -44,4 +44,8 @@ int firefly_event_queue_vx_run(struct firefly_event_queue *eq);
  */
 int firefly_event_queue_vx_stop(struct firefly_event_queue *eq);
 
+int64_t firefly_event_queue_vx_add(struct firefly_event_queue *eq,
+		unsigned char prio, firefly_event_execute_f execute, void *context,
+								   unsigned int nbr_deps, const int64_t *deps);
+
 #endif

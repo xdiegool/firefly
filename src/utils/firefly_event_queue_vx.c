@@ -19,24 +19,47 @@ int64_t firefly_event_queue_vx_add(struct firefly_event_queue *eq,
 
 struct firefly_event_queue *firefly_event_queue_vx_new(size_t pool_size)
 {
-	struct firefly_event_queue_vx_context *ctx;
+	struct firefly_event_queue_vx_context *ctx = NULL;
 	struct firefly_event_queue *eq = NULL;
 
-	if ((ctx = malloc(sizeof(*ctx)))) {
-		ctx->lock = semMCreate(SEM_INVERSION_SAFE);
+	if ((ctx = calloc(1, sizeof(*ctx)))) {
+		ctx->lock = semMCreate(SEM_INVERSION_SAFE | SEM_Q_PRIORITY);
+		if (!ctx->lock) {
+			printf("fail to create msem: ");
+			switch (errno) {
+			case S_semLib_INVALID_OPTION:
+				printf("invalid option");
+				break;
+			case S_memLib_NOT_ENOUGH_MEMORY:
+				printf("no mem");
+				break;
+			default:
+				printf("other");
+			}
+			printf("\n");
+			goto fail;
+		}
 		ctx->signal = semCCreate(0, 0);
-		if (!ctx->lock || !ctx->signal)
-			printf("fail to create sem\n");
+		if (!ctx->signal) {
+			printf("fail to create csem.\n");
+			goto fail;
+		}
 		ctx->event_loop_stop = 0;
 		eq = firefly_event_queue_new(firefly_event_queue_vx_add, pool_size, ctx);
-		if (!eq) {
-			semDelete(ctx->lock);
-			semDelete(ctx->signal);
-			free(ctx);
-		}
+		if (!eq)
+			goto fail;
 	}
 
 	return eq;
+ fail:
+	if (ctx->lock)
+		semDelete(ctx->lock);
+	if (ctx->signal)
+		semDelete(ctx->signal);
+	free(ctx);
+	if (eq)
+		firefly_event_queue_vx_free(&eq);
+	return NULL;
 }
 
 void firefly_event_queue_vx_free(struct firefly_event_queue **eq)
@@ -58,7 +81,6 @@ int64_t firefly_event_queue_vx_add(struct firefly_event_queue *eq,
 {
 	int res = 0;
 	struct firefly_event_queue_vx_context *ctx;
-
 	
 	ctx = firefly_event_queue_get_context(eq);
 	semTake(ctx->lock, WAIT_FOREVER);
@@ -98,6 +120,9 @@ void *firefly_event_vx_thread_main(void *args)
 		ev = firefly_event_pop(eq);
 		semGive(ctx->lock);
 		if (ev) {
+			/* TODO: Retval can indicate badly contructed event, or 
+			 * failed execution. Should this be handled?
+			 */
 			firefly_event_execute(ev);
 			semTake(ctx->lock, WAIT_FOREVER);
 			firefly_event_return(eq, &ev);
@@ -117,23 +142,31 @@ int firefly_event_queue_vx_run(struct firefly_event_queue *eq)
 	res = taskSpawn("ff_event_task", 254, 0, 20000,
 					firefly_event_vx_thread_main,
 					(int) eq, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-	ctx->tid_event_loop = res;
+	if (res != ERROR) {
+		ctx->tid_event_loop = res;
+		return 0;
+	}
 
-	return 0;					/* TODO: Do properly. */
+	return -1;
 }
 
 int firefly_event_queue_vx_stop(struct firefly_event_queue *eq)
 {
 	struct firefly_event_queue_vx_context *ctx;
+	int ret;
 
 	ctx = firefly_event_queue_get_context(eq);
 
 	semTake(ctx->lock, WAIT_FOREVER);
 	ctx->event_loop_stop = true;
+	semGive(ctx->lock);
 	semGive(ctx->signal);
 
-	semGive(ctx->lock);
-	taskDelete(ctx->tid_event_loop);
+	ret = taskDelete(ctx->tid_event_loop);
+	if (ret == ERROR) {
+		printf("Failed to delete eq task.\n");
+		return -1;
+	}
 
 	return 0;
 }
