@@ -296,6 +296,7 @@ void *firefly_transport_udp_posix_read_run(void *args)
 {
 	struct firefly_transport_llp *llp;
 
+	printf("Reader task started\n");
 	llp = args;
 	while (true)
 		firefly_transport_udp_posix_read(llp);
@@ -336,15 +337,17 @@ int firefly_transport_udp_posix_run(struct firefly_transport_llp *llp)
 	pthread_cancel(llp_udp->read_thread);
 	goto fail;
 #else
+	printf("Spawning reader thread\n");
 	res = taskSpawn("ff_read_thread", 254, 0, 20000,
-					firefly_transport_udp_posix_read_run,
+					(FUNCPTR)firefly_transport_udp_posix_read_run,
 					(int) llp,
 					0, 0, 0, 0, 0, 0, 0, 0, 0); /* TODO: arg */
 	if (res == ERROR)
 		goto fail;
 	llp_udp->tid_read = res;
+	printf("Spawning resend thread\n");
 	res = taskSpawn("ff_resend_thread", 254, 0, 20000,
-					firefly_resend_run,
+					(FUNCPTR)firefly_resend_run,
 					(int) largs,
 					0, 0, 0, 0, 0, 0, 0, 0, 0); /* TODO: arg */
 	if (res == ERROR)
@@ -397,23 +400,27 @@ static int firefly_transport_udp_posix_read_event(void *event_arg)
 	// Find existing connection or create new.
 	conn = find_connection(ev_arg->llp, &ev_arg->addr, connection_eq_inaddr);
 	if (conn == NULL) {
+		puts("re: new conn");
 		char ip_addr[INET_ADDRSTRLEN];
 		sockaddr_in_ipaddr(&ev_arg->addr, ip_addr);
 		int64_t ev_id = 0;
 		if (llp_udp->on_conn_recv != NULL &&
 				(ev_id = llp_udp->on_conn_recv(ev_arg->llp, ip_addr,
-					sockaddr_in_port(&ev_arg->addr))) > 0) {
+					sockaddr_in_port(&ev_arg->addr))) > 0)
+		{
 			return llp_udp->event_queue->offer_event_cb(llp_udp->event_queue,
 					FIREFLY_PRIORITY_HIGH,
 					firefly_transport_udp_posix_read_event,
 					ev_arg, 1, &ev_id);
 		} else {
+			puts("no cb");
 			free(ev_arg->data);
 		}
 	} else {
 		ev_arg->llp->protocol_data_received_cb(conn, ev_arg->data, ev_arg->len);
 	}
 	free(ev_arg);
+	puts("ev ok");
 	return 0;
 }
 
@@ -431,7 +438,9 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 	do {
 		FD_ZERO(&fs);
 		FD_SET(llp_udp->local_udp_socket, &fs);
+		/* printf("select\n"); */
 		res = select(llp_udp->local_udp_socket + 1, &fs, NULL, NULL, NULL);
+		/* printf("select ret %d\n", res); */
 	} while (res == -1 && errno == EINTR);
 	if (res == -1) {
 		if (errno == ENOMEM) {
@@ -443,7 +452,7 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 		return;
 	}
 #ifdef LABCOMM_COMPAT
-	res = ioctl(llp_udp->local_udp_socket, FIONREAD, pkg_len);
+	res = ioctl(llp_udp->local_udp_socket, FIONREAD, (int) &pkg_len);
 #else
 	res = ioctl(llp_udp->local_udp_socket, FIONREAD, &pkg_len);
 #endif
@@ -464,8 +473,10 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 		return;
 	}
 	len = sizeof(remote_addr);
+	/* printf("recv %d byte\n", pkg_len); */
 	res = recvfrom(llp_udp->local_udp_socket, (void *) ev_arg->data, pkg_len, 0,
 		       (struct sockaddr *) &remote_addr, (void *) &len);
+	/* printf("recv'd %d byte\n", res); */
 	if (res == -1) {
 		char err_buf[ERROR_STR_MAX_LEN];
 #ifdef LABCOMM_COMPAT

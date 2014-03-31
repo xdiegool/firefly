@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <utils/firefly_event_queue_vx.h>
 #include <utils/firefly_event_queue.h>
+#include <utils/firefly_event_queue_private.h>
 
 struct firefly_event_queue_vx_context {
 	SEM_ID lock;
@@ -89,14 +90,13 @@ int64_t firefly_event_queue_vx_add(struct firefly_event_queue *eq,
 {
 	int res = 0;
 	struct firefly_event_queue_vx_context *ctx;
-	
+
 	ctx = firefly_event_queue_get_context(eq);
 	semTake(ctx->lock, WAIT_FOREVER);
 	res = firefly_event_add(eq, prio, execute, context, nbr_deps, deps);
-	if (res > 0) {
-		semGive(ctx->signal);
-	}
 	semGive(ctx->lock);
+	if (res > 0)
+		semGive(ctx->signal);
 
 	return res;
 }
@@ -130,14 +130,18 @@ void *firefly_event_vx_thread_main(void *args)
 		}
 		ev = firefly_event_pop(eq);
 		semGive(ctx->lock);
+		printf("got ev?\n");
 		if (ev) {
 			/* TODO: Retval can indicate badly contructed event, or 
 			 * failed execution. Should this be handled?
 			 */
+			printf("executing ev. %p\n", ev->execute);
 			firefly_event_execute(ev);
+			printf("executing ev done.\n");
 			semTake(ctx->lock, WAIT_FOREVER);
 			firefly_event_return(eq, &ev);
 			semGive(ctx->lock);
+			printf("event returned\n");
 		}
 	}
 
@@ -155,7 +159,7 @@ int firefly_event_queue_vx_run(struct firefly_event_queue *eq)
 
 	ctx = firefly_event_queue_get_context(eq);
 	res = taskSpawn("ff_event_task", 254, 0, 20000,
-					firefly_event_vx_thread_main,
+					(FUNCPTR)firefly_event_vx_thread_main,
 					(int) eq, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 	if (res != ERROR) {
 		ctx->tid_event_loop = res;
