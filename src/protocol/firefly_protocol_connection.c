@@ -118,6 +118,7 @@ int firefly_connection_open(
 {
 
 	struct firefly_connection *conn;
+
 	conn = firefly_connection_new(actions, memory_replacements, event_queue, tc);
 	return conn != NULL ? conn->event_queue->offer_event_cb(conn->event_queue,
 			FIREFLY_PRIORITY_HIGH, firefly_connection_open_event,
