@@ -42,44 +42,34 @@ void reg_proto_sigs(struct labcomm_encoder *enc,
 {
 	struct firefly_transport_connection *orig_transport;
 
-	printf("in %s\n", __func__);
 	orig_transport = conn->transport;
 	conn->transport = &sig_transport;
 
-	printf("reg decoders\n");
-	printf("reg ds\n");
+	init_firefly_protocol__signatures();
 	labcomm_decoder_register_firefly_protocol_data_sample(dec,
 					  	  handle_data_sample, conn);
 
-	printf("reg chan req\n");
 	labcomm_decoder_register_firefly_protocol_channel_request(dec,
 						  handle_channel_request, conn);
 
-	printf("reg chan resp\n");
 	labcomm_decoder_register_firefly_protocol_channel_response(dec,
 					   handle_channel_response, conn);
 
-	printf("reg chan ack\n");
 	labcomm_decoder_register_firefly_protocol_channel_ack(dec,
 						  handle_channel_ack, conn);
 
-	printf("reg chan cl\n");
 	labcomm_decoder_register_firefly_protocol_channel_close(dec,
 						handle_channel_close, conn);
 
-	printf("reg ack\n");
 	labcomm_decoder_register_firefly_protocol_ack(dec,
 						handle_ack, conn);
 
-	printf("reg restr req\n");
 	labcomm_decoder_register_firefly_protocol_channel_restrict_request(
 			dec, handle_channel_restrict_request, conn);
 
-	printf("reg resrt ack\n");
 	labcomm_decoder_register_firefly_protocol_channel_restrict_ack(
 			dec, handle_channel_restrict_ack, conn);
 
-	printf("reg encoders \n");
 	labcomm_encoder_register_firefly_protocol_data_sample(enc);
 	labcomm_encoder_register_firefly_protocol_channel_request(enc);
 	labcomm_encoder_register_firefly_protocol_channel_response(enc);
@@ -89,7 +79,6 @@ void reg_proto_sigs(struct labcomm_encoder *enc,
 	labcomm_encoder_register_firefly_protocol_channel_restrict_request(enc);
 	labcomm_encoder_register_firefly_protocol_channel_restrict_ack(enc);
 
-	printf("reg done");
 	conn->transport = orig_transport;
 }
 
