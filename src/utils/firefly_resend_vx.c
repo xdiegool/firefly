@@ -161,6 +161,7 @@ void firefly_resend_remove(struct resend_queue *rq, unsigned char id)
 {
 	struct resend_elem *re;
 
+	printf("%s\n", __func__);
 	semTake(rq->lock, WAIT_FOREVER);
 	re = firefly_resend_pop(rq, id);
 	if (re != NULL)
@@ -237,7 +238,7 @@ int firefly_resend_wait(struct resend_queue *rq,
 	} else {
 		*data = malloc(res->size);
 		if (!*data)
-			printf("malloc failed %s:%s\n", __FILE__, __LINE__);
+			printf("malloc failed %s:%d\n", __FILE__, __LINE__);
 		memcpy(*data, res->data, res->size);
 		*size = res->size;
 		*id = res->id;

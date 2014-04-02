@@ -204,13 +204,17 @@ void protocol_data_received(struct firefly_connection *conn,
 		unsigned char *data, size_t size)
 {
 	if (conn->open == FIREFLY_CONNECTION_OPEN) {
+		printf("Setting dec buf\n");
 		labcomm_decoder_ioctl(conn->transport_decoder,
 				FIREFLY_LABCOMM_IOCTL_READER_SET_BUFFER,
 				data, size);
 		int res = 0;
-		while (res >= 0)
+		while (res >= 0) {
+			printf("decoding one\n");
 			res = labcomm_decoder_decode_one(conn->transport_decoder);
-	}
+		}
+	} else
+		printf("FAIL IN %s\n", __func__);
 }
 
 void handle_channel_request(firefly_protocol_channel_request *chan_req,
@@ -222,6 +226,7 @@ void handle_channel_request(firefly_protocol_channel_request *chan_req,
 
 	conn = context;
 
+	printf("%s\n", __func__);
 	fecrr = FIREFLY_MALLOC(sizeof(*fecrr));
 	if (fecrr == NULL) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1,
@@ -381,6 +386,7 @@ void handle_channel_ack(firefly_protocol_channel_ack *chan_ack, void *context)
 	struct firefly_event_chan_ack_recv *fecar;
 	int ret;
 
+	printf("%s\n", __func__);
 	conn = context;
 	fecar = FIREFLY_MALLOC(sizeof(*fecar));
 	if (fecar == NULL) {
@@ -427,6 +433,7 @@ void handle_channel_close(firefly_protocol_channel_close *chan_close,
 	struct firefly_connection *conn;
 	struct firefly_channel *chan;
 
+	printf("%s\n", __func__);
 	conn = context;
 	chan = find_channel_by_local_id(conn, chan_close->dest_chan_id);
 	if (chan != NULL){
@@ -529,6 +536,7 @@ void handle_ack(firefly_protocol_ack *ack, void *context)
 	struct firefly_connection *conn;
 	struct firefly_channel *chan;
 
+	printf("%s\n", __func__);
 	conn = context;
 	chan = find_channel_by_local_id(conn, ack->dest_chan_id);
 	if (chan == NULL) {
@@ -617,6 +625,7 @@ void handle_channel_restrict_request(
 	struct firefly_event_channel_restrict_request *earg;
 	int ret;
 
+	printf("%s\n", __func__);
 	conn = context;
 	earg = FIREFLY_MALLOC(sizeof(*earg));
 	if (!earg) {
@@ -697,6 +706,7 @@ void handle_channel_restrict_ack(firefly_protocol_channel_restrict_ack *data,
 
 	conn = context;
 
+	printf("%s\n", __func__);
 	earg = FIREFLY_MALLOC(sizeof(*earg));
 	if (!earg) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1,

@@ -396,6 +396,7 @@ static int firefly_transport_udp_posix_read_event(void *event_arg)
 	struct transport_llp_udp_posix *llp_udp;
 	struct firefly_connection *conn;
 
+	printf("%s\n", __func__);
 	ev_arg = event_arg;
 	llp_udp = ev_arg->llp->llp_platspec;
 
@@ -476,8 +477,10 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 	}
 	len = sizeof(remote_addr);
 	/* printf("recv %d byte\n", pkg_len); */
+	printf("receiving\n");
 	res = recvfrom(llp_udp->local_udp_socket, (void *) ev_arg->data, pkg_len, 0,
 		       (struct sockaddr *) &remote_addr, (void *) &len);
+	printf("received\n");
 	/* printf("recv'd %d byte\n", res); */
 	if (res == -1) {
 		char err_buf[ERROR_STR_MAX_LEN];
