@@ -236,6 +236,8 @@ int firefly_resend_wait(struct resend_queue *rq,
 		result = -1;
 	} else {
 		*data = malloc(res->size);
+		if (!*data)
+			printf("malloc failed %s:%s\n", __FILE__, __LINE__);
 		memcpy(*data, res->data, res->size);
 		*size = res->size;
 		*id = res->id;

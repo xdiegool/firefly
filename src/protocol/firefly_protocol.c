@@ -302,6 +302,7 @@ void handle_channel_response(firefly_protocol_channel_response *chan_res,
 
 	conn = context;
 
+	printf("%s", __func__);
 	fecrr = FIREFLY_MALLOC(sizeof(*fecrr));
 	if (fecrr == NULL) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1,
@@ -327,6 +328,8 @@ static void firefly_channel_send_channel_ack(
 		int dest_chan_id)
 {
 	firefly_protocol_channel_ack ack;
+
+	printf("%s", __func__);
 	if (chan != NULL) {
 		ack.ack = true;
 		ack.source_chan_id = chan->local_id;
