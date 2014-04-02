@@ -78,7 +78,9 @@ unsigned char firefly_resend_add(struct resend_queue *rq,
 	re->timeout = timeout_ms;
 	re->prev = NULL;
 
+	printf("WAITING FOR RQ LOCK\n");
 	semTake(rq->lock, WAIT_FOREVER);
+	printf("TOOK RQ LOCK\n");
 	re->id = rq->next_id++;
 	if (rq->next_id == 0) {
 		rq->next_id = 1;
@@ -204,8 +206,11 @@ int firefly_resend_wait(struct resend_queue *rq,
 	clock_gettime(CLOCK_REALTIME, &now);
 	res = rq->first;
 	while (!res || !timespec_past(&now, &res->resend_at)) {
+		/* TODO: Port of posix code. Clean it up. */
 		if (!res) {
+			semGive(rq->lock);
 			semTake(rq->sig, WAIT_FOREVER);
+			semTake(rq->lock, WAIT_FOREVER);
 		} else {
 			struct timespec at;
 			long timeout;
@@ -213,7 +218,9 @@ int firefly_resend_wait(struct resend_queue *rq,
 			at = res->resend_at;
 			timeout = ((at.tv_sec - now.tv_sec) * 1000000 +
 					   (at.tv_nsec - now.tv_nsec) / 1000) / sysClkRateGet();
+			semGive(rq->lock);
 			semTake(rq->sig, timeout);
+			semTake(rq->lock, WAIT_FOREVER);
 		}
 		clock_gettime(CLOCK_REALTIME, &now);
 		res = rq->first;

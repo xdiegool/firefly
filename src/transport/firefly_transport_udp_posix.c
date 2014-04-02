@@ -262,9 +262,11 @@ void firefly_transport_udp_posix_write(unsigned char *data, size_t data_size,
 	int res;
 
 	conn_udp = conn->transport->context;
+	printf("sending\n");
 	res = sendto(conn_udp->socket, (void *) data, data_size, 0,
 		     (struct sockaddr *) conn_udp->remote_addr,
 		     sizeof(*conn_udp->remote_addr));
+	printf("sent\n");
 	if (res == -1) {
 		firefly_error(FIREFLY_ERROR_TRANS_WRITE, 1, "sendto() failed");
 		firefly_connection_raise_later(conn,
@@ -394,7 +396,6 @@ static int firefly_transport_udp_posix_read_event(void *event_arg)
 	struct transport_llp_udp_posix *llp_udp;
 	struct firefly_connection *conn;
 
-	printf("exec read ev\n");
 	ev_arg = event_arg;
 	llp_udp = ev_arg->llp->llp_platspec;
 
@@ -421,7 +422,7 @@ static int firefly_transport_udp_posix_read_event(void *event_arg)
 		ev_arg->llp->protocol_data_received_cb(conn, ev_arg->data, ev_arg->len);
 	}
 	free(ev_arg);
-	puts("ev ok");
+
 	return 0;
 }
 
@@ -477,7 +478,7 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 	/* printf("recv %d byte\n", pkg_len); */
 	res = recvfrom(llp_udp->local_udp_socket, (void *) ev_arg->data, pkg_len, 0,
 		       (struct sockaddr *) &remote_addr, (void *) &len);
-	printf("recv'd %d byte\n", res);
+	/* printf("recv'd %d byte\n", res); */
 	if (res == -1) {
 		char err_buf[ERROR_STR_MAX_LEN];
 #ifdef LABCOMM_COMPAT
@@ -497,7 +498,7 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 			FIREFLY_PRIORITY_HIGH,
 			firefly_transport_udp_posix_read_event,
 			ev_arg, 0, NULL);
-	printf("put read ev\n");
+	/* printf("put read ev\n"); */
 }
 
 bool sockaddr_in_eq(struct sockaddr_in *one, struct sockaddr_in *other)

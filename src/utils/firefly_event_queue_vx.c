@@ -96,11 +96,8 @@ int64_t firefly_event_queue_vx_add(struct firefly_event_queue *eq,
 	res = firefly_event_add(eq, prio, execute, context, nbr_deps, deps);
 	semGive(ctx->lock);
 	if (res > 0) {
-		printf("ADDING ev\n");
 		semGive(ctx->signal);
-		printf("ADDED ev\n");
-	} else
-		printf("FAILED TO ADD EVENT\n");
+	}
 
 	return res;
 }
@@ -125,32 +122,24 @@ void *firefly_event_vx_thread_main(void *args)
 		semTake(ctx->lock, WAIT_FOREVER);
 		event_left = firefly_event_queue_length(eq);
 		finish = ctx->event_loop_stop;
-		printf("EQ LEN: %d, DONE: %d\n", event_left, finish);
 		while (event_left <= 0 && !finish) {
 			semGive(ctx->lock);
-			printf("WAIT SIG\n");
 			semTake(ctx->signal, WAIT_FOREVER);
-			printf("GOT SIG\n");
 			semTake(ctx->lock, WAIT_FOREVER);
 			finish = ctx->event_loop_stop;
 			event_left = firefly_event_queue_length(eq);
 		}
 		ev = firefly_event_pop(eq);
 		semGive(ctx->lock);
-		printf("GOT EV?\n");
 		if (ev) {
 			/* TODO: Retval can indicate badly contructed event, or 
 			 * failed execution. Should this be handled?
 			 */
-			printf("EXECUTING EV. %p\n", ev->execute);
 			firefly_event_execute(ev);
-			printf("EXECUTING EV DONE.\n");
 			semTake(ctx->lock, WAIT_FOREVER);
 			firefly_event_return(eq, &ev);
 			semGive(ctx->lock);
-			printf("(EVENT RETURNED)\n");
-		} else
-			printf("NO EVENT\n");
+		}
 	}
 
 	/* semTake(ctx->lock, WAIT_FOREVER); */
