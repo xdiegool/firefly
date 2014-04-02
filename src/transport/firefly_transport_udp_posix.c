@@ -394,6 +394,7 @@ static int firefly_transport_udp_posix_read_event(void *event_arg)
 	struct transport_llp_udp_posix *llp_udp;
 	struct firefly_connection *conn;
 
+	printf("exec read ev\n");
 	ev_arg = event_arg;
 	llp_udp = ev_arg->llp->llp_platspec;
 
@@ -476,7 +477,7 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 	/* printf("recv %d byte\n", pkg_len); */
 	res = recvfrom(llp_udp->local_udp_socket, (void *) ev_arg->data, pkg_len, 0,
 		       (struct sockaddr *) &remote_addr, (void *) &len);
-	/* printf("recv'd %d byte\n", res); */
+	printf("recv'd %d byte\n", res);
 	if (res == -1) {
 		char err_buf[ERROR_STR_MAX_LEN];
 #ifdef LABCOMM_COMPAT
@@ -496,6 +497,7 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 			FIREFLY_PRIORITY_HIGH,
 			firefly_transport_udp_posix_read_event,
 			ev_arg, 0, NULL);
+	printf("put read ev\n");
 }
 
 bool sockaddr_in_eq(struct sockaddr_in *one, struct sockaddr_in *other)

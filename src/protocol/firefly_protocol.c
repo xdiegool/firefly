@@ -443,6 +443,7 @@ void handle_data_sample(firefly_protocol_data_sample *data, void *context)
 	unsigned char *fers_data;
 	int ret;
 
+	printf("%s", __func__);
 	conn = context;
 	fers = FIREFLY_RUNTIME_MALLOC(conn, sizeof(*fers));
 	fers_data = FIREFLY_RUNTIME_MALLOC(conn, data->app_enc_data.n_0);
