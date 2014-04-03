@@ -462,9 +462,12 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 	if (res == -1) {
 		FFL(FIREFLY_ERROR_SOCKET);
 		pkg_len = 0;
-	} else {
-		pkg_len -= 16;			/* vx bugtest */
 	}
+#ifdef LABCOMM_COMPAT
+	else {
+		pkg_len -= 16;			/* VxWorks seem to return "raw" length. */
+	}
+#endif
 	ev_arg = malloc(sizeof(*ev_arg));
 	if (!ev_arg) {
 		FFL(FIREFLY_ERROR_ALLOC);
