@@ -211,7 +211,7 @@ void protocol_data_received(struct firefly_connection *conn,
 		int res = 0;
 		while (res >= 0) {
 			res = labcomm_decoder_decode_one(conn->transport_decoder);
-			printf("do(): %d\n", res);
+			/* printf("do(): %d\n", res); */
 		}
 	} else
 		printf("FAIL IN %s\n", __func__);
@@ -226,7 +226,7 @@ void handle_channel_request(firefly_protocol_channel_request *chan_req,
 
 	conn = context;
 
-	printf("%s\n", __func__);
+	/* printf("%s\n", __func__); */
 	fecrr = FIREFLY_MALLOC(sizeof(*fecrr));
 	if (fecrr == NULL) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1,
@@ -307,7 +307,7 @@ void handle_channel_response(firefly_protocol_channel_response *chan_res,
 
 	conn = context;
 
-	printf("%s", __func__);
+	/* printf("%s", __func__); */
 	fecrr = FIREFLY_MALLOC(sizeof(*fecrr));
 	if (fecrr == NULL) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1,
@@ -334,7 +334,7 @@ static void firefly_channel_send_channel_ack(
 {
 	firefly_protocol_channel_ack ack;
 
-	printf("%s", __func__);
+	/* printf("%s", __func__); */
 	if (chan != NULL) {
 		ack.ack = true;
 		ack.source_chan_id = chan->local_id;
@@ -386,7 +386,7 @@ void handle_channel_ack(firefly_protocol_channel_ack *chan_ack, void *context)
 	struct firefly_event_chan_ack_recv *fecar;
 	int ret;
 
-	printf("%s\n", __func__);
+	/* printf("%s\n", __func__); */
 	conn = context;
 	fecar = FIREFLY_MALLOC(sizeof(*fecar));
 	if (fecar == NULL) {
@@ -433,7 +433,7 @@ void handle_channel_close(firefly_protocol_channel_close *chan_close,
 	struct firefly_connection *conn;
 	struct firefly_channel *chan;
 
-	printf("%s\n", __func__);
+	/* printf("%s\n", __func__); */
 	conn = context;
 	chan = find_channel_by_local_id(conn, chan_close->dest_chan_id);
 	if (chan != NULL){
@@ -453,7 +453,7 @@ void handle_data_sample(firefly_protocol_data_sample *data, void *context)
 	unsigned char *fers_data;
 	int ret;
 
-	printf("%s", __func__);
+	/* printf("%s", __func__); */
 	conn = context;
 	fers = FIREFLY_RUNTIME_MALLOC(conn, sizeof(*fers));
 	fers_data = FIREFLY_RUNTIME_MALLOC(conn, data->app_enc_data.n_0);
@@ -536,7 +536,7 @@ void handle_ack(firefly_protocol_ack *ack, void *context)
 	struct firefly_connection *conn;
 	struct firefly_channel *chan;
 
-	printf("%s\n", __func__);
+	/* printf("%s\n", __func__); */
 	conn = context;
 	chan = find_channel_by_local_id(conn, ack->dest_chan_id);
 	if (chan == NULL) {
@@ -625,7 +625,7 @@ void handle_channel_restrict_request(
 	struct firefly_event_channel_restrict_request *earg;
 	int ret;
 
-	printf("%s\n", __func__);
+	/* printf("%s\n", __func__); */
 	conn = context;
 	earg = FIREFLY_MALLOC(sizeof(*earg));
 	if (!earg) {
@@ -706,7 +706,7 @@ void handle_channel_restrict_ack(firefly_protocol_channel_restrict_ack *data,
 
 	conn = context;
 
-	printf("%s\n", __func__);
+	/* printf("%s\n", __func__); */
 	earg = FIREFLY_MALLOC(sizeof(*earg));
 	if (!earg) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 1,

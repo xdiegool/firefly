@@ -262,11 +262,11 @@ void firefly_transport_udp_posix_write(unsigned char *data, size_t data_size,
 	int res;
 
 	conn_udp = conn->transport->context;
-	printf("sending\n");
+	/* printf("sending\n"); */
 	res = sendto(conn_udp->socket, (void *) data, data_size, 0,
 		     (struct sockaddr *) conn_udp->remote_addr,
 		     sizeof(*conn_udp->remote_addr));
-	printf("sent\n");
+	/* printf("sent\n"); */
 	if (res == -1) {
 		firefly_error(FIREFLY_ERROR_TRANS_WRITE, 1, "sendto() failed");
 		firefly_connection_raise_later(conn,

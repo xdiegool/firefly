@@ -78,9 +78,9 @@ unsigned char firefly_resend_add(struct resend_queue *rq,
 	re->timeout = timeout_ms;
 	re->prev = NULL;
 
-	printf("WAITING FOR RQ LOCK\n");
+	/* printf("WAITING FOR RQ LOCK\n"); */
 	semTake(rq->lock, WAIT_FOREVER);
-	printf("TOOK RQ LOCK\n");
+	/* printf("TOOK RQ LOCK\n"); */
 	re->id = rq->next_id++;
 	if (rq->next_id == 0) {
 		rq->next_id = 1;
@@ -161,7 +161,7 @@ void firefly_resend_remove(struct resend_queue *rq, unsigned char id)
 {
 	struct resend_elem *re;
 
-	printf("%s\n", __func__);
+	/* printf("%s\n", __func__); */
 	semTake(rq->lock, WAIT_FOREVER);
 	re = firefly_resend_pop(rq, id);
 	if (re != NULL)
