@@ -494,6 +494,16 @@ int handle_data_sample_event(void *event_arg)
 		if (expected_seqno <= 0) {
 			expected_seqno = 1;
 		}
+		if (fers->data.important) {
+			firefly_protocol_ack ack_pkt;
+
+			ack_pkt.dest_chan_id = chan->remote_id;
+			ack_pkt.src_chan_id = chan->local_id;
+			ack_pkt.seqno = fers->data.seqno;
+			labcomm_encode_firefly_protocol_ack(
+					chan->conn->transport_encoder,
+					&ack_pkt);
+		}
 		if (!fers->data.important ||
 		    expected_seqno == fers->data.seqno)
 		{
@@ -509,16 +519,6 @@ int handle_data_sample_event(void *event_arg)
 			if (fers->data.important) {
 				chan->remote_seqno = fers->data.seqno;
 			}
-		}
-		if (fers->data.important) {
-			firefly_protocol_ack ack_pkt;
-
-			ack_pkt.dest_chan_id = chan->remote_id;
-			ack_pkt.src_chan_id = chan->local_id;
-			ack_pkt.seqno = fers->data.seqno;
-			labcomm_encode_firefly_protocol_ack(
-					chan->conn->transport_encoder,
-					&ack_pkt);
 		}
 	} else {
 		firefly_unknown_dest(fers->conn, fers->data.src_chan_id,
