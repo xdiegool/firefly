@@ -63,7 +63,12 @@ static int proto_reader_fill(struct labcomm_reader *r,
 	UNUSED_VAR(context);
 	result = r->count - r->pos;
 	r->error = (result <= 0 || r->data == NULL) ? -1 : 0;
-
+#if 1
+	if (result <= 0)
+		printf("cnt:%d pos:%d\n", r->count, r->pos);
+	if (!r->data)
+		printf("no data\n");
+#endif
 	return result;
 }
 

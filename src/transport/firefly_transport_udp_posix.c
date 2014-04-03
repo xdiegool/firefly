@@ -396,7 +396,7 @@ static int firefly_transport_udp_posix_read_event(void *event_arg)
 	struct transport_llp_udp_posix *llp_udp;
 	struct firefly_connection *conn;
 
-	printf("%s\n", __func__);
+	/* printf("%s\n", __func__); */
 	ev_arg = event_arg;
 	llp_udp = ev_arg->llp->llp_platspec;
 
@@ -462,6 +462,8 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 	if (res == -1) {
 		FFL(FIREFLY_ERROR_SOCKET);
 		pkg_len = 0;
+	} else {
+		pkg_len -= 16;			/* vx bugtest */
 	}
 	ev_arg = malloc(sizeof(*ev_arg));
 	if (!ev_arg) {
@@ -476,12 +478,10 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 		return;
 	}
 	len = sizeof(remote_addr);
-	/* printf("recv %d byte\n", pkg_len); */
-	printf("receiving\n");
+	/* printf("receiving %d. ", pkg_len); */
 	res = recvfrom(llp_udp->local_udp_socket, (void *) ev_arg->data, pkg_len, 0,
 		       (struct sockaddr *) &remote_addr, (void *) &len);
-	printf("received\n");
-	/* printf("recv'd %d byte\n", res); */
+	/* printf("received %d\n", res); */
 	if (res == -1) {
 		char err_buf[ERROR_STR_MAX_LEN];
 #ifdef LABCOMM_COMPAT

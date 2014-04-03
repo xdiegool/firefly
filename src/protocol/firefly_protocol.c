@@ -204,14 +204,14 @@ void protocol_data_received(struct firefly_connection *conn,
 		unsigned char *data, size_t size)
 {
 	if (conn->open == FIREFLY_CONNECTION_OPEN) {
-		printf("Setting dec buf\n");
+		/* printf("Setting dec buf\n"); */
 		labcomm_decoder_ioctl(conn->transport_decoder,
 				FIREFLY_LABCOMM_IOCTL_READER_SET_BUFFER,
 				data, size);
 		int res = 0;
 		while (res >= 0) {
-			printf("decoding one\n");
 			res = labcomm_decoder_decode_one(conn->transport_decoder);
+			printf("do(): %d\n", res);
 		}
 	} else
 		printf("FAIL IN %s\n", __func__);

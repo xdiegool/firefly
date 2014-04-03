@@ -135,9 +135,9 @@ void *firefly_event_vx_thread_main(void *args)
 			/* TODO: Retval can indicate badly contructed event, or 
 			 * failed execution. Should this be handled?
 			 */
-			printf("exec ev: %p\n", ev->execute);
+			/* printf("exec ev: %p\n", ev->execute); */
 			firefly_event_execute(ev);
-			printf("done exec ev\n");
+			/* printf("done exec ev\n"); */
 			semTake(ctx->lock, WAIT_FOREVER);
 			firefly_event_return(eq, &ev);
 			semGive(ctx->lock);
