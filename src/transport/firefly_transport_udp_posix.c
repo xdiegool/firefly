@@ -153,8 +153,6 @@ static void check_llp_free(struct firefly_transport_llp *llp)
 		firefly_resend_queue_free(llp_udp->resend_queue);
 		free(llp_udp);
 		free(llp);
-	} else {
-		printf("Failed to close llp properly!");
 	}
 }
 
