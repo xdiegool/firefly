@@ -18,7 +18,7 @@
 /**
  * @brief The size of the writer buffer used by Labcomm.
  */
-#define BUFFER_SIZE			(128)
+#define BUFFER_SIZE			(1500)
 
 /**
  * @defgroup conn_state Connection State Values
