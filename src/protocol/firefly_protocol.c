@@ -82,14 +82,14 @@ void reg_proto_sigs(struct labcomm_encoder *enc,
 	conn->transport = orig_transport;
 }
 
-void firefly_unknown_dest(struct firefly_connection *conn,
-		int src_id, int dest_id)
+static void firefly_unknown_dest(struct firefly_connection *conn,
+								 int src_id, int dest_id, const char *action)
 {
 	UNUSED_VAR(conn);
 	firefly_protocol_channel_close chan_close;
 
-	firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
-			  "Received open channel on non-existing channel");
+	firefly_error(FIREFLY_ERROR_PROTO_STATE, 2,
+				  "Received %s on a non-existent channel", action);
 
 	chan_close.dest_chan_id = src_id;
 	chan_close.source_chan_id = dest_id;
@@ -359,7 +359,7 @@ int handle_channel_response_event(void *event_arg)
 
 	if (chan == NULL) {
 		firefly_unknown_dest(fecrr->conn, fecrr->chan_res.source_chan_id,
-				fecrr->chan_res.dest_chan_id);
+							 fecrr->chan_res.dest_chan_id, "channel_response");
 	} else if (fecrr->chan_res.ack) {
 		if (chan->remote_id == CHANNEL_ID_NOT_SET) {
 			chan->remote_id = fecrr->chan_res.source_chan_id;
@@ -420,7 +420,7 @@ int handle_channel_ack_event(void *event_arg)
 		firefly_channel_internal_opened(chan);
 	} else {
 		firefly_unknown_dest(fecar->conn, fecar->chan_ack.source_chan_id,
-				fecar->chan_ack.dest_chan_id);
+							 fecar->chan_ack.dest_chan_id, "channel_ack");
 	}
 	FIREFLY_FREE(event_arg);
 
@@ -522,7 +522,7 @@ int handle_data_sample_event(void *event_arg)
 		}
 	} else {
 		firefly_unknown_dest(fers->conn, fers->data.src_chan_id,
-				fers->data.dest_chan_id);
+							 fers->data.dest_chan_id, "data_sample");
 	}
 
 	FIREFLY_RUNTIME_FREE(fers->conn, fers->data.app_enc_data.a);
@@ -540,7 +540,7 @@ void handle_ack(firefly_protocol_ack *ack, void *context)
 	conn = context;
 	chan = find_channel_by_local_id(conn, ack->dest_chan_id);
 	if (chan == NULL) {
-		firefly_unknown_dest(conn, ack->src_chan_id, ack->dest_chan_id);
+		firefly_unknown_dest(conn, ack->src_chan_id, ack->dest_chan_id, "ack");
 	} else if (chan->current_seqno == ack->seqno && ack->seqno > 0) {
 		firefly_channel_ack(chan);
 	}
@@ -658,7 +658,7 @@ int channel_restrict_request_event(void *context)
 	chan = find_channel_by_local_id(conn, earg->rreq.dest_chan_id);
 	if (!chan) {
 		firefly_unknown_dest(conn, earg->rreq.source_chan_id,
-				earg->rreq.dest_chan_id);
+							 earg->rreq.dest_chan_id, "channel_restrict_request");
 		FIREFLY_FREE(earg);
 		return -1;
 	}
@@ -737,7 +737,7 @@ int channel_restrict_ack_event(void *context)
 	chan = find_channel_by_local_id(conn, earg->rack.dest_chan_id);
 	if (!chan) {
 		firefly_unknown_dest(conn, earg->rack.source_chan_id,
-				earg->rack.dest_chan_id);
+							 earg->rack.dest_chan_id, "restrict_ack");
 		FIREFLY_FREE(context);
 		return -1;
 	}
