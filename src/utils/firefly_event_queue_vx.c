@@ -6,6 +6,7 @@
 #include <utils/firefly_event_queue_vx.h>
 #include <utils/firefly_event_queue.h>
 #include <utils/firefly_event_queue_private.h>
+#include <utils/cppmacros.h>
 
 struct firefly_event_queue_vx_context {
 	SEM_ID lock;
@@ -27,28 +28,28 @@ struct firefly_event_queue *firefly_event_queue_vx_new(size_t pool_size)
 	if ((ctx = calloc(1, sizeof(*ctx)))) {
 		ctx->lock = semMCreate(SEM_INVERSION_SAFE | SEM_Q_PRIORITY);
 		if (!ctx->lock) {
-			printf("fail to create msem: ");
+			TRACE("fail to create msem: ");
 			switch (errno) {
 			case S_semLib_INVALID_OPTION:
-				printf("invalid option");
+				TRACE("invalid option");
 				break;
 			case S_memLib_NOT_ENOUGH_MEMORY:
-				printf("no mem");
+				TRACE("no mem");
 				break;
 			default:
-				printf("other");
+				TRACE("other");
 			}
-			printf("\n");
+			TRACE("\n");
 			goto fail;
 		}
 		ctx->signal = semCCreate(0, 0);
 		if (!ctx->signal) {
-			printf("fail to create csem.\n");
+			TRACE("fail to create csem.\n");
 			goto fail;
 		}
 		ctx->dead = semBCreate(SEM_Q_FIFO, SEM_EMPTY);
 		if (!ctx->dead) {
-			printf("fail to create bsem.\n");
+			TRACE("fail to create bsem.\n");
 			goto fail;
 		}
 		ctx->event_loop_stop = 0;
@@ -132,22 +133,17 @@ void *firefly_event_vx_thread_main(void *args)
 		ev = firefly_event_pop(eq);
 		semGive(ctx->lock);
 		if (ev) {
-			/* TODO: Retval can indicate badly contructed event, or 
+			/* TODO: Retval can indicate badly contructed event, or
 			 * failed execution. Should this be handled?
 			 */
-			/* printf("exec ev: %p\n", ev->execute); */
 			firefly_event_execute(ev);
-			/* printf("done exec ev\n"); */
 			semTake(ctx->lock, WAIT_FOREVER);
 			firefly_event_return(eq, &ev);
 			semGive(ctx->lock);
 		}
 	}
-
-	/* semTake(ctx->lock, WAIT_FOREVER); */
 	semGive(ctx->dead);
-	/* semGive(ctx->lock); */
-	printf("EVENT THREAD TERMINATING\n");
+	TRACE("EVENT THREAD TERMINATING\n");
 
 	return NULL;
 }
@@ -181,12 +177,12 @@ int firefly_event_queue_vx_stop(struct firefly_event_queue *eq)
 	semGive(ctx->lock);
 	semGive(ctx->signal);	/* Signal ev. task to die. */
 
-	printf("eq not done yet...\n");
+	TRACE("eq not done yet...\n");
 	semTake(ctx->dead, WAIT_FOREVER);
-	printf("eq done!\n");
+	TRACE("eq done!\n");
 	ret = taskDelete(ctx->tid_event_loop);
 	if (ret == ERROR) {
-		printf("Failed to delete eq task.\n");
+		TRACE("Failed to delete eq task.\n");
 		return -1;
 	}
 

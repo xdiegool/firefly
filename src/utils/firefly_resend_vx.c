@@ -69,7 +69,7 @@ unsigned char firefly_resend_add(struct resend_queue *rq,
 	if (!re)
 		return 0;
 
-	re->data = data;
+	re->data = (char *) data;
 	re->size = size;
 	clock_gettime(CLOCK_REALTIME, &re->resend_at);
 	timespec_add_ms(&re->resend_at, timeout_ms);
@@ -249,19 +249,6 @@ int firefly_resend_wait(struct resend_queue *rq,
 	return result;
 }
 
-static void firefly_resend_cleanup(void *arg)
-{
-	struct firefly_resend_loop_args *largs;
-	struct resend_queue *rq;
-
-	largs = arg;
-	rq = largs->rq;
-
-	/* TODO: Fix */
-	/* pthread_mutex_unlock(&rq->lock); */
-	free(arg);
-}
-
 void *firefly_resend_run(void *args)
 {
 	struct firefly_resend_loop_args *largs;
@@ -273,31 +260,22 @@ void *firefly_resend_run(void *args)
 	int res;
 
 	largs = args;
-	/* pthread_cleanup_push(firefly_resend_cleanup, args); */
 
 	rq = largs->rq;
 
 	for (;;) {
-		/* int prev_state; */
-
 		res = firefly_resend_wait(rq, &data, &size, &conn, &id);
-		/* pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &prev_state); */
 		taskSafe();
 		if (res < 0) {
 			if (largs->on_no_ack)
 				largs->on_no_ack(conn);
 		} else {
-			conn->transport->write(data, size, conn,
-					false, NULL);
+			conn->transport->write(data, size, conn, false, NULL);
 			free(data);
 			firefly_resend_readd(rq, id);
 		}
-		/* pthread_setcancelstate(prev_state, NULL); */
 		taskUnsafe();
 	}
-
-	/* pthread_cleanup_pop(1); */
-	firefly_resend_cleanup(args);
 
 	return NULL;
 }

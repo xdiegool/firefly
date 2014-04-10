@@ -61,7 +61,12 @@ link_directories(${LINK_DIRECTORIES} ${LABCOMM_LIBRARIES})
 ## FLAGS {{{
 set(C_STD "-std=c99")
 set(ERR_FLAGS "-Wall -Wextra")
-set(MACROS_DEF "-DDEBUG")
+
+if(DEFINED $ENV{DEBUG})
+	set(MACROS_DEF "-DDEBUG -O0")
+else()
+	set(MACROS_DEF "-DNDEBUG -O3")
+endif()
 
 if(CMAKE_CROSSCOMPILING)
 	if (VXWORKS_COMPILING)
