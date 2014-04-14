@@ -154,7 +154,7 @@ int firefly_event_queue_vx_run(struct firefly_event_queue *eq)
 	struct firefly_event_queue_vx_context *ctx;
 
 	ctx = firefly_event_queue_get_context(eq);
-	res = taskSpawn("ff_event_task", 254, 0, 20000,
+	res = taskSpawn("ff_event_task", 98, 0, 20000,
 					(FUNCPTR)firefly_event_vx_thread_main,
 					(int) eq, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 	if (res != ERROR) {

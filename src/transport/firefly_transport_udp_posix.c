@@ -333,14 +333,14 @@ int firefly_transport_udp_posix_run(struct firefly_transport_llp *llp)
 	pthread_cancel(llp_udp->read_thread);
 	goto fail;
 #else
-	res = taskSpawn("ff_read_task", 254, 0, 20000,
+	res = taskSpawn("ff_read_task", 98, 0, 20000,
 					(FUNCPTR)firefly_transport_udp_posix_read_run,
 					(int) llp,
 					0, 0, 0, 0, 0, 0, 0, 0, 0); /* TODO: arg */
 	if (res == ERROR)
 		goto fail;
 	llp_udp->tid_read = res;
-	res = taskSpawn("ff_resend_task", 254, 0, 20000,
+	res = taskSpawn("ff_resend_task", 98, 0, 20000,
 					(FUNCPTR)firefly_resend_run,
 					(int) largs,
 					0, 0, 0, 0, 0, 0, 0, 0, 0); /* TODO: arg */
@@ -425,6 +425,7 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 	struct sockaddr_in remote_addr;
 	struct firefly_event_llp_read_udp_posix *ev_arg;
 	socklen_t len;
+	size_t nrecv = 0;
 
 	llp_udp = llp->llp_platspec;
 	do {
@@ -452,7 +453,7 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 	}
 #ifdef LABCOMM_COMPAT
 	else {
-		pkg_len -= 16;			/* VxWorks seem to return "raw" length. */
+		pkg_len -= 16; /* VxWorks buggy?  */
 	}
 #endif
 	ev_arg = malloc(sizeof(*ev_arg));
@@ -468,8 +469,15 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 		return;
 	}
 	len = sizeof(remote_addr);
-	res = recvfrom(llp_udp->local_udp_socket, (void *) ev_arg->data, pkg_len, 0,
-		       (struct sockaddr *) &remote_addr, (void *) &len);
+	do {
+		/* Sometimes recvfrom() fails to receive the entire datagram on VxWorks. */
+		res = recvfrom(llp_udp->local_udp_socket,
+					   (void *) (ev_arg->data + nrecv),
+					   pkg_len - nrecv,
+					   0, (struct sockaddr *) &remote_addr, (void *) &len);
+		if (res == -1) break;
+		nrecv += res;
+	} while (nrecv < pkg_len);
 	if (res == -1) {
 		char err_buf[ERROR_STR_MAX_LEN];
 #ifdef LABCOMM_COMPAT
