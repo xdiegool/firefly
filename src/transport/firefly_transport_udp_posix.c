@@ -425,7 +425,6 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 	struct sockaddr_in remote_addr;
 	struct firefly_event_llp_read_udp_posix *ev_arg;
 	socklen_t len;
-	size_t nrecv = 0;
 
 	llp_udp = llp->llp_platspec;
 	do {
@@ -443,8 +442,10 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 		return;
 	}
 #ifdef LABCOMM_COMPAT
+	/* Length of whole buffer? */
 	res = ioctl(llp_udp->local_udp_socket, FIONREAD, (int) &pkg_len);
 #else
+	/* Length of next datagram. */
 	res = ioctl(llp_udp->local_udp_socket, FIONREAD, &pkg_len);
 #endif
 	if (res == -1) {
@@ -456,6 +457,11 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 		pkg_len -= 16; /* VxWorks buggy?  */
 	}
 #endif
+	if (pkg_len == 0) {
+		firefly_error(FIREFLY_ERROR_SOCKET, 1,
+					  "Select/FIONREAD inconsistent\n");
+		return;
+	}
 	ev_arg = malloc(sizeof(*ev_arg));
 	if (!ev_arg) {
 		FFL(FIREFLY_ERROR_ALLOC);
@@ -469,15 +475,11 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 		return;
 	}
 	len = sizeof(remote_addr);
-	do {
-		/* Sometimes recvfrom() fails to receive the entire datagram on VxWorks. */
-		res = recvfrom(llp_udp->local_udp_socket,
-					   (void *) (ev_arg->data + nrecv),
-					   pkg_len - nrecv,
-					   0, (struct sockaddr *) &remote_addr, (void *) &len);
-		if (res == -1) break;
-		nrecv += res;
-	} while (nrecv < pkg_len);
+	res = recvfrom(llp_udp->local_udp_socket,
+				   (void *) ev_arg->data,
+				   pkg_len,
+				   0, (struct sockaddr *) &remote_addr, (void *) &len);
+
 	if (res == -1) {
 		char err_buf[ERROR_STR_MAX_LEN];
 #ifdef LABCOMM_COMPAT
@@ -488,9 +490,10 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 		firefly_error(FIREFLY_ERROR_SOCKET, 3, "Failed in %s.\n%s()\n",
 			      __FUNCTION__, err_buf);
 	}
+
 	ev_arg->llp	= llp;
-	ev_arg->addr	= remote_addr;
-	ev_arg->len	= pkg_len;
+	ev_arg->addr = remote_addr;
+	ev_arg->len	= res;
 	/* Member 'data' already filled in recvfrom(). */
 
 	llp_udp->event_queue->offer_event_cb(llp_udp->event_queue,
