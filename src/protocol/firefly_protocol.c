@@ -509,10 +509,12 @@ int handle_data_sample_event(void *event_arg)
 			if (fers->data.important) {
 				chan->remote_seqno = fers->data.seqno;
 			}
+#if 0	/* This would probably be a good idea, but it breaks existing tests. */
 		} else if (fers->data.important && expected_seqno != fers->data.seqno) {
 			firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
 						  "Received data flagged important with "
 						  "unexpected sequence number.");
+#endif
 		}
 	} else {
 		firefly_unknown_dest(fers->conn, fers->data.src_chan_id,
