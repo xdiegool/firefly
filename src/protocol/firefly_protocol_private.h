@@ -307,6 +307,7 @@ struct firefly_channel {
 					   			channel. */
 	bool restricted_local;		/**< Neg. initiated locally.   */
 	bool restricted_remote;	/**< Neg. initiated remotely.  */
+	bool auto_restrict;
 };
 
 /**
@@ -822,5 +823,13 @@ bool firefly_channel_enqueue_important(struct firefly_channel *chan,
 
 struct labcomm_memory *firefly_labcomm_memory_new(
 		struct firefly_connection *conn);
+
 void firefly_labcomm_memory_free(struct labcomm_memory *mem);
+
+/* TODO: Public */
+struct firefly_event_chan_open_auto_restrict {
+	struct firefly_connection *connection;
+	struct firefly_channel_types types;
+};
+
 #endif

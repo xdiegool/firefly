@@ -124,6 +124,7 @@ int firefly_channel_open_event(void *event_arg)
 
 	chan_req.source_chan_id = chan->local_id;
 	chan_req.dest_chan_id   = chan->remote_id;
+	chan_req.auto_restrict  = false;
 
 	labcomm_encoder_ioctl(conn->transport_encoder,
 			FIREFLY_LABCOMM_IOCTL_TRANS_SET_IMPORTANT_ID,
@@ -145,6 +146,69 @@ void firefly_channel_open(struct firefly_connection *conn)
 						conn, 0, NULL);
 	if (ret < 0)
 		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Could not add event.");
+}
+
+static int firefly_channel_open_auto_restrict_event(void *event_arg)
+{
+	struct firefly_event_chan_open_auto_restrict *arg;
+	struct firefly_channel_types types;
+	struct firefly_connection        *conn;
+	struct firefly_channel           *chan;
+	firefly_protocol_channel_request chan_req;
+	arg = event_arg;
+	conn = arg->connection;
+	types = arg->types;
+	if (conn->open != FIREFLY_CONNECTION_OPEN) {
+		firefly_channel_raise(NULL, conn, FIREFLY_ERROR_CONN_STATE,
+			"Can't open new channel on closed connection.\n");
+		return -1;
+	}
+	chan = firefly_channel_new(conn);
+	if (!chan) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 1,
+			      "Could not allocate channel.\n");
+		return -1;
+	}
+	chan->auto_restrict = true;
+	add_channel_to_connection(chan, conn);
+	chan_req.source_chan_id = chan->local_id;
+	chan_req.dest_chan_id   = chan->remote_id;
+	chan_req.auto_restrict  = true;
+	while (types.decoder_types) {
+		struct firefly_channel_decoder_type *f;
+
+		f = types.decoder_types;
+		f->register_func(chan->proto_decoder, f->handler, f->context);
+		types.decoder_types = f->next;
+		FIREFLY_FREE(f);
+	}
+	labcomm_encoder_ioctl(conn->transport_encoder,
+			      FIREFLY_LABCOMM_IOCTL_TRANS_SET_IMPORTANT_ID,
+			      &chan->important_id);
+	labcomm_encode_firefly_protocol_channel_request(conn->transport_encoder,
+							&chan_req);
+	return 0;
+}
+
+void firefly_channel_open_auto_restrict(struct firefly_connection *conn,
+					struct firefly_channel_types types)
+{
+	int64_t ret;
+	struct firefly_event_chan_open_auto_restrict *ev;
+
+	ev = FIREFLY_MALLOC(sizeof(*ev));
+	if (ev) {
+		ev->connection = conn;
+		ev->types = types;
+		ret = conn->event_queue->offer_event_cb(conn->event_queue,
+				FIREFLY_PRIORITY_HIGH,
+				firefly_channel_open_auto_restrict_event,
+				ev, 0, NULL);
+		if (ret < 0)
+			firefly_error(FIREFLY_ERROR_ALLOC, 1, "Could not add event.");
+	} else {
+		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Could not add event.");
+	}
 }
 
 static int64_t create_channel_closed_event(struct firefly_channel *chan,
@@ -268,6 +332,7 @@ int handle_channel_request_event(void *event_arg)
 			firefly_protocol_channel_response res;
 
 			chan->remote_id = fecrr->chan_req.source_chan_id;
+			chan->auto_restrict = fecrr->chan_req.auto_restrict;
 			add_channel_to_connection(chan, conn);
 
 			res.dest_chan_id   = chan->remote_id;
@@ -279,6 +344,7 @@ int handle_channel_request_event(void *event_arg)
 				res.source_chan_id = CHANNEL_ID_NOT_SET;
 				firefly_channel_free(remove_channel_from_connection(chan, conn));
 			} else {
+				/* TODO: Decoder registrations. */
 				labcomm_encoder_ioctl(fecrr->conn->transport_encoder,
 						FIREFLY_LABCOMM_IOCTL_TRANS_SET_IMPORTANT_ID,
 						&chan->important_id);
@@ -756,4 +822,70 @@ int channel_restrict_ack_event(void *context)
 	FIREFLY_FREE(earg);
 
 	return 0;
+}
+
+#if 0
+struct firefly_channel_types *firefly_channel_types_new(void)
+{
+	struct firefly_channel_types *ct;
+
+	ct = FIREFLY_MALLOC(sizeof(*ct));
+	if (ct) {
+		ct->decoder_types = NULL;
+		ct->encoder_types = NULL;
+	}
+	return ct;
+}
+
+void firefly_channel_types_free(struct firefly_channel_types *ct)
+{
+	FIREFLY_FREE(ct);
+}
+#endif
+
+void firefly_channel_types_add_decoder_type(
+	struct firefly_channel_types *types,
+	labcomm_decoder_register_function register_func,
+	labcomm_handler_function handler,
+	void *context)
+{
+	struct firefly_channel_decoder_type *dt;
+
+	dt = FIREFLY_MALLOC(sizeof(*dt));
+	if (dt) {
+		dt->register_func = register_func;
+		dt->handler = handler;
+		dt->context = context;
+		dt->next = types->decoder_types;
+		types->decoder_types = dt;
+	}
+	/* TODO: Error handl. */
+}
+
+void firefly_channel_types_add_encoder_type(
+	struct firefly_channel_types *types,
+	labcomm_encoder_register_function register_func)
+{
+	struct firefly_channel_encoder_type *et;
+
+	et = FIREFLY_MALLOC(sizeof(*et));
+	if (et) {
+		et->register_func = register_func;
+		et->next = types->encoder_types;
+		types->encoder_types = et;
+	}
+	/* TODO: Error handl. */
+}
+
+void firefly_channel_set_types(struct firefly_channel *chan,
+			       struct firefly_channel_types types)
+{
+	while (types.decoder_types) {
+		struct firefly_channel_decoder_type *f;
+
+		f = types.decoder_types;
+		f->register_func(chan->proto_decoder, f->handler, f->context);
+		types.decoder_types = f->next;
+		FIREFLY_FREE(f);
+	}
 }

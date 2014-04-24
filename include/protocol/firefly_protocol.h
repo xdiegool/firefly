@@ -340,4 +340,60 @@ void firefly_channel_restrict(struct firefly_channel *chan);
  */
 void firefly_channel_unrestrict(struct firefly_channel *chan);
 
+/* Stuff for predictable type registration.  */
+
+typedef void (*labcomm_handler_function)(void *value, void *context);
+
+typedef int (*labcomm_decoder_register_function)(struct labcomm_decoder *d,
+												 labcomm_handler_function f,
+												 void *context);
+
+typedef int (*labcomm_encoder_register_function)(struct labcomm_encoder *e);
+
+struct firefly_channel_decoder_type {
+	labcomm_decoder_register_function register_func;
+	labcomm_handler_function handler;
+	void *context;
+	struct firefly_channel_decoder_type *next;
+};
+
+struct firefly_channel_encoder_type {
+	labcomm_encoder_register_function register_func;
+	struct firefly_channel_encoder_type *next;
+};
+
+struct firefly_channel_types {
+	struct firefly_channel_decoder_type *decoder_types;
+	struct firefly_channel_encoder_type *encoder_types;
+};
+
+#if 0
+struct firefly_channel_types *firefly_channel_types_new(void);
+
+void firefly_channel_types_free(struct firefly_channel_types *ct);
+#endif
+
+void firefly_channel_types_add_decoder_type(
+	struct firefly_channel_types *types,
+	labcomm_decoder_register_function register_func,
+	labcomm_handler_function handler,
+	void *context);
+
+void firefly_channel_types_add_encoder_type(
+	struct firefly_channel_types *types,
+	labcomm_encoder_register_function register_func);
+
+/**
+ * Used to open with automatic restriction after type registration.
+ */
+void firefly_channel_open_auto_restrict(struct firefly_connection *conn,
+										struct firefly_channel_types types);
+
+/**
+ * Used in accept channel with automatic restriction after type registration.
+ * Use only in channel-accept-callback.
+ */
+void firefly_channel_set_types(struct firefly_channel *chan,
+			       struct firefly_channel_types types);
+
 #endif
