@@ -345,8 +345,8 @@ void firefly_channel_unrestrict(struct firefly_channel *chan);
 typedef void (*labcomm_handler_function)(void *value, void *context);
 
 typedef int (*labcomm_decoder_register_function)(struct labcomm_decoder *d,
-												 labcomm_handler_function f,
-												 void *context);
+						 labcomm_handler_function f,
+						 void *context);
 
 typedef int (*labcomm_encoder_register_function)(struct labcomm_encoder *e);
 
@@ -389,7 +389,7 @@ void firefly_channel_types_add_encoder_type(
  * Used to open with automatic restriction after type registration.
  */
 void firefly_channel_open_auto_restrict(struct firefly_connection *conn,
-										struct firefly_channel_types types);
+					struct firefly_channel_types types);
 
 /**
  * Used in accept channel with automatic restriction after type registration.

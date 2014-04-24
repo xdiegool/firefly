@@ -308,6 +308,7 @@ struct firefly_channel {
 	bool restricted_local;		/**< Neg. initiated locally.   */
 	bool restricted_remote;	/**< Neg. initiated remotely.  */
 	bool auto_restrict;
+	struct firefly_channel_encoder_type *enc_types;
 };
 
 /**
@@ -826,10 +827,23 @@ struct labcomm_memory *firefly_labcomm_memory_new(
 
 void firefly_labcomm_memory_free(struct labcomm_memory *mem);
 
-/* TODO: Public */
+/**
+ * @brief The event argument of firefly_channel_open_auto_restrict_event.
+ */
 struct firefly_event_chan_open_auto_restrict {
 	struct firefly_connection *connection;
 	struct firefly_channel_types types;
 };
+
+/**
+ * @brief The event performing the opening of a channel on the
+ * connection, with automatic restrict for race-free type registration.
+ *
+ * @param event_arg A firefly_event_chan_open.
+ * @return Integer idicating the resutlt of the event.
+ * @retval Negative integer upon error.
+ * @see #firefly_channel_open_auto_restrict
+ */
+int firefly_channel_open_auto_restrict_event(void *event_arg);
 
 #endif

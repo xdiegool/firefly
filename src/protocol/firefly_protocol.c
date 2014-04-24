@@ -148,7 +148,7 @@ void firefly_channel_open(struct firefly_connection *conn)
 		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Could not add event.");
 }
 
-static int firefly_channel_open_auto_restrict_event(void *event_arg)
+int firefly_channel_open_auto_restrict_event(void *event_arg)
 {
 	struct firefly_event_chan_open_auto_restrict *arg;
 	struct firefly_channel_types types;
@@ -888,4 +888,5 @@ void firefly_channel_set_types(struct firefly_channel *chan,
 		types.decoder_types = f->next;
 		FIREFLY_FREE(f);
 	}
+	chan->enc_types = types.encoder_types;
 }

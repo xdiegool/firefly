@@ -55,6 +55,7 @@ struct firefly_channel *firefly_channel_new(struct firefly_connection *conn)
 	chan->conn			= conn;
 	chan->restricted_local		= false;
 	chan->restricted_remote		= false;
+	chan->enc_types			= NULL;
 
 	return chan;
 }
@@ -74,6 +75,13 @@ void firefly_channel_free(struct firefly_channel *chan)
 		tmp = node;
 		node = node->next;
 		FIREFLY_FREE(tmp->event_arg);
+		FIREFLY_FREE(tmp);
+	}
+	while (chan->enc_types) {
+		struct firefly_channel_encoder_type *tmp;
+
+		tmp = chan->enc_types;
+		chan->enc_types = tmp->next;
 		FIREFLY_FREE(tmp);
 	}
 	FIREFLY_FREE(chan);
