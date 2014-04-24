@@ -373,6 +373,8 @@ struct firefly_channel_types *firefly_channel_types_new(void);
 void firefly_channel_types_free(struct firefly_channel_types *ct);
 #endif
 
+#define FIREFLY_CHANNEL_TYPES_INITIALIZER { NULL, NULL }
+
 void firefly_channel_types_add_decoder_type(
 	struct firefly_channel_types *types,
 	labcomm_decoder_register_function register_func,
