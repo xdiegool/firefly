@@ -309,6 +309,8 @@ struct firefly_channel {
 	bool restricted_remote;	/**< Neg. initiated remotely.  */
 	bool auto_restrict;
 	struct firefly_channel_encoder_type *enc_types;
+	size_t n_decoder_types;
+	int *seen_decoder_ids;
 };
 
 /**
@@ -845,5 +847,9 @@ struct firefly_event_chan_open_auto_restrict {
  * @see #firefly_channel_open_auto_restrict
  */
 int firefly_channel_open_auto_restrict_event(void *event_arg);
+
+void channel_auto_restr_send_ack(struct firefly_channel *chan);
+
+void channel_auto_restr_check_complete(struct firefly_channel *chan);
 
 #endif

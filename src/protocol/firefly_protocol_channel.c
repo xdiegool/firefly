@@ -55,7 +55,10 @@ struct firefly_channel *firefly_channel_new(struct firefly_connection *conn)
 	chan->conn			= conn;
 	chan->restricted_local		= false;
 	chan->restricted_remote		= false;
+	chan->auto_restrict		= false;
 	chan->enc_types			= NULL;
+	chan->seen_decoder_ids 		= NULL;
+	chan->n_decoder_types		= 0;
 
 	return chan;
 }
@@ -208,9 +211,19 @@ int firefly_channel_unrestrict_event(void *earg)
 
 void firefly_channel_internal_opened(struct firefly_channel *chan)
 {
-	if (chan->state != FIREFLY_CHANNEL_OPEN) {
-		chan->state = FIREFLY_CHANNEL_OPEN;
-		chan->conn->actions->channel_opened(chan);
+	if (chan->state == FIREFLY_CHANNEL_OPEN)
+		return;
+
+	chan->state = FIREFLY_CHANNEL_OPEN;
+	chan->conn->actions->channel_opened(chan);
+	if (chan->auto_restrict) {
+		while (chan->enc_types) {
+			struct firefly_channel_encoder_type *t;
+
+			t = chan->enc_types;
+			chan->enc_types = t->next;
+			t->register_func(chan->proto_encoder);
+		}
 	}
 }
 
@@ -270,4 +283,28 @@ void firefly_channel_raise(
 		chan->state = FIREFLY_CHANNEL_ERROR;
 	if (conn && conn->actions && conn->actions->channel_error)
 		conn->actions->channel_error(chan, reason, msg);
+}
+
+void channel_auto_restr_send_ack(struct firefly_channel *chan)
+{
+	firefly_protocol_channel_restrict_ack resp;
+
+	resp.dest_chan_id   = chan->remote_id;
+	resp.source_chan_id = chan->local_id;
+	resp.restricted     = true;
+	labcomm_encoder_ioctl(chan->conn->transport_encoder,
+			      FIREFLY_LABCOMM_IOCTL_TRANS_SET_IMPORTANT_ID,
+			      &chan->important_id);
+	labcomm_encode_firefly_protocol_channel_restrict_ack(
+		chan->conn->transport_encoder,
+		&resp);
+
+	chan->restricted_local = true;
+	channel_auto_restr_check_complete(chan);
+}
+
+void channel_auto_restr_check_complete(struct firefly_channel *chan)
+{
+	if (chan->restricted_local && chan->restricted_remote)
+		chan->conn->actions->channel_restrict_info(chan, RESTRICTED);
 }

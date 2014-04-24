@@ -564,6 +564,7 @@ int handle_data_sample_event(void *event_arg)
 		    expected_seqno == fers->data.seqno)
 		{
 			size_t size;
+			int id;
 
 			size = fers->data.app_enc_data.n_0;
 			labcomm_decoder_ioctl(chan->proto_decoder,
@@ -571,15 +572,44 @@ int handle_data_sample_event(void *event_arg)
 					fers->data.app_enc_data.a,
 					size);
 
-			labcomm_decoder_decode_one(chan->proto_decoder);
+			id = labcomm_decoder_decode_one(chan->proto_decoder);
 			if (fers->data.important) {
 				chan->remote_seqno = fers->data.seqno;
 			}
+			if (id == -ENOENT) {
+				if (!chan->auto_restrict) {
+					firefly_error(FIREFLY_ERROR_LABCOMM, 1,
+						      "Unkn. type. Use autorestr.");
+				} else {
+					firefly_error(FIREFLY_ERROR_LABCOMM, 1,
+						      "Wait for restr.");
+				}
+			} else if (!chan->restricted_local &&
+				   chan->auto_restrict)
+			{
+				size_t n = 0;
+
+				for (; n < chan->n_decoder_types; n++) {
+					if (chan->seen_decoder_ids[n] == -1 ||
+					    chan->seen_decoder_ids[n] == id)
+					{
+						break;
+					}
+				}
+				chan->seen_decoder_ids[n] = id;
+				if (n == chan->n_decoder_types-1) {
+					FIREFLY_FREE(chan->seen_decoder_ids);
+					chan->seen_decoder_ids = NULL;
+					channel_auto_restr_send_ack(chan);
+				}
+			}
 #if 0	/* This would probably be a good idea, but it breaks existing tests. */
-		} else if (fers->data.important && expected_seqno != fers->data.seqno) {
+		} else if (fers->data.important &&
+			   expected_seqno != fers->data.seqno)
+		{
 			firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
-						  "Received data flagged important with "
-						  "unexpected sequence number.");
+				      "Received data flagged important with "
+				      "unexpected sequence number.");
 #endif
 		}
 	} else {
@@ -800,22 +830,31 @@ int channel_restrict_ack_event(void *context)
 		FIREFLY_FREE(context);
 		return -1;
 	}
-	if (earg->rack.restricted) {
-		if (!chan->restricted_remote && chan->restricted_local &&
-				chan->conn->actions &&
-				chan->conn->actions->channel_restrict_info) {
-			conn->actions->channel_restrict_info(chan, RESTRICTED);
-		} else if (!chan->restricted_local) {
-			firefly_channel_raise(chan, NULL,
-					FIREFLY_ERROR_PROTO_STATE, "Inconsistent restrict state.");
-		}
+	if (chan->auto_restrict) {
+		chan->restricted_remote = true;
+		channel_auto_restr_check_complete(chan);
 	} else {
-		enum restriction_transition t;
+		if (earg->rack.restricted) {
+			if (!chan->restricted_remote && chan->restricted_local &&
+			    chan->conn->actions &&
+			    chan->conn->actions->channel_restrict_info)
+			{
+				conn->actions->channel_restrict_info(chan,
+								     RESTRICTED);
+			} else if (!chan->restricted_local) {
+				firefly_channel_raise(chan, NULL,
+					FIREFLY_ERROR_PROTO_STATE,
+					"Inconsistent restrict state.");
+			}
+		} else {
+			enum restriction_transition t;
 
-		t = chan->restricted_local ? RESTRICTION_DENIED : UNRESTRICTED;
-		if (conn->actions && conn->actions->channel_restrict_info)
-			conn->actions->channel_restrict_info(chan, t);
-		chan->restricted_local = false;
+			t = chan->restricted_local ?
+				RESTRICTION_DENIED : UNRESTRICTED;
+			if (conn->actions && conn->actions->channel_restrict_info)
+				conn->actions->channel_restrict_info(chan, t);
+			chan->restricted_local = false;
+		}
 	}
 	chan->restricted_remote = earg->rack.restricted;
 	firefly_channel_ack(chan);
@@ -887,6 +926,15 @@ void firefly_channel_set_types(struct firefly_channel *chan,
 		f->register_func(chan->proto_decoder, f->handler, f->context);
 		types.decoder_types = f->next;
 		FIREFLY_FREE(f);
+		chan->n_decoder_types++;
+	}
+	chan->seen_decoder_ids = calloc(chan->n_decoder_types,
+					sizeof(*chan->seen_decoder_ids));
+	if (chan->seen_decoder_ids) {
+		for (size_t i = 0; i < chan->n_decoder_types; i++)
+			chan->seen_decoder_ids[i] = -1;
+	} else {
+		FFL(FIREFLY_ERROR_ALLOC);
 	}
 	chan->enc_types = types.encoder_types;
 }

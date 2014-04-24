@@ -572,6 +572,7 @@ void test_important_handshake_recv()
 	firefly_protocol_channel_request req_pkt;
 	req_pkt.source_chan_id = 1;
 	req_pkt.dest_chan_id = CHANNEL_ID_NOT_SET;
+	req_pkt.auto_restrict = false;
 	labcomm_encode_firefly_protocol_channel_request(test_enc, &req_pkt);
 	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
 			&buf, &buf_size);
@@ -629,6 +630,7 @@ void test_important_handshake_recv_errors()
 	firefly_protocol_channel_request req_pkt;
 	req_pkt.source_chan_id = 1;
 	req_pkt.dest_chan_id = CHANNEL_ID_NOT_SET;
+	req_pkt.auto_restrict = false;
 	labcomm_encode_firefly_protocol_channel_request(test_enc, &req_pkt);
 	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
 			&buf, &buf_size);
