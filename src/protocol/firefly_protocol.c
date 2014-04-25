@@ -174,14 +174,7 @@ int firefly_channel_open_auto_restrict_event(void *event_arg)
 	chan_req.source_chan_id = chan->local_id;
 	chan_req.dest_chan_id   = chan->remote_id;
 	chan_req.auto_restrict  = true;
-	while (types.decoder_types) {
-		struct firefly_channel_decoder_type *f;
-
-		f = types.decoder_types;
-		f->register_func(chan->proto_decoder, f->handler, f->context);
-		types.decoder_types = f->next;
-		FIREFLY_FREE(f);
-	}
+	firefly_channel_set_types(chan, types);
 	labcomm_encoder_ioctl(conn->transport_encoder,
 			      FIREFLY_LABCOMM_IOCTL_TRANS_SET_IMPORTANT_ID,
 			      &chan->important_id);
@@ -577,6 +570,7 @@ int handle_data_sample_event(void *event_arg)
 				chan->remote_seqno = fers->data.seqno;
 			}
 			if (id == -ENOENT) {
+#if 0
 				if (!chan->auto_restrict) {
 					firefly_error(FIREFLY_ERROR_LABCOMM, 1,
 						      "Unkn. type. Use autorestr.");
@@ -584,6 +578,7 @@ int handle_data_sample_event(void *event_arg)
 					firefly_error(FIREFLY_ERROR_LABCOMM, 1,
 						      "Wait for restr.");
 				}
+#endif
 			} else if (!chan->restricted_local &&
 				   chan->auto_restrict)
 			{
@@ -831,7 +826,7 @@ int channel_restrict_ack_event(void *context)
 		return -1;
 	}
 	if (chan->auto_restrict) {
-		chan->restricted_remote = true;
+		chan->restricted_remote = true; /* TOOD: Use member. */
 		channel_auto_restr_check_complete(chan);
 	} else {
 		if (earg->rack.restricted) {

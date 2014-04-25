@@ -305,6 +305,12 @@ void channel_auto_restr_send_ack(struct firefly_channel *chan)
 
 void channel_auto_restr_check_complete(struct firefly_channel *chan)
 {
-	if (chan->restricted_local && chan->restricted_remote)
-		chan->conn->actions->channel_restrict_info(chan, RESTRICTED);
+	if (chan->restricted_local && chan->restricted_remote) {
+		if (chan->conn->actions->channel_restrict_info) {
+			chan->conn->actions->channel_restrict_info(
+				chan, RESTRICTED);
+		} else {
+			/* TODO: User applicaiton is weird. */
+		}
+	}
 }
