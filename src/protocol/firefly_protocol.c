@@ -15,6 +15,15 @@
 #include "utils/cppmacros.h"
 
 /*
+ * FIREFLY_PROTO_ACK_*: Used to use the existing ack-functionality
+ * working with protocol types as well. This may or may not be the
+ * right way to do this...
+ *
+ * Must be negative.
+*/
+#define FIREFLY_PROTO_ACK_RESTRICT_ACK -1
+
+/*
  * Used by reg_proto_sigs() below to "short circuit" the connection during
  * the initial registration of protocol types.
  */
@@ -468,7 +477,7 @@ int handle_channel_ack_event(void *event_arg)
 					fecar->chan_ack.dest_chan_id);
 	if (chan != NULL) {
 		firefly_channel_ack(chan);
-		firefly_channel_internal_opened(chan);
+		firefly_channel_internal_opened(chan); /* TODO: Why? */
 	} else {
 		firefly_unknown_dest(fecar->conn, fecar->chan_ack.source_chan_id,
 							 fecar->chan_ack.dest_chan_id, "channel_ack");
@@ -598,10 +607,10 @@ int handle_data_sample_event(void *event_arg)
 					channel_auto_restr_send_ack(chan);
 				}
 			}
-#if 0	/* This would probably be a good idea, but it breaks existing tests. */
 		} else if (fers->data.important &&
 			   expected_seqno != fers->data.seqno)
 		{
+#if 0	/* This would probably be a good idea, but it breaks existing tests. */
 			firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
 				      "Received data flagged important with "
 				      "unexpected sequence number.");
@@ -627,7 +636,10 @@ void handle_ack(firefly_protocol_ack *ack, void *context)
 	chan = find_channel_by_local_id(conn, ack->dest_chan_id);
 	if (chan == NULL) {
 		firefly_unknown_dest(conn, ack->src_chan_id, ack->dest_chan_id, "ack");
-	} else if (chan->current_seqno == ack->seqno && ack->seqno > 0) {
+	} else if ((chan->current_seqno == ack->seqno && ack->seqno > 0) ||
+		   (chan->auto_restrict && chan->restricted_local &&
+		    ack->seqno == FIREFLY_PROTO_ACK_RESTRICT_ACK))
+	{
 		firefly_channel_ack(chan);
 	}
 }
@@ -826,8 +838,18 @@ int channel_restrict_ack_event(void *context)
 		return -1;
 	}
 	if (chan->auto_restrict) {
-		chan->restricted_remote = true; /* TOOD: Use member. */
+		firefly_protocol_ack ack_pkt;
+
+		/* TODO: Make sure user is not notified ico duplicate. */
+		chan->restricted_remote = true; /* TODO: Use member. */
 		channel_auto_restr_check_complete(chan);
+
+		ack_pkt.dest_chan_id = chan->remote_id;
+		ack_pkt.src_chan_id = chan->local_id;
+		ack_pkt.seqno = FIREFLY_PROTO_ACK_RESTRICT_ACK;
+		labcomm_encode_firefly_protocol_ack(
+			chan->conn->transport_encoder,
+			&ack_pkt);
 	} else {
 		if (earg->rack.restricted) {
 			if (!chan->restricted_remote && chan->restricted_local &&
