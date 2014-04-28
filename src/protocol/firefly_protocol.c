@@ -604,6 +604,7 @@ int handle_data_sample_event(void *event_arg)
 				if (n == chan->n_decoder_types-1) {
 					FIREFLY_FREE(chan->seen_decoder_ids);
 					chan->seen_decoder_ids = NULL;
+					chan->n_decoder_types = 0; /* State-ish */
 					channel_auto_restr_send_ack(chan);
 				}
 			}
