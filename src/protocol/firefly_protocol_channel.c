@@ -1,5 +1,7 @@
 #include "protocol/firefly_protocol_private.h"
 
+#include <limits.h>
+
 #include <utils/firefly_errors.h>
 #include "utils/firefly_event_queue_private.h"
 
@@ -98,10 +100,10 @@ struct firefly_connection *firefly_channel_get_connection(
 
 int firefly_channel_next_seqno(struct firefly_channel *chan)
 {
-	if (++chan->current_seqno <= 0) {
-		chan->current_seqno = 1;
+	if (chan->current_seqno == INT_MAX) {
+		chan->current_seqno = 0;
 	}
-	return chan->current_seqno;
+	return ++chan->current_seqno;
 }
 
 int firefly_channel_closed_event(void *event_arg)
