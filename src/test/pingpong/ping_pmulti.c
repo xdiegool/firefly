@@ -107,8 +107,9 @@ static void ping_channel_error(struct firefly_channel *chan,
 		fprintf(stderr, "ERROR: Channel was rejected.\n%s\n", msg);
 }
 
-void ping_connection_opened(struct firefly_connection *conn)
+void ping_connection_opened(struct firefly_connection *conn, void *ctx)
 {
+	UNUSED_VAR(ctx);
 	/*ping_pass_test(CONNECTION_OPEN);*/
 	printf("Connection open\n");
 	firefly_channel_open(conn);
@@ -222,7 +223,7 @@ void *ping_main_thread(void *arg)
 
 	firefly_connection_open(&ping_eth_conn_actions, NULL, event_queue,
 			firefly_transport_connection_eth_posix_new(
-			eth_llp, PONG_MAC_ADDR, PING_IFACE));
+			eth_llp, PONG_MAC_ADDR, PING_IFACE), NULL);
 
 	pthread_create(&reader_thread, NULL, eth_reader_thread_main, eth_llp);
 
@@ -245,7 +246,7 @@ void *ping_main_thread(void *arg)
 	firefly_connection_open(&ping_udp_conn_actions, NULL, event_queue,
 			firefly_transport_connection_udp_posix_new(
 					llp, PONG_ADDR, PONG_PORT,
-					FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT));
+					FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT), NULL);
 
 	pthread_create(&reader_thread, NULL, udp_reader_thread_main, llp);
 

@@ -69,7 +69,7 @@ void *send_data_and_close(void *args);
 bool pong_chan_on_restrict_request(struct firefly_channel *chan);
 void pong_chan_on_restrict_change(struct firefly_channel *chan,
 		enum restriction_transition rinfo);
-void pong_connection_opened(struct firefly_connection *conn);
+void pong_connection_opened(struct firefly_connection *conn, void *ctx);
 bool pong_connection_error(struct firefly_connection *conn,
 		enum firefly_error reason, const char *message);
 
@@ -99,9 +99,10 @@ bool pong_chan_on_restrict_request(struct firefly_channel *chan)
 	return true;
 }
 
-void pong_connection_opened(struct firefly_connection *conn)
+void pong_connection_opened(struct firefly_connection *conn, void *ctx)
 {
 	UNUSED_VAR(conn);
+	UNUSED_VAR(ctx);
 	pong_pass_test(CONNECTION_OPEN);
 }
 
@@ -112,7 +113,7 @@ int64_t pong_connection_received(struct firefly_transport_llp *llp,
 	if (strncmp(mac_addr, ping_mac_addr, strlen(ping_mac_addr)) == 0) {
 		return firefly_connection_open(&conn_actions, NULL, event_queue,
 				firefly_transport_connection_eth_posix_new(
-				llp, mac_addr, pong_iface));
+				llp, mac_addr, pong_iface), NULL);
 	} else {
 		fprintf(stderr, "ERROR: Received unknown connection: %s\n",
 				mac_addr);

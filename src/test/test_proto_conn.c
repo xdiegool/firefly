@@ -98,7 +98,7 @@ void test_conn_close_empty()
 		.close = free_plat_conn_test,
 		.context = &conn
 	};
-	int res = firefly_connection_open(NULL, NULL, eq, &test_trsp_conn);
+	int res = firefly_connection_open(NULL, NULL, eq, &test_trsp_conn, NULL);
 	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 
@@ -122,7 +122,7 @@ void test_conn_close_mult_chans()
 		.close = free_plat_conn_test,
 		.context = &conn
 	};
-	int res = firefly_connection_open(NULL, NULL, eq, &test_trsp_conn);
+	int res = firefly_connection_open(NULL, NULL, eq, &test_trsp_conn, NULL);
 	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 
@@ -159,7 +159,7 @@ void test_conn_close_mult_chans_overflow()
 		.close = free_plat_conn_test,
 		.context = &conn
 	};
-	int res = firefly_connection_open(NULL, NULL, eq, &test_trsp_conn);
+	int res = firefly_connection_open(NULL, NULL, eq, &test_trsp_conn, NULL);
 	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 
@@ -209,7 +209,7 @@ void test_conn_close_open_chan()
 	struct firefly_connection_actions actions = {
 		.channel_error = test_channel_error
 	};
-	int res = firefly_connection_open(&actions, NULL, eq, &test_trsp_conn);
+	int res = firefly_connection_open(&actions, NULL, eq, &test_trsp_conn, NULL);
 	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 
@@ -247,7 +247,7 @@ void test_conn_close_send_data()
 	struct firefly_connection_actions actions = {
 		.channel_error = test_channel_error
 	};
-	int res = firefly_connection_open(&actions, NULL, eq, &test_trsp_conn);
+	int res = firefly_connection_open(&actions, NULL, eq, &test_trsp_conn, NULL);
 	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 
@@ -283,7 +283,7 @@ void test_conn_close_send_first()
 		.close = NULL,
 		.context = &conn
 	};
-	int res = firefly_connection_open(NULL, NULL, eq, &test_trsp_conn);
+	int res = firefly_connection_open(NULL, NULL, eq, &test_trsp_conn, NULL);
 	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 
@@ -316,7 +316,7 @@ void test_conn_close_recv_any()
 		.close = free_plat_conn_test,
 		.context = &conn
 	};
-	int res = firefly_connection_open(NULL, NULL, eq, &test_trsp_conn);
+	int res = firefly_connection_open(NULL, NULL, eq, &test_trsp_conn, NULL);
 	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 
@@ -363,7 +363,7 @@ void test_conn_close_recv_chan_req_first()
 		.close = free_plat_conn_test,
 		.context = &conn
 	};
-	int res = firefly_connection_open(&conn_actions, NULL, eq, &test_trsp_conn);
+	int res = firefly_connection_open(&conn_actions, NULL, eq, &test_trsp_conn, NULL);
 	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 

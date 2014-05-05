@@ -107,8 +107,9 @@ static void ping_channel_error(struct firefly_channel *chan,
 		fprintf(stderr, "ERROR: Channel was rejected.\n%s\n", msg);
 }
 
-void ping_connection_opened(struct firefly_connection *conn)
+void ping_connection_opened(struct firefly_connection *conn, void *context)
 {
+	UNUSED_VAR(context);
 	ping_pass_test(CONNECTION_OPEN);
 	firefly_channel_open(conn);
 }
@@ -197,7 +198,7 @@ int main(int argc, char **argv)
 
 	res = firefly_connection_open(&conn_actions, NULL, event_queue,
 			firefly_transport_connection_eth_posix_new(
-			llp, mac_addr, iface));
+			llp, mac_addr, iface), NULL);
 	if (res < 0) fprintf(stderr, "PING ERROR: Open connection: %d.\n", res);
 
 	firefly_transport_eth_posix_run(llp);

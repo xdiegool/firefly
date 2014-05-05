@@ -128,6 +128,7 @@ static int mock_firefly_reader_start(struct labcomm_reader *r,
 						 struct labcomm_signature *signature,
 						 void *value)
 {
+	UNUSED_VAR(action_context);
 	UNUSED_VAR(local_index);
 	UNUSED_VAR(remote_index);
 	UNUSED_VAR(signature);
@@ -463,6 +464,7 @@ static int mock_firefly_app_reader_start(struct labcomm_reader *r,
 						 struct labcomm_signature *signature,
 						 void *value)
 {
+	UNUSED_VAR(action_context);
 	UNUSED_VAR(local_index);
 	UNUSED_VAR(remote_index);
 	UNUSED_VAR(signature);
@@ -736,8 +738,9 @@ bool firefly_channel_received(struct firefly_channel *chan)
 	return false;
 }
 
-static void connection_opened(struct firefly_connection *conn)
+static void connection_opened(struct firefly_connection *conn, void *ctx)
 {
+	UNUSED_VAR(ctx);
 	firefly_channel_open(conn);
 }
 
@@ -855,7 +858,7 @@ void test_something()
 
 	firefly_connection_open(&conn_actions, NULL, events,
 			firefly_transport_connection_udp_posix_new(
-					llp, IP_ADDR, MOCK_UDP_PORT, RESEND_TIMEOUT));
+					llp, IP_ADDR, MOCK_UDP_PORT, RESEND_TIMEOUT), NULL);
 
 	// Receive ingored request
 	current_packet = next_packet_wait(prev_packet);

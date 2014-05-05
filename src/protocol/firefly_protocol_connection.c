@@ -19,7 +19,7 @@ static int firefly_connection_open_event(void *arg)
 	if (conn->transport != NULL && conn->transport->open != NULL)
 		conn->transport->open(conn);
 	if (conn->actions != NULL && conn->actions->connection_opened != NULL)
-		conn->actions->connection_opened(conn);
+		conn->actions->connection_opened(conn, conn->context);
 	return 0;
 }
 
@@ -114,12 +114,13 @@ int firefly_connection_open(
 		struct firefly_connection_actions *actions,
 		struct firefly_memory_funcs *memory_replacements,
 		struct firefly_event_queue *event_queue,
-		struct firefly_transport_connection *tc)
+		struct firefly_transport_connection *tc,
+		void *context)
 {
-
 	struct firefly_connection *conn;
 
 	conn = firefly_connection_new(actions, memory_replacements, event_queue, tc);
+	firefly_connection_set_context(conn, context);
 	return conn != NULL ? conn->event_queue->offer_event_cb(conn->event_queue,
 			FIREFLY_PRIORITY_HIGH, firefly_connection_open_event,
 			conn, 0, NULL) : -1;

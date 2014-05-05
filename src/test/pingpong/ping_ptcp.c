@@ -63,8 +63,9 @@ static pthread_mutex_t ping_done_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t ping_done_signal = PTHREAD_COND_INITIALIZER;
 static bool ping_done;
 
-void ping_connection_opened(struct firefly_connection *conn)
+void ping_connection_opened(struct firefly_connection *conn, void *ctx)
 {
+	UNUSED_VAR(ctx);
 	printf("PING: conn opened\n");
 	ping_pass_test(CONNECTION_OPEN);
 	firefly_channel_open(conn);
@@ -182,7 +183,7 @@ void *ping_main_thread(void *arg)
 
 	res = firefly_connection_open(&ping_actions, NULL, event_queue,
 			firefly_transport_connection_tcp_posix_new(
-					llp, -1, PONG_ADDR, PONG_PORT));
+					llp, -1, PONG_ADDR, PONG_PORT), NULL);
 	if (res < 0) fprintf(stderr, "PING ERROR: Open connection: %d.\n", res);
 
 	res = firefly_transport_tcp_posix_run(llp);

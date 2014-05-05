@@ -248,7 +248,7 @@ int main(int argc, char **argv)
 	firefly_connection_open(&conn_actions,
 			firefly_transport_eth_xeno_memfuncs(), event_queue,
 			firefly_transport_connection_eth_xeno_new(
-			llp, mac_addr, iface));
+			llp, mac_addr, iface), NULL);
 
 	res = rt_mutex_create(&rtarg.lock, "reader_mutex");
 	if (res) {

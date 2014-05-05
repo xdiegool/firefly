@@ -61,7 +61,7 @@ void pong_chan_opened(struct firefly_channel *chan);
 void pong_udp_chan_closed(struct firefly_channel *chan);
 bool pong_chan_received(struct firefly_channel *chan);
 void pong_handle_pingpong_data(pingpong_data *data, void *ctx);
-void pong_pudp_connection_opened(struct firefly_connection *conn);
+void pong_pudp_connection_opened(struct firefly_connection *conn, void *ctx);
 void *send_data_and_close(void *args);
 
 struct firefly_connection_actions pong_udp_conn_actions = {
@@ -74,9 +74,10 @@ struct firefly_connection_actions pong_udp_conn_actions = {
 	.connection_opened = pong_pudp_connection_opened
 };
 
-void pong_pudp_connection_opened(struct firefly_connection *conn)
+void pong_pudp_connection_opened(struct firefly_connection *conn, void *ctx)
 {
 	UNUSED_VAR(conn);
+	UNUSED_VAR(ctx);
 	/*pong_pass_test(CONNECTION_OPEN);*/
 }
 
@@ -92,7 +93,7 @@ int64_t pong_udp_connection_received(
 		return firefly_connection_open(&pong_udp_conn_actions, NULL, event_queue,
 				firefly_transport_connection_udp_posix_new(
 						llp, ip_addr, port,
-						FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT));
+						FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT), NULL);
 	} else {
 		fprintf(stderr, "ERROR: Received unknown connection: %s:%hu\n",
 				ip_addr, port);
@@ -187,9 +188,10 @@ void pong_eth_chan_closed(struct firefly_channel *chan)
 	pthread_mutex_unlock(&pong_done_lock);
 }
 
-void pong_eth_connection_opened(struct firefly_connection *conn)
+void pong_eth_connection_opened(struct firefly_connection *conn, void *ctx)
 {
 	UNUSED_VAR(conn);
+	UNUSED_VAR(ctx);
 	/*pong_pass_test(CONNECTION_OPEN);*/
 }
 
@@ -211,7 +213,7 @@ int64_t pong_eth_connection_received(struct firefly_transport_llp *llp,
 		printf("Recieved connection on %s!\n", PONG_IFACE);
 		return firefly_connection_open(&pong_eth_conn_actions, NULL, event_queue,
 				firefly_transport_connection_eth_posix_new(
-				llp, mac_addr, PONG_IFACE));
+				llp, mac_addr, PONG_IFACE), NULL);
 	} else {
 		fprintf(stderr, "ERROR: Received unknown connection: %s\n", mac_addr);
 		return 0;

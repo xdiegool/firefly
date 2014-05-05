@@ -173,8 +173,9 @@ typedef bool (* firefly_connection_error_f)(struct firefly_connection *conn,
  * opened.
  *
  * @param conn The newly opened connection.
+ * @param context A user specified context.
  */
-typedef void (* firefly_connection_opened_f)(struct firefly_connection *conn);
+typedef void (* firefly_connection_opened_f)(struct firefly_connection *conn, void *context);
 
 /**
  * @brief Holds the callback functions that are called when there is any
@@ -211,6 +212,7 @@ struct firefly_connection_actions {
  * offered to.
  * @param tc A struct containing the transport layer specific
  * functions and data.
+ * @param context An initial value of the connection context.
  *
  * @return int Indicating error if any.
  * @retval 0 if no error, negative error number otherwise.
@@ -219,7 +221,8 @@ int firefly_connection_open(
 		struct firefly_connection_actions *actions,
 		struct firefly_memory_funcs *memory_replacements,
 		struct firefly_event_queue *event_queue,
-		struct firefly_transport_connection *tc);
+		struct firefly_transport_connection *tc,
+		void *context);
 
 /**
  * @brief Spawns an event that will close the connection specified by
