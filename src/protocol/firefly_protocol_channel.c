@@ -217,12 +217,12 @@ void firefly_channel_internal_opened(struct firefly_channel *chan)
 	chan->state = FIREFLY_CHANNEL_OPEN;
 	chan->conn->actions->channel_opened(chan);
 	if (chan->auto_restrict) {
-		while (chan->enc_types) {
-			struct firefly_channel_encoder_type *t;
+		struct firefly_channel_encoder_type *t;
 
-			t = chan->enc_types;
-			chan->enc_types = t->next;
+		t = chan->enc_types;
+		while (t) {
 			t->register_func(chan->proto_encoder);
+			t = t->next;
 		}
 	}
 }
