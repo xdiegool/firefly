@@ -189,6 +189,9 @@ int firefly_channel_open_auto_restrict_event(void *event_arg)
 			      &chan->important_id);
 	labcomm_encode_firefly_protocol_channel_request(conn->transport_encoder,
 							&chan_req);
+
+	FIREFLY_FREE(event_arg);
+
 	return 0;
 }
 
