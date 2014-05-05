@@ -61,7 +61,7 @@ void pong_chan_opened(struct firefly_channel *chan);
 void pong_udp_chan_closed(struct firefly_channel *chan);
 bool pong_chan_received(struct firefly_channel *chan);
 void pong_handle_pingpong_data(pingpong_data *data, void *ctx);
-void pong_pudp_connection_opened(struct firefly_connection *conn, void *ctx);
+void pong_pudp_connection_opened(struct firefly_connection *conn);
 void *send_data_and_close(void *args);
 
 struct firefly_connection_actions pong_udp_conn_actions = {
@@ -74,10 +74,9 @@ struct firefly_connection_actions pong_udp_conn_actions = {
 	.connection_opened = pong_pudp_connection_opened
 };
 
-void pong_pudp_connection_opened(struct firefly_connection *conn, void *ctx)
+void pong_pudp_connection_opened(struct firefly_connection *conn)
 {
 	UNUSED_VAR(conn);
-	UNUSED_VAR(ctx);
 	/*pong_pass_test(CONNECTION_OPEN);*/
 }
 
@@ -188,10 +187,9 @@ void pong_eth_chan_closed(struct firefly_channel *chan)
 	pthread_mutex_unlock(&pong_done_lock);
 }
 
-void pong_eth_connection_opened(struct firefly_connection *conn, void *ctx)
+void pong_eth_connection_opened(struct firefly_connection *conn)
 {
 	UNUSED_VAR(conn);
-	UNUSED_VAR(ctx);
 	/*pong_pass_test(CONNECTION_OPEN);*/
 }
 

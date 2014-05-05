@@ -64,7 +64,7 @@ void pong_chan_opened(struct firefly_channel *chan);
 void pong_chan_closed(struct firefly_channel *chan);
 bool pong_chan_received(struct firefly_channel *chan);
 void pong_handle_pingpong_data(pingpong_data *data, void *ctx);
-void pong_connection_opened(struct firefly_connection *conn, void *ctx);
+void pong_connection_opened(struct firefly_connection *conn);
 void *send_data_and_close(void *args);
 
 /* Restr. state change. */
@@ -108,11 +108,10 @@ struct firefly_connection_actions pong_actions = {
 	.connection_opened = pong_connection_opened
 };
 
-void pong_connection_opened(struct firefly_connection *conn, void *ctx)
+void pong_connection_opened(struct firefly_connection *conn)
 {
 	printf("PONG: conn opened\n");
 	UNUSED_VAR(conn);
-	UNUSED_VAR(ctx);
 	pong_pass_test(CONNECTION_OPEN);
 }
 

@@ -19,7 +19,7 @@ static int firefly_connection_open_event(void *arg)
 	if (conn->transport != NULL && conn->transport->open != NULL)
 		conn->transport->open(conn);
 	if (conn->actions != NULL && conn->actions->connection_opened != NULL)
-		conn->actions->connection_opened(conn, conn->context);
+		conn->actions->connection_opened(conn);
 	return 0;
 }
 
@@ -93,6 +93,7 @@ struct firefly_connection *firefly_connection_new(
 	conn->transport_encoder  = transport_encoder;
 	conn->transport_decoder  = transport_decoder;
 	conn->lc_memory          = lc_mem;
+	conn->context            = NULL;
 
 	// TODO: Fix this once Labcomm re-gets error handling
 	/* labcomm_register_error_handler_encoder(conn->transport_encoder,*/

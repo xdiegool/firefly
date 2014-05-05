@@ -175,7 +175,7 @@ typedef bool (* firefly_connection_error_f)(struct firefly_connection *conn,
  * @param conn The newly opened connection.
  * @param context A user specified context.
  */
-typedef void (* firefly_connection_opened_f)(struct firefly_connection *conn, void *context);
+typedef void (* firefly_connection_opened_f)(struct firefly_connection *conn);
 
 /**
  * @brief Holds the callback functions that are called when there is any

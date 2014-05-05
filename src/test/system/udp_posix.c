@@ -738,9 +738,8 @@ bool firefly_channel_received(struct firefly_channel *chan)
 	return false;
 }
 
-static void connection_opened(struct firefly_connection *conn, void *ctx)
+static void connection_opened(struct firefly_connection *conn)
 {
-	UNUSED_VAR(ctx);
 	firefly_channel_open(conn);
 }
 

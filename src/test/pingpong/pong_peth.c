@@ -69,7 +69,7 @@ void *send_data_and_close(void *args);
 bool pong_chan_on_restrict_request(struct firefly_channel *chan);
 void pong_chan_on_restrict_change(struct firefly_channel *chan,
 		enum restriction_transition rinfo);
-void pong_connection_opened(struct firefly_connection *conn, void *ctx);
+void pong_connection_opened(struct firefly_connection *conn);
 bool pong_connection_error(struct firefly_connection *conn,
 		enum firefly_error reason, const char *message);
 
@@ -99,10 +99,9 @@ bool pong_chan_on_restrict_request(struct firefly_channel *chan)
 	return true;
 }
 
-void pong_connection_opened(struct firefly_connection *conn, void *ctx)
+void pong_connection_opened(struct firefly_connection *conn)
 {
 	UNUSED_VAR(conn);
-	UNUSED_VAR(ctx);
 	pong_pass_test(CONNECTION_OPEN);
 }
 

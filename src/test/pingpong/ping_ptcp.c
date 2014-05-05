@@ -63,9 +63,8 @@ static pthread_mutex_t ping_done_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t ping_done_signal = PTHREAD_COND_INITIALIZER;
 static bool ping_done;
 
-void ping_connection_opened(struct firefly_connection *conn, void *ctx)
+void ping_connection_opened(struct firefly_connection *conn)
 {
-	UNUSED_VAR(ctx);
 	printf("PING: conn opened\n");
 	ping_pass_test(CONNECTION_OPEN);
 	firefly_channel_open(conn);
