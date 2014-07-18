@@ -12,4 +12,11 @@
 #define UNUSED_VAR(x)	((void)(x))	/* Supress unsued variable compiler
 					   warings. */
 
+/* Debug prints on stdout (VxWorks does not have stderr). */
+#ifdef DEBUG
+#define TRACE(...) do { printf(__VA_ARGS__); } while (0)
+#else
+#define TRACE(...) do { } while (0)
+#endif
+
 #endif

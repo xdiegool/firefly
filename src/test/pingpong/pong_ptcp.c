@@ -127,7 +127,7 @@ int64_t pong_connection_received(
 		printf("PONG: Accepting conn\n");
 		return firefly_connection_open(&pong_actions, NULL, event_queue,
 				firefly_transport_connection_tcp_posix_new(
-						llp, socket, ip_addr, port));
+						llp, socket, ip_addr, port), NULL);
 	} else {
 		fprintf(stderr, "ERROR: Received unknown connection: %s:%hu\n",
 			ip_addr, port);

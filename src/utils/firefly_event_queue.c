@@ -6,7 +6,11 @@
 
 #include <stdlib.h>
 #include <stdbool.h>
+#ifdef LABCOMM_COMPAT
+#include LABCOMM_COMPAT
+#else
 #include <stdint.h>
+#endif
 #include <string.h>
 
 #include <utils/firefly_errors.h>

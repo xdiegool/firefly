@@ -7,10 +7,12 @@
 
 include(LibFindMacros)
 
-if(NOT $ENV{LABCOMM_ROOT_DIR} STREQUAL "")
-	set(LABCOMM_ROOT_DIR $ENV{LABCOMM_ROOT_DIR} CACHE PATH "LabComm base directory location (optional, used for nonstandard installation paths)" FORCE)
-else()
-	set(LABCOMM_ROOT_DIR "${Firefly_PROJECT_DIR}/../labcomm/lib/c/")
+if(NOT LABCOMM_ROOT_DIR)
+	# No toolchain file used.
+        if("$ENV{LABCOMM}" STREQUAL "")
+        	message(FATAL_ERROR "Set env. variable LABCOMM to labcomm root.")
+        endif()
+	set(LABCOMM_ROOT_DIR $ENV{LABCOMM}/lib/c)
 endif()
 
 # Header files to find
@@ -28,4 +30,3 @@ set(LABCOMM_PROCESS_LIBS LABCOMM_LIBRARY)
 set(LABCOMM_FIND_REQUIRED true)
 
 libfind_process(LABCOMM)
-

@@ -21,7 +21,13 @@
 
 #include <stdlib.h>
 #include <stdbool.h>
+
+#ifdef LABCOMM_COMPAT
+#include LABCOMM_COMPAT
+#else
 #include <stdint.h>
+#endif
+
 
 /**
  * @brief Defines the maximum number of events an event may depend on.

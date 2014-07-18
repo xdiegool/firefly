@@ -10,7 +10,11 @@
 #include <signal.h>
 
 #include <utils/firefly_event_queue.h>
+#ifndef LABCOMM_COMPAT
 #include <utils/firefly_resend_posix.h>
+#else
+#include <utils/firefly_resend_vx.h>
+#endif
 
 #include "transport/firefly_transport_private.h"
 
@@ -26,9 +30,14 @@ struct transport_llp_udp_posix {
 											   events on. */
 	struct resend_queue *resend_queue; /**< The resend queue managing important
 										 packets. */
+#ifndef LABCOMM_COMPAT
 	pthread_t read_thread; /**< The handle to the thread running the read loop. */
 	pthread_t resend_thread; /**< The handle to the thread running the resend
 							   loop. */
+#else
+	int tid_read;
+	int tid_resend;
+#endif
 };
 
 /**

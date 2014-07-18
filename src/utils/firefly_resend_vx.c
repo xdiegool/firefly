@@ -1,16 +1,17 @@
-#define _POSIX_C_SOURCE (200112L)
-#include <pthread.h>
+#define _POSIX_C_SOURCE (200112L) /* TODO: Why? */
 
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-/* #include <sys/time.h> */
+#include <semLib.h>
+#include <taskLib.h>
+#include <sysLib.h>
 
 #include <protocol/firefly_protocol.h>
-
-#include "utils/firefly_resend_posix.h"
+#include "utils/firefly_resend_vx.h"
 #include "protocol/firefly_protocol_private.h"
+
 
 struct resend_queue *firefly_resend_queue_new()
 {
@@ -21,8 +22,8 @@ struct resend_queue *firefly_resend_queue_new()
 		rq->next_id = 1;
 		rq->first = NULL;
 		rq->last = NULL;
-		pthread_cond_init(&rq->sig, NULL);
-		pthread_mutex_init(&rq->lock, NULL);
+		rq->lock = semMCreate(SEM_Q_PRIORITY | SEM_INVERSION_SAFE);
+		rq->sig = semCCreate(0, 0);
 	}
 
 	return rq;
@@ -30,17 +31,19 @@ struct resend_queue *firefly_resend_queue_new()
 
 void firefly_resend_queue_free(struct resend_queue *rq)
 {
-	struct resend_elem *re = rq->first;
-	struct resend_elem *tmp;
+	struct resend_elem *re;
 
-	while(re != NULL) {
+	re = rq->first;
+	while (re) {
+		struct resend_elem *tmp;
+
 		tmp = re->prev;
 		firefly_resend_elem_free(re);
 		re = tmp;
 	}
 
-	pthread_cond_destroy(&rq->sig);
-	pthread_mutex_destroy(&rq->lock);
+	semDelete(rq->lock);
+	semDelete(rq->sig);
 	free(rq);
 }
 
@@ -60,11 +63,13 @@ unsigned char firefly_resend_add(struct resend_queue *rq,
 		unsigned char *data, size_t size, long timeout_ms,
 		unsigned char retries, struct firefly_connection *conn)
 {
-	struct resend_elem *re = malloc(sizeof(*re));
-	if (re == NULL) {
+	struct resend_elem *re;
+
+	re = malloc(sizeof(*re));
+	if (!re)
 		return 0;
-	}
-	re->data = data;
+
+	re->data = (char *) data;
 	re->size = size;
 	clock_gettime(CLOCK_REALTIME, &re->resend_at);
 	timespec_add_ms(&re->resend_at, timeout_ms);
@@ -72,7 +77,10 @@ unsigned char firefly_resend_add(struct resend_queue *rq,
 	re->conn = conn;
 	re->timeout = timeout_ms;
 	re->prev = NULL;
-	pthread_mutex_lock(&rq->lock);
+
+	/* printf("WAITING FOR RQ LOCK\n"); */
+	semTake(rq->lock, WAIT_FOREVER);
+	/* printf("TOOK RQ LOCK\n"); */
 	re->id = rq->next_id++;
 	if (rq->next_id == 0) {
 		rq->next_id = 1;
@@ -83,29 +91,33 @@ unsigned char firefly_resend_add(struct resend_queue *rq,
 		rq->last->prev = re;
 	}
 	rq->last = re;
-	pthread_cond_signal(&rq->sig);
-	pthread_mutex_unlock(&rq->lock);
+	semGive(rq->lock);
+	semGive(rq->sig);
+
 	return re->id;
 }
 
 static inline struct resend_elem *firefly_resend_pop(
 		struct resend_queue *rq, unsigned char id)
 {
-	struct resend_elem *re = rq->first;
-	// If queue is empty return NULL
-	if (re == NULL)
+	struct resend_elem *re;
+
+	re = rq->first;
+	if (!re)
 		return NULL;
+
 	// If first elem remove it and return it
 	if (re->id == id) {
 		rq->first = re->prev;
-		if (rq->last == re) {
+		if (rq->last == re)
 			rq->last = NULL;
-		}
 		return re;
 	}
-	while (re->prev != NULL) {
+	while (re->prev) {
 		if (re->prev->id == id) {
-			struct resend_elem *tmp = re->prev;
+			struct resend_elem *tmp;
+
+			tmp = re->prev;
 			re->prev = re->prev->prev;
 			if (rq->last == tmp) {
 				rq->last = re;
@@ -120,36 +132,42 @@ static inline struct resend_elem *firefly_resend_pop(
 
 void firefly_resend_readd(struct resend_queue *rq, unsigned char id)
 {
-	pthread_mutex_lock(&rq->lock);
-	struct resend_elem *re = firefly_resend_pop(rq, id);
-	pthread_mutex_unlock(&rq->lock);
-	if (re == NULL)
+	struct resend_elem *re;
+
+	semTake(rq->lock, WAIT_FOREVER);
+	re = firefly_resend_pop(rq, id);
+	semGive(rq->lock);
+
+	if (!re)
 		return;
 
-	// Decrement retries counter
 	re->num_retries--;
 
 	timespec_add_ms(&re->resend_at, re->timeout);
 	re->prev = NULL;
-	pthread_mutex_lock(&rq->lock);
+
+	semTake(rq->lock, WAIT_FOREVER);
 	if (rq->last == NULL) {
 		rq->first = re;
 	} else {
 		rq->last->prev = re;
 	}
 	rq->last = re;
-	pthread_cond_signal(&rq->sig);
-	pthread_mutex_unlock(&rq->lock);
+	semGive(rq->lock);
+	semGive(rq->sig);
 }
 
 void firefly_resend_remove(struct resend_queue *rq, unsigned char id)
 {
-	pthread_mutex_lock(&rq->lock);
-	struct resend_elem *re = firefly_resend_pop(rq, id);
+	struct resend_elem *re;
+
+	/* printf("%s\n", __func__); */
+	semTake(rq->lock, WAIT_FOREVER);
+	re = firefly_resend_pop(rq, id);
 	if (re != NULL)
 		firefly_resend_elem_free(re);
-	pthread_cond_signal(&rq->sig);
-	pthread_mutex_unlock(&rq->lock);
+	semGive(rq->lock);
+	semGive(rq->sig);
 }
 
 void firefly_resend_elem_free(struct resend_elem *re)
@@ -158,12 +176,15 @@ void firefly_resend_elem_free(struct resend_elem *re)
 	free(re);
 }
 
+/* TODO: Looks wrong... */
 struct resend_elem *firefly_resend_top(struct resend_queue *rq)
 {
 	struct resend_elem *re = NULL;
-	pthread_mutex_lock(&rq->lock);
+	
+	semTake(rq->lock, WAIT_FOREVER);
 	re = rq->first;
-	pthread_mutex_unlock(&rq->lock);
+	semGive(rq->lock);
+
 	return re;
 }
 
@@ -182,21 +203,31 @@ int firefly_resend_wait(struct resend_queue *rq,
 	struct resend_elem *res = NULL;
 	struct timespec now;
 
-	pthread_mutex_lock(&rq->lock);
+	semTake(rq->lock, WAIT_FOREVER);
 	clock_gettime(CLOCK_REALTIME, &now);
 	res = rq->first;
-	while (res == NULL || !timespec_past(&now, &res->resend_at)) {
-		if (res == NULL) {
-			pthread_cond_wait(&rq->sig, &rq->lock);
+	while (!res || !timespec_past(&now, &res->resend_at)) {
+		/* TODO: Port of posix code. Clean it up. */
+		if (!res) {
+			semGive(rq->lock);
+			semTake(rq->sig, WAIT_FOREVER);
+			semTake(rq->lock, WAIT_FOREVER);
 		} else {
-			struct timespec at = res->resend_at;
-			pthread_cond_timedwait(&rq->sig, &rq->lock, &at);
+			struct timespec at;
+			long timeout;
+
+			at = res->resend_at;
+			timeout = ((at.tv_sec - now.tv_sec) * 1000000 +
+					   (at.tv_nsec - now.tv_nsec) / 1000) / sysClkRateGet();
+			semGive(rq->lock);
+			semTake(rq->sig, timeout);
+			semTake(rq->lock, WAIT_FOREVER);
 		}
 		clock_gettime(CLOCK_REALTIME, &now);
 		res = rq->first;
 	}
 	*conn = res->conn;
-	// Check if counter has reached 0
+
 	if (res->num_retries <= 0) {
 		firefly_resend_pop(rq, res->id);
 		firefly_resend_elem_free(res);
@@ -206,24 +237,16 @@ int firefly_resend_wait(struct resend_queue *rq,
 		result = -1;
 	} else {
 		*data = malloc(res->size);
+		if (!*data)
+			printf("malloc failed %s:%d\n", __FILE__, __LINE__);
 		memcpy(*data, res->data, res->size);
 		*size = res->size;
 		*id = res->id;
 		result = 0;
 	}
-	pthread_mutex_unlock(&rq->lock);
+	semGive(rq->lock);
+
 	return result;
-}
-
-static void firefly_resend_cleanup(void *arg)
-{
-	struct firefly_resend_loop_args *largs;
-	struct resend_queue *rq;
-	largs = arg;
-	rq = largs->rq;
-
-	pthread_mutex_unlock(&rq->lock);
-	free(arg);
 }
 
 void *firefly_resend_run(void *args)
@@ -237,27 +260,22 @@ void *firefly_resend_run(void *args)
 	int res;
 
 	largs = args;
-	pthread_cleanup_push(firefly_resend_cleanup, args);
 
 	rq = largs->rq;
 
-	while (true) {
-		int prev_state;
-
+	for (;;) {
 		res = firefly_resend_wait(rq, &data, &size, &conn, &id);
-		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &prev_state);
+		taskSafe();
 		if (res < 0) {
 			if (largs->on_no_ack)
 				largs->on_no_ack(conn);
 		} else {
-			conn->transport->write(data, size, conn,
-					false, NULL);
+			conn->transport->write(data, size, conn, false, NULL);
 			free(data);
 			firefly_resend_readd(rq, id);
 		}
-		pthread_setcancelstate(prev_state, NULL);
+		taskUnsafe();
 	}
 
-	pthread_cleanup_pop(1);
 	return NULL;
 }

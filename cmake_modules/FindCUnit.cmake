@@ -9,5 +9,9 @@ include(LibFindMacros)
 
 find_path(CUNIT_INCLUDE_DIR NAMES CUnit/CUnit.h PATH_SUFFIXES cunit)
 find_library(CUNIT_LIBRARY NAMES cunit libcunit cunitlib)
+
+set(CUNIT_PROCESS_INCLUDES CUNIT_INCLUDE_DIR)
+set(CUNIT_PROCESS_LIBS CUNIT_LIBRARY)
+
 libfind_process(CUNIT)
 

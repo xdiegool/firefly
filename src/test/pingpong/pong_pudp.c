@@ -125,7 +125,7 @@ int64_t pong_connection_received(
 		return firefly_connection_open(&pong_actions, NULL, event_queue,
 				firefly_transport_connection_udp_posix_new(
 						llp, ip_addr, port,
-						FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT));
+						FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT), NULL);
 	} else {
 		fprintf(stderr, "ERROR: Received unknown connection: %s:%hu\n",
 			ip_addr, port);

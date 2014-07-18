@@ -87,7 +87,7 @@ if(NOT CMAKE_CROSSCOMPILING AND CUNIT_FOUND)
 		${Firefly_SOURCE_DIR}/utils/firefly_resend_posix.c
 	)
 	target_link_libraries(test_resend_posix
-		cunit test_helpers rt pthread
+		cunit test_helpers pthread rt
 	)
 	add_test(test_resend_posix test_resend_posix)
 	## }}}
