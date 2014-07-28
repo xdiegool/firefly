@@ -33,10 +33,10 @@ public class TCPConnectionMultiplexer {
 		throws UnknownHostException, IOException
 	{
 		Socket sock = new Socket(host, port);
-		TCPConnection conn = new TCPConnection(sock, delegate);
-		addConnection(conn);
+		//TCPConnection conn = new TCPConnection(sock, delegate);
+		//addConnection(conn);
 
-		return conn;
+		return null;
 	}
 
 	// TODO: Move.
@@ -63,8 +63,9 @@ public class TCPConnectionMultiplexer {
 					Debug.log("Incoming " + ha);
 					conf = srv.acceptConnection(ha);
 					if (conf) {
-						TCPConnection c = new TCPConnection(s, delegate);
-						TCPConnectionMultiplexer.this.addConnection(c);
+					//	TCPConnection c = new TCPConnection(s, delegate);
+					//	TCPConnectionMultiplexer.this.addConnection(c);
+
 					} else {
 						s.close();
 					}
