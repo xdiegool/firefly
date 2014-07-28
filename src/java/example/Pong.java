@@ -4,12 +4,12 @@ import se.lth.cs.firefly.*;
 
 import se.lth.control.labcomm.LabCommEncoder;
 import se.lth.control.labcomm.LabCommDecoder;
-
+import java.net.*;
 import lc_gen.data;
 
 import java.io.IOException;
 
-public class Pong implements Runnable, FireflyApplication, FireflyServer, data.Handler {
+public class Pong implements Runnable, FireflyApplication, data.Handler {
 
 	// Callbacks
 	public boolean channelAccept(Connection connection) { return true; }
@@ -21,23 +21,25 @@ public class Pong implements Runnable, FireflyApplication, FireflyServer, data.H
 	public void connectionError(Connection conn) {}
 
 	// More callbacks
-	public boolean acceptConnection(String addr) { return true; }
-	public void connectionOpened() {}
+	public boolean acceptConnection(InetAddress remoteAddress, int remotePort){return true;}
+	public void connectionOpened(Connection conn){}
 
 
 	public void run() {
 		try {
 			reallyRun();
 		} catch (IOException e) {
+			e.printStackTrace();	
 			Debug.errx("IO broke: " + e);
 		} catch (InterruptedException e) {
+			e.printStackTrace();	
 		}
 	}
 
 	private Channel chan;
 	private int echo = -1;
 
-	private void setChan(Channel chan) {
+	private synchronized void setChan(Channel chan) {
 		this.chan = chan;
 		notifyAll();
 	}
@@ -57,15 +59,18 @@ public class Pong implements Runnable, FireflyApplication, FireflyServer, data.H
 	}
 
 	private void reallyRun() throws IOException, InterruptedException {
-		TCPConnectionMultiplexer connMux = new TCPConnectionMultiplexer(this, 8080);
+		//TCPConnectionMultiplexer connMux = new TCPConnectionMultiplexer(this, 8080);
+		Connection conn = new UDPConnection(8056, this); 
+		Debug.log("Waiting for channel...");		
 		waitForChannel();
-		System.out.println("Got chan");
+		Debug.log("Got chan");
 		LabCommDecoder dec = chan.getDecoder();
 		LabCommEncoder enc = chan.getEncoder();
 		data.register(enc);
-		data.register(dec, this); // Reg. handler above.
+		data.register(dec, this); // Reg. handler above.;
 		waitForData();
-		System.out.println("Got data");
+		Debug.log("Got data: " + echo);
+		conn.close();
 
 	}
 
