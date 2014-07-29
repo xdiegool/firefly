@@ -10,7 +10,7 @@ import java.io.OutputStream;
 import java.io.InputStream;
 import java.io.IOException;
 
-public class TCPConnection extends Connection implements
+public abstract class TCPConnection implements
 							   ack.Handler,
 							   channel_ack.Handler,
 							   channel_close.Handler,
@@ -19,7 +19,7 @@ public class TCPConnection extends Connection implements
 							   channel_restrict_ack.Handler,
 							   channel_restrict_request.Handler,
 							   data_sample.Handler
-{
+{	
 	private Socket sock;
 	private FireflyApplication delegate;
 	private Reader reader;
@@ -30,7 +30,7 @@ public class TCPConnection extends Connection implements
 	public TCPConnection(Socket sock, FireflyApplication delegate)
 		throws IOException
 	{
-		this.sock = sock;
+/*		this.sock = sock;
 		this.delegate = delegate;
 		bottomDecoder = new ConnectionDecoder(sock.getInputStream());
 		bottomEncoder = new ConnectionEncoder(sock.getOutputStream(),
@@ -55,22 +55,27 @@ public class TCPConnection extends Connection implements
 		channel_restrict_ack.register(bottomDecoder, this);
 
 		reader = new Reader(bottomDecoder);
+*/
 	}
 
 	// 1
 	public synchronized void openChannel() throws IOException {
+/*
 		Channel chan = new Channel(nextChannelID, this);
 		channel_request req = new channel_request();
 		req.source_chan_id = nextChannelID;
 		channel_request.encode(bottomEncoder, req);
 		nextChannelID++;
+*/
 	}
 
 	public void closeChannel(Channel chan) throws IOException{
+/*
 		channel_close cc = new channel_close();
 		cc.source_chan_id = chan.getLocalID();
 		cc.dest_chan_id = chan.getRemoteID();
 		channel_close.encode(bottomEncoder, cc);
+*/
 	}
 
 	// LabComm callbacks for generated protocol. Might move.
@@ -79,6 +84,7 @@ public class TCPConnection extends Connection implements
 	}
 
 	public void handle_channel_ack(channel_ack value) {
+/*
 		Channel chan = channels.get(value.dest_chan_id);
 		if (value.ack) {
 			chan.setOpen();
@@ -88,11 +94,13 @@ public class TCPConnection extends Connection implements
 			chan.setClosed();
 			channels.remove (value.dest_chan_id);
 		}
+*/
 	}
 
 	public synchronized void handle_channel_close(channel_close req)
 		throws IOException
 	{
+/*
 		Channel chan = channels.get(req.dest_chan_id);
 		if (chan.isOpen()) {
 			// Request
@@ -107,12 +115,14 @@ public class TCPConnection extends Connection implements
 			// Response
 			channels.remove(req.dest_chan_id);
 		}
+*/
 	}
 
 	// 2
 	public synchronized void handle_channel_request(channel_request req)
 		throws IOException
 	{
+/*
 		channel_response resp = new channel_response();
 		resp.dest_chan_id = req.source_chan_id;
 		if (delegate.channelAccept(this)) {
@@ -125,12 +135,14 @@ public class TCPConnection extends Connection implements
 			resp.ack = false;
 		}
 		channel_response.encode(bottomEncoder, resp);
+*/
 	}
 
 	// 3
 	public synchronized void handle_channel_response(channel_response resp)
 		throws IOException
 	{
+/*
 		channel_ack ack = new channel_ack();
 		ack.source_chan_id = resp.dest_chan_id; // TODO: Confirm this w/ prev.
 		ack.dest_chan_id = resp.source_chan_id;
@@ -139,6 +151,7 @@ public class TCPConnection extends Connection implements
 			channels.get(resp.dest_chan_id).setOpen();
 		}
 		channel_ack.encode(bottomEncoder, ack);
+*/
 	}
 
 	public void handle_channel_restrict_ack(channel_restrict_ack value) {
@@ -148,8 +161,10 @@ public class TCPConnection extends Connection implements
 	}
 
 	public void handle_data_sample(data_sample ds) throws Exception {
+/*
 		Channel chan = channels.get(ds.dest_chan_id);
 		chan.receivedData(ds.app_enc_data);
+*/
 	}
 
 	private class Reader extends Thread {
@@ -173,4 +188,5 @@ public class TCPConnection extends Connection implements
 		}
 
 	}
+	
 }

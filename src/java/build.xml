@@ -7,8 +7,8 @@
 	<property name="pingjar" value="${dist}/ping.jar" />
 
 	<!-- TODO: Include these files later. -->
-	<property name="labcomm" value="../../../labcomm.devel/lib/java/labcomm.jar" />
-	<property name="labcommc" value="../../../labcomm.devel/compiler/labComm.jar" />
+	<property name="labcomm" value="../../../labcomm-core/lib/java/labcomm.jar" />
+	<property name="labcommc" value="../../../labcomm-core/compiler/labComm.jar" />
 
 	<property name="lcproto" value=" ../../lc/firefly_protocol.lc" />
 	<property name="gendir" value="genproto" />
@@ -31,7 +31,7 @@
 	</target>
 
 	<target name="compile" depends="init,lcProtoGen,lcPingPongGen">
-		<javac srcdir=".:" destdir="${build}" includeantruntime="false">
+		<javac srcdir=".:" destdir="${build}" includeantruntime="false" debug="true">
 		  <classpath>
 			<pathelement location="${labcomm}" />
 		  </classpath>
