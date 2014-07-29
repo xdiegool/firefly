@@ -19,16 +19,18 @@ public abstract class Connection implements
 
 	private HashMap<Integer, Channel> channels;
 	private int nextChannelID;
-	protected FireflyApplication delegate;
 	private ConnectionDecoder bottomDecoder;
 	private ConnectionEncoder bottomEncoder;
 	private int seqno;
 	private boolean ackOnData;
-	protected int localPort;
 	private ResendQueue resendQueue;
+	private ActionQueue actionQueue;
+	private Thread receiverThread;
+
+	protected FireflyApplication delegate;
 	protected InetAddress remoteAddress;
 	protected int remotePort;
-	private Thread receiverThread;
+	protected int localPort;
 
 	protected Connection(int localPort, FireflyApplication delegate)  throws IOException{
 		this.delegate=delegate;
@@ -41,6 +43,7 @@ public abstract class Connection implements
 		bottomDecoder = new ConnectionDecoder(new AppendableInputStream());
 		bottomEncoder = new ConnectionEncoder(new ConnectionWriter(), bottomDecoder);
 		resendQueue = new ResendQueue(bottomEncoder, this);
+		actionQueue = new ActionQueue();
 		
 		init();
 		
@@ -90,6 +93,7 @@ public abstract class Connection implements
 		closeTransport();
 		receiverThread.interrupt();
 		resendQueue.stop();	
+		actionQueue.stop();
 		Debug.log("Close connection");	
 	}
 	public synchronized void setDataAck(boolean b){ackOnData = b;} 
@@ -332,12 +336,14 @@ public abstract class Connection implements
 	* instead. 
 	*/
 	public final synchronized void handle_data_sample(data_sample ds) throws Exception{
+		Debug.log("Received data sample");
 		//TODO Check so that this data hasn't been received before, maybe in Channel as well
 		if(ds.important){
 			ack dataAck = new ack();
 			dataAck.dest_chan_id = ds.src_chan_id;
 			dataAck.src_chan_id = ds.dest_chan_id;
 			dataAck.seqno = ds.seqno;	
+			Debug.log("Received data ack");
 			ack.encode(bottomEncoder, dataAck);
 		}	
 		Channel chan = channels.get(ds.dest_chan_id);
@@ -387,15 +393,24 @@ public abstract class Connection implements
 					int length = receive(inc, inc.length);
 					final byte[] toDecode = new byte[length];
 					System.arraycopy(inc, 0, toDecode, 0, length);
-					bottomDecoder.decode(toDecode);
-				}catch (EOFException e){
-					//Happens when user defined types are done sending. If this happens, we only want to continue listening for packets
-				} catch (InterruptedException e) {
-					Thread.currentThread().interrupt();
+					actionQueue.queue(new ActionQueue.Action(){
+						public void doAction(){
+							try{
+								bottomDecoder.decode(toDecode);
+							}catch (EOFException e){
+								//Happens when user defined types are done sending. If this happens, we only want to continue listening for packets
+							} catch (InterruptedException e) {
+								Thread.currentThread().interrupt();
+								exception(e);
+							}catch (Exception e) {
+								exception(e);
+							}
+						}
+					});
 				}catch (SocketException e) {
 					Thread.currentThread().interrupt(); // Socket closed
 				}catch (Exception e) {
-						exception(e);
+					exception(e);
 				}
 			}
 		}

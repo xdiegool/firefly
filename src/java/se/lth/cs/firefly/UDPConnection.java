@@ -37,6 +37,7 @@ public class UDPConnection extends Connection{
 	protected int receive(byte[] inc, int len)  throws IOException{
 		DatagramPacket p = new DatagramPacket(inc, len);	
 		dsock.receive(p);
+		Debug.log("Received packet: " +Debug.byteArrayToString(p.getData(), p.getLength()));
 		if(remoteAddress == null && delegate.acceptConnection(p.getAddress(), p.getPort())){
 Debug.log("Delegate accepted");
 			remoteAddress = p.getAddress(); //TODO Ask delegate if they accept packages from this host
@@ -48,11 +49,8 @@ Debug.log("Delegate accepted");
 	}
 	@Override
 	protected void send(byte[] data, int length)  throws IOException{
-		String s = "";
-		for(int i = 0; i < length; i++){
-			s+=data[i] + " ";
-		}
 		dsock.send(new DatagramPacket(data, length, remoteAddress,  remotePort));
+		Debug.log("Sent packet: " +Debug.byteArrayToString(data, length));
 	}
 	@Override
 	protected void closeTransport(){
