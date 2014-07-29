@@ -22,6 +22,7 @@ public class ResendQueue{
 		res.start();
 	}
 	public void queue(int index, LabCommSample s){
+Debug.log("Queueing: " +  s.getClass().getSimpleName() + " @" + index);
 		synchronized(lock){
 			queue.put(index, s);
 			lock.notifyAll();
@@ -30,6 +31,8 @@ public class ResendQueue{
 	public void dequeue(int index){
 		synchronized(lock){
 			LabCommSample s = queue.remove(index);
+			String printString = (s == null) ? "Already dequeued" : s.getClass().getSimpleName();
+			Debug.log("Dequeueing: " +  printString  + " @" + index);
 			lock.notifyAll();
 		}
 	}
@@ -39,7 +42,7 @@ public class ResendQueue{
 	private class Resender implements Runnable {
 	private static final int sleepTime = 300;
 		public void run() {
-		
+		Debug.log("ResendThread starting");
 			while (!Thread.currentThread().isInterrupted()) {
 				try {
 					synchronized(lock){

@@ -71,6 +71,7 @@ public class Ping implements Runnable, FireflyApplication, data.Handler
 		//TCPConnectionMultiplexer connMux = new TCPConnectionMultiplexer(this);
 		//Connection conn = connMux.openConnection(null, 8080); // Loopback
 		Connection conn = new UDPConnection(8456, 8056, InetAddress.getByName("localhost"), this); 
+		conn.setDataAck(true);
 		conn.openChannel();
 		Debug.log("Waiting for channel...");
 		waitForChan();
@@ -79,7 +80,9 @@ public class Ping implements Runnable, FireflyApplication, data.Handler
 		LabCommDecoder dec = this.chan.getDecoder();
 		data.register(dec, this); // Reg. handler above.;
 		data.register(enc);
+		Debug.log("Restricting");
 		conn.restrictChannel(chan);
+		Debug.log("Waiting for restrict");
 		waitForRestrict();
 		Debug.log("Sending data");
 		data.encode(enc, 123);

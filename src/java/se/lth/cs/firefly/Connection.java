@@ -92,6 +92,7 @@ public abstract class Connection implements
 		resendQueue.stop();	
 		Debug.log("Close connection");	
 	}
+	public synchronized void setDataAck(boolean b){ackOnData = b;} 
 	
 	/*###################### CHANNEL HANDLING ###################*/
 	/**
@@ -116,6 +117,7 @@ public abstract class Connection implements
 	* @param chan the channel to be closed 
 	*/
 	public final synchronized void closeChannel(Channel chan) throws IOException{
+		Debug.log("Sending close channel request");
 		channel_close cc = new channel_close();
 		cc.source_chan_id = chan.getLocalID();
 		cc.dest_chan_id = chan.getRemoteID();
@@ -170,7 +172,7 @@ public abstract class Connection implements
 				resp.ack = false;
 			}
 		}
-		Debug.log("Sending channel response");
+		Debug.log("Sending channel response: " + resp.ack);
 		channel_response.encode(bottomEncoder, resp);
 		resendQueue.queue(resp.source_chan_id, resp); // Resend until ack
 	}
@@ -195,7 +197,7 @@ public abstract class Connection implements
 	* or request was accepted by the remote node. 
 	*/
 	public final synchronized void handle_channel_response(channel_response resp) throws Exception{
-		Debug.log("Got channel response");
+		Debug.log("Got channel response: " + resp.ack);
 		channel_ack ack = new channel_ack();
 		ack.source_chan_id = resp.dest_chan_id;
 		ack.dest_chan_id = resp.source_chan_id;
@@ -232,7 +234,7 @@ public abstract class Connection implements
 	* => disregard
 	*/
 	public final synchronized void handle_channel_ack(channel_ack value) throws Exception{
-		Debug.log("Got channel ack");
+		Debug.log("Got channel ack: " + value.ack );
 		Channel chan = channels.get(value.dest_chan_id);
 		if(chan != null && !chan.isOpen()){ // We have not received this ack before, 
 			if(value.ack){ 
@@ -267,6 +269,7 @@ public abstract class Connection implements
 			channel_close resp = new channel_close();
 			resp.dest_chan_id = req.source_chan_id;
 			resp.source_chan_id = req.dest_chan_id;
+			Debug.log("Sending channel close response");
 			channel_close.encode(bottomEncoder, resp);
 			chan.setClosed();
 			channels.remove(req.dest_chan_id);
@@ -281,6 +284,7 @@ public abstract class Connection implements
 	* LabComm callback
 	*/
 	public final synchronized void handle_channel_restrict_ack(channel_restrict_ack 	ack)  throws Exception{
+		Debug.log("Got channel restrict ack");
 		resendQueue.dequeue(ack.dest_chan_id);
 		Channel chan = channels.get(ack.dest_chan_id);
 		if(ack.restricted){
@@ -298,6 +302,7 @@ public abstract class Connection implements
 	* 
 	*/
 	public final synchronized void handle_channel_restrict_request(channel_restrict_request crr)  throws Exception{
+		Debug.log("Got channel restrict request");
 		Channel chan = channels.get(crr.dest_chan_id);
 		if(chan == null){
 			throw new NullPointerException("Can't find channel with local id: " + crr.dest_chan_id + " when handling channel restrict request");
@@ -315,6 +320,7 @@ public abstract class Connection implements
 		}else{
 			ack.restricted = false;
 		}
+		Debug.log("Sending channel restrict ack: " + ack.restricted);
 		channel_restrict_ack.encode(bottomEncoder, ack);
 	}
 
