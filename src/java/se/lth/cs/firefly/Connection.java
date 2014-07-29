@@ -33,7 +33,7 @@ public abstract class Connection implements
 	protected Connection(int localPort, FireflyApplication delegate)  throws IOException{
 		this.delegate=delegate;
 		this.localPort=localPort;
-		seqno = Integer.MIN_VALUE+1; //+1 bc.of. Channel latestWrittenID to work
+		seqno = Integer.MIN_VALUE;
 		channels = new HashMap<Integer, Channel>();	
 		nextChannelID = 0;
 		ackOnData = false;
@@ -62,7 +62,6 @@ public abstract class Connection implements
 		this.remotePort=remotePort;
 		this.remoteAddress = remoteAddress;
 		startSending();
-		
 	}
 
 	protected void startSending() throws IOException{
@@ -81,6 +80,7 @@ public abstract class Connection implements
 	protected abstract int bufferSize()  throws IOException;
 	protected abstract void send(byte[] b, int length) throws IOException; 
 	protected abstract void closeTransport();
+
 	public synchronized void exception(Exception e){
 		e.printStackTrace();
 		delegate.connectionError(this);
@@ -121,6 +121,22 @@ public abstract class Connection implements
 		cc.dest_chan_id = chan.getRemoteID();
 		channel_close.encode(bottomEncoder, cc);
 		resendQueue.queue(cc.source_chan_id, cc); //Resend until ack		
+	}
+	/**
+	* Sends a restrict request to the connected firefly node
+	* asking to close a channel. This means that no more data types may
+	* be registered.
+	*
+	* @param chan the channel to be restricted 
+	*/
+	public final synchronized void restrictChannel(Channel chan) throws IOException{
+		channel_restrict_request crr = new channel_restrict_request();
+		crr.source_chan_id = chan.getLocalID();
+		crr.dest_chan_id = chan.getRemoteID();
+		crr.restricted = true;
+		Debug.log("Sending channel restrict request");
+		channel_restrict_request.encode(bottomEncoder, crr);
+		resendQueue.queue(crr.source_chan_id, crr); //Resend until ack		
 	}
 
 	/*###################### LABCOMM CALLBACKS ###################*/
@@ -264,14 +280,42 @@ public abstract class Connection implements
 	/**
 	* LabComm callback
 	*/
-	public final synchronized void handle_channel_restrict_ack(channel_restrict_ack 	value)  throws Exception{
-		//TODO IMPLEMENT
+	public final synchronized void handle_channel_restrict_ack(channel_restrict_ack 	ack)  throws Exception{
+		resendQueue.dequeue(ack.dest_chan_id);
+		Channel chan = channels.get(ack.dest_chan_id);
+		if(ack.restricted){
+			if(!chan.isRestricted()){
+				chan.setRestricted(true);
+				delegate.channelRestricted(chan);
+			}
+		}else{
+		 	//TODO Inform of fail or do nothing?
+		}
 	}
 	/**
 	* LabComm callback
+	*
+	* 
 	*/
-	public final synchronized void handle_channel_restrict_request(channel_restrict_request value)  throws Exception{
-		//TODO IMPLEMENT
+	public final synchronized void handle_channel_restrict_request(channel_restrict_request crr)  throws Exception{
+		Channel chan = channels.get(crr.dest_chan_id);
+		if(chan == null){
+			throw new NullPointerException("Can't find channel with local id: " + crr.dest_chan_id + " when handling channel restrict request");
+		}
+		channel_restrict_ack ack = new channel_restrict_ack();
+		ack.dest_chan_id = crr.source_chan_id;
+		ack.source_chan_id = crr.dest_chan_id;
+		boolean accepted = delegate.restrictAccept(chan);
+		if(accepted){
+			ack.restricted = true;
+			if(!chan.isRestricted()){ // We have not received this before
+				chan.setRestricted(true);
+				delegate.channelRestricted(chan);	
+			}
+		}else{
+			ack.restricted = false;
+		}
+		channel_restrict_ack.encode(bottomEncoder, ack);
 	}
 
 	/**

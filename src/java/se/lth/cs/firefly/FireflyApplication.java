@@ -1,6 +1,6 @@
 package se.lth.cs.firefly;
 
-import java.net.*;
+import java.net.InetAddress;
 
 public interface FireflyApplication {
 	// Reduce.
@@ -8,10 +8,11 @@ public interface FireflyApplication {
 	public boolean channelAccept(Connection conn);
 	public void channelOpened(Channel chan);
 	public void channelClosed(Channel chan);
-	public void channelRestrict(Channel chan);
 	public void channelStatus(Channel chan);
 	public void channelError(Channel chan);
 	public void connectionError(Connection conn);
+	public boolean restrictAccept(Channel chan);
+	public void channelRestricted(Channel chan);
 
 	// Incoming connections.
 	public boolean acceptConnection(InetAddress remoteAddress, int remotePort);

@@ -4,7 +4,7 @@ import se.lth.cs.firefly.*;
 
 import se.lth.control.labcomm.LabCommEncoder;
 import se.lth.control.labcomm.LabCommDecoder;
-import java.net.*;
+import java.net.InetAddress;
 import lc_gen.data;
 
 import java.io.IOException;
@@ -15,10 +15,11 @@ public class Pong implements Runnable, FireflyApplication, data.Handler {
 	public boolean channelAccept(Connection connection) { return true; }
 	public void channelOpened(Channel chan) { setChan(chan); }
 	public void channelClosed(Channel chan) {}
-	public void channelRestrict(Channel chan) {}
 	public void channelStatus(Channel chan) {}
 	public void channelError(Channel chan) {}
 	public void connectionError(Connection conn) {}
+	public boolean restrictAccept(Channel chan){ return true; }
+	public void channelRestricted(Channel chan){ restricted(); }
 
 	// More callbacks
 	public boolean acceptConnection(InetAddress remoteAddress, int remotePort){return true;}
@@ -38,10 +39,18 @@ public class Pong implements Runnable, FireflyApplication, data.Handler {
 
 	private Channel chan;
 	private int echo = -1;
+	private boolean chanNotRestricted = true;
 
 	private synchronized void setChan(Channel chan) {
 		this.chan = chan;
 		notifyAll();
+	}
+	private synchronized void restricted(){
+		chanNotRestricted = false;
+		notifyAll();
+	}
+	private synchronized void waitForRestrict() throws InterruptedException{
+		while(chanNotRestricted){wait();}
 	}
 
 	private synchronized void waitForChannel() throws InterruptedException {
@@ -68,6 +77,8 @@ public class Pong implements Runnable, FireflyApplication, data.Handler {
 		LabCommEncoder enc = chan.getEncoder();
 		data.register(enc);
 		data.register(dec, this); // Reg. handler above.;
+		conn.restrictChannel(chan);
+		waitForRestrict();
 		waitForData();
 		Debug.log("Got data: " + echo);
 		conn.close();

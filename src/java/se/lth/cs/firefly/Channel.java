@@ -20,6 +20,7 @@ public class Channel {
 	private ChannelEncoder encoder;
 	private ChannelDecoder decoder;
 	private Connection conn;
+	private boolean restricted;
 
 	private int localID;
 	private int remoteID;
@@ -38,6 +39,7 @@ public class Channel {
 		sampleMapping = new HashMap<Integer, byte[]> (); 
 		latestWrittenID = Integer.MIN_VALUE;
 		first = true;
+		restricted = false;
 	}
 	
 	public void setEncoder(ChannelEncoder e){ encoder = e;}
@@ -67,10 +69,11 @@ public class Channel {
 	
 	public boolean isOpen() { return state == OPEN; }
 	public boolean isClosed() { return state == CLOSED; }
-
+	public boolean isRestricted() { return restricted; }
 	public void setOpen()   { this.state = OPEN;   }
 	public void setClosed() { this.state = CLOSED; }
 	public void setError()  { this.state = ERROR;  }
+	public void setRestricted(boolean b){ restricted = b;}
 
 	public void close() throws IOException {
 		this.conn.closeChannel(this);

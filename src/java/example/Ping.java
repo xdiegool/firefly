@@ -4,33 +4,31 @@ import se.lth.cs.firefly.*;
 
 import se.lth.control.labcomm.LabCommEncoder;
 import se.lth.control.labcomm.LabCommDecoder;
-import java.net.*;
+import java.net.InetAddress;
 import lc_gen.data;
 import java.io.IOException;
 
-public class Ping
-	implements Runnable, FireflyApplication, data.Handler
+public class Ping implements Runnable, FireflyApplication, data.Handler
 {
 	// private boolean connOpen;
 	// private boolean chanOpen;
 	private Channel chan;
 	private Connection conn;
 	private int echo = -1;
+	private boolean chanNotRestricted = true;
 
 	// Callbacks
-
-	// TODO: Enforce convention regarding channel set up in
-	//       client-server scenario?
 	public boolean channelAccept(Connection connection) { return false; }
 	public void channelOpened(Channel chan) { setChan(chan); }
 	public void channelClosed(Channel chan) { setChan(null); }
-	public void channelRestrict(Channel chan) {} // Not used.
 	public void channelStatus(Channel chan) {}	 // Not used.
 	public void channelError(Channel chan) { Debug.errx("Chan. err."); }
 	public void connectionError(Connection conn) { Debug.errx("Conn. err."); }
 	public boolean acceptConnection(InetAddress remoteAddress, int remotePort){ return true;}
 	public void connectionOpened(Connection conn){}
-
+	public boolean restrictAccept(Channel chan){ return true; }
+	@Override
+	public void channelRestricted(Channel chan){ restricted(); }
 
 	public void run() {
 		try {
@@ -45,6 +43,13 @@ public class Ping
 	private synchronized void setChan(Channel chan) {
 		this.chan = chan;
 		notifyAll();
+	}
+	private synchronized void restricted(){
+		chanNotRestricted = false;
+		notifyAll();
+	}
+	private synchronized void waitForRestrict() throws InterruptedException{
+		while(chanNotRestricted){wait();}
 	}
 
 	private synchronized void waitForChan() throws InterruptedException {
@@ -74,6 +79,8 @@ public class Ping
 		LabCommDecoder dec = this.chan.getDecoder();
 		data.register(dec, this); // Reg. handler above.;
 		data.register(enc);
+		conn.restrictChannel(chan);
+		waitForRestrict();
 		Debug.log("Sending data");
 		data.encode(enc, 123);
 		Debug.log("Sent data: 123, waiting for echo");
