@@ -5,7 +5,7 @@
 
 ## General {{{
 cmake_minimum_required (VERSION 2.8)
-project (Firefly)
+project (Firefly C)
 if(NOT CMAKE_CROSSCOMPILING)
 	enable_testing()
 endif(NOT CMAKE_CROSSCOMPILING)
@@ -61,27 +61,45 @@ link_directories(${LINK_DIRECTORIES} ${LABCOMM_LIBRARIES})
 ## FLAGS {{{
 set(C_STD "-std=c99")
 set(ERR_FLAGS "-Wall -Wextra")
-set(MACROS_DEF "-DDEBUG")
+
+if(DEFINED $ENV{DEBUG})
+	set(MACROS_DEF "-DDEBUG -O0")
+else()
+	set(MACROS_DEF "-DNDEBUG -O3")
+endif()
 
 if(CMAKE_CROSSCOMPILING)
-	# CFLAGS when cross compiling to the ARM-card:
-	set(CMAKE_C_FLAGS
-		"${C_STD} "
-		"${ERR_FLAGS} -Wfloat-equal -Werror-implicit-function-declaration "
-		"-mthumb -mcpu=cortex-m3 -T../ft-sense/src/adc_freertos_lwip/standalone.ld"
-		"-ffunction-sections -fdata-sections "
-		"${MACROS_DEF} -DUART_BUFFERED -Dsprintf=usprintf "
-		"-Dsnprintf=usnprintf -Dvsnprintf=uvsnprintf -Dprintf=uipprintf "
-		"-DFIREFLY_MALLOC=pvPortMalloc -Dcalloc=pvPortCalloc -DFIREFLY_FREE=vPortFree "
-		"-DARM_CORTEXM3_CODESOURCERY -DLABCOMM_NO_STDIO "
-		"-DLABCOMM_COMPAT=\\\"labcomm_compat_arm_cortexm3.h\\\" "
-		"-DGCC_ARMCM3=1"
-	)
-	# Join the list stuff above to a single string:
-	JOIN("${CMAKE_C_FLAGS}" CMAKE_C_FLAGS)
+	if (VXWORKS_COMPILING)
+		# CFLAGS when cross compiling to the ARM-card:
+		set(CMAKE_C_FLAGS
+			"${C_STD} "
+			"${ERR_FLAGS} "
+			"${MACROS_DEF} "
+			"-DLABCOMM_COMPAT=\\\"labcomm_compat_vxworks.h\\\" "
+		)
+		# Join the list stuff above to a single string:
+		JOIN("${CMAKE_C_FLAGS}" CMAKE_C_FLAGS)
+	else()
+		# CFLAGS when cross compiling to the ARM-card:
+		set(CMAKE_C_FLAGS
+			"${C_STD} "
+			"${ERR_FLAGS} -Wfloat-equal -Werror-implicit-function-declaration "
+			"-mthumb -mcpu=cortex-m3 -T../ft-sense/src/adc_freertos_lwip/standalone.ld"
+			"-ffunction-sections -fdata-sections "
+			"${MACROS_DEF} -DUART_BUFFERED -Dsprintf=usprintf "
+			"-Dsnprintf=usnprintf -Dvsnprintf=uvsnprintf -Dprintf=uipprintf "
+			"-DFIREFLY_MALLOC=pvPortMalloc -Dcalloc=pvPortCalloc -DFIREFLY_FREE=vPortFree "
+			"-DARM_CORTEXM3_CODESOURCERY -DLABCOMM_NO_STDIO "
+			"-DLABCOMM_COMPAT=\\\"labcomm_compat_arm_cortexm3.h\\\" "
+			"-DGCC_ARMCM3=1"
+		)
+		# Join the list stuff above to a single string:
+		JOIN("${CMAKE_C_FLAGS}" CMAKE_C_FLAGS)
+
+	endif()
 else()
 	# CFLAGS when compiling normally:
-	set(CMAKE_C_FLAGS "${C_STD} ${ERR_FLAGS} ${MACROS_DEF} -g")
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${C_STD} ${ERR_FLAGS} ${MACROS_DEF} -g")
 endif(CMAKE_CROSSCOMPILING)
 ## }}}
 
@@ -117,6 +135,7 @@ add_library(gen-files
 	${Firefly_PROJECT_DIR}/gen/firefly_protocol.c
 	${Firefly_PROJECT_DIR}/gen/pingpong.c
 )
+
 # Tell CMake that the files above are generated at compile time,
 # otherwise CMake complains about missing files when generating
 # build files:

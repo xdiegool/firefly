@@ -178,7 +178,7 @@ void *ping_main_thread(void *arg)
 	res = firefly_connection_open(&ping_actions, NULL, event_queue,
 			firefly_transport_connection_udp_posix_new(
 					llp, PONG_ADDR, PONG_PORT,
-					FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT));
+					FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT), NULL);
 	if (res < 0) fprintf(stderr, "PING ERROR: Open connection: %d.\n", res);
 
 	res = firefly_transport_udp_posix_run(llp);

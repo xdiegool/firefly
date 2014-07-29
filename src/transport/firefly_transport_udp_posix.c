@@ -10,22 +10,35 @@
 
 #include <transport/firefly_transport_udp_posix.h>
 #include "firefly_transport_udp_posix_private.h"
-
-#include <sys/time.h>
 #include <time.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/ioctl.h>
+
+#ifdef LABCOMM_COMPAT
+
+#include <selectLib.h>
+#include <sockLib.h>
+#include <inetLib.h>
+#include <ioLib.h>
+#include <taskLib.h>
+#include <utils/firefly_resend_vx.h>
+
+#else
+
 #include <sys/select.h>
+#include <utils/firefly_resend_posix.h>
+
+#endif
+
 #include <signal.h>
 
 #include <transport/firefly_transport.h>
 #include <utils/firefly_errors.h>
 #include <utils/firefly_event_queue.h>
 
-#include <utils/firefly_resend_posix.h>
 #include "utils/firefly_event_queue_private.h"
 #include "protocol/firefly_protocol_private.h"
 #include "transport/firefly_transport_private.h"
@@ -65,7 +78,11 @@ struct firefly_transport_llp *firefly_transport_llp_udp_posix_new(
 	if (llp_udp->local_udp_socket == -1) {
 		char err_buf[ERROR_STR_MAX_LEN];
 
+#ifdef LABCOMM_COMPAT
+		err_buf[0] = '\0';
+#else
 		strerror_r(errno, err_buf, sizeof(err_buf));
+#endif
 		firefly_error(FIREFLY_ERROR_SOCKET, 3,
 			      "socket() failed in %s().\n%s\n",
 			      __FUNCTION__, err_buf);
@@ -82,7 +99,12 @@ struct firefly_transport_llp *firefly_transport_llp_udp_posix_new(
 	if (res == -1) {
 		char err_buf[ERROR_STR_MAX_LEN];
 
+#ifdef LABCOMM_COMPAT
+		strerror_r(errno, err_buf); /* GERONIMO! */
+		err_buf[ERROR_STR_MAX_LEN-1] = '\0';
+#else
 		strerror_r(errno, err_buf, sizeof(err_buf));
+#endif
 		firefly_error(FIREFLY_ERROR_LLP_BIND, 3,
 			      "bind() failed in %s().\n%s\n",
 			      __FUNCTION__, err_buf);
@@ -121,8 +143,9 @@ void firefly_transport_llp_udp_posix_free(struct firefly_transport_llp *llp)
 
 static void check_llp_free(struct firefly_transport_llp *llp)
 {
-	struct transport_llp_udp_posix *llp_udp;
 	if (llp->state == FIREFLY_LLP_CLOSING && llp->conn_list == NULL) {
+		struct transport_llp_udp_posix *llp_udp;
+
 		llp_udp = llp->llp_platspec;
 		close(llp_udp->local_udp_socket);
 		free(llp_udp->local_addr);
@@ -146,6 +169,7 @@ int firefly_transport_llp_udp_posix_free_event(void *event_arg)
 		head = head->next;
 	}
 	check_llp_free(llp);
+
 	return 0;
 }
 
@@ -235,7 +259,7 @@ void firefly_transport_udp_posix_write(unsigned char *data, size_t data_size,
 	int res;
 
 	conn_udp = conn->transport->context;
-	res = sendto(conn_udp->socket, data, data_size, 0,
+	res = sendto(conn_udp->socket, (void *) data, data_size, 0,
 		     (struct sockaddr *) conn_udp->remote_addr,
 		     sizeof(*conn_udp->remote_addr));
 	if (res == -1) {
@@ -288,24 +312,49 @@ int firefly_transport_udp_posix_run(struct firefly_transport_llp *llp)
 	struct firefly_resend_loop_args *largs;
 
 	llp_udp = llp->llp_platspec;
+	largs = malloc(sizeof(*largs));
+	if (!largs)
+		return -1;
+	largs->rq = llp_udp->resend_queue;
+	largs->on_no_ack = resend_on_no_ack;
+
+	/* TODO: Clean this up. */
+#ifndef LABCOMM_COMPAT
 	res = pthread_create(&llp_udp->read_thread, NULL,
 			firefly_transport_udp_posix_read_run, llp);
 	if (res < 0)
-		return res;
-	largs = malloc(sizeof(*largs));
-	if (!largs) {
-		pthread_cancel(llp_udp->read_thread);
-		return -1;
-	}
-	largs->rq = llp_udp->resend_queue;
-	largs->on_no_ack = resend_on_no_ack;
+		goto fail;
 	res = pthread_create(&llp_udp->resend_thread, NULL,
 				 firefly_resend_run, largs);
-	if (res < 0) {
-		pthread_cancel(llp_udp->read_thread);
-		return res;
-	}
+	if (res < 0)
+		goto ptfail;
 	return 0;
+ ptfail:
+	pthread_cancel(llp_udp->read_thread);
+	goto fail;
+#else
+	res = taskSpawn("ff_read_task", 98, VX_FP_TASK, 20000,
+			(FUNCPTR)firefly_transport_udp_posix_read_run,
+			(int) llp,
+			0, 0, 0, 0, 0, 0, 0, 0, 0); /* TODO: arg */
+	if (res == ERROR)
+		goto fail;
+	llp_udp->tid_read = res;
+	res = taskSpawn("ff_resend_task", 98, VX_FP_TASK, 20000,
+			(FUNCPTR)firefly_resend_run,
+			(int) largs,
+			0, 0, 0, 0, 0, 0, 0, 0, 0); /* TODO: arg */
+	if (res == ERROR)
+		goto vxfail;
+	llp_udp->tid_resend = res;
+	return 0;
+ vxfail:
+	taskDelete(llp_udp->tid_read);
+	goto fail;
+#endif
+ fail:
+	free(largs);
+	return res;
 }
 
 int firefly_transport_udp_posix_stop(struct firefly_transport_llp *llp)
@@ -313,10 +362,16 @@ int firefly_transport_udp_posix_stop(struct firefly_transport_llp *llp)
 	struct transport_llp_udp_posix *llp_udp;
 
 	llp_udp = llp->llp_platspec;
+
+#ifndef LABCOMM_COMPAT
 	pthread_cancel(llp_udp->read_thread);
 	pthread_cancel(llp_udp->resend_thread);
 	pthread_join(llp_udp->resend_thread, NULL);
 	pthread_join(llp_udp->read_thread, NULL);
+#else
+	taskDelete(llp_udp->tid_read);
+	taskDelete(llp_udp->tid_resend);
+#endif
 	return 0;
 }
 
@@ -344,7 +399,8 @@ static int firefly_transport_udp_posix_read_event(void *event_arg)
 		int64_t ev_id = 0;
 		if (llp_udp->on_conn_recv != NULL &&
 				(ev_id = llp_udp->on_conn_recv(ev_arg->llp, ip_addr,
-					sockaddr_in_port(&ev_arg->addr))) > 0) {
+					sockaddr_in_port(&ev_arg->addr))) > 0)
+		{
 			return llp_udp->event_queue->offer_event_cb(llp_udp->event_queue,
 					FIREFLY_PRIORITY_HIGH,
 					firefly_transport_udp_posix_read_event,
@@ -356,6 +412,7 @@ static int firefly_transport_udp_posix_read_event(void *event_arg)
 		ev_arg->llp->protocol_data_received_cb(conn, ev_arg->data, ev_arg->len);
 	}
 	free(ev_arg);
+
 	return 0;
 }
 
@@ -384,10 +441,26 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 		}
 		return;
 	}
+#ifdef LABCOMM_COMPAT
+	/* Length of whole buffer? */
+	res = ioctl(llp_udp->local_udp_socket, FIONREAD, (int) &pkg_len);
+#else
+	/* Length of next datagram. */
 	res = ioctl(llp_udp->local_udp_socket, FIONREAD, &pkg_len);
+#endif
 	if (res == -1) {
 		FFL(FIREFLY_ERROR_SOCKET);
 		pkg_len = 0;
+	}
+#ifdef LABCOMM_COMPAT
+	else {
+		pkg_len -= 16; /* VxWorks buggy?  */
+	}
+#endif
+	if (pkg_len == 0) {
+		firefly_error(FIREFLY_ERROR_SOCKET, 1,
+					  "Select/FIONREAD inconsistent\n");
+		return;
 	}
 	ev_arg = malloc(sizeof(*ev_arg));
 	if (!ev_arg) {
@@ -402,17 +475,25 @@ void firefly_transport_udp_posix_read(struct firefly_transport_llp *llp)
 		return;
 	}
 	len = sizeof(remote_addr);
-	res = recvfrom(llp_udp->local_udp_socket, ev_arg->data, pkg_len, 0,
-		       (struct sockaddr *) &remote_addr, &len);
+	res = recvfrom(llp_udp->local_udp_socket,
+				   (void *) ev_arg->data,
+				   pkg_len,
+				   0, (struct sockaddr *) &remote_addr, (void *) &len);
+
 	if (res == -1) {
 		char err_buf[ERROR_STR_MAX_LEN];
+#ifdef LABCOMM_COMPAT
+		err_buf[0] = '\0';
+#else
 		strerror_r(errno, err_buf, ERROR_STR_MAX_LEN);
+#endif
 		firefly_error(FIREFLY_ERROR_SOCKET, 3, "Failed in %s.\n%s()\n",
 			      __FUNCTION__, err_buf);
 	}
+
 	ev_arg->llp	= llp;
-	ev_arg->addr	= remote_addr;
-	ev_arg->len	= pkg_len;
+	ev_arg->addr = remote_addr;
+	ev_arg->len	= res;
 	/* Member 'data' already filled in recvfrom(). */
 
 	llp_udp->event_queue->offer_event_cb(llp_udp->event_queue,
