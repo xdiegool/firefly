@@ -17,7 +17,7 @@ public class AppendableInputStream extends InputStream{
 		return a;	
 	}
 	public synchronized void append(byte[] data){
-		is= new SequenceInputStream(is, new ByteArrayInputStream(data));
+		is= new ByteArrayInputStream(data);
 	}
 	/*
 	* Helper class to generate the version number for the decoders to work
@@ -29,7 +29,7 @@ public class AppendableInputStream extends InputStream{
 				LabCommEncoderChannel enc = new LabCommEncoderChannel(this, true);
 				enc.end(null); // To force write				
 			}catch (IOException e){
-				Debug.log("Could not create version bypass");
+				Debug.errx("Could not create version bypass");
 			}
 		}
 		@Override

@@ -24,7 +24,7 @@ class ConnectionEncoder extends LabCommEncoderChannel {
 	}
 	@Override
 	 public void begin(Class<? extends LabCommSample> c) throws 	IOException {
-    encodePacked32(registry.getTag(c));
+		encodePacked32(registry.getTag(c));
   	}
 	
 }

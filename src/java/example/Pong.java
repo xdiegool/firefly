@@ -58,7 +58,7 @@ public class Pong implements Runnable, FireflyApplication, data.Handler {
 	}
 
 	public synchronized void handle_data(int value) throws IOException {
-		Debug.log("Sending data: " + value);
+		Debug.log("Pong: Got data, sending: " + value);
 		data.encode(chan.getEncoder(), value);
 		this.echo = value;
 		notifyAll();
@@ -72,20 +72,24 @@ public class Pong implements Runnable, FireflyApplication, data.Handler {
 		//TCPConnectionMultiplexer connMux = new TCPConnectionMultiplexer(this, 8080);
 		Connection conn = new UDPConnection(8056, this); 
 conn.setDataAck(true);
-		Debug.log("Waiting for channel...");		
+		Debug.log("Pong: Waiting for channel...");		
 		waitForChannel();
-		Debug.log("Got chan");
+		Debug.log("Pong: Got chan");
 		LabCommDecoder dec = chan.getDecoder();
 		LabCommEncoder enc = chan.getEncoder();
-		data.register(enc);
+		Debug.log("Pong: Registering decoder");
 		data.register(dec, this); // Reg. handler above.;
-		Debug.log("Restricting");
-		conn.restrictChannel(chan);
-		Debug.log("Waiting for restrict");
+		Debug.log("Pong: Regeistered decoder");
+		Debug.log("Pong: Registering encoder");
+		data.register(enc);
+		Debug.log("Pong: Registered encoder");
+		Debug.log("Pong: Waiting for restrict");
 		waitForRestrict();
-		Debug.log("Waiting for data");
+		Debug.log("Pong: Done restricting");
+		Debug.log("Pong: Waiting for data");
 		waitForData();
-		Debug.log("Got data: " + echo);
+		Debug.log("Pong: closing");
+		conn.closeChannel(chan);
 		conn.close();
 
 	}

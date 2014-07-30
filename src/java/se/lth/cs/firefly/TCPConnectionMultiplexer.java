@@ -14,7 +14,7 @@ public class TCPConnectionMultiplexer {
 
 	private ArrayList<Connection> connections;
 
-	public TCPConnectionMultiplexer(FireflyServer delegate, int port)
+	public TCPConnectionMultiplexer(FireflyApplication delegate, int port)
 		throws IOException
 	{
 		this.delegate = delegate;
@@ -47,9 +47,9 @@ public class TCPConnectionMultiplexer {
 	}
 
 	private class Reader extends Thread {
-		private FireflyServer srv;
+		private FireflyApplication srv;
 
-		public Reader(FireflyServer srv) {
+		public Reader(FireflyApplication srv) {
 			this.srv = srv;
 		}
 
@@ -59,9 +59,9 @@ public class TCPConnectionMultiplexer {
 				try {
 					Socket s = ssock.accept();
 					boolean conf;
-					String ha = s.getInetAddress().getHostAddress();
+					InetAddress ha = s.getInetAddress();
 					Debug.log("Incoming " + ha);
-					conf = srv.acceptConnection(ha);
+					conf = srv.acceptConnection(ha, s.getPort());
 					if (conf) {
 					//	TCPConnection c = new TCPConnection(s, delegate);
 					//	TCPConnectionMultiplexer.this.addConnection(c);

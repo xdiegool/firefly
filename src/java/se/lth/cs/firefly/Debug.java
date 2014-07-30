@@ -1,8 +1,18 @@
 package se.lth.cs.firefly;
 
+import java.util.Date;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+
 public class Debug {
+	public static boolean debug = true;
 	public static synchronized void log(String msg) {
-		System.out.println(msg);
+		if(debug){
+			DateFormat dateFormat = new SimpleDateFormat("HH:mm:ss:SS");
+			Date date = new Date();
+			String time = dateFormat.format(date);
+			System.out.println(time + " : " + Thread.currentThread().getId() + ":" + msg);
+		}
 	}
 
 	public static synchronized void errx(String msg) {
