@@ -3,6 +3,7 @@ package se.lth.cs.firefly.protocol;
 import se.lth.control.labcomm.*;
 import se.lth.cs.firefly.*;
 import se.lth.cs.firefly.ActionQueue.Action;
+import se.lth.cs.firefly.ActionQueue.Priority;
 import se.lth.cs.firefly.util.*;
 import genproto.*;
 
@@ -78,20 +79,17 @@ public class Connection implements ack.Handler, channel_ack.Handler,
 		delegate.connectionError(this);
 	}
 
-	public synchronized void close() {
-		actionQueue.queue(new ActionQueue.Action() {
+	public void close() {
+		actionQueue.queue(ActionQueue.Priority.MED_PRIORITY, new ActionQueue.Action() {
 			public void doAction() throws Exception {
-				closeAll();
+				for (Channel chan : channels.values()) {
+					closeChannel(chan);
+				}
 				reader.interrupt();
 				resendQueue.stop();
 				Debug.log("Close connection");
 			}
 		});
-	}
-	private void closeAll() throws IOException{
-		for(Channel chan : channels.values()){
-			closeChannel(chan);
-		}
 	}
 
 	/* ###################### CHANNEL HANDLING ################### */
@@ -99,7 +97,7 @@ public class Connection implements ack.Handler, channel_ack.Handler,
 	 * Sends a request to the connected firefly node asking to open a channel.
 	 */
 	public final void openChannel() throws IOException {
-		actionQueue.queue(new ActionQueue.Action() {
+		actionQueue.queue(ActionQueue.Priority.MED_PRIORITY, new ActionQueue.Action() {
 			public void doAction() throws Exception {
 				Channel chan = new Channel(nextChannelID, Connection.this);
 				channels.put(nextChannelID, chan);
@@ -120,9 +118,8 @@ public class Connection implements ack.Handler, channel_ack.Handler,
 	 * @param chan
 	 *            the channel to be closed
 	 */
-	public final synchronized void closeChannel(final Channel chan)
-			throws IOException {
-		actionQueue.queue(new ActionQueue.Action() {
+	public final void closeChannel(final Channel chan) throws IOException {
+		actionQueue.queue(ActionQueue.Priority.MED_PRIORITY, new ActionQueue.Action() {
 			public void doAction() throws IOException {
 				chan.setClosed();
 				Debug.log("Sending close channel request");
@@ -138,14 +135,14 @@ public class Connection implements ack.Handler, channel_ack.Handler,
 
 	/**
 	 * Sends a restrict request to the connected firefly node asking to close a
-	 * channel. This means that no more data types may be registered.
+	 * channel. This means that no more data types may be registered. Data
+	 * should not be sent before a channel is restricted.
 	 * 
 	 * @param chan
 	 *            the channel to be restricted
 	 */
-	public final synchronized void restrictChannel(final Channel chan)
-			throws IOException {
-		actionQueue.queue(new ActionQueue.Action() {
+	public final void restrictChannel(final Channel chan) throws IOException {
+		actionQueue.queue(ActionQueue.Priority.MED_PRIORITY, new ActionQueue.Action() {
 			public void doAction() throws IOException {
 				channel_restrict_request crr = new channel_restrict_request();
 				crr.source_chan_id = chan.getLocalID();
@@ -172,27 +169,32 @@ public class Connection implements ack.Handler, channel_ack.Handler,
 	 * 
 	 * 1 and 3 have the same outcome so we can bundle them.
 	 */
-	public final synchronized void handle_channel_request(channel_request req)
+	public final void handle_channel_request(final channel_request req)
 			throws Exception {
 		Debug.log("Got channel request");
-		channel_response resp = new channel_response();
-		resp.dest_chan_id = req.source_chan_id;
-		if (channels.get(req.dest_chan_id) != null) { // 2
-			resp.ack = true;
-		} else { // 1 & 3
-			if (delegate.channelAccept(this)) {
-				Channel chan = new Channel(nextChannelID, this);
-				channels.put(nextChannelID, chan);
-				resp.source_chan_id = nextChannelID++;
-				resp.ack = true;
-			} else {
-				resp.ack = false;
+		actionQueue.queue(ActionQueue.Priority.MED_PRIORITY, new ActionQueue.Action() {
+			public void doAction() throws IOException {
+				channel_response resp = new channel_response();
+				resp.dest_chan_id = req.source_chan_id;
+				if (channels.get(req.dest_chan_id) != null) { // 2
+					resp.ack = true;
+				} else { // 1 & 3
+					if (delegate.channelAccept(Connection.this)) {
+						Channel chan = new Channel(nextChannelID,
+								Connection.this);
+						channels.put(nextChannelID, chan);
+						resp.source_chan_id = nextChannelID++;
+						resp.ack = true;
+					} else {
+						resp.ack = false;
+					}
+				}
+				Debug.log("Sending channel response: " + resp.ack);
+				channel_response.encode(bottomEncoder, resp);
+				// Resend until ack
+				resendQueue.queueChannelMsg(resp.source_chan_id, resp);
 			}
-		}
-		Debug.log("Sending channel response: " + resp.ack);
-		channel_response.encode(bottomEncoder, resp);
-		resendQueue.queueChannelMsg(resp.source_chan_id, resp); // Resend until
-																// ack
+		});
 	}
 
 	/**
@@ -210,30 +212,36 @@ public class Connection implements ack.Handler, channel_ack.Handler,
 	 *            the channel_response informing whether or not or request was
 	 *            accepted by the remote node.
 	 */
-	public final synchronized void handle_channel_response(channel_response resp)
+	public final void handle_channel_response(final channel_response resp)
 			throws Exception {
 		Debug.log("Got channel response: " + resp.ack);
-		channel_ack ack = new channel_ack();
-		ack.source_chan_id = resp.dest_chan_id;
-		ack.dest_chan_id = resp.source_chan_id;
-		ack.ack = resp.ack;
-		Debug.log("Sending channel ack");
-		channel_ack.encode(bottomEncoder, ack);
-		Channel chan = channels.get(resp.dest_chan_id);
-		if (chan != null && !chan.isOpen()) { // 2
-			if (resp.ack) { // 2a
-				chan.setRemoteID(resp.source_chan_id);
-				chan.setEncoder(new ChannelEncoder(
-						new channelToConnectionWriter(resp.source_chan_id)));
-				chan.setDecoder(new ChannelDecoder(new AppendableInputStream(
-						null)));
-				chan.setOpen();
-				delegate.channelOpened(chan);
-			} else { // 2b
-				channels.remove(resp.dest_chan_id);
+		actionQueue.queue(ActionQueue.Priority.MED_PRIORITY, new ActionQueue.Action() {
+			public void doAction() throws IOException {
+				channel_ack ack = new channel_ack();
+				ack.source_chan_id = resp.dest_chan_id;
+				ack.dest_chan_id = resp.source_chan_id;
+				ack.ack = resp.ack;
+				Debug.log("Sending channel ack");
+				channel_ack.encode(bottomEncoder, ack);
+				Channel chan = channels.get(resp.dest_chan_id);
+				if (chan != null && !chan.isOpen()) { // 2
+					if (resp.ack) { // 2a
+						chan.setRemoteID(resp.source_chan_id);
+						chan.setEncoder(new ChannelEncoder(
+								new channelToConnectionWriter(
+										resp.source_chan_id)));
+						chan.setDecoder(new ChannelDecoder(
+								new AppendableInputStream(null)));
+						chan.setOpen();
+						delegate.channelOpened(chan);
+					} else { // 2b
+						channels.remove(resp.dest_chan_id);
+					}
+					resendQueue.dequeueChannelMsg(resp.dest_chan_id); // Removes
+																		// request
+				}
 			}
-			resendQueue.dequeueChannelMsg(resp.dest_chan_id); // Removes request
-		}
+		});
 
 	}
 
@@ -248,28 +256,34 @@ public class Connection implements ack.Handler, channel_ack.Handler,
 	 * this ack before (i.e. channel is either already open (prev_ack == true)
 	 * or does not exist (prev_ack == false) => disregard
 	 */
-	public final synchronized void handle_channel_ack(channel_ack value)
+	public final void handle_channel_ack(final channel_ack value)
 			throws Exception {
 		Debug.log("Got channel ack: " + value.ack);
-		Channel chan = channels.get(value.dest_chan_id);
-		if (chan != null && !chan.isOpen()) { // We have not received this ack
-												// before,
-			if (value.ack) {
-				chan.setRemoteID(value.source_chan_id);
-				chan.setEncoder(new ChannelEncoder(
-						new channelToConnectionWriter(value.dest_chan_id)));
-				chan.setDecoder(new ChannelDecoder(new AppendableInputStream(
-						null)));
-				chan.setOpen();
-				delegate.channelOpened(chan);
-			}
+		actionQueue.queue(ActionQueue.Priority.MED_PRIORITY, new ActionQueue.Action() {
+			public void doAction() throws IOException {
+				Channel chan = channels.get(value.dest_chan_id);
+				if (chan != null && !chan.isOpen()) { // We have not received
+														// this ack
+														// before,
+					if (value.ack) {
+						chan.setRemoteID(value.source_chan_id);
+						chan.setEncoder(new ChannelEncoder(
+								new channelToConnectionWriter(
+										value.dest_chan_id)));
+						chan.setDecoder(new ChannelDecoder(
+								new AppendableInputStream(null)));
+						chan.setOpen();
+						delegate.channelOpened(chan);
+					}
 
-		} else {
-			chan.setClosed();
-			delegate.channelClosed(chan);
-			channels.remove(value.dest_chan_id);
-		}
-		resendQueue.dequeueChannelMsg(value.dest_chan_id);
+				} else {
+					chan.setClosed();
+					delegate.channelClosed(chan);
+					channels.remove(value.dest_chan_id);
+				}
+				resendQueue.dequeueChannelMsg(value.dest_chan_id);
+			}
+		});
 	}
 
 	/**
@@ -281,51 +295,59 @@ public class Connection implements ack.Handler, channel_ack.Handler,
 	 * If it's a request, close and remove channel and send response, else it's
 	 * a response and we remove the channel.
 	 */
-	public final synchronized void handle_channel_close(channel_close req)
+	public final void handle_channel_close(final channel_close req)
 			throws Exception {
 		// TODO some duplicate code here, fix
-		Channel chan = channels.get(req.dest_chan_id);
-		if (chan != null) {
-			if (chan.isOpen()) {
-				Debug.log("Got channel close request");
-				// Request
-				delegate.channelClosed(channels.get(req.dest_chan_id));
-				channel_close resp = new channel_close();
-				resp.dest_chan_id = req.source_chan_id;
-				resp.source_chan_id = req.dest_chan_id;
-				Debug.log("Sending channel close response");
-				channel_close.encode(bottomEncoder, resp);
-				chan.setClosed();
-				channels.remove(req.dest_chan_id);
-			} else if (chan.isClosed()) {
-				Debug.log("Got channel close response");
-				// Response
-				channels.remove(req.dest_chan_id);
-				resendQueue.dequeueChannelMsg(req.dest_chan_id);
+		actionQueue.queue(ActionQueue.Priority.MED_PRIORITY, new ActionQueue.Action() {
+			public void doAction() throws IOException {
+				Channel chan = channels.get(req.dest_chan_id);
+				if (chan != null) {
+					if (chan.isOpen()) {
+						Debug.log("Got channel close request");
+						// Request
+						delegate.channelClosed(channels.get(req.dest_chan_id));
+						channel_close resp = new channel_close();
+						resp.dest_chan_id = req.source_chan_id;
+						resp.source_chan_id = req.dest_chan_id;
+						Debug.log("Sending channel close response");
+						channel_close.encode(bottomEncoder, resp);
+						chan.setClosed();
+						channels.remove(req.dest_chan_id);
+					} else if (chan.isClosed()) {
+						Debug.log("Got channel close response");
+						// Response
+						channels.remove(req.dest_chan_id);
+						resendQueue.dequeueChannelMsg(req.dest_chan_id);
+					}
+				} else {
+					channel_close resp = new channel_close();
+					resp.dest_chan_id = req.source_chan_id;
+					resp.source_chan_id = req.dest_chan_id;
+					Debug.log("Sending channel close response");
+					channel_close.encode(bottomEncoder, resp);
+				}
 			}
-		} else {
-			channel_close resp = new channel_close();
-			resp.dest_chan_id = req.source_chan_id;
-			resp.source_chan_id = req.dest_chan_id;
-			Debug.log("Sending channel close response");
-			channel_close.encode(bottomEncoder, resp);
-		}
+		});
 	}
 
 	/**
 	 * LabComm callback
 	 */
-	public final synchronized void handle_channel_restrict_ack(
-			channel_restrict_ack ack) throws Exception {
+	public final void handle_channel_restrict_ack(final channel_restrict_ack ack)
+			throws Exception {
 		Debug.log("Got channel restrict ack");
-		Channel chan = channels.get(ack.dest_chan_id);
-		if (ack.restricted) {
-			resendQueue.dequeueChannelMsg(ack.dest_chan_id);
-			if (!chan.isRestricted()) {
-				chan.setRestricted(true);
-				delegate.channelRestricted(chan);
+		actionQueue.queue(ActionQueue.Priority.MED_PRIORITY, new ActionQueue.Action() {
+			public void doAction() throws IOException {
+				Channel chan = channels.get(ack.dest_chan_id);
+				if (ack.restricted) {
+					resendQueue.dequeueChannelMsg(ack.dest_chan_id);
+					if (!chan.isRestricted()) {
+						chan.setRestricted(true);
+						delegate.channelRestricted(chan);
+					}
+				}
 			}
-		}
+		});
 	}
 
 	/**
@@ -333,30 +355,36 @@ public class Connection implements ack.Handler, channel_ack.Handler,
 	 * 
 	 * 
 	 */
-	public final synchronized void handle_channel_restrict_request(
-			channel_restrict_request crr) throws Exception {
+	public final void handle_channel_restrict_request(
+			final channel_restrict_request crr) throws Exception {
 		Debug.log("Got channel restrict request");
-		Channel chan = channels.get(crr.dest_chan_id);
-		if (chan == null) {
-			throw new NullPointerException("Can't find channel with local id: "
-					+ crr.dest_chan_id
-					+ " when handling channel restrict request");
-		}
-		channel_restrict_ack ack = new channel_restrict_ack();
-		ack.dest_chan_id = crr.source_chan_id;
-		ack.source_chan_id = crr.dest_chan_id;
-		boolean accepted = delegate.restrictAccept(chan);
-		if (accepted) {
-			ack.restricted = true;
-			if (!chan.isRestricted()) { // We have not received this before
-				chan.setRestricted(true);
-				delegate.channelRestricted(chan);
+		actionQueue.queue(ActionQueue.Priority.MED_PRIORITY, new ActionQueue.Action() {
+			public void doAction() throws IOException {
+				Channel chan = channels.get(crr.dest_chan_id);
+				if (chan == null) {
+					throw new NullPointerException(
+							"Can't find channel with local id: "
+									+ crr.dest_chan_id
+									+ " when handling channel restrict request");
+				}
+				channel_restrict_ack ack = new channel_restrict_ack();
+				ack.dest_chan_id = crr.source_chan_id;
+				ack.source_chan_id = crr.dest_chan_id;
+				boolean accepted = delegate.restrictAccept(chan);
+				if (accepted) {
+					ack.restricted = true;
+					if (!chan.isRestricted()) { // We have not received this
+												// before
+						chan.setRestricted(true);
+						delegate.channelRestricted(chan);
+					}
+				} else {
+					ack.restricted = false;
+				}
+				Debug.log("Sending channel restrict ack: " + ack.restricted);
+				channel_restrict_ack.encode(bottomEncoder, ack);
 			}
-		} else {
-			ack.restricted = false;
-		}
-		Debug.log("Sending channel restrict ack: " + ack.restricted);
-		channel_restrict_ack.encode(bottomEncoder, ack);
+		});
 	}
 
 	/**
@@ -365,19 +393,22 @@ public class Connection implements ack.Handler, channel_ack.Handler,
 	 * We have received a data sample. This is not related to the channel
 	 * handling protocol so we just send it to the right channel instead.
 	 */
-	public final synchronized void handle_data_sample(data_sample ds)
-			throws Exception {
+	public final void handle_data_sample(final data_sample ds) throws Exception {
 		Debug.log("Received data sample");
-		if (ds.important) {
-			ack dataAck = new ack();
-			dataAck.dest_chan_id = ds.src_chan_id;
-			dataAck.src_chan_id = ds.dest_chan_id;
-			dataAck.seqno = ds.seqno;
-			Debug.log("Sending data ack on seqno: " + ds.seqno);
-			ack.encode(bottomEncoder, dataAck);
-		}
-		Channel chan = channels.get(ds.dest_chan_id);
-		chan.getDecoder().decodeData(ds.app_enc_data);
+		actionQueue.queue(ActionQueue.Priority.MED_PRIORITY, new ActionQueue.Action() {
+			public void doAction() throws Exception {
+				if (ds.important) {
+					ack dataAck = new ack();
+					dataAck.dest_chan_id = ds.src_chan_id;
+					dataAck.src_chan_id = ds.dest_chan_id;
+					dataAck.seqno = ds.seqno;
+					Debug.log("Sending data ack on seqno: " + ds.seqno);
+					ack.encode(bottomEncoder, dataAck);
+				}
+				Channel chan = channels.get(ds.dest_chan_id);
+				chan.getDecoder().decodeData(ds.app_enc_data);
+			}
+		});
 	}
 
 	/**
@@ -385,9 +416,13 @@ public class Connection implements ack.Handler, channel_ack.Handler,
 	 * 
 	 * We have received a data ack.
 	 */
-	public final synchronized void handle_ack(ack value) {
+	public final synchronized void handle_ack(final ack value) {
 		Debug.log("Received data ack");
-		resendQueue.dequeueData(value.seqno);
+		actionQueue.queue(ActionQueue.Priority.MED_PRIORITY, new ActionQueue.Action() {
+			public void doAction() throws IOException {
+				resendQueue.dequeueData(value.seqno);
+			}
+		});
 	}
 
 	/* ###################### PUBLIC HELPER CLASSES ################### */
@@ -400,7 +435,7 @@ public class Connection implements ack.Handler, channel_ack.Handler,
 		}
 
 		public void write(final byte[] data) throws IOException {
-			actionQueue.queue(new ActionQueue.Action() {
+			actionQueue.queue(ActionQueue.Priority.MED_PRIORITY, new ActionQueue.Action() {
 				public void doAction() throws Exception {
 					data_sample ds = new data_sample();
 					Channel chan = channels.get(origin);

@@ -6,11 +6,9 @@ import se.lth.cs.firefly.util.AppendableInputStream;
 import java.io.*;
 
 public class ConnectionDecoder extends LabCommDecoderChannel {
-	private InputStream inputStream;
 	private LabCommDecoderRegistry registry; //Since the superclass registry variable is private, we cannot access it and we have to create our own. 
 	public ConnectionDecoder(InputStream inputStream) throws IOException {
 		super(inputStream);
-		this.inputStream = inputStream;
 		registry = new LabCommDecoderRegistry();
 	}
 	public void shortCircuit(int index, LabCommDispatcher d) throws IOException {

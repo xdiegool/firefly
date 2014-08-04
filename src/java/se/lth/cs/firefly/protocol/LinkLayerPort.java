@@ -40,7 +40,7 @@ public abstract class LinkLayerPort {
 
 	public Connection openConnection(InetAddress remoteAddress, int remotePort)
 			throws IOException {
-		actionQueue.queue(new ActionQueue.Action() {
+		actionQueue.queue(ActionQueue.Priority.MED_PRIORITY,new ActionQueue.Action() {
 			@Override
 			public void doAction() throws Exception {
 				if (listener == null) {
@@ -50,32 +50,47 @@ public abstract class LinkLayerPort {
 			}
 		});
 		// The thread calling openTransportConnection must not hold the lock to
-		// this object, since this call is blocking and will introduce a deadlock by
+		// this object, since this call is blocking and will introduce a
+		// deadlock by
 		// synchronizing(this) together with the listener
 		Connection conn = openTransportConnection(remoteAddress, remotePort);
 		addConnection(conn);
 		return conn;
 	}
 
-	public synchronized void closeConnection(Connection conn) {
-		connections.remove(conn);
-		conn.close();
+	public void closeConnection(final Connection conn) {
+		actionQueue.queue(ActionQueue.Priority.MED_PRIORITY, new ActionQueue.Action() {
+			public void doAction() throws Exception {
+				connections.remove(conn);
+				conn.close();
+			}
+		});
 	}
 
-	public synchronized void close() throws IOException {
-		for (Connection conn : connections) {
-			conn.close();
-		}
-		listener.interrupt();
-		transportClose();
+	public void close() {
+		// A bit ugly but is needed for all channels to close and send close requests in the right way
+		actionQueue.queue(ActionQueue.Priority.MED_PRIORITY, new ActionQueue.Action() {
+			public void doAction() throws Exception {
+				for (Connection conn : connections) {
+					conn.close();
+				}
+				listener.interrupt();
+			}
+		});
+		// This needs low prio so that it doesn't close sockets etc before all close reqs are sent
+		actionQueue.queue(ActionQueue.Priority.LOW_PRIORITY, new ActionQueue.Action() { 
+			public void doAction() throws Exception {
+				transportClose();
+			}
+		});
+		
 	}
 
-	protected synchronized void addConnection(Connection conn) {
+	protected void addConnection(Connection conn) {
 		connections.add(conn);
 	}
 
-	protected synchronized Connection getConnection(InetAddress address,
-			int port) {
+	protected Connection getConnection(InetAddress address, int port) {
 		for (Connection conn : connections) {
 			if (conn.isTheSame(address, port)) {
 				return conn;

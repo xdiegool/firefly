@@ -32,7 +32,7 @@ public class TCPConnectionMultiplexer extends LinkLayerPort {
 	protected void listen() throws IOException {
 		Socket s = ssock.accept();
 		// Give action to action thread to reduce blocking
-		actionQueue.queue(new ActionQueue.Action() {
+		actionQueue.queue(ActionQueue.Priority.MED_PRIORITY, new ActionQueue.Action() {
 			private Socket s;
 			private ActionQueue.Action init(Socket s) {
 				this.s = s;
@@ -66,7 +66,6 @@ public class TCPConnectionMultiplexer extends LinkLayerPort {
 
 	@Override
 	protected void transportClose() throws IOException {
-		ssock.close();
-		
+		ssock.close();	
 	}
 }

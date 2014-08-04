@@ -47,7 +47,7 @@ public class UDPConnectionMultiplexer extends LinkLayerPort {
 		Debug.log("Received packet: "
 				+ Debug.byteArrayToString(p.getData(), p.getLength()));
 		// Give action to action thread to reduce blocking
-		actionQueue.queue(new ActionQueue.Action() {
+		actionQueue.queue(ActionQueue.Priority.MED_PRIORITY,new ActionQueue.Action() {
 			private DatagramPacket p;
 
 			private ActionQueue.Action init(DatagramPacket p) {

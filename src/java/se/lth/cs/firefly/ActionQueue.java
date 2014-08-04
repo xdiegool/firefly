@@ -10,19 +10,25 @@ import java.net.SocketException;
 
 
 public class ActionQueue{
-	private Queue<Action> queue;
+	private Queue<QueueAction> queue;
 	private Object lock;
 	private Thread thread;
 
+
 	public ActionQueue(){	
-		queue = new LinkedList<Action>();
+		queue = new PriorityQueue<QueueAction>(20, new Comparator<QueueAction>() {
+			@Override
+			public int compare(QueueAction o1, QueueAction o2) {
+				return o1.p.compareTo(o2.p);
+			};
+		});
 		lock = new Object();
 		thread = new Thread(new ActionAgent());
 		thread.start();
 	}
-	public void queue(Action a){
+	public void queue(Priority p , Action a){
 		synchronized(lock){
-			queue.offer(a);
+			queue.offer(new QueueAction(p,a));
 			Debug.log("Queued action: " +  a);
 			lock.notifyAll();
 		 }
@@ -49,8 +55,8 @@ public class ActionQueue{
 				} catch (InterruptedException e) {
 					Thread.currentThread().interrupt();
 				} catch (SocketException e) {
-					Thread.currentThread().interrupt(); // Socket
-										// closed
+					Debug.printStackTrace(e);
+					Thread.currentThread().interrupt();
 				} catch (Exception e) {
 					Debug.printStackTrace(e);
 				}
@@ -67,7 +73,7 @@ public class ActionQueue{
 		private Action poll(){
 			Action a;
 			synchronized(lock){
-				a = queue.poll();
+				a = queue.poll().a;
 			}
 			return a;
 		}
@@ -77,8 +83,21 @@ public class ActionQueue{
 			}
 		}
 	}
+	public enum Priority{
+		HIGH_PRIOTITY(1), MED_PRIORITY(2), LOW_PRIORITY(3);
+		private int i;
+		private Priority(int i){ this.i = i;}
+	}
 	public interface Action{
 		public void doAction() throws Exception;
+	}
+	private class QueueAction{
+		private Action a;
+		private Priority p;
+		private QueueAction(Priority p, Action a){
+			this.a = a;
+			this.p = p; 
+		}
 	}
 	
 }
