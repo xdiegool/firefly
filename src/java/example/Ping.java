@@ -68,7 +68,7 @@ public class Ping implements Runnable, FireflyApplication, data.Handler
 
 
 	public synchronized void handle_data(int value) {
-		Debug.log("Ping: Got data:" + value);
+		Debug.log("Ping: got data:" + value);
 		echo = value;
 		notifyAll();
 	}
@@ -86,7 +86,7 @@ public class Ping implements Runnable, FireflyApplication, data.Handler
 		LabCommDecoder dec = this.chan.getDecoder();
 		Debug.log("Ping: Registering decoder");
 		data.register(dec, this); // Reg. handler above.;
-		Debug.log("Ping: Regeistered decoder");
+		Debug.log("Ping: Registered decoder");
 		Debug.log("Ping: Registering encoder");
 		data.register(enc);
 		Debug.log("Ping: Registered encoder");
@@ -94,12 +94,12 @@ public class Ping implements Runnable, FireflyApplication, data.Handler
 		conn.restrictChannel(chan);
 		Debug.log("Ping: Waiting for restrict");
 		waitForRestrict();
-		Debug.log("Ping: Gto restrict");
+		Debug.log("Ping: Got restrict");
 		Debug.log("Ping: Sending data");
 		data.encode(enc, 123);
 		Debug.log("Ping: Sent data: 123, waiting for echo");
 		waitForEcho();
-		Debug.log("Ping: Echo received : " + (chan == null));
+		Debug.log("Ping: Echo received");
 		connMux.close();
 		queue.stop();
 	}

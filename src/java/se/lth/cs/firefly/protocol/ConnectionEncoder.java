@@ -12,9 +12,8 @@ public class ConnectionEncoder extends LabCommEncoderChannel {
 	public ConnectionEncoder(LabCommWriter writer)
 		throws IOException
 	{
-		super(writer,true);
+		super(writer,false);
 		registry = new LabCommEncoderRegistry();
-		super.end(null);
 	}
 	@Override
 	public void register(LabCommDispatcher d) throws IOException

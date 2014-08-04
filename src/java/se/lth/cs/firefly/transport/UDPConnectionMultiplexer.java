@@ -47,49 +47,56 @@ public class UDPConnectionMultiplexer extends LinkLayerPort {
 		Debug.log("Received packet: "
 				+ Debug.byteArrayToString(p.getData(), p.getLength()));
 		// Give action to action thread to reduce blocking
-		actionQueue.queue(ActionQueue.Priority.MED_PRIORITY,new ActionQueue.Action() {
-			private DatagramPacket p;
+		actionQueue.queue(ActionQueue.Priority.MED_PRIORITY,
+				new ActionQueue.Action() {
+					private DatagramPacket p;
 
-			private ActionQueue.Action init(DatagramPacket p) {
-				this.p = p;
-				return this;
-			}
+					private ActionQueue.Action init(DatagramPacket p) {
+						this.p = p;
+						return this;
+					}
 
-			public void doAction() throws Exception {
-				InetAddress remoteAddress = p.getAddress();
-				int remotePort = p.getPort();
-				InetSocketAddress sa = new InetSocketAddress(remoteAddress,
-						remotePort);
-				BlockingAppendableInputStream stream = getStream(sa);
-				byte[] toConnection = new byte[p.getLength()];
-				System.arraycopy(p.getData(), 0, toConnection, 0,
-						toConnection.length);
-				if (stream == null) {
-					if (delegate.acceptConnection(remoteAddress, remotePort)) {
-						Debug.log("New Connection created");
-						stream = new BlockingAppendableInputStream(toConnection);
-						addStream(sa, stream);
-						Connection conn = new Connection(new UDPLayer(dsock,
-								remoteAddress, remotePort, stream), delegate,
-								actionQueue);
-						addConnection(conn);
-					}// else discard
-				} else {
-					Debug.log("Appending to connection");
-					stream.append(toConnection);
-				}
-			}
-		}.init(p));
+					public void doAction() throws Exception {
+						InetAddress remoteAddress = p.getAddress();
+						int remotePort = p.getPort();
+						InetSocketAddress sa = new InetSocketAddress(
+								remoteAddress, remotePort);
+						BlockingAppendableInputStream stream = getStream(sa);
+						byte[] toConnection = new byte[p.getLength()];
+						System.arraycopy(p.getData(), 0, toConnection, 0,
+								toConnection.length);
+						if (stream == null) {
+							if (delegate.acceptConnection(remoteAddress,
+									remotePort)) {
+								Debug.log("New Connection created");
+								// null for version bypass
+								stream = new BlockingAppendableInputStream(null); 
+								addStream(sa, stream);
+								Connection conn = new Connection(new UDPLayer(
+										dsock, remoteAddress, remotePort,
+										stream), delegate, actionQueue);
+								addConnection(conn);
+								// The actual package contents are appended.
+								// This must be done after connection creation
+								// otherwise it reads the channel request before
+								// it has registered itself to the decoders
+								stream.append(toConnection);
+							}// else discard
+						} else {
+							Debug.log("Appending to connection");
+							stream.append(toConnection);
+						}
+					}
+				}.init(p));
 	}
 
 	@Override
 	public Connection openTransportConnection(InetAddress remoteAddress,
 			int remotePort) throws IOException {
-		// This could have potentially used it's own local port but that would
-		// require some extra code to create a listener on that new port.
-		// TODO Check if this is viable.
 		Debug.log("openTransport Connection");
-		BlockingAppendableInputStream is = new BlockingAppendableInputStream();
+		// null for version bypass
+		BlockingAppendableInputStream is = new BlockingAppendableInputStream(
+				null);
 		addStream(new InetSocketAddress(remoteAddress, remotePort), is);
 		return new Connection(
 				new UDPLayer(dsock, remoteAddress, remotePort, is), delegate,
