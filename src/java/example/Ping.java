@@ -1,8 +1,10 @@
 package example;
 
 import se.lth.cs.firefly.*;
-import se.lth.control.labcomm.LabCommEncoder;
-import se.lth.control.labcomm.LabCommDecoder;
+import se.lth.cs.firefly.protocol.*;
+import se.lth.cs.firefly.transport.*;
+import se.lth.cs.firefly.util.Debug;
+import se.lth.control.labcomm.*;
 
 import java.net.InetAddress;
 
@@ -30,8 +32,8 @@ public class Ping implements Runnable, FireflyApplication, data.Handler
 	public boolean acceptConnection(InetAddress remoteAddress, int remotePort){ return true;}
 	public void connectionOpened(Connection conn){}
 	public boolean restrictAccept(Channel chan){ return restrict; }
-	@Override
 	public void channelRestricted(Channel chan){ restricted(); }
+	public void LLPError(LinkLayerPort p, Exception e) { Debug.errx("LinkLayerPort error "); }
 
 	public void run() {
 		try {
@@ -72,14 +74,14 @@ public class Ping implements Runnable, FireflyApplication, data.Handler
 	}
 
 	private void reallyRun() throws InterruptedException, IOException {
-		//TCPConnectionMultiplexer connMux = new TCPConnectionMultiplexer(this);
-		//Connection conn = connMux.openConnection(null, 8080); // Loopback
-		Connection conn = new UDPConnection(8456, 8056, InetAddress.getByName("localhost"), this); 
-		conn.setDataAck(true);
+		ActionQueue queue = new ActionQueue();
+		UDPConnectionMultiplexer connMux = new UDPConnectionMultiplexer(this, queue);
+		Connection conn = connMux.openConnection(InetAddress.getByName("localhost"), 8456); // Loopback
 		conn.openChannel();
 		Debug.log("Ping: Waiting for channel...");
 		waitForChan();
 		Debug.log("Ping: Got Channel");
+		chan.setAckOnData(true);
 		LabCommEncoder enc = this.chan.getEncoder();
 		LabCommDecoder dec = this.chan.getDecoder();
 		Debug.log("Ping: Registering decoder");
@@ -97,12 +99,13 @@ public class Ping implements Runnable, FireflyApplication, data.Handler
 		data.encode(enc, 123);
 		Debug.log("Ping: Sent data: 123, waiting for echo");
 		waitForEcho();
-		Debug.log("Ping: Echo received");
-		this.chan.close();
-		conn.close();
+		Debug.log("Ping: Echo received : " + (chan == null));
+		connMux.close();
+		queue.stop();
 	}
 	public static void main(String[] args) {
 		new Ping().run();
 	}
+
 
 }

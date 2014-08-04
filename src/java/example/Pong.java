@@ -1,10 +1,13 @@
 package example;
 
 import se.lth.cs.firefly.*;
+import se.lth.cs.firefly.protocol.*;
+import se.lth.cs.firefly.transport.UDPConnectionMultiplexer;
+import se.lth.cs.firefly.util.Debug;
+import se.lth.control.labcomm.*;
 
-import se.lth.control.labcomm.LabCommEncoder;
-import se.lth.control.labcomm.LabCommDecoder;
 import java.net.InetAddress;
+
 import lc_gen.data;
 
 import java.io.IOException;
@@ -20,7 +23,7 @@ public class Pong implements Runnable, FireflyApplication, data.Handler {
 	public void connectionError(Connection conn) {}
 	public boolean restrictAccept(Channel chan){ return true; }
 	public void channelRestricted(Channel chan){ restricted(); }
-
+	public void LLPError(LinkLayerPort p, Exception e) { Debug.errx("LinkLayerPort error "); }
 	// More callbacks
 	public boolean acceptConnection(InetAddress remoteAddress, int remotePort){return true;}
 	public void connectionOpened(Connection conn){}
@@ -69,12 +72,12 @@ public class Pong implements Runnable, FireflyApplication, data.Handler {
 	}
 
 	private void reallyRun() throws IOException, InterruptedException {
-		//TCPConnectionMultiplexer connMux = new TCPConnectionMultiplexer(this, 8080);
-		Connection conn = new UDPConnection(8056, this); 
-conn.setDataAck(true);
+		ActionQueue queue = new ActionQueue();
+		UDPConnectionMultiplexer connMux = new UDPConnectionMultiplexer(8456, this, queue);
 		Debug.log("Pong: Waiting for channel...");		
 		waitForChannel();
 		Debug.log("Pong: Got chan");
+		chan.setAckOnData(true);
 		LabCommDecoder dec = chan.getDecoder();
 		LabCommEncoder enc = chan.getEncoder();
 		Debug.log("Pong: Registering decoder");
@@ -89,9 +92,8 @@ conn.setDataAck(true);
 		Debug.log("Pong: Waiting for data");
 		waitForData();
 		Debug.log("Pong: closing");
-		conn.closeChannel(chan);
-		conn.close();
-
+		connMux.close();
+		queue.stop();
 	}
 
 	public static void main(String[] args) {
