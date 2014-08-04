@@ -1,50 +1,59 @@
-package se.lth.cs.firefly;
+package se.lth.cs.firefly.protocol;
 
 import se.lth.control.labcomm.*;
+import se.lth.cs.firefly.*;
+import se.lth.cs.firefly.ActionQueue.Action;
+import se.lth.cs.firefly.util.*;
 import genproto.*;
 
 import java.util.*;
 import java.io.*;
 import java.net.*;
 
-public abstract class Connection implements ack.Handler, channel_ack.Handler,
+public class Connection implements ack.Handler, channel_ack.Handler,
 		channel_close.Handler, channel_request.Handler,
 		channel_response.Handler, channel_restrict_ack.Handler,
 		channel_restrict_request.Handler, data_sample.Handler {
-	private static int SEQNO_START = 0;
-	public static int SEQNO_MAX = Integer.MAX_VALUE;
 
+	private final static int SEQNO_MAX = Integer.MAX_VALUE;
+	private final static int SEQNO_START = 0;
 	private HashMap<Integer, Channel> channels;
 	private int nextChannelID;
-	private ConnectionDecoder bottomDecoder;
-	private ConnectionEncoder bottomEncoder;
 	private int seqno;
-	private boolean ackOnData;
 	private ResendQueue resendQueue;
 	private ActionQueue actionQueue;
-	private Thread receiverThread;
+	private ConnectionDecoder bottomDecoder;
+	private ConnectionEncoder bottomEncoder;
+	private FireflyApplication delegate;
+	private TransportLayerAbstraction tla;
+	private Thread reader;
 
-	protected FireflyApplication delegate;
-	protected InetAddress remoteAddress;
-	protected int remotePort;
-	protected int localPort;
-
-	protected Connection(int localPort, FireflyApplication delegate)
+	public Connection(TransportLayerAbstraction tla,
+			FireflyApplication delegate, ActionQueue actionQueue)
 			throws IOException {
 		this.delegate = delegate;
-		this.localPort = localPort;
+		this.actionQueue = actionQueue;
+		this.tla = tla;
 		seqno = SEQNO_START;
 		channels = new HashMap<Integer, Channel>();
 		nextChannelID = 0;
-		ackOnData = false;
 		channels = new HashMap<Integer, Channel>();
-		bottomDecoder = new ConnectionDecoder(new AppendableInputStream());
-		bottomEncoder = new ConnectionEncoder(new ConnectionWriter(),
-				bottomDecoder);
+		bottomEncoder = new ConnectionEncoder(tla.getWriter());
+		bottomDecoder = new ConnectionDecoder(tla.getInputStream());
+		bottomEncoder.setShortCircuit(bottomDecoder);
 		resendQueue = new ResendQueue(bottomEncoder, this);
-		actionQueue = new ActionQueue(this);
 
-		init();
+		reader = new Thread(new Reader());
+		reader.start();
+
+		data_sample.register(bottomEncoder);
+		ack.register(bottomEncoder);
+		channel_request.register(bottomEncoder);
+		channel_response.register(bottomEncoder);
+		channel_ack.register(bottomEncoder);
+		channel_close.register(bottomEncoder);
+		channel_restrict_request.register(bottomEncoder);
+		channel_restrict_ack.register(bottomEncoder);
 
 		data_sample.register(bottomDecoder, this);
 		ack.register(bottomDecoder, this);
@@ -55,40 +64,14 @@ public abstract class Connection implements ack.Handler, channel_ack.Handler,
 		channel_restrict_request.register(bottomDecoder, this);
 		channel_restrict_ack.register(bottomDecoder, this);
 
-		receiverThread = new Thread(new Receiver());
-		receiverThread.start();
-
 	}
 
-	protected Connection(int localPort, int remotePort,
-			InetAddress remoteAddress, FireflyApplication delegate)
-			throws IOException {
-		this(localPort, delegate);
-		this.remotePort = remotePort;
-		this.remoteAddress = remoteAddress;
-		startSending();
+	public boolean isTheSame(InetAddress address, int port) {
+		Debug.log((tla.getRemoteHost().equals(address) && tla.getRemotePort() == port)
+				+ "");
+		return tla.getRemoteHost().equals(address)
+				&& tla.getRemotePort() == port;
 	}
-
-	protected void startSending() throws IOException {
-		data_sample.register(bottomEncoder);
-		ack.register(bottomEncoder);
-		channel_request.register(bottomEncoder);
-		channel_response.register(bottomEncoder);
-		channel_ack.register(bottomEncoder);
-		channel_close.register(bottomEncoder);
-		channel_restrict_request.register(bottomEncoder);
-		channel_restrict_ack.register(bottomEncoder);
-	}
-
-	protected abstract void init() throws IOException;
-
-	protected abstract int receive(byte[] b, int len) throws IOException;
-
-	protected abstract int bufferSize() throws IOException;
-
-	protected abstract void send(byte[] b, int length) throws IOException;
-
-	protected abstract void closeTransport();
 
 	public synchronized void exception(Exception e) {
 		e.printStackTrace();
@@ -98,24 +81,24 @@ public abstract class Connection implements ack.Handler, channel_ack.Handler,
 	public synchronized void close() {
 		actionQueue.queue(new ActionQueue.Action() {
 			public void doAction() throws Exception {
-				closeTransport();
-				receiverThread.interrupt();
+				closeAll();
+				reader.interrupt();
 				resendQueue.stop();
-				actionQueue.stop();
 				Debug.log("Close connection");
 			}
 		});
 	}
-
-	public synchronized void setDataAck(boolean b) {
-		ackOnData = b;
+	private void closeAll() throws IOException{
+		for(Channel chan : channels.values()){
+			closeChannel(chan);
+		}
 	}
 
 	/* ###################### CHANNEL HANDLING ################### */
 	/**
 	 * Sends a request to the connected firefly node asking to open a channel.
 	 */
-	public final synchronized void openChannel() throws IOException {
+	public final void openChannel() throws IOException {
 		actionQueue.queue(new ActionQueue.Action() {
 			public void doAction() throws Exception {
 				Channel chan = new Channel(nextChannelID, Connection.this);
@@ -141,6 +124,7 @@ public abstract class Connection implements ack.Handler, channel_ack.Handler,
 			throws IOException {
 		actionQueue.queue(new ActionQueue.Action() {
 			public void doAction() throws IOException {
+				chan.setClosed();
 				Debug.log("Sending close channel request");
 				channel_close cc = new channel_close();
 				cc.source_chan_id = chan.getLocalID();
@@ -241,7 +225,8 @@ public abstract class Connection implements ack.Handler, channel_ack.Handler,
 				chan.setRemoteID(resp.source_chan_id);
 				chan.setEncoder(new ChannelEncoder(
 						new channelToConnectionWriter(resp.source_chan_id)));
-				chan.setDecoder(new ChannelDecoder(new AppendableInputStream()));
+				chan.setDecoder(new ChannelDecoder(new AppendableInputStream(
+						null)));
 				chan.setOpen();
 				delegate.channelOpened(chan);
 			} else { // 2b
@@ -270,19 +255,21 @@ public abstract class Connection implements ack.Handler, channel_ack.Handler,
 		if (chan != null && !chan.isOpen()) { // We have not received this ack
 												// before,
 			if (value.ack) {
+				chan.setRemoteID(value.source_chan_id);
 				chan.setEncoder(new ChannelEncoder(
 						new channelToConnectionWriter(value.dest_chan_id)));
-				chan.setDecoder(new ChannelDecoder(new AppendableInputStream()));
-				chan.setRemoteID(value.source_chan_id);
+				chan.setDecoder(new ChannelDecoder(new AppendableInputStream(
+						null)));
 				chan.setOpen();
 				delegate.channelOpened(chan);
-			} else {
-				chan.setClosed();
-				delegate.channelClosed(chan);
-				channels.remove(value.dest_chan_id);
 			}
-			resendQueue.dequeueChannelMsg(value.dest_chan_id);
+
+		} else {
+			chan.setClosed();
+			delegate.channelClosed(chan);
+			channels.remove(value.dest_chan_id);
 		}
+		resendQueue.dequeueChannelMsg(value.dest_chan_id);
 	}
 
 	/**
@@ -381,8 +368,6 @@ public abstract class Connection implements ack.Handler, channel_ack.Handler,
 	public final synchronized void handle_data_sample(data_sample ds)
 			throws Exception {
 		Debug.log("Received data sample");
-		// TODO Check so that this data hasn't been received before, maybe in
-		// Channel as well
 		if (ds.important) {
 			ack dataAck = new ack();
 			dataAck.dest_chan_id = ds.src_chan_id;
@@ -406,11 +391,6 @@ public abstract class Connection implements ack.Handler, channel_ack.Handler,
 	}
 
 	/* ###################### PUBLIC HELPER CLASSES ################### */
-	public class ConnectionWriter implements LabCommWriter {
-		public void write(byte[] data) throws IOException {
-			send(data, data.length);
-		}
-	}
 
 	public class channelToConnectionWriter implements LabCommWriter {
 		private int origin;
@@ -427,10 +407,9 @@ public abstract class Connection implements ack.Handler, channel_ack.Handler,
 					ds.src_chan_id = chan.getLocalID();
 					ds.dest_chan_id = chan.getRemoteID();
 					ds.seqno = seqno;
-					seqno = (seqno == SEQNO_MAX) ? SEQNO_START
-							: seqno + 1;
+					seqno = (seqno == SEQNO_MAX) ? SEQNO_START : seqno + 1;
 					ds.app_enc_data = data;
-					if (ackOnData || data[0] == LabComm.SAMPLE
+					if (chan.shouldAckOnData() || data[0] == LabComm.SAMPLE
 							|| data[0] == LabComm.TYPEDEF) {
 						ds.important = true;
 						resendQueue.queueData(ds.seqno, ds);
@@ -442,30 +421,19 @@ public abstract class Connection implements ack.Handler, channel_ack.Handler,
 	}
 
 	/* ###################### PRIVATE HELPER CLASSES ################### */
-	protected class Receiver implements Runnable {
+	public class Reader implements Runnable {
 		public void run() {
 			while (!Thread.currentThread().isInterrupted()) {
 				try {
-					byte[] inc = new byte[bufferSize()];
-					int length = receive(inc, inc.length);
-					byte[] toDecode = new byte[length];
-					System.arraycopy(inc, 0, toDecode, 0, length);
-					actionQueue.queue(new ActionQueue.Action() {
-						private byte[] data;
-
-						private ActionQueue.Action init(byte[] data) {
-							this.data = data;
-							return this;
-						}
-
-						public void doAction() throws Exception {
-							bottomDecoder.decode(data);
-						}
-					}.init(toDecode));
+					bottomDecoder.runOne();
+				} catch (EOFException e) {
+					// Ignore, this is only because ChannelDecoders can't handle
+					// non blocking i/o on type registration
 				} catch (SocketException e) {
 					Thread.currentThread().interrupt(); // Socket closed
 				} catch (Exception e) {
-					exception(e);
+					Debug.printStackTrace(e);
+					Debug.errx("");
 				}
 			}
 		}

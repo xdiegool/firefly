@@ -2,6 +2,7 @@ package se.lth.cs.firefly;
 
 import genproto.*;
 import se.lth.control.labcomm.*;
+import se.lth.cs.firefly.util.Debug;
 
 import java.util.*;
 import java.io.*;
@@ -12,10 +13,8 @@ public class ActionQueue{
 	private Queue<Action> queue;
 	private Object lock;
 	private Thread thread;
-	private Connection conn;
 
-	public ActionQueue(Connection conn){	
-		this.conn = conn;
+	public ActionQueue(){	
 		queue = new LinkedList<Action>();
 		lock = new Object();
 		thread = new Thread(new ActionAgent());
@@ -53,7 +52,7 @@ public class ActionQueue{
 					Thread.currentThread().interrupt(); // Socket
 										// closed
 				} catch (Exception e) {
-					conn.exception(e);
+					Debug.printStackTrace(e);
 				}
 			}
 			Debug.log("ActionAgent stopping");

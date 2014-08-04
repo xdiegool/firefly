@@ -1,4 +1,4 @@
-package se.lth.cs.firefly;
+package se.lth.cs.firefly.protocol;
 
 
 import se.lth.control.labcomm.*;
@@ -6,15 +6,15 @@ import se.lth.control.labcomm.*;
 import java.io.OutputStream;
 import java.io.IOException;
 
-class ConnectionEncoder extends LabCommEncoderChannel {
+public class ConnectionEncoder extends LabCommEncoderChannel {
 	private ConnectionDecoder dec;
 	private LabCommEncoderRegistry registry;
-	public ConnectionEncoder(LabCommWriter writer, ConnectionDecoder dec)
+	public ConnectionEncoder(LabCommWriter writer)
 		throws IOException
 	{
-		super(writer,false);
-		this.dec = dec;
+		super(writer,true);
 		registry = new LabCommEncoderRegistry();
+		super.end(null);
 	}
 	@Override
 	public void register(LabCommDispatcher d) throws IOException
@@ -26,5 +26,9 @@ class ConnectionEncoder extends LabCommEncoderChannel {
 	 public void begin(Class<? extends LabCommSample> c) throws 	IOException {
 		encodePacked32(registry.getTag(c));
   	}
+	public void setShortCircuit(ConnectionDecoder bottomDecoder) {
+		dec = bottomDecoder;
+		
+	}
 	
 }

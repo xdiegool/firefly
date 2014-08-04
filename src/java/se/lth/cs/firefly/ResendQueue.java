@@ -3,6 +3,8 @@ package se.lth.cs.firefly;
 import genproto.*;
 import se.lth.control.labcomm.*;
 import se.lth.cs.firefly.ActionQueue.Action;
+import se.lth.cs.firefly.protocol.*;
+import se.lth.cs.firefly.util.Debug;
 
 import java.util.*;
 import java.io.*;
@@ -97,7 +99,7 @@ public class ResendQueue {
 							resendSample(s);
 						}
 					} catch (SocketException e) {
-						Thread.currentThread().interrupt(); // Socket close
+						Thread.currentThread().interrupt(); // Socket closed
 					} catch (Exception e) {
 						conn.exception(e);
 					}

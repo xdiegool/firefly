@@ -1,4 +1,4 @@
-package se.lth.cs.firefly;
+package se.lth.cs.firefly.protocol;
 
 import genproto.*;
 import se.lth.control.labcomm.*;
@@ -22,7 +22,7 @@ public class Channel {
 	private ChannelDecoder decoder;
 	private Connection conn;
 	private boolean restricted;
-
+	private boolean ackOnData;
 	private int localID;
 	private int remoteID;
 
@@ -31,6 +31,7 @@ public class Channel {
 		this.localID = localID;
 		this.conn = conn;
 		restricted = false;
+		ackOnData = false;
 	}
 
 	public void setEncoder(ChannelEncoder e) {
@@ -92,6 +93,14 @@ public class Channel {
 	public void close() throws IOException {
 		this.conn.closeChannel(this);
 		this.state = CLOSE_REQ_SENT;
+	}
+
+	public void setAckOnData(boolean b) {
+		ackOnData = b;
+		
+	}
+	public boolean shouldAckOnData(){
+		return ackOnData;
 	}
 
 }

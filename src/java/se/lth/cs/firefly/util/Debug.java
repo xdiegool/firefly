@@ -1,8 +1,8 @@
-package se.lth.cs.firefly;
+package se.lth.cs.firefly.util;
 
 import java.util.Date;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
+import java.io.*;
+import java.text.*;
 
 public class Debug {
 	public static boolean debug = true;
@@ -16,7 +16,7 @@ public class Debug {
 	}
 
 	public static synchronized void errx(String msg) {
-		System.err.println(msg);
+		Debug.warnx(msg);
 		System.exit(1);
 	}
 
@@ -30,5 +30,11 @@ public class Debug {
 		}
 		s = "[" +s.substring(0, s.length()-1) + "]";
 		return s;
+	}
+	public static void printStackTrace(Exception e){
+		StringWriter sw = new StringWriter();
+		e.printStackTrace(new PrintWriter(sw));
+		String exceptionAsString = sw.toString();
+		Debug.log(exceptionAsString);
 	}
 }

@@ -1,26 +1,23 @@
-package se.lth.cs.firefly;
+package se.lth.cs.firefly.protocol;
 
 import se.lth.control.labcomm.*;
+import se.lth.cs.firefly.util.AppendableInputStream;
+
 import java.io.*;
 
-class ConnectionDecoder extends LabCommDecoderChannel {
-	private AppendableInputStream ais;
+public class ConnectionDecoder extends LabCommDecoderChannel {
+	private InputStream inputStream;
 	private LabCommDecoderRegistry registry; //Since the superclass registry variable is private, we cannot access it and we have to create our own. 
-	public ConnectionDecoder(AppendableInputStream ais) throws IOException {
-		super(ais);
-		this.ais = ais;
+	public ConnectionDecoder(InputStream inputStream) throws IOException {
+		super(inputStream);
+		this.inputStream = inputStream;
 		registry = new LabCommDecoderRegistry();
-	}
-
-	public void decode(byte[] a) throws Exception {
-		ais.append(a);
-		runOne();
 	}
 	public void shortCircuit(int index, LabCommDispatcher d) throws IOException {
 		registry.add(index, d.getName(), d.getSignature());
 	}
 	/**
-	* A direct copy of the corresponding super class method from labcomm-core repo 2014-07-25. If it has been updated since then,
+	* A direct copy of the corresponding super class method from the labcomm-core repo at 2014-07-25. If it has been updated since then,
 	* this has to be updated as well. This copy was necessary for this method to access the subclass registry variable instead of
 	* the superclass version of it. This in turn was necessary for the short circuit of type registration to work. 
 	*/	

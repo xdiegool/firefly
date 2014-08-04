@@ -2,6 +2,10 @@ package se.lth.cs.firefly;
 
 import java.net.InetAddress;
 
+import se.lth.cs.firefly.protocol.Channel;
+import se.lth.cs.firefly.protocol.Connection;
+import se.lth.cs.firefly.protocol.LinkLayerPort;
+
 public interface FireflyApplication {
 	// Reduce.
 	// Want blocking ops?
@@ -17,5 +21,8 @@ public interface FireflyApplication {
 	// Incoming connections.
 	public boolean acceptConnection(InetAddress remoteAddress, int remotePort);
 	public void connectionOpened(Connection conn);
+	
+	//LLP
+	public void LLPError(LinkLayerPort llp, Exception e);
 
 }
