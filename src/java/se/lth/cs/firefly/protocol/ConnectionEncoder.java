@@ -2,8 +2,6 @@ package se.lth.cs.firefly.protocol;
 
 
 import se.lth.control.labcomm.*;
-
-import java.io.OutputStream;
 import java.io.IOException;
 
 public class ConnectionEncoder extends LabCommEncoderChannel {

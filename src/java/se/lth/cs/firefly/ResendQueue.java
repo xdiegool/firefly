@@ -2,7 +2,6 @@ package se.lth.cs.firefly;
 
 import genproto.*;
 import se.lth.control.labcomm.*;
-import se.lth.cs.firefly.ActionQueue.Action;
 import se.lth.cs.firefly.protocol.*;
 import se.lth.cs.firefly.util.Debug;
 
@@ -123,7 +122,7 @@ public class ResendQueue {
 		}
 
 		private void resendSample(LabCommSample s) throws IOException {
-			// Ugly but working . TODO Fix this
+			// Ugly but working. TODO Fix this
 			Debug.log("Resending " + s.getClass().getSimpleName());
 			switch (s.getClass().getSimpleName()) {
 			case "channel_request":

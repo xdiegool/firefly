@@ -1,18 +1,14 @@
 package se.lth.cs.firefly.transport;
 
 import java.net.ServerSocket;
-import java.util.ArrayList;
-import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.io.IOException;
-import java.net.UnknownHostException;
 
 import se.lth.cs.firefly.ActionQueue;
 import se.lth.cs.firefly.FireflyApplication;
 import se.lth.cs.firefly.protocol.Connection;
-import se.lth.cs.firefly.protocol.LinkLayerPort;
-import se.lth.cs.firefly.util.BlockingAppendableInputStream;
+import se.lth.cs.firefly.protocol.*;
 import se.lth.cs.firefly.util.Debug;
 
 public class TCPConnectionMultiplexer extends LinkLayerPort {

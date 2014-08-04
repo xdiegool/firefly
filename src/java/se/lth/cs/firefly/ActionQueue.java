@@ -1,7 +1,5 @@
 package se.lth.cs.firefly;
 
-import genproto.*;
-import se.lth.control.labcomm.*;
 import se.lth.cs.firefly.util.Debug;
 
 import java.util.*;

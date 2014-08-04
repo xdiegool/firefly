@@ -1,10 +1,6 @@
 package se.lth.cs.firefly.protocol;
 
-import genproto.*;
-import se.lth.control.labcomm.*;
-
 import java.io.IOException;
-import java.util.*;
 
 /*
  * Handles channel state, encoder/decoder access and data ordering
