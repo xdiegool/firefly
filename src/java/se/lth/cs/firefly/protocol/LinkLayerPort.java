@@ -7,14 +7,24 @@ import java.util.ArrayList;
 
 import se.lth.cs.firefly.*;
 import se.lth.cs.firefly.util.Debug;
-
+/**
+ * Class to abstract common logic for protocol specific connection multiplexors.
+ * Subclasses to this implement protocol specifics of accepting network connections and
+ * possibly multiplexing incoming messages to the right firefly connection.
+ *
+ */
 public abstract class LinkLayerPort {
 	protected int localPort;
 	protected FireflyApplication delegate;
 	private ArrayList<Connection> connections;
 	protected Thread listener;
 	protected ActionQueue actionQueue;
-
+	
+	/**
+ 	* Constructor for applications awaiting connections
+ 	*
+ 	* 
+ 	*/ 
 	public LinkLayerPort(int localPort, FireflyApplication delegate,
 			ActionQueue actionQueue) {
 		this.actionQueue = actionQueue;
@@ -24,20 +34,46 @@ public abstract class LinkLayerPort {
 		listener = new Thread(new Listener());
 		listener.start();
 	}
-
+	/**
+ 	* Constructor for application that initiate connections.
+ 	*
+ 	*/
 	public LinkLayerPort(FireflyApplication delegate, ActionQueue actionQueue) {
 		this.actionQueue = actionQueue;
 		this.delegate = delegate;
 		connections = new ArrayList<Connection>();
 	}
-
+	/**
+ 	* Does all the protocol specific setup for a connection to the host
+ 	* at remoteAddress at port remotePort to work.
+ 	* 
+ 	* @returns The created connection with the protocol specific transport layer abstraction
+ 	*/	 
 	protected abstract Connection openTransportConnection(
 			InetAddress remoteAddress, int remotePort) throws IOException;
-
+	/**
+ 	* Listening for new connections, is called be listener thread. Also handles
+ 	* packet to connection multiplexing if its not done by the udnerlying
+ 	* protocol.
+ 	*
+ 	*
+ 	*/
 	protected abstract void listen() throws IOException;
-
+	
+	/**
+ 	* Closes the network resources that were created when calling openTransportConnection.
+ 	*
+ 	*/ 
 	protected abstract void transportClose() throws IOException;
 
+	/**
+ 	* Opens a new connection to the specified host and port, also starts
+ 	* the listener if it hasn't been started before.
+ 	*
+ 	* TODO Since there is no longer any labcomm version control at this level,
+ 	* can the actionThread handle this whole method?
+ 	*
+ 	*/ 
 	public Connection openConnection(InetAddress remoteAddress, int remotePort)
 			throws IOException {
 		actionQueue.queue(ActionQueue.Priority.MED_PRIORITY,new ActionQueue.Action() {
@@ -68,7 +104,7 @@ public abstract class LinkLayerPort {
 	}
 
 	public void close() {
-		// A bit ugly but is needed for all channels to close and send close requests in the right way
+		// A bit ugly but is needed for all channels to close and send close requests before closing network resources.
 		actionQueue.queue(ActionQueue.Priority.MED_PRIORITY, new ActionQueue.Action() {
 			public void doAction() throws Exception {
 				for (Connection conn : connections) {
@@ -100,6 +136,13 @@ public abstract class LinkLayerPort {
 	}
 
 	/* ###################### PRIVATE HELPER CLASSES ################### */
+	/**
+ 	* Listens to the udnerlying network protocol, be it socket or anything else, 
+ 	* to accept new conenctions and possibly multiplex incoming messages. Exactly
+ 	* what is done is determined in subclasses.
+ 	*
+ 	*/
+	
 	private class Listener implements Runnable {
 		public void run() {
 			Debug.log("Listener running");

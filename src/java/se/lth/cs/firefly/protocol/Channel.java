@@ -3,7 +3,7 @@ package se.lth.cs.firefly.protocol;
 import java.io.IOException;
 
 /*
- * Handles channel state, encoder/decoder access and data ordering
+ * Handles channel state and encoder/decoder access
  *	
  */
 public class Channel {

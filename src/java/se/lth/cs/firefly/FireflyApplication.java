@@ -6,6 +6,10 @@ import se.lth.cs.firefly.protocol.Channel;
 import se.lth.cs.firefly.protocol.Connection;
 import se.lth.cs.firefly.protocol.LinkLayerPort;
 
+/**
+* Interface for callbacks to an application using firefly.
+*
+*/
 public interface FireflyApplication {
 	// Reduce.
 	// Want blocking ops?

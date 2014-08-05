@@ -5,6 +5,10 @@ import se.lth.cs.firefly.util.AppendableInputStream;
 
 import java.io.*;
 
+/** 
+* The decoder for a channel, one instance per channel. 
+*
+*/
 class ChannelDecoder extends LabCommDecoderChannel {
 	private AppendableInputStream is;
 	// Used to decode the datagram unpacked from an firefly data_sample.

@@ -6,7 +6,17 @@ import java.util.*;
 import java.io.*;
 import java.net.SocketException;
 
-
+/**
+* This class is mainly ment to offload threads that listen awaits packages on connectionless protocols.
+* As these threads need to available and listening as fast as possible after having received, another thread
+* needs to handle the package after it's been received, which is what this class does. Most of the library 
+* classes are not threadsafe and this thread is used to remove the need for synchronization. 
+* It consists of both the queue where actions or events are placed and the thread that "does" the action.
+*
+* It also supports priority in the actions, as defined in the enum Priority.
+*
+* An interface Action is provided as well. Actions that should be performed by the thread implement that interface. 
+*/
 public class ActionQueue{
 	private Queue<QueueAction> queue;
 	private Object lock;
@@ -38,7 +48,7 @@ public class ActionQueue{
 		@Override
 		public void run() {
 			Debug.log("ActionAgent starting");
-			while (!Thread.currentThread().isInterrupted() || !queueIsEmpty()) { //Finish all actions
+			while (!Thread.currentThread().isInterrupted() || !queueIsEmpty()) { //Finish all actions before exiting
 				try {
 					while(!queueIsEmpty()){
 						Action a = poll();

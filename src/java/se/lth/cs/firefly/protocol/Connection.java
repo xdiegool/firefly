@@ -9,6 +9,15 @@ import java.util.*;
 import java.io.*;
 import java.net.*;
 
+/**
+* Handles all firefly protocol callbacks and keeps track of channels.
+* 
+* It represents a connection between to firefly nodes and provides methods
+* for opening and closing channels and handles connection setup and handshake. 
+* It has two helper classes, which will be explained in their respective comments.
+* 
+*
+*/
 public class Connection implements ack.Handler, channel_ack.Handler,
 		channel_close.Handler, channel_request.Handler,
 		channel_response.Handler, channel_restrict_ack.Handler,
@@ -64,7 +73,6 @@ public class Connection implements ack.Handler, channel_ack.Handler,
 		channel_restrict_ack.register(bottomDecoder, this);
 
 	}
-
 	private void noLocalChannel(int localId, int remoteId) throws IOException {
 		Debug.log("Received message to channel with ID: "
 				+ localId
@@ -77,7 +85,12 @@ public class Connection implements ack.Handler, channel_ack.Handler,
 		channel_close.encode(bottomEncoder, cc);
 
 	}
-
+	/*
+	* Checks whether this channel has the same remoteAddress and port as those provided.
+	* If they are equal, a channel with the provided address and port is essentially 
+	* equal to this.
+	*
+	*/
 	public boolean isTheSame(InetAddress address, int port) {
 		Debug.log((tla.getRemoteHost().equals(address) && tla.getRemotePort() == port)
 				+ "");
@@ -93,9 +106,9 @@ public class Connection implements ack.Handler, channel_ack.Handler,
 	public void close() {
 		actionQueue.queue(ActionQueue.Priority.MED_PRIORITY,
 				new ActionQueue.Action() {
-					public void doAction() throws Exception {
+					public void doAction() throws Exception{
 						for (Channel chan : channels.values()) {
-							closeChannel(chan);
+								closeChannel(chan);
 						}
 						reader.interrupt();
 						resendQueue.stop();
@@ -108,7 +121,7 @@ public class Connection implements ack.Handler, channel_ack.Handler,
 	/**
 	 * Sends a request to the connected firefly node asking to open a channel.
 	 */
-	public final void openChannel() throws IOException {
+	public void openChannel() throws IOException {
 		actionQueue.queue(ActionQueue.Priority.MED_PRIORITY,
 				new ActionQueue.Action() {
 					public void doAction() throws Exception {
@@ -133,7 +146,7 @@ public class Connection implements ack.Handler, channel_ack.Handler,
 	 * @param chan
 	 *            the channel to be closed
 	 */
-	public final void closeChannel(final Channel chan) throws IOException {
+	public void closeChannel(final Channel chan) throws IOException {
 		actionQueue.queue(ActionQueue.Priority.MED_PRIORITY,
 				new ActionQueue.Action() {
 					public void doAction() throws IOException {
@@ -158,7 +171,7 @@ public class Connection implements ack.Handler, channel_ack.Handler,
 	 * @param chan
 	 *            the channel to be restricted
 	 */
-	public final void restrictChannel(final Channel chan) throws IOException {
+	public void restrictChannel(final Channel chan) throws IOException {
 		actionQueue.queue(ActionQueue.Priority.MED_PRIORITY,
 				new ActionQueue.Action() {
 					public void doAction() throws IOException {
@@ -187,7 +200,7 @@ public class Connection implements ack.Handler, channel_ack.Handler,
 	 * 
 	 * 1 and 3 have the same outcome so we can bundle them.
 	 */
-	public final void handle_channel_request(final channel_request req)
+	public void handle_channel_request(final channel_request req)
 			throws Exception {
 		Debug.log("Got channel request");
 		actionQueue.queue(ActionQueue.Priority.MED_PRIORITY,
@@ -231,7 +244,7 @@ public class Connection implements ack.Handler, channel_ack.Handler,
 	 *            the channel_response informing whether or not or request was
 	 *            accepted by the remote node.
 	 */
-	public final void handle_channel_response(final channel_response resp)
+	public void handle_channel_response(final channel_response resp)
 			throws Exception {
 		Debug.log("Got channel response: " + resp.ack);
 		actionQueue.queue(ActionQueue.Priority.MED_PRIORITY,
@@ -283,7 +296,7 @@ public class Connection implements ack.Handler, channel_ack.Handler,
 	 * this ack before (i.e. channel is either already open (prev_ack == true)
 	 * or does not exist (prev_ack == false) => disregard
 	 */
-	public final void handle_channel_ack(final channel_ack value)
+	public void handle_channel_ack(final channel_ack value)
 			throws Exception {
 		Debug.log("Got channel ack: " + value.ack);
 		actionQueue.queue(ActionQueue.Priority.MED_PRIORITY,
@@ -321,9 +334,8 @@ public class Connection implements ack.Handler, channel_ack.Handler,
 	 * If it's a request, close and remove channel and send response, else it's
 	 * a response and we remove the channel.
 	 */
-	public final void handle_channel_close(final channel_close req)
+	public void handle_channel_close(final channel_close req)
 			throws Exception {
-		// TODO some duplicate code here, fix
 		actionQueue.queue(ActionQueue.Priority.MED_PRIORITY,
 				new ActionQueue.Action() {
 					public void doAction() throws IOException {
@@ -360,8 +372,9 @@ public class Connection implements ack.Handler, channel_ack.Handler,
 
 	/**
 	 * LabComm callback
+	 * An ack on our own restrict request has been received.
 	 */
-	public final void handle_channel_restrict_ack(final channel_restrict_ack ack)
+	public void handle_channel_restrict_ack(final channel_restrict_ack ack)
 			throws Exception {
 		Debug.log("Got channel restrict ack");
 		actionQueue.queue(ActionQueue.Priority.MED_PRIORITY,
@@ -384,10 +397,11 @@ public class Connection implements ack.Handler, channel_ack.Handler,
 
 	/**
 	 * LabComm callback
-	 * 
+	 * We have received a restrict request, i.e. remote host says its done registering 
+	 * types and wants to start sending data.  
 	 * 
 	 */
-	public final void handle_channel_restrict_request(
+	public void handle_channel_restrict_request(
 			final channel_restrict_request crr) throws Exception {
 		Debug.log("Got channel restrict request");
 		actionQueue.queue(ActionQueue.Priority.MED_PRIORITY,
@@ -404,9 +418,8 @@ public class Connection implements ack.Handler, channel_ack.Handler,
 						boolean accepted = delegate.restrictAccept(chan);
 						if (accepted) {
 							ack.restricted = true;
-							if (!chan.isRestricted()) { // We have not received
-														// this
-														// before
+							if (!chan.isRestricted()) { 
+								// We have not received this before
 								chan.setRestricted(true);
 								delegate.channelRestricted(chan);
 							}
@@ -421,12 +434,13 @@ public class Connection implements ack.Handler, channel_ack.Handler,
 	}
 
 	/**
-	 * LabComm callback
-	 * 
-	 * We have received a data sample. This is not related to the channel
-	 * handling protocol so we just send it to the right channel instead.
-	 */
-	public final void handle_data_sample(final data_sample ds) throws Exception {
+	* LabComm callback	
+	* 
+	* We have received a data sample. If it is important, we send an ack back, 
+	* regardless, we give it to the channel decoder. No checks on data ordering
+	* are made. 
+	*/
+	public void handle_data_sample(final data_sample ds) throws Exception {
 		Debug.log("Received data sample");
 		actionQueue.queue(ActionQueue.Priority.MED_PRIORITY,
 				new ActionQueue.Action() {
@@ -452,24 +466,30 @@ public class Connection implements ack.Handler, channel_ack.Handler,
 	/**
 	 * LabComm callback
 	 * 
-	 * We have received a data ack.
+	 * We have received a data ack, dequeue relate data_sample.
 	 * @throws IOException 
 	 */
-	public final synchronized void handle_ack(final ack value) throws IOException {
-		if(channels.get(value.dest_chan_id) == null){
-			noLocalChannel(value.dest_chan_id, value.src_chan_id);
-		}
+	public synchronized void handle_ack(final ack value) throws IOException {
+		
 		Debug.log("Received data ack");
 		actionQueue.queue(ActionQueue.Priority.MED_PRIORITY,
 				new ActionQueue.Action() {
 					public void doAction() throws IOException {
+						if(channels.get(value.dest_chan_id) == null){
+							noLocalChannel(value.dest_chan_id, value.src_chan_id);
+						}
 						resendQueue.dequeueData(value.seqno);
 					}
 				});
 	}
 
 	/* ###################### PUBLIC HELPER CLASSES ################### */
-
+	/**
+	* Takes the data coming from a channel encoder and encodes it using
+	* the connection encoder. The data is encoded into a data sample and
+	* sent to the remote host. 
+	*
+	*/
 	public class channelToConnectionWriter implements LabCommWriter {
 		private int origin;
 
@@ -487,7 +507,7 @@ public class Connection implements ack.Handler, channel_ack.Handler,
 							ds.dest_chan_id = chan.getRemoteID();
 							ds.seqno = seqno;
 							seqno = (seqno == SEQNO_MAX) ? SEQNO_START
-									: seqno + 1;
+									: seqno + 1; // In case we send many data samples
 							ds.app_enc_data = data;
 							if (chan.shouldAckOnData()
 									|| data[0] == LabComm.SAMPLE
@@ -502,6 +522,10 @@ public class Connection implements ack.Handler, channel_ack.Handler,
 	}
 
 	/* ###################### PRIVATE HELPER CLASSES ################### */
+	/*
+ 	* Decodes incoming data from the stream, essentially "runs" the decoder.
+ 	* TODO Might move this to itäs own thread in the decoder class.
+ 	*/
 	public class Reader implements Runnable {
 		public void run() {
 			while (!Thread.currentThread().isInterrupted()) {
