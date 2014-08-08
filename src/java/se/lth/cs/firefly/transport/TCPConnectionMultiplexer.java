@@ -5,10 +5,8 @@ import java.net.InetAddress;
 import java.net.Socket;
 import java.io.IOException;
 
-import se.lth.cs.firefly.ActionQueue;
-import se.lth.cs.firefly.FireflyApplication;
-import se.lth.cs.firefly.protocol.Connection;
 import se.lth.cs.firefly.protocol.*;
+import se.lth.cs.firefly.util.ActionQueue;
 import se.lth.cs.firefly.util.Debug;
 
 public class TCPConnectionMultiplexer extends LinkLayerPort {
@@ -40,7 +38,7 @@ public class TCPConnectionMultiplexer extends LinkLayerPort {
 				int remotePort = s.getPort();
 				Connection conn = getConnection(remoteAddress, remotePort);
 				if (conn == null
-						&& delegate.acceptConnection(remoteAddress, remotePort)){
+						&& delegate.connectionAccept(remoteAddress, remotePort)){
 					Debug.log("New Connection created");
 					conn = new Connection(new TCPLayer(s), delegate,
 							actionQueue);

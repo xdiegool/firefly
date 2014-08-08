@@ -1,8 +1,8 @@
 package example;
 
-import se.lth.cs.firefly.*;
 import se.lth.cs.firefly.protocol.*;
 import se.lth.cs.firefly.transport.UDPConnectionMultiplexer;
+import se.lth.cs.firefly.util.ActionQueue;
 import se.lth.cs.firefly.util.Debug;
 import se.lth.control.labcomm.*;
 
@@ -14,21 +14,26 @@ import java.io.IOException;
 
 public class Pong implements Runnable, FireflyApplication, data.Handler {
 
-	// Callbacks
+	// Accept requests
 	public boolean channelAccept(Connection connection) { return true; }
+	public boolean restrictAccept(Channel chan){ return true; }
+	public boolean connectionAccept(InetAddress remoteAddress, int remotePort){return true;}
+	// State change
 	public void channelOpened(Channel chan) { setChan(chan); }
 	public void channelClosed(Channel chan) {}
-	public void channelStatus(Channel chan) {}
-	public void channelError(Channel chan) {}
-	public void connectionError(Connection conn) {}
-	public boolean restrictAccept(Channel chan){ return true; }
-	public void channelRestricted(Channel chan){ restricted(); }
-	public void LLPError(LinkLayerPort p, Exception e) { Debug.errx("LinkLayerPort error "); }
-	// More callbacks
-	public boolean acceptConnection(InetAddress remoteAddress, int remotePort){return true;}
-	public void connectionOpened(Connection conn){}
+	public void connectionOpened(Connection conn) {}
+	@Override
+	public void channelRestrictStateChange(Channel chan, RestrictState rs) {
+		if(rs.equals(RestrictState.RESTRICTED)){
+			restricted();
+		}
+	}
 
+	// Error callbacks
+	public void channelError(Channel chan, String message, Exception e) {}
+	public void connectionError(Connection conn, String message, Exception e) {}
 
+	
 	public void run() {
 		try {
 			reallyRun();
@@ -43,6 +48,7 @@ public class Pong implements Runnable, FireflyApplication, data.Handler {
 	private Channel chan;
 	private int echo = -1;
 	private boolean chanNotRestricted = true;
+	private Connection conn;
 
 	private synchronized void setChan(Channel chan) {
 		this.chan = chan;
@@ -99,4 +105,6 @@ public class Pong implements Runnable, FireflyApplication, data.Handler {
 	public static void main(String[] args) {
 		new Pong().run();
 	}
+
+
 }

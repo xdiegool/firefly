@@ -1,8 +1,8 @@
 package example;
 
-import se.lth.cs.firefly.*;
 import se.lth.cs.firefly.protocol.*;
 import se.lth.cs.firefly.transport.*;
+import se.lth.cs.firefly.util.ActionQueue;
 import se.lth.cs.firefly.util.Debug;
 import se.lth.control.labcomm.*;
 
@@ -22,19 +22,27 @@ public class Ping implements Runnable, FireflyApplication, data.Handler
 	private boolean chanNotRestricted = true;
 	private boolean restrict = false;
 
-	// Callbacks
+	// Accept requests
 	public boolean channelAccept(Connection connection) { return false; }
+	public boolean restrictAccept(Channel chan){ return restrict; }
+	public boolean connectionAccept(InetAddress remoteAddress, int remotePort){ return true;}
+	
+	// State change
 	public void channelOpened(Channel chan) { setChan(chan); }
 	public void channelClosed(Channel chan) { setChan(null); }
-	public void channelStatus(Channel chan) {}	 // Not used.
-	public void channelError(Channel chan) { Debug.errx("Chan. err."); }
-	public void connectionError(Connection conn) { Debug.errx("Conn. err."); }
-	public boolean acceptConnection(InetAddress remoteAddress, int remotePort){ return true;}
-	public void connectionOpened(Connection conn){}
-	public boolean restrictAccept(Channel chan){ return restrict; }
-	public void channelRestricted(Channel chan){ restricted(); }
-	public void LLPError(LinkLayerPort p, Exception e) { Debug.errx("LinkLayerPort error "); }
+	@Override
+	public void connectionOpened(Connection conn) {}
+	@Override
+	public void channelRestrictStateChange(Channel chan, RestrictState rs) {
+		if(rs.equals(RestrictState.RESTRICTED)){
+			restricted();
+		}
+	}
 
+	// Error callbacks
+	public void channelError(Channel chan, String message, Exception e) {Debug.errx("Chan. err.");}
+	public void connectionError(Connection conn, String message, Exception e) { Debug.errx("Conn. err."); }
+	
 	public void run() {
 		try {
 			reallyRun();
@@ -106,6 +114,7 @@ public class Ping implements Runnable, FireflyApplication, data.Handler
 	public static void main(String[] args) {
 		new Ping().run();
 	}
+
 
 
 }

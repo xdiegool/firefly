@@ -1,6 +1,4 @@
-package se.lth.cs.firefly;
-
-import se.lth.cs.firefly.util.Debug;
+package se.lth.cs.firefly.util;
 
 import java.util.*;
 import java.io.*;

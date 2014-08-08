@@ -1,12 +1,23 @@
 package se.lth.cs.firefly.protocol;
 
+import genproto.ack;
+
 import java.io.IOException;
+import java.util.LinkedList;
+import java.util.Queue;
+
+import se.lth.control.labcomm.LabComm;
+import se.lth.control.labcomm.LabCommWriter;
+import se.lth.cs.firefly.util.ActionQueue;
+import se.lth.cs.firefly.util.ResendQueue;
+import se.lth.cs.firefly.util.ActionQueue.Priority;
 
 /*
  * Handles channel state and encoder/decoder access
  *	
  */
 public class Channel {
+	public static int CHANNEL_ID_NOT_SET = -1;
 	private static final int INIT = 1;
 	private static final int OPEN = 2;
 	private static final int CLOSE_REQ_SENT = 3;
@@ -18,38 +29,61 @@ public class Channel {
 	private ChannelDecoder decoder;
 	private Connection conn;
 	private boolean restricted;
+	private boolean remoteRestricted;
 	private boolean ackOnData;
 	private int localID;
 	private int remoteID;
+	private int remoteSeqno;
+	private int currentSeqno;
+	private Queue<byte[]> importantQueue;
+	private ChannelWriter writer;
+	private ActionQueue actionQueue;
+	private ResendQueue resendQueue;
 
-	public Channel(int localID, Connection conn) {
+	public Channel(int localID, Connection conn, ActionQueue actionQueue, ResendQueue resendQueue) {
 		state = INIT;
+		this.actionQueue = actionQueue;
+		this.resendQueue = resendQueue;
 		this.localID = localID;
+		this.remoteID = CHANNEL_ID_NOT_SET;
 		this.conn = conn;
 		restricted = false;
+		remoteRestricted=false;
 		ackOnData = false;
+		remoteSeqno = 0;
+		currentSeqno = 0;
+		importantQueue = new LinkedList<>();
+		writer = new ChannelWriter();
+
 	}
 
-	public void setEncoder(ChannelEncoder e) {
+	public synchronized void setEncoder(ChannelEncoder e) {
 		encoder = e;
 	}
-
-	public void setDecoder(ChannelDecoder d) {
+	public synchronized void setDecoder(ChannelDecoder d) {
 		decoder = d;
 	}
 
-	public ChannelEncoder getEncoder() {
+	public synchronized ChannelEncoder getEncoder() {
 		return encoder;
 	}
 
 	public ChannelDecoder getDecoder() {
 		return decoder;
 	}
-
+	public synchronized void setAckOnData(final boolean b){
+		ackOnData = b;
+	}
+	public boolean isRemoteRestricted(){
+		return remoteRestricted;
+	}
+	public void setRemoteRestricted(boolean b){
+		remoteRestricted = b;
+	}
 	public int getLocalID() {
 		return localID;
 	}
-
+	
 	public int getRemoteID() {
 		return remoteID;
 	}
@@ -87,16 +121,78 @@ public class Channel {
 	}
 
 	public void close() throws IOException {
-		this.conn.closeChannel(this);
-		this.state = CLOSE_REQ_SENT;
-	}
-
-	public void setAckOnData(boolean b) {
-		ackOnData = b;
+		actionQueue.queue(Priority.MED_PRIORITY, new ActionQueue.Action(){
+			public void doAction() throws IOException{
+				resendQueue.dequeueChannelMsg(localID);
+				resendQueue.dequeueData(currentSeqno);
+				conn.sendCloseRequest(Channel.this);
+				state = CLOSE_REQ_SENT;
+			}
+			
+		});
+		
 		
 	}
-	public boolean shouldAckOnData(){
-		return ackOnData;
+
+	public int getRemoteSeqno() {
+		return remoteSeqno;
 	}
 
+	public void setRemoteSeqno(int i) {
+		remoteSeqno = i;
+	}
+
+	public LabCommWriter getWriter() {
+		return writer;
+	}
+
+	public boolean receivedAck(ack msg) throws IOException {
+		boolean rightNo = msg.seqno == currentSeqno;
+		if (rightNo && !importantQueue.isEmpty()) {
+			sendImportant(importantQueue.poll());
+		}
+		return rightNo;
+	}
+
+	private void writeData(byte[] data) throws IOException {
+		boolean important = ackOnData || data[0] == LabComm.SAMPLE
+				|| data[0] == LabComm.TYPEDEF;
+		if (important) {
+			if (importantQueue.isEmpty()) {
+				sendImportant(data);
+			} else {
+				importantQueue.offer(data);
+			}
+		} else {
+			conn.sendDataSample(data, important, this);
+		}
+
+	}
+
+	private void sendImportant(byte[] toSend) throws IOException {
+		if (!isClosed()) {
+			currentSeqno = conn.sendDataSample(toSend, true, this);
+		}
+	}
+
+	public class ChannelWriter implements LabCommWriter {
+
+		@Override
+		public void write(byte[] data) throws IOException {
+			actionQueue.queue(Priority.MED_PRIORITY, new ActionQueue.Action() {
+				private byte[] data;
+
+				private ActionQueue.Action init(byte[] data) {
+					this.data = data;
+					return this;
+				}
+
+				public void doAction() throws IOException {
+					writeData(data);
+				}
+
+			}.init(data));
+
+		}
+	}
 }

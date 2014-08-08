@@ -1,9 +1,8 @@
-package se.lth.cs.firefly;
+package se.lth.cs.firefly.util;
 
 import genproto.*;
 import se.lth.control.labcomm.*;
 import se.lth.cs.firefly.protocol.*;
-import se.lth.cs.firefly.util.Debug;
 
 import java.util.*;
 import java.io.*;
@@ -89,7 +88,7 @@ public class ResendQueue {
 						Thread.currentThread().interrupt();
 						break;
 					} catch (Exception e) {
-						conn.exception(e);
+						conn.exception(e, "Error in ResendQueue");
 						break;
 					}
 					t = queuesAreEmpty() ? t0 : System.currentTimeMillis();
@@ -104,12 +103,22 @@ public class ResendQueue {
 						}
 					} catch (SocketException e) {
 						Thread.currentThread().interrupt(); // Socket closed
+						clearQueues();
 					} catch (Exception e) {
-						conn.exception(e);
+						conn.exception(e, "Error in ResendQueue");
 					}
 				}
 			}
 			Debug.log("ResendThread stopping");
+		}
+
+		private void clearQueues() {
+			Debug.log("Clearing Resend Queue");
+			synchronized (lock) {
+				dataQueue.clear();
+				channelQueue.clear();
+			}
+			
 		}
 
 		private boolean queuesAreEmpty() {

@@ -6,6 +6,7 @@ import java.net.SocketException;
 import java.util.ArrayList;
 
 import se.lth.cs.firefly.*;
+import se.lth.cs.firefly.util.ActionQueue;
 import se.lth.cs.firefly.util.Debug;
 /**
  * Class to abstract common logic for protocol specific connection multiplexors.
@@ -69,9 +70,6 @@ public abstract class LinkLayerPort {
 	/**
  	* Opens a new connection to the specified host and port, also starts
  	* the listener if it hasn't been started before.
- 	*
- 	* TODO Since there is no longer any labcomm version control at this level,
- 	* can the actionThread handle this whole method?
  	*
  	*/ 
 	public Connection openConnection(InetAddress remoteAddress, int remotePort)
@@ -137,8 +135,8 @@ public abstract class LinkLayerPort {
 
 	/* ###################### PRIVATE HELPER CLASSES ################### */
 	/**
- 	* Listens to the udnerlying network protocol, be it socket or anything else, 
- 	* to accept new conenctions and possibly multiplex incoming messages. Exactly
+ 	* Listens to the underlying network protocol, be it socket or anything else, 
+ 	* to accept new connections and possibly multiplex incoming messages. Exactly
  	* what is done is determined in subclasses.
  	*
  	*/
@@ -152,7 +150,8 @@ public abstract class LinkLayerPort {
 				} catch (SocketException e) {
 					Thread.currentThread().interrupt(); // Socket closed
 				} catch (Exception e) {
-					delegate.LLPError(LinkLayerPort.this, e);
+					Debug.log("Error in network listener in LinkLayerPort");
+					Debug.printStackTrace(e);
 				}
 			}
 			Debug.log("Listener stopping");

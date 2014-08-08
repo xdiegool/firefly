@@ -4,8 +4,6 @@ import java.io.*;
 import java.net.*;
 import java.util.HashMap;
 
-import se.lth.cs.firefly.ActionQueue;
-import se.lth.cs.firefly.FireflyApplication;
 import se.lth.cs.firefly.protocol.*;
 import se.lth.cs.firefly.util.*;
 
@@ -66,7 +64,7 @@ public class UDPConnectionMultiplexer extends LinkLayerPort {
 						System.arraycopy(p.getData(), 0, toConnection, 0,
 								toConnection.length);
 						if (stream == null) {
-							if (delegate.acceptConnection(remoteAddress,
+							if (delegate.connectionAccept(remoteAddress,
 									remotePort)) {
 								Debug.log("New Connection created");
 								// null for version bypass
