@@ -68,7 +68,7 @@ public class UDPConnectionMultiplexer extends LinkLayerPort {
 									remotePort)) {
 								Debug.log("New Connection created");
 								// null for version bypass
-								stream = new BlockingAppendableInputStream(null); 
+								stream = new BlockingAppendableInputStream(); 
 								addStream(sa, stream);
 								Connection conn = new Connection(new UDPLayer(
 										dsock, remoteAddress, remotePort,
@@ -93,8 +93,7 @@ public class UDPConnectionMultiplexer extends LinkLayerPort {
 			int remotePort) throws IOException {
 		Debug.log("openTransport Connection");
 		// null for version bypass
-		BlockingAppendableInputStream is = new BlockingAppendableInputStream(
-				null);
+		BlockingAppendableInputStream is = new BlockingAppendableInputStream();
 		addStream(new InetSocketAddress(remoteAddress, remotePort), is);
 		return new Connection(
 				new UDPLayer(dsock, remoteAddress, remotePort, is), delegate,

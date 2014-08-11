@@ -10,18 +10,21 @@ public class AppendableInputStream extends InputStream{
 	protected byte[] current;
 	protected int bytesLeft;
 	
+	/**
+	 * Constructor that initializes the stream with data as content.
+	 * NO version control bypass.
+	 */
 	public AppendableInputStream(byte[] data){ 
-		if(data == null){
-			data = new VersionBypass().getBypass();
-		}
 		is= new ByteArrayInputStream(data);
 		bytesLeft = data.length;
 		current = data;
 	}
 	
+	/**
+	 * Constructor that bypasses LabComm version control
+	 */
 	public AppendableInputStream() {
-		bytesLeft=0;
-		current = new byte[0];
+		this(new VersionBypass().getBypass());
 	}
 
 	@Override

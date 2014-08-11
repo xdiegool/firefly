@@ -7,7 +7,7 @@ public class BlockingAppendableInputStream extends AppendableInputStream {
 	public BlockingAppendableInputStream(byte[] data) {
 		super(data);
 	}
-	public BlockingAppendableInputStream(){
+	public BlockingAppendableInputStream() {
 		super();
 	}
 

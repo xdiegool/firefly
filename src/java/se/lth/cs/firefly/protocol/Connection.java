@@ -23,7 +23,7 @@ public class Connection implements ack.Handler, channel_ack.Handler,
 		channel_restrict_request.Handler, data_sample.Handler {
 
 	private final static int SEQNO_MAX = Integer.MAX_VALUE;
-	private final static int SEQNO_START = 0;
+	private final static int SEQNO_START = 1;
 	private HashMap<Integer, Channel> channels;
 	private int nextChannelID;
 	private int seqno;
@@ -303,7 +303,7 @@ public class Connection implements ack.Handler, channel_ack.Handler,
 									chan.setEncoder(new ChannelEncoder(chan
 											.getWriter()));
 									chan.setDecoder(new ChannelDecoder(
-											new AppendableInputStream(null)));
+											new AppendableInputStream()));
 									// null is for version bypass
 									chan.setOpen();
 									delegate.channelOpened(chan);
@@ -346,7 +346,7 @@ public class Connection implements ack.Handler, channel_ack.Handler,
 								chan.setEncoder(new ChannelEncoder(chan
 										.getWriter()));
 								chan.setDecoder(new ChannelDecoder(
-										new AppendableInputStream(null)));
+										new AppendableInputStream()));
 								chan.setOpen();
 								delegate.channelOpened(chan);
 							} else {
