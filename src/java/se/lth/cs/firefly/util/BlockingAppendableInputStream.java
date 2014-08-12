@@ -18,8 +18,9 @@ public class BlockingAppendableInputStream extends AppendableInputStream {
 				wait();
 			} catch (InterruptedException e) {
 				Thread.currentThread().interrupt();
-				return -1;
+				throw new InterruptedIOException("Interrupted while waiting for bytes in stream");
 			}
+			
 		}
 		
 

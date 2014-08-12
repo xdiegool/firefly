@@ -304,7 +304,6 @@ public class Connection implements ack.Handler, channel_ack.Handler,
 											.getWriter()));
 									chan.setDecoder(new ChannelDecoder(
 											new AppendableInputStream()));
-									// null is for version bypass
 									chan.setOpen();
 									delegate.channelOpened(chan);
 								} else { // 2b
@@ -505,15 +504,19 @@ public class Connection implements ack.Handler, channel_ack.Handler,
 										+ ds.seqno);
 								ack.encode(bottomEncoder, dataAck);
 							}
+							Debug.log("Imp: " + (ds.important) +" exp: " + expected_seqno + " act: " + ds.seqno );
 							if (!ds.important || expected_seqno == ds.seqno) {
+								Debug.log("Entered if with " + (!ds.important) + " " + (expected_seqno == ds.seqno));
 								chan.getDecoder().decodeData(ds.app_enc_data);
+								Debug.log("test");
 								if (ds.important) {
+									Debug.log("Data sample is important, seqno: " + ds.seqno);
 									chan.setRemoteSeqno(ds.seqno);
 								}
 							} else if (ds.important
 									&& expected_seqno != ds.seqno) {
 								throw new IOException(
-										"Received unexpected sequence number in data sample marked important.");
+										"Received unexpected sequence number: "+ds.seqno+ " in data sample marked important. Expected:" + expected_seqno);
 							}
 						}
 					}
@@ -553,10 +556,9 @@ public class Connection implements ack.Handler, channel_ack.Handler,
 			while (!Thread.currentThread().isInterrupted()) {
 				try {
 					bottomDecoder.runOne();
-				} catch (EOFException e) {
-					// Ignore, this is only because ChannelDecoders can't handle
-					// non blocking i/o on type registration
-					// TODO Test if this is still an issue
+				}catch (InterruptedIOException e){
+					Thread.currentThread().interrupt();
+					// Thrown when interrupted during wait on decoder (when calling close() on this connection)
 				} catch (SocketException e) {
 					Thread.currentThread().interrupt(); // Socket closed
 				} catch (Exception e) {

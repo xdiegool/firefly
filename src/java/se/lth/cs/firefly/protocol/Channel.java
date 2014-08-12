@@ -9,6 +9,7 @@ import java.util.Queue;
 import se.lth.control.labcomm.LabComm;
 import se.lth.control.labcomm.LabCommWriter;
 import se.lth.cs.firefly.util.ActionQueue;
+import se.lth.cs.firefly.util.Debug;
 import se.lth.cs.firefly.util.ResendQueue;
 import se.lth.cs.firefly.util.ActionQueue.Priority;
 
@@ -71,7 +72,7 @@ public class Channel {
 	public ChannelDecoder getDecoder() {
 		return decoder;
 	}
-	public synchronized void setAckOnData(final boolean b){
+	public synchronized void setAckOnData(boolean b){
 		ackOnData = b;
 	}
 	public boolean isRemoteRestricted(){
@@ -139,6 +140,7 @@ public class Channel {
 	}
 
 	public void setRemoteSeqno(int i) {
+		Debug.log("Set remote seqno: " + i);
 		remoteSeqno = i;
 	}
 

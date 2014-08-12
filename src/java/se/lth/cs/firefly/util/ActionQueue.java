@@ -50,14 +50,11 @@ public class ActionQueue{
 				try {
 					while(!queueIsEmpty()){
 						Action a = poll();
-						Debug.log("ActionAgent doing: " + a);
+						Debug.log("ActionAgent doing: " + a + " queue size: " + queue.size());
 						a.doAction();
+						Debug.log("ActionAgent done: " + a + " queue size: " + queue.size());
 					}
 					while(queueIsEmpty()){waitOnLock();}
-				} catch (EOFException e) {
-					// Happens when user defined types are done
-					// sending. If this happens, we only want to
-					// continue listening for packets
 				} catch (InterruptedException e) {
 					Thread.currentThread().interrupt();
 				} catch (SocketException e) {

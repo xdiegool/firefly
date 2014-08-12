@@ -27,4 +27,15 @@ POSSIBLY:
 Connection state?
 	- If needed create state variables for connection as well, i.e. checking
 	if the connection is closed when calling open channel or something.
-
+LabComm version control
+	- If it's possible and resonably easy, enable version control on channel
+	encoder/decoder pair. It won't work on connection encoder/decoder since
+	there's no packet loss handling and if the version signature packet is
+	lost, the application hangs.
+Remove ActionQueue
+	- It's first use was to decouple the receiver from doing the decoding
+	but since the reader threads exist now it isn't really needed anymore
+	and could be removed. In the c version an event executor thread is 
+	needed to limit the need platform specific synchronization in most
+	of the application. Since java provides platform agnostic synchronization,
+	this could be used to protect affected variables/data. 
