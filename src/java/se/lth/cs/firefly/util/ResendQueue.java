@@ -11,7 +11,7 @@ import java.net.*;
 * Responsible for the resending of packets. It consists of two queues, one for data, i.e. user defined types, and one for channel messages. These queues 
 * are synchronized on the same lock. It also houses the actual resender thread as a private class. The queues are fifo queues. 
 * It is meant to be specific to each connection.
-*
+* TODO This is not needed for e.g. tcp. Make stub for protocols handling resending by themselves?
 */
 public class ResendQueue {
 	private LinkedHashMap<Integer, LabCommSample> channelQueue;

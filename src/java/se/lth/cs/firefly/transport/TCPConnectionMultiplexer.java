@@ -9,6 +9,11 @@ import se.lth.cs.firefly.protocol.*;
 import se.lth.cs.firefly.util.ActionQueue;
 import se.lth.cs.firefly.util.Debug;
 
+/**
+ * Multiplexes TCP connection, since TCP is a connection protocol
+ * this class only receives connection or opens them. It then wraps
+ * the socket in an TransportLayerAbstraction and sends it to Connection. 
+ */
 public class TCPConnectionMultiplexer extends LinkLayerPort {
 	private ServerSocket ssock;
 

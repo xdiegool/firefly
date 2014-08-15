@@ -13,9 +13,10 @@ import se.lth.cs.firefly.util.Debug;
 import se.lth.cs.firefly.util.ResendQueue;
 import se.lth.cs.firefly.util.ActionQueue.Priority;
 
-/*
+/**
  * Handles channel state and encoder/decoder access
- *	
+ * It also has a queue for important packets so that
+ * only one packet can be simultaneously tracked. 
  */
 public class Channel {
 	public static int CHANNEL_ID_NOT_SET = -1;
@@ -160,6 +161,7 @@ public class Channel {
 		boolean important = ackOnData || data[0] == LabComm.SAMPLE
 				|| data[0] == LabComm.TYPEDEF;
 		if (important) {
+			// TODO Possible bug here, does this actually check whether we are currently tracking a packet?
 			if (importantQueue.isEmpty()) {
 				sendImportant(data);
 			} else {
@@ -176,7 +178,9 @@ public class Channel {
 			currentSeqno = conn.sendDataSample(toSend, true, this);
 		}
 	}
-
+/**
+ * Helper class to handle important flagging etc.
+ */
 	public class ChannelWriter implements LabCommWriter {
 
 		@Override

@@ -5,6 +5,11 @@ import se.lth.control.labcomm.*;
 import java.io.*;
 import java.util.*;
 
+/**
+ * Provides a stream for the difference labcomm decoders to read
+ * Provides LabComm version check bypass with a helper class. 
+ * No locking on emprty stream, insteead
+ */
 public class AppendableInputStream extends InputStream{
 	protected ByteArrayInputStream is;
 	protected byte[] current;

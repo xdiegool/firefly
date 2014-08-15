@@ -2,11 +2,16 @@ package se.lth.cs.firefly.util;
 
 import java.io.*;
 
+/**
+ * Enhances the functionality of AppendableInputStream by providing blocking on
+ * empty stream.
+ */
 public class BlockingAppendableInputStream extends AppendableInputStream {
 
 	public BlockingAppendableInputStream(byte[] data) {
 		super(data);
 	}
+
 	public BlockingAppendableInputStream() {
 		super();
 	}
@@ -18,14 +23,14 @@ public class BlockingAppendableInputStream extends AppendableInputStream {
 				wait();
 			} catch (InterruptedException e) {
 				Thread.currentThread().interrupt();
-				throw new InterruptedIOException("Interrupted while waiting for bytes in stream");
+				throw new InterruptedIOException(
+						"Interrupted while waiting for bytes in stream");
 			}
-			
+
 		}
-		
 
 		int a = super.read();
-		Debug.log("Bytesleft: " + bytesLeft +" just read " +a);
+		Debug.log("Bytesleft: " + bytesLeft + " just read " + a);
 		return a;
 	}
 

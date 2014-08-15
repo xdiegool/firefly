@@ -7,6 +7,13 @@ import java.util.HashMap;
 import se.lth.cs.firefly.protocol.*;
 import se.lth.cs.firefly.util.*;
 
+/**
+ * Multiplexes UDP connections, since UDP is a connectionless protocol this
+ * class receives connection or opens them but also multiplexes incoming packets
+ * to the appropriate channel. This is done by writing to a stream that
+ * Connection reads from. 
+ * 
+ */
 public class UDPConnectionMultiplexer extends LinkLayerPort {
 	private DatagramSocket dsock;
 	private static final int UDP_BUFFER_SIZE = 64000;
@@ -68,7 +75,7 @@ public class UDPConnectionMultiplexer extends LinkLayerPort {
 									remotePort)) {
 								Debug.log("New Connection created");
 								// null for version bypass
-								stream = new BlockingAppendableInputStream(); 
+								stream = new BlockingAppendableInputStream();
 								addStream(sa, stream);
 								Connection conn = new Connection(new UDPLayer(
 										dsock, remoteAddress, remotePort,

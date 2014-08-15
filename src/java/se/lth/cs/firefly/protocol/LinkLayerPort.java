@@ -54,10 +54,9 @@ public abstract class LinkLayerPort {
 			InetAddress remoteAddress, int remotePort) throws IOException;
 	/**
  	* Listening for new connections, is called be listener thread. Also handles
- 	* packet to connection multiplexing if its not done by the udnerlying
+ 	* packet to connection multiplexing if its not done by the underlying
  	* protocol.
- 	*
- 	*
+ 	* 
  	*/
 	protected abstract void listen() throws IOException;
 	

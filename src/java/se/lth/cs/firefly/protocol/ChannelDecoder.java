@@ -20,9 +20,7 @@ class ChannelDecoder extends LabCommDecoderChannel {
 	}
 
 	public void decodeData(byte[] data) throws Exception {
-		Debug.log("Channel decoder appending");
 		is.append(data);
-		Debug.log("Channel decoder appending done");
 		try {
 			runOne();
 		} catch (EOFException e) {
@@ -33,6 +31,5 @@ class ChannelDecoder extends LabCommDecoderChannel {
 			// TODO Fix this, possibly add thread in channel as well or let
 			// Connection.Reader do everything.
 		}
-		Debug.log("Run one done");
 	}
 }

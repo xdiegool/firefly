@@ -6,6 +6,9 @@ import java.net.*;
 import se.lth.control.labcomm.*;
 import se.lth.cs.firefly.protocol.TransportLayerAbstraction;
 
+/**
+ * Wrapper for Socket, to make Connection protocol independent
+ */
 public class TCPLayer implements TransportLayerAbstraction {
 	private Socket socket;
 	

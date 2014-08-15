@@ -504,11 +504,8 @@ public class Connection implements ack.Handler, channel_ack.Handler,
 										+ ds.seqno);
 								ack.encode(bottomEncoder, dataAck);
 							}
-							Debug.log("Imp: " + (ds.important) +" exp: " + expected_seqno + " act: " + ds.seqno );
 							if (!ds.important || expected_seqno == ds.seqno) {
-								Debug.log("Entered if with " + (!ds.important) + " " + (expected_seqno == ds.seqno));
 								chan.getDecoder().decodeData(ds.app_enc_data);
-								Debug.log("test");
 								if (ds.important) {
 									Debug.log("Data sample is important, seqno: " + ds.seqno);
 									chan.setRemoteSeqno(ds.seqno);

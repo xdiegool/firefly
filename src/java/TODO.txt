@@ -4,14 +4,14 @@ Implement auto restrict functionality
 Implement unrestrict
 	- Add method in Channel that unrestricts it
 Create method restrict in channel and let it call the appropriate method in Connection
-	- Currently, you need to call a method in Connection, passing a channel to it.
+	- Currently you need to call a method in Connection, passing a channel to it.
 	 A cleaner way to do this would be to cal a method in Channel which then passes
 	 itself to the method in Connection, possibly doing something before and after,
 	 e.g. state change. 
 More comments
 Write unit tests
 	- JUnit tests for all non threading classes
-	- Tests for thread-related, as far as possible 
+	- Tests for thread-related classes, as far as possible 
 	- Tests for interaction between classes
 Create manual (preferably automatic) test for java to c version compatibility
 	- I.e. starting up pong or ping c in and the corresponding in java
@@ -19,7 +19,15 @@ Implement TCP support
 	- Finish the already started TCP implementation. Might have to change
 	overall program structure, or provide ResendQueue stub, since this is
 	not needed with TCP.
-Integrate with client-server solution for camera
+Implement package specific timers in the resend queue
+Implement max number of retries for a package in resend queue
+Implement better data seqno handling
+	- Right now the application depends on the seqno of the first important data
+	 packet to be Connection.SEQNO_START, instead it should set the seqno of the
+	 very first package reveived as the remote seqno. This could be done by e.g.
+	 a first flag in channel, indicating whether or not we have received any
+	 packages before.    
+Integrate with client-server solution for axis camera
 	- Use firefly java in the camera application and cross-compile it
 	with J2C.
 
@@ -38,4 +46,4 @@ Remove ActionQueue
 	and could be removed. In the c version an event executor thread is 
 	needed to limit the need platform specific synchronization in most
 	of the application. Since java provides platform agnostic synchronization,
-	this could be used to protect affected variables/data. 
+	this could instead be used to protect affected variables/data. 
