@@ -170,7 +170,7 @@ void test_encode_decode_app()
 
 	conn.event_queue = eq;
 
-	struct firefly_channel chan = {0};
+	struct firefly_channel chan = {.conn = &conn};
 
 	r = protocol_labcomm_reader_new(&conn, labcomm_default_memory);
 	chan.proto_decoder =
@@ -216,11 +216,13 @@ void test_encode_decode_app()
 static int nbr_test_vars = 0;
 void test_fragments_handle_test_var(test_test_var *v, void *c)
 {
+        UNUSED_VAR(c);
 	CU_ASSERT_EQUAL(*v, nbr_test_vars++);
 }
 
 void test_fragments_handle_test_var_large(test_test_var_large *v, void *c)
 {
+        UNUSED_VAR(c);
 	for (int i = 0; i < 10; i++) {
 		CU_ASSERT_EQUAL(v->data.a[i], nbr_test_vars);
 	}

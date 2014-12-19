@@ -202,9 +202,8 @@ int64_t recv_data_recv_conn(
 }
 
 static struct firefly_connection *tmp_conn;
-static void tmp_on_conn_open(struct firefly_connection *conn, void *ctx)
+static void tmp_on_conn_open(struct firefly_connection *conn)
 {
-	UNUSED_VAR(ctx);
 	tmp_conn = conn;
 }
 

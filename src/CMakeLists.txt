@@ -32,7 +32,7 @@ set(DOC_GEN_API_DIR ${DOC_GEN_DIR}/api)
 Set(DOC_GEN_FULL_DIR ${DOC_GEN_DIR}/full)
 
 # Labcomm compiler:
-set(LABCOMMC ${Firefly_PROJECT_DIR}/tools/labComm.jar)
+set(LABCOMMC ${Firefly_PROJECT_DIR}/tools/labcomm_2014_compiler.jar)
 
 # Tell CMake to output library and executables directly in the build
 # directory:
@@ -60,7 +60,7 @@ link_directories(${LINK_DIRECTORIES} ${LABCOMM_LIBRARIES})
 
 ## FLAGS {{{
 set(C_STD "-std=c99")
-set(ERR_FLAGS "-Wall -Wextra")
+set(ERR_FLAGS "-Wall -Wextra -Wno-missing-field-initializers")
 
 if(DEFINED $ENV{DEBUG})
 	set(MACROS_DEF "-DDEBUG -O0")

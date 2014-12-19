@@ -23,73 +23,6 @@
 */
 #define FIREFLY_PROTO_ACK_RESTRICT_ACK -1
 
-/*
- * Used by reg_proto_sigs() below to "short circuit" the connection during
- * the initial registration of protocol types.
- */
-static void signature_trans_write(unsigned char *data, size_t size,
-				  struct firefly_connection *conn,
-				  bool important, unsigned char *id)
-{
-	UNUSED_VAR(important);
-	UNUSED_VAR(id);
-	unsigned char *cpy_data = FIREFLY_RUNTIME_MALLOC(conn, size);
-	memcpy(cpy_data, data, size);
-	protocol_data_received(conn, cpy_data, size);
-}
-
-static struct firefly_transport_connection sig_transport = {
-	.write = signature_trans_write,
-	.ack = NULL,
-	.open = NULL,
-	.close = NULL
-};
-
-void reg_proto_sigs(struct labcomm_encoder *enc,
-		    struct labcomm_decoder *dec,
-		    struct firefly_connection *conn)
-{
-	struct firefly_transport_connection *orig_transport;
-
-	orig_transport = conn->transport;
-	conn->transport = &sig_transport;
-
-	init_firefly_protocol__signatures();
-	labcomm_decoder_register_firefly_protocol_data_sample(dec,
-					  	  handle_data_sample, conn);
-
-	labcomm_decoder_register_firefly_protocol_channel_request(dec,
-						  handle_channel_request, conn);
-
-	labcomm_decoder_register_firefly_protocol_channel_response(dec,
-					   handle_channel_response, conn);
-
-	labcomm_decoder_register_firefly_protocol_channel_ack(dec,
-						  handle_channel_ack, conn);
-
-	labcomm_decoder_register_firefly_protocol_channel_close(dec,
-						handle_channel_close, conn);
-
-	labcomm_decoder_register_firefly_protocol_ack(dec,
-						handle_ack, conn);
-
-	labcomm_decoder_register_firefly_protocol_channel_restrict_request(
-			dec, handle_channel_restrict_request, conn);
-
-	labcomm_decoder_register_firefly_protocol_channel_restrict_ack(
-			dec, handle_channel_restrict_ack, conn);
-
-	labcomm_encoder_register_firefly_protocol_data_sample(enc);
-	labcomm_encoder_register_firefly_protocol_channel_request(enc);
-	labcomm_encoder_register_firefly_protocol_channel_response(enc);
-	labcomm_encoder_register_firefly_protocol_channel_ack(enc);
-	labcomm_encoder_register_firefly_protocol_channel_close(enc);
-	labcomm_encoder_register_firefly_protocol_ack(enc);
-	labcomm_encoder_register_firefly_protocol_channel_restrict_request(enc);
-	labcomm_encoder_register_firefly_protocol_channel_restrict_ack(enc);
-
-	conn->transport = orig_transport;
-}
 
 static void firefly_unknown_dest(struct firefly_connection *conn,
 								 int src_id, int dest_id, const char *action)
@@ -905,8 +838,8 @@ void firefly_channel_types_free(struct firefly_channel_types *ct)
 
 void firefly_channel_types_add_decoder_type(
 	struct firefly_channel_types *types,
-	labcomm_decoder_register_function register_func,
-	labcomm_handler_function handler,
+	firefly_labcomm_decoder_register_function register_func,
+	firefly_labcomm_handler_function handler,
 	void *context)
 {
 	struct firefly_channel_decoder_type *dt;
@@ -924,7 +857,7 @@ void firefly_channel_types_add_decoder_type(
 
 void firefly_channel_types_add_encoder_type(
 	struct firefly_channel_types *types,
-	labcomm_encoder_register_function register_func)
+	firefly_labcomm_encoder_register_function register_func)
 {
 	struct firefly_channel_encoder_type *et;
 

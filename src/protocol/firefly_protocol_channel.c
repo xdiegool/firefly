@@ -14,14 +14,31 @@ struct firefly_channel *firefly_channel_new(struct firefly_connection *conn)
 	struct labcomm_writer  *writer;
 
 	chan = FIREFLY_MALLOC(sizeof(*chan));
+        if (!chan) {
+		FFL(FIREFLY_ERROR_ALLOC);
+		return NULL;
+        }
+	chan->conn              = conn;
+	chan->local_id		= next_channel_id(conn);
+	chan->remote_id		= CHANNEL_ID_NOT_SET;
+	chan->state		= FIREFLY_CHANNEL_READY;
+	chan->important_queue	= NULL;
+	chan->important_id	= 0;
+	chan->current_seqno	= 0;
+	chan->remote_seqno	= 0;
+	chan->restricted_local	= false;
+	chan->restricted_remote	= false;
+	chan->auto_restrict	= false;
+	chan->enc_types		= NULL;
+	chan->seen_decoder_ids 	= NULL;
+	chan->n_decoder_types	= 0;
 	reader = protocol_labcomm_reader_new(conn, conn->lc_memory);
 	writer = protocol_labcomm_writer_new(chan, conn->lc_memory);
-	if (!chan || !reader || !writer) {
+	if (!reader || !writer) {
 		FFL(FIREFLY_ERROR_ALLOC);
 		protocol_labcomm_reader_free(reader);
 		protocol_labcomm_writer_free(writer);
 		FIREFLY_FREE(chan);
-
 		return NULL;
 	}
 	proto_decoder = labcomm_decoder_new(reader, NULL, conn->lc_memory, NULL);
@@ -38,29 +55,14 @@ struct firefly_channel *firefly_channel_new(struct firefly_connection *conn)
 
 		return NULL;
 	}
+	chan->proto_decoder	= proto_decoder;
+	chan->proto_encoder	= proto_encoder;
 
 	// TODO: Fix this once Labcomm re-gets error handling
 	/* labcomm_register_error_handler_encoder(proto_encoder,*/
 	/*                 labcomm_error_to_ff_error);*/
 	/* labcomm_register_error_handler_decoder(proto_decoder,*/
 	/*                 labcomm_error_to_ff_error);*/
-
-	chan->local_id			= next_channel_id(conn);
-	chan->remote_id			= CHANNEL_ID_NOT_SET;
-	chan->state				= FIREFLY_CHANNEL_READY;
-	chan->important_queue		= NULL;
-	chan->important_id		= 0;
-	chan->current_seqno		= 0;
-	chan->remote_seqno		= 0;
-	chan->proto_decoder		= proto_decoder;
-	chan->proto_encoder		= proto_encoder;
-	chan->conn			= conn;
-	chan->restricted_local		= false;
-	chan->restricted_remote		= false;
-	chan->auto_restrict		= false;
-	chan->enc_types			= NULL;
-	chan->seen_decoder_ids 		= NULL;
-	chan->n_decoder_types		= 0;
 
 	return chan;
 }

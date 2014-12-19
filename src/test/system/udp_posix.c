@@ -68,11 +68,9 @@ struct mock_firefly_writer_context {
 };
 
 static int mock_firefly_reader_alloc(struct labcomm_reader *r,
-		struct labcomm_reader_action_context *action_context,
-		char *version)
+		struct labcomm_reader_action_context *action_context)
 {
 	UNUSED_VAR(action_context);
-	UNUSED_VAR(version);
 	int result = 0;
 	r->data = malloc(MOCK_FIREFLY_BUFFER_SIZE);
 	if (r->data == NULL) {
@@ -123,10 +121,10 @@ static int mock_firefly_reader_fill(struct labcomm_reader *r,
 }
 
 static int mock_firefly_reader_start(struct labcomm_reader *r,
-						 struct labcomm_reader_action_context *action_context,
-						 int local_index, int remote_index,
-						 struct labcomm_signature *signature,
-						 void *value)
+		struct labcomm_reader_action_context *action_context,
+		int local_index, int remote_index,
+		const struct labcomm_signature *signature,
+		void *value)
 {
 	UNUSED_VAR(action_context);
 	UNUSED_VAR(local_index);
@@ -145,12 +143,12 @@ static int mock_firefly_reader_end(struct labcomm_reader *r,
 }
 
 static int mock_firefly_reader_ioctl(struct labcomm_reader *r,
-						 struct labcomm_reader_action_context *action_context,
-						 int local_index,
-						 int remote_index,
-						 struct labcomm_signature *signature,
-						 uint32_t ioctl_action,
-						 va_list args)
+		struct labcomm_reader_action_context *action_context,
+		int local_index,
+		int remote_index,
+		const struct labcomm_signature *signature,
+		uint32_t ioctl_action,
+		va_list args)
 {
 	UNUSED_VAR(r);
 	UNUSED_VAR(action_context);
@@ -197,11 +195,9 @@ void *mock_reader_run(void *args)
 }
 
 static int mock_firefly_writer_alloc(struct labcomm_writer *w,
-				struct labcomm_writer_action_context *action_context,
-				char *labcomm_version)
+		struct labcomm_writer_action_context *action_context)
 {
 	UNUSED_VAR(action_context);
-	UNUSED_VAR(labcomm_version);
 	w->error = 0;
 	w->data = malloc(MOCK_FIREFLY_BUFFER_SIZE);
 	if (w->data == NULL) {
@@ -236,10 +232,10 @@ static int mock_firefly_writer_flush(struct labcomm_writer *w,
 }
 
 static int mock_firefly_writer_start(struct labcomm_writer *w,
-						 struct labcomm_writer_action_context *action_context,
-						 int index,
-						 struct labcomm_signature *signature,
-						 void *value)
+		struct labcomm_writer_action_context *action_context,
+		int index,
+		const struct labcomm_signature *signature,
+		void *value)
 {
 	UNUSED_VAR(index);
 	UNUSED_VAR(signature);
@@ -251,7 +247,7 @@ static int mock_firefly_writer_start(struct labcomm_writer *w,
 }
 
 static int mock_firefly_writer_end(struct labcomm_writer *w,
-				struct labcomm_writer_action_context *action_context)
+		struct labcomm_writer_action_context *action_context)
 {
 
 	struct mock_firefly_writer_context *ctx = action_context->context;
@@ -262,11 +258,11 @@ static int mock_firefly_writer_end(struct labcomm_writer *w,
 }
 
 static int mock_firefly_writer_ioctl(struct labcomm_writer *w,
-				struct labcomm_writer_action_context *action_context,
-				int index,
-				struct labcomm_signature *signature,
-				uint32_t ioctl_action,
-				va_list arg)
+		struct labcomm_writer_action_context *action_context,
+		int index,
+		const struct labcomm_signature *signature,
+		uint32_t ioctl_action,
+		va_list arg)
 {
 	UNUSED_VAR(w);
 	UNUSED_VAR(action_context);
@@ -325,11 +321,6 @@ static inline long timespec_diff_ns(struct timespec *from, struct timespec *to)
 {
 	return (to->tv_sec - from->tv_sec)*1000000000 +
 		(to->tv_nsec - from->tv_nsec);
-}
-
-static inline void timespec_print(struct timespec *t)
-{
-	printf("%ld.%09ld", t->tv_sec, t->tv_nsec);
 }
 
 static pthread_mutex_t mock_data_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -416,11 +407,9 @@ static struct mock_data_collector *next_packet_wait(
 	return res;
 }
 static int mock_firefly_app_reader_alloc(struct labcomm_reader *r,
-		struct labcomm_reader_action_context *action_context,
-		char *version)
+		struct labcomm_reader_action_context *action_context)
 {
 	UNUSED_VAR(action_context);
-	UNUSED_VAR(version);
 
 	int result = 0;
 	r->data = NULL;
@@ -459,10 +448,10 @@ static int mock_firefly_app_reader_fill(struct labcomm_reader *r,
 }
 
 static int mock_firefly_app_reader_start(struct labcomm_reader *r,
-						 struct labcomm_reader_action_context *action_context,
-						 int local_index, int remote_index,
-						 struct labcomm_signature *signature,
-						 void *value)
+		struct labcomm_reader_action_context *action_context,
+		int local_index, int remote_index,
+		const struct labcomm_signature *signature,
+		void *value)
 {
 	UNUSED_VAR(action_context);
 	UNUSED_VAR(local_index);

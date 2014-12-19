@@ -3,15 +3,16 @@
  * @brief Connection related functions for the protocol layer.
  */
 
-#include <protocol/firefly_protocol.h>
+#include "protocol/firefly_protocol.h"
 
 #include <string.h>
 
-#include <utils/firefly_errors.h>
-
+#include "utils/firefly_errors.h"
+#include "utils/cppmacros.h"
 
 #include "protocol/firefly_protocol_private.h"
 #include "utils/firefly_event_queue_private.h"
+
 
 static int firefly_connection_open_event(void *arg)
 {
@@ -22,6 +23,28 @@ static int firefly_connection_open_event(void *arg)
 		conn->actions->connection_opened(conn);
 	return 0;
 }
+
+/*
+ * Used by reg_proto_sigs() below to "short circuit" the connection during
+ * the initial registration of protocol types.
+ */
+static void signature_trans_write(unsigned char *data, size_t size,
+				  struct firefly_connection *conn,
+				  bool important, unsigned char *id)
+{
+	UNUSED_VAR(important);
+	UNUSED_VAR(id);
+	unsigned char *cpy_data = FIREFLY_RUNTIME_MALLOC(conn, size);
+	memcpy(cpy_data, data, size);
+	protocol_data_received(conn, cpy_data, size);
+}
+
+static struct firefly_transport_connection sig_transport = {
+	.write = signature_trans_write,
+	.ack = NULL,
+	.open = NULL,
+	.close = NULL
+};
 
 struct firefly_connection *firefly_connection_new(
 		struct firefly_connection_actions *actions,
@@ -46,7 +69,14 @@ struct firefly_connection *firefly_connection_new(
 		firefly_labcomm_memory_free(lc_mem);
 		return NULL;
 	}
-	conn->actions = actions;
+	conn->actions            = actions;
+	conn->event_queue        = event_queue;
+	conn->chan_list          = NULL;
+	conn->channel_id_counter = 0;
+	conn->lc_memory          = lc_mem;
+	conn->context            = NULL;
+	conn->transport          = tc;
+	conn->open               = FIREFLY_CONNECTION_OPEN;
 	if (memory_replacements) {
 		conn->memory_replacements.alloc_replacement =
 			memory_replacements->alloc_replacement;
@@ -68,6 +98,14 @@ struct firefly_connection *firefly_connection_new(
 		firefly_labcomm_memory_free(lc_mem);
 		return NULL;
 	}
+
+	struct firefly_transport_connection *orig_transport;
+
+	orig_transport = conn->transport;
+	conn->transport = &sig_transport;
+
+	init_firefly_protocol__signatures();
+
 	transport_decoder = labcomm_decoder_new(reader, NULL, lc_mem, NULL);
 	transport_encoder = labcomm_encoder_new(writer, NULL, lc_mem, NULL);
 
@@ -87,14 +125,43 @@ struct firefly_connection *firefly_connection_new(
 		FIREFLY_FREE(conn);
 		return NULL;
 	}
-	conn->event_queue        = event_queue;
-	conn->chan_list          = NULL;
-	conn->channel_id_counter = 0;
 	conn->transport_encoder  = transport_encoder;
 	conn->transport_decoder  = transport_decoder;
-	conn->lc_memory          = lc_mem;
-	conn->context            = NULL;
 
+	labcomm_decoder_register_firefly_protocol_data_sample(conn->transport_decoder,
+					  	  handle_data_sample, conn);
+
+	labcomm_decoder_register_firefly_protocol_channel_request(conn->transport_decoder,
+						  handle_channel_request, conn);
+
+	labcomm_decoder_register_firefly_protocol_channel_response(conn->transport_decoder,
+					   handle_channel_response, conn);
+
+	labcomm_decoder_register_firefly_protocol_channel_ack(conn->transport_decoder,
+						  handle_channel_ack, conn);
+
+	labcomm_decoder_register_firefly_protocol_channel_close(conn->transport_decoder,
+						handle_channel_close, conn);
+
+	labcomm_decoder_register_firefly_protocol_ack(conn->transport_decoder,
+						handle_ack, conn);
+
+	labcomm_decoder_register_firefly_protocol_channel_restrict_request(
+			conn->transport_decoder, handle_channel_restrict_request, conn);
+
+	labcomm_decoder_register_firefly_protocol_channel_restrict_ack(
+			conn->transport_decoder, handle_channel_restrict_ack, conn);
+
+	labcomm_encoder_register_firefly_protocol_data_sample(conn->transport_encoder);
+	labcomm_encoder_register_firefly_protocol_channel_request(conn->transport_encoder);
+	labcomm_encoder_register_firefly_protocol_channel_response(conn->transport_encoder);
+	labcomm_encoder_register_firefly_protocol_channel_ack(conn->transport_encoder);
+	labcomm_encoder_register_firefly_protocol_channel_close(conn->transport_encoder);
+	labcomm_encoder_register_firefly_protocol_ack(conn->transport_encoder);
+	labcomm_encoder_register_firefly_protocol_channel_restrict_request(conn->transport_encoder);
+	labcomm_encoder_register_firefly_protocol_channel_restrict_ack(conn->transport_encoder);
+
+	conn->transport = orig_transport;
 	// TODO: Fix this once Labcomm re-gets error handling
 	/* labcomm_register_error_handler_encoder(conn->transport_encoder,*/
 	/*                 labcomm_error_to_ff_error);*/
@@ -102,12 +169,6 @@ struct firefly_connection *firefly_connection_new(
 	/* labcomm_register_error_handler_decoder(conn->transport_decoder,*/
 	/*                 labcomm_error_to_ff_error);*/
 
-	conn->transport = tc;
-	conn->open = FIREFLY_CONNECTION_OPEN;
-
-	reg_proto_sigs(conn->transport_encoder,
-		       conn->transport_decoder,
-		       conn);
 	return conn;
 }
 
