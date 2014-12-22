@@ -408,6 +408,7 @@ struct labcomm_reader *transport_labcomm_reader_new(
 		FIREFLY_FREE(reader);
 		FIREFLY_FREE(reader_context);
 		FIREFLY_FREE(action_context);
+		reader = NULL;
 	}
 
 	return reader;
@@ -575,6 +576,8 @@ static struct labcomm_writer *labcomm_writer_new(void *context,
 		action_context->next = NULL;
 		result->memory = mem;
 		result->action_context = action_context;
+	} else {
+		result = NULL;
 	}
 
 	return result;

@@ -311,6 +311,7 @@ struct firefly_channel {
 	struct firefly_channel_encoder_type *enc_types;
 	size_t n_decoder_types;
 	int *seen_decoder_ids;
+	struct firefly_channel_types types; /**< Holds types until after channel handshake. */
 };
 
 /**

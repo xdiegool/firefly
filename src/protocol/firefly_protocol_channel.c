@@ -8,10 +8,6 @@
 struct firefly_channel *firefly_channel_new(struct firefly_connection *conn)
 {
 	struct firefly_channel *chan;
-	struct labcomm_decoder *proto_decoder;
-	struct labcomm_encoder *proto_encoder;
-	struct labcomm_reader  *reader;
-	struct labcomm_writer  *writer;
 
 	chan = FIREFLY_MALLOC(sizeof(*chan));
         if (!chan) {
@@ -32,31 +28,8 @@ struct firefly_channel *firefly_channel_new(struct firefly_connection *conn)
 	chan->enc_types		= NULL;
 	chan->seen_decoder_ids 	= NULL;
 	chan->n_decoder_types	= 0;
-	reader = protocol_labcomm_reader_new(conn, conn->lc_memory);
-	writer = protocol_labcomm_writer_new(chan, conn->lc_memory);
-	if (!reader || !writer) {
-		FFL(FIREFLY_ERROR_ALLOC);
-		protocol_labcomm_reader_free(reader);
-		protocol_labcomm_writer_free(writer);
-		FIREFLY_FREE(chan);
-		return NULL;
-	}
-	proto_decoder = labcomm_decoder_new(reader, NULL, conn->lc_memory, NULL);
-	proto_encoder = labcomm_encoder_new(writer, NULL, conn->lc_memory, NULL);
-	if (!proto_decoder || !proto_encoder) {
-		FFL(FIREFLY_ERROR_ALLOC);
-		if (chan->proto_decoder)
-			labcomm_decoder_free(chan->proto_decoder);
-		if (chan->proto_encoder)
-			labcomm_encoder_free(chan->proto_encoder);
-		protocol_labcomm_reader_free(reader);
-		protocol_labcomm_writer_free(writer);
-		FIREFLY_FREE(chan);
-
-		return NULL;
-	}
-	chan->proto_decoder	= proto_decoder;
-	chan->proto_encoder	= proto_encoder;
+	chan->proto_decoder     = NULL;
+	chan->proto_encoder     = NULL;
 
 	// TODO: Fix this once Labcomm re-gets error handling
 	/* labcomm_register_error_handler_encoder(proto_encoder,*/
@@ -215,11 +188,69 @@ int firefly_channel_unrestrict_event(void *earg)
 
 void firefly_channel_internal_opened(struct firefly_channel *chan)
 {
+	struct labcomm_decoder *proto_decoder;
+	struct labcomm_encoder *proto_encoder;
+	struct labcomm_reader  *reader;
+	struct labcomm_writer  *writer;
+	struct firefly_connection *conn;
+	struct firefly_channel_types types;
+
 	if (chan->state == FIREFLY_CHANNEL_OPEN)
 		return;
 
+	conn = chan->conn;
 	chan->state = FIREFLY_CHANNEL_OPEN;
+
+	reader = protocol_labcomm_reader_new(conn, conn->lc_memory);
+	writer = protocol_labcomm_writer_new(chan, conn->lc_memory);
+	if (!reader || !writer) {
+		FFL(FIREFLY_ERROR_ALLOC);
+		protocol_labcomm_reader_free(reader);
+		protocol_labcomm_writer_free(writer);
+		FIREFLY_FREE(chan);
+		return;         /* FIXME: call ff_err()... */
+	}
+	proto_decoder = labcomm_decoder_new(reader, NULL, conn->lc_memory, NULL);
+	proto_encoder = labcomm_encoder_new(writer, NULL, conn->lc_memory, NULL);
+	if (!proto_decoder || !proto_encoder) {
+		FFL(FIREFLY_ERROR_ALLOC);
+		if (chan->proto_decoder)
+			labcomm_decoder_free(chan->proto_decoder);
+		if (chan->proto_encoder)
+			labcomm_encoder_free(chan->proto_encoder);
+		protocol_labcomm_reader_free(reader);
+		protocol_labcomm_writer_free(writer);
+		FIREFLY_FREE(chan);
+		return;         /* FIXME: call ff_err()... */
+	}
+	chan->proto_decoder	= proto_decoder;
+	chan->proto_encoder	= proto_encoder;
+
+
 	chan->conn->actions->channel_opened(chan);
+
+        /* Reg */
+        types = chan->types;
+        while (types.decoder_types) {
+		struct firefly_channel_decoder_type *f;
+
+		f = types.decoder_types;
+		f->register_func(chan->proto_decoder, f->handler, f->context);
+		types.decoder_types = f->next;
+		FIREFLY_FREE(f);
+		chan->n_decoder_types++;
+	}
+	chan->seen_decoder_ids = calloc(chan->n_decoder_types,
+					sizeof(*chan->seen_decoder_ids));
+	if (chan->seen_decoder_ids) {
+		for (size_t i = 0; i < chan->n_decoder_types; i++)
+			chan->seen_decoder_ids[i] = -1;
+	} else {
+		FFL(FIREFLY_ERROR_ALLOC);
+	}
+	chan->enc_types = types.encoder_types;
+        /* /Reg */
+
 	if (chan->auto_restrict) {
 		struct firefly_channel_encoder_type *t;
 

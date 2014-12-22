@@ -116,7 +116,7 @@ int firefly_channel_open_auto_restrict_event(void *event_arg)
 	chan_req.source_chan_id = chan->local_id;
 	chan_req.dest_chan_id   = chan->remote_id;
 	chan_req.auto_restrict  = true;
-	firefly_channel_set_types(chan, types);
+        chan->types = types;
 	labcomm_encoder_ioctl(conn->transport_encoder,
 			      FIREFLY_LABCOMM_IOCTL_TRANS_SET_IMPORTANT_ID,
 			      &chan->important_id);
@@ -128,7 +128,7 @@ int firefly_channel_open_auto_restrict_event(void *event_arg)
 	return 0;
 }
 
-void firefly_channel_open_auto_restrict(struct firefly_connection *conn,
+void firefly_channel_open_auto_restrict( struct firefly_connection *conn,
 					struct firefly_channel_types types)
 {
 	int64_t ret;
@@ -356,12 +356,13 @@ int handle_channel_response_event(void *event_arg)
 
 	if (chan == NULL) {
 		firefly_unknown_dest(fecrr->conn, fecrr->chan_res.source_chan_id,
-							 fecrr->chan_res.dest_chan_id, "channel_response");
+                                     fecrr->chan_res.dest_chan_id, "channel_response");
 	} else if (fecrr->chan_res.ack) {
 		if (chan->remote_id == CHANNEL_ID_NOT_SET) {
 			chan->remote_id = fecrr->chan_res.source_chan_id;
 			firefly_channel_ack(chan);
 			firefly_channel_internal_opened(chan);
+			firefly_channel_set_types(chan, chan->types);
 		}
 		firefly_channel_send_channel_ack(fecrr->conn, chan,
 				fecrr->chan_res.source_chan_id);
@@ -480,9 +481,11 @@ int handle_data_sample_event(void *event_arg)
 	struct firefly_channel *chan;
 
 	fers = event_arg;
+
 	chan = find_channel_by_local_id(fers->conn, fers->data.dest_chan_id);
 
 	if (chan != NULL) {
+                /* FIXME: Undefined wrapping behaviour. */
 		int expected_seqno = chan->remote_seqno + 1;
 
 		if (expected_seqno <= 0) {
@@ -873,22 +876,5 @@ void firefly_channel_types_add_encoder_type(
 void firefly_channel_set_types(struct firefly_channel *chan,
 			       struct firefly_channel_types types)
 {
-	while (types.decoder_types) {
-		struct firefly_channel_decoder_type *f;
-
-		f = types.decoder_types;
-		f->register_func(chan->proto_decoder, f->handler, f->context);
-		types.decoder_types = f->next;
-		FIREFLY_FREE(f);
-		chan->n_decoder_types++;
-	}
-	chan->seen_decoder_ids = calloc(chan->n_decoder_types,
-					sizeof(*chan->seen_decoder_ids));
-	if (chan->seen_decoder_ids) {
-		for (size_t i = 0; i < chan->n_decoder_types; i++)
-			chan->seen_decoder_ids[i] = -1;
-	} else {
-		FFL(FIREFLY_ERROR_ALLOC);
-	}
-	chan->enc_types = types.encoder_types;
+        chan->types = types;
 }

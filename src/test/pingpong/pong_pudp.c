@@ -24,7 +24,6 @@ enum pong_test_id {
 	CHAN_RESTRICTED,
 	DATA_RECEIVE,
 	DATA_SEND,
-	CHAN_UNRESTRICTED,
 	CHAN_CLOSE,
 	TEST_DONE,
 	PONG_NBR_TESTS
@@ -37,7 +36,6 @@ static char *pong_test_names[] = {
 	"Restricted channel (responding party)",
 	"Receive data",
 	"Send data",
-	"Unrestrict channel (responding party)",
 	"Close channel",
 	"Pong done"
 };
@@ -72,13 +70,14 @@ void pong_chan_restr_info(struct firefly_channel *chan,
 			  enum restriction_transition restr)
 {
 	UNUSED_VAR(chan);
+
 	switch (restr) {
 	case UNRESTRICTED:
-		pong_pass_test(CHAN_UNRESTRICTED);
+		/* Can not happen anymore... */
+		warnx("pong unrestrict");
 		break;
 	case RESTRICTED: {
-		warnx("pong restricted. Should no happen "
-		     "this way, pong is passive!");
+		pong_pass_test(CHAN_RESTRICTED);
 		break;
 	}
 	case RESTRICTION_DENIED:
@@ -135,14 +134,7 @@ int64_t pong_connection_received(
 
 void pong_chan_opened(struct firefly_channel *chan)
 {
-	struct labcomm_encoder *enc;
-	struct labcomm_decoder *dec;
-
-	enc = firefly_protocol_get_output_stream(chan);
-	dec = firefly_protocol_get_input_stream(chan);
-	labcomm_decoder_register_pingpong_data(dec, pong_handle_pingpong_data,
-					       chan);
-	labcomm_encoder_register_pingpong_data(enc);
+	UNUSED_VAR(chan);
 	pong_pass_test(CHAN_OPENED);
 }
 
@@ -158,7 +150,20 @@ void pong_chan_closed(struct firefly_channel *chan)
 
 bool pong_chan_received(struct firefly_channel *chan)
 {
-	UNUSED_VAR(chan);
+	struct firefly_channel_types types = FIREFLY_CHANNEL_TYPES_INITIALIZER;
+
+	firefly_channel_types_add_decoder_type(
+		&types,
+		(firefly_labcomm_decoder_register_function)
+		labcomm_decoder_register_pingpong_data,
+		(firefly_labcomm_handler_function) pong_handle_pingpong_data, chan);
+
+	firefly_channel_types_add_encoder_type(
+		&types,
+		labcomm_encoder_register_pingpong_data);
+
+	firefly_channel_set_types(chan, types);
+
 	pong_pass_test(CHAN_RECEIVE);
 
 	return true;

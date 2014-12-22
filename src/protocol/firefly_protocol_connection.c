@@ -54,8 +54,6 @@ struct firefly_connection *firefly_connection_new(
 {
 	struct firefly_connection *conn;
 	struct labcomm_memory *lc_mem;
-	struct labcomm_encoder *transport_encoder;
-	struct labcomm_decoder *transport_decoder;
 	struct labcomm_reader  *reader;
 	struct labcomm_writer  *writer;
 
@@ -106,9 +104,11 @@ struct firefly_connection *firefly_connection_new(
 
 	init_firefly_protocol__signatures();
 
-	transport_decoder = labcomm_decoder_new(reader, NULL, lc_mem, NULL);
-	transport_encoder = labcomm_encoder_new(writer, NULL, lc_mem, NULL);
+	conn->transport_decoder = labcomm_decoder_new(reader, NULL, lc_mem, NULL);
+	conn->transport_encoder = labcomm_encoder_new(writer, NULL, lc_mem, NULL);
 
+        /* TODO: Error handling. */
+#if 0
 	if (transport_encoder == NULL || transport_decoder == NULL) {
 		firefly_error(FIREFLY_ERROR_ALLOC, 3,
 			      "memory allocation failed %s:%d",
@@ -125,8 +125,7 @@ struct firefly_connection *firefly_connection_new(
 		FIREFLY_FREE(conn);
 		return NULL;
 	}
-	conn->transport_encoder  = transport_encoder;
-	conn->transport_decoder  = transport_decoder;
+#endif
 
 	labcomm_decoder_register_firefly_protocol_data_sample(conn->transport_decoder,
 					  	  handle_data_sample, conn);

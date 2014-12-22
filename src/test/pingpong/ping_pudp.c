@@ -27,7 +27,6 @@ enum ping_test_id {
 	CHAN_RESTRICTED,
 	DATA_SEND,
 	DATA_RECEIVE,
-	CHAN_UNRESTRICTED,
 	CHAN_CLOSE,
 	TEST_DONE,
 	PING_NBR_TESTS
@@ -39,7 +38,6 @@ static char *ping_test_names[] = {
 	"Restrict channel (requesting party)",
 	"Send data",
 	"Receive data",
-	"Unrestrict channel (requesting party)",
 	"Close channel",
 	"Ping done"
 };
@@ -62,11 +60,26 @@ static struct firefly_event_queue *event_queue;
 static pthread_mutex_t ping_done_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t ping_done_signal = PTHREAD_COND_INITIALIZER;
 static bool ping_done;
+static struct firefly_channel *ping_chan;
 
 void ping_connection_opened(struct firefly_connection *conn)
 {
+	struct firefly_channel_types types = FIREFLY_CHANNEL_TYPES_INITIALIZER;
+
 	ping_pass_test(CONNECTION_OPEN);
-	firefly_channel_open(conn);
+
+	firefly_channel_types_add_decoder_type(
+		&types,
+		(firefly_labcomm_decoder_register_function)
+		labcomm_decoder_register_pingpong_data,
+		(firefly_labcomm_handler_function) ping_handle_pingpong_data,
+		NULL);
+
+	firefly_channel_types_add_encoder_type(
+		&types,
+		labcomm_encoder_register_pingpong_data);
+
+	firefly_channel_open_auto_restrict(conn, types);
 }
 
 /* Restr. state change. */
@@ -77,9 +90,8 @@ void ping_chan_restr_info(struct firefly_channel *chan,
 
 	switch (restr) {
 	case UNRESTRICTED:
-		/* Done */
-		ping_pass_test(CHAN_UNRESTRICTED);
-		firefly_channel_close(chan);
+		/* Can not happen anymore... */
+		warnx("ping unrestrict");
 		break;
 	case RESTRICTED:
 		ping_pass_test(CHAN_RESTRICTED);
@@ -95,16 +107,8 @@ void ping_chan_restr_info(struct firefly_channel *chan,
 
 void ping_chan_opened(struct firefly_channel *chan)
 {
-	struct labcomm_encoder *enc;
-	struct labcomm_decoder *dec;
-
+	ping_chan = chan;
 	ping_pass_test(CHAN_OPEN);
-	enc = firefly_protocol_get_output_stream(chan);
-	dec = firefly_protocol_get_input_stream(chan);
-	labcomm_decoder_register_pingpong_data(dec, ping_handle_pingpong_data,
-					       chan);
-	labcomm_encoder_register_pingpong_data(enc);
-	firefly_channel_restrict(chan);
 }
 
 void ping_chan_closed(struct firefly_channel *chan)
@@ -146,8 +150,7 @@ void ping_handle_pingpong_data(pingpong_data *data, void *ctx)
 
 	if (*data == PONG_DATA)
 		ping_pass_test(DATA_RECEIVE);
-	firefly_channel_unrestrict(ctx);
-
+	firefly_channel_close(ping_chan);
 }
 
 struct firefly_connection_actions ping_actions = {
