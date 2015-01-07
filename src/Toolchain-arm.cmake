@@ -18,6 +18,11 @@ set(DRIVERLIB_DIR ${FT_SENSE_DIR}/lib/driverlib)
 # according to CMake manual:
 set(CMAKE_SYSTEM_NAME Generic)
 
+if("$ENV{LABOMM_ARM}" STREQUAL "")
+	message(FATAL_ERROR "Set env. variable LABCOMM_ARM to labcomm root.")
+endif()
+set(LABCOMM_ROOT_DIR $ENV{LABCOMM_ARM}/lib/c)
+
 # Specify the cross compiler:
 set(CMAKE_C_COMPILER arm-none-eabi-gcc)
 set(CROSS_COMPILER_ARM arm-none-eabi-gcc)

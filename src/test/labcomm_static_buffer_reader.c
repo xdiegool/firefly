@@ -13,17 +13,15 @@ struct statbuf_context {
 };
 
 static int statbuf_alloc(struct labcomm_reader *r,
-						 struct labcomm_reader_action_context *action_context,
-						 char *labcomm_version)
+		struct labcomm_reader_action_context *action_context)
 {
 	UNUSED_VAR(r);
 	UNUSED_VAR(action_context);
-	UNUSED_VAR(labcomm_version);
 	return 0;
 }
 
 static int statbuf_free(struct labcomm_reader *r,
-						struct labcomm_reader_action_context *action_context)
+		struct labcomm_reader_action_context *action_context)
 {
 	r->data = NULL;
 	r->data_size = 0;
@@ -36,7 +34,7 @@ static int statbuf_free(struct labcomm_reader *r,
 }
 
 static int statbuf_fill(struct labcomm_reader *r,
-						struct labcomm_reader_action_context *action_context)
+		struct labcomm_reader_action_context *action_context)
 {
 	UNUSED_VAR(action_context);
 	int result = r->count - r->pos;
@@ -45,10 +43,10 @@ static int statbuf_fill(struct labcomm_reader *r,
 }
 
 static int statbuf_start(struct labcomm_reader *r,
-						 struct labcomm_reader_action_context *action_context,
-						 int local_index, int remote_index,
-						 struct labcomm_signature *signature,
-						 void *value)
+		 struct labcomm_reader_action_context *action_context,
+		 int local_index, int remote_index,
+		 const struct labcomm_signature *signature,
+		 void *value)
 {
 	UNUSED_VAR(local_index);
 	UNUSED_VAR(remote_index);
@@ -59,7 +57,7 @@ static int statbuf_start(struct labcomm_reader *r,
 }
 
 static int statbuf_end(struct labcomm_reader *r,
-					   struct labcomm_reader_action_context *action_context)
+		struct labcomm_reader_action_context *action_context)
 {
 	UNUSED_VAR(action_context);
 	if (r->count <= r->pos) {
@@ -72,12 +70,12 @@ static int statbuf_end(struct labcomm_reader *r,
 }
 
 static int statbuf_ioctl(struct labcomm_reader *r,
-						 struct labcomm_reader_action_context *action_context,
-						 int local_index,
-						 int remote_index,
-						 struct labcomm_signature *signature,
-						 uint32_t ioctl_action,
-						 va_list args)
+		 struct labcomm_reader_action_context *action_context,
+		 int local_index,
+		 int remote_index,
+		 const struct labcomm_signature *signature,
+		 uint32_t ioctl_action,
+		 va_list args)
 {
 	int result;
 
@@ -142,8 +140,8 @@ struct labcomm_reader *labcomm_static_buffer_reader_new(struct labcomm_memory *m
 /* }; */
 
 struct labcomm_reader *labcomm_static_buffer_reader_mem_new(void *context,
-							void *(*m)(void *c, size_t s),
-							void (*f)(void *c,void *p))
+			void *(*m)(void *c, size_t s),
+			void (*f)(void *c,void *p))
 {
 	struct labcomm_reader *result;
 	struct labcomm_reader_action_context *action_context;

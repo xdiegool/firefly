@@ -92,7 +92,7 @@ int64_t pong_udp_connection_received(
 		return firefly_connection_open(&pong_udp_conn_actions, NULL, event_queue,
 				firefly_transport_connection_udp_posix_new(
 						llp, ip_addr, port,
-						FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT));
+						FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT), NULL);
 	} else {
 		fprintf(stderr, "ERROR: Received unknown connection: %s:%hu\n",
 				ip_addr, port);
@@ -211,7 +211,7 @@ int64_t pong_eth_connection_received(struct firefly_transport_llp *llp,
 		printf("Recieved connection on %s!\n", PONG_IFACE);
 		return firefly_connection_open(&pong_eth_conn_actions, NULL, event_queue,
 				firefly_transport_connection_eth_posix_new(
-				llp, mac_addr, PONG_IFACE));
+				llp, mac_addr, PONG_IFACE), NULL);
 	} else {
 		fprintf(stderr, "ERROR: Received unknown connection: %s\n", mac_addr);
 		return 0;

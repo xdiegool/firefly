@@ -38,11 +38,9 @@ struct transport_reader_context {
 };
 
 static int proto_reader_alloc(struct labcomm_reader *r,
-			struct labcomm_reader_action_context *context, 
-		    char *version)
+		struct labcomm_reader_action_context *context)
 {
 	UNUSED_VAR(context);
-	UNUSED_VAR(version);
 	UNUSED_VAR(r);
 	return 0;
 }
@@ -70,7 +68,7 @@ static int proto_reader_fill(struct labcomm_reader *r,
 static int proto_reader_start(struct labcomm_reader *r,
 		struct labcomm_reader_action_context *context,
 		int local_index, int remote_index,
-		struct labcomm_signature *signature,
+		const struct labcomm_signature *signature,
 		void *value)
 {
 	UNUSED_VAR(context);
@@ -93,7 +91,7 @@ static int proto_reader_end(struct labcomm_reader *r,
 static int proto_reader_ioctl(struct labcomm_reader *r,
 		struct labcomm_reader_action_context *action_context,
 		int local_index, int remote_index,
-		struct labcomm_signature *signature, 
+		const struct labcomm_signature *signature, 
 		uint32_t ioctl_action, va_list args)
 {
 	UNUSED_VAR(action_context);
@@ -259,17 +257,15 @@ static void trans_reader_free_backstack(struct labcomm_reader *r)
 }
 
 static int trans_reader_alloc(struct labcomm_reader *r,
-							  struct labcomm_reader_action_context *context,
-							  char *version)
+		struct labcomm_reader_action_context *context)
 {
 	UNUSED_VAR(context);
-	UNUSED_VAR(version);
 	UNUSED_VAR(r);
 	return 0;
 }
 
 static int trans_reader_free(struct labcomm_reader *r,
-							 struct labcomm_reader_action_context *context)
+		struct labcomm_reader_action_context *context)
 {
 	UNUSED_VAR(context);
 	transport_labcomm_reader_free(r);
@@ -277,7 +273,7 @@ static int trans_reader_free(struct labcomm_reader *r,
 }
 
 static int trans_reader_fill(struct labcomm_reader *r,
-							 struct labcomm_reader_action_context *context)
+		struct labcomm_reader_action_context *context)
 {
 	UNUSED_VAR(context);
 	int result;
@@ -297,10 +293,10 @@ static int trans_reader_fill(struct labcomm_reader *r,
 }
 
 static int trans_reader_start(struct labcomm_reader *r,
-							  struct labcomm_reader_action_context *context,
-							  int local_index, int remote_index,
-							  struct labcomm_signature *signature,
-							  void *value)
+		struct labcomm_reader_action_context *context,
+		int local_index, int remote_index,
+		const struct labcomm_signature *signature,
+		void *value)
 {
 	UNUSED_VAR(context);
 	UNUSED_VAR(local_index);
@@ -312,7 +308,7 @@ static int trans_reader_start(struct labcomm_reader *r,
 }
 
 static int trans_reader_end(struct labcomm_reader *r,
-						    struct labcomm_reader_action_context *action_context)
+		struct labcomm_reader_action_context *action_context)
 {
 	struct transport_reader_context *ctx;
 	ctx = action_context->context;
@@ -333,10 +329,10 @@ static int trans_reader_end(struct labcomm_reader *r,
 }
 
 static int trans_reader_ioctl(struct labcomm_reader *r,
-							struct labcomm_reader_action_context *action_context,
-							int local_index, int remote_index,
-							struct labcomm_signature *signature,
-							uint32_t ioctl_action, va_list args)
+		struct labcomm_reader_action_context *action_context,
+		int local_index, int remote_index,
+		const struct labcomm_signature *signature,
+		uint32_t ioctl_action, va_list args)
 {
 	UNUSED_VAR(local_index);
 	UNUSED_VAR(remote_index);
@@ -412,6 +408,7 @@ struct labcomm_reader *transport_labcomm_reader_new(
 		FIREFLY_FREE(reader);
 		FIREFLY_FREE(reader_context);
 		FIREFLY_FREE(action_context);
+		reader = NULL;
 	}
 
 	return reader;
@@ -425,11 +422,9 @@ void transport_labcomm_reader_free(struct labcomm_reader *r)
 }
 
 static int comm_writer_alloc(struct labcomm_writer *w,
-		struct labcomm_writer_action_context *action_context,
-		char *labcomm_version)
+		struct labcomm_writer_action_context *action_context)
 {
 	UNUSED_VAR(action_context);
-	UNUSED_VAR(labcomm_version);
 
 	w->data_size	= BUFFER_SIZE;
 	w->count	= w->data_size;
@@ -470,7 +465,7 @@ static int comm_writer_flush(struct labcomm_writer *w,
 static int proto_writer_start(struct labcomm_writer *w,
 		struct labcomm_writer_action_context *action_context,
 		int index,
-		struct labcomm_signature *signature,
+		const struct labcomm_signature *signature,
 		void *value)
 {
 	struct protocol_writer_context *ctx;
@@ -544,7 +539,7 @@ static int proto_writer_end(struct labcomm_writer *w,
 
 static int proto_writer_ioctl(struct labcomm_writer *w,
            struct labcomm_writer_action_context *action_context, int index,
-	   struct labcomm_signature *signature, uint32_t ioctl_action,
+	   const struct labcomm_signature *signature, uint32_t ioctl_action,
 	   va_list args)
 {
 	UNUSED_VAR(w);
@@ -581,6 +576,8 @@ static struct labcomm_writer *labcomm_writer_new(void *context,
 		action_context->next = NULL;
 		result->memory = mem;
 		result->action_context = action_context;
+	} else {
+		result = NULL;
 	}
 
 	return result;
@@ -612,7 +609,8 @@ void protocol_labcomm_writer_free(struct labcomm_writer *w)
 
 static int trans_writer_start(struct labcomm_writer *w,
 		struct labcomm_writer_action_context *action_context,
-		int index, struct labcomm_signature *signature, void *value)
+		int index, const struct labcomm_signature *signature,
+                void *value)
 {
 	UNUSED_VAR(w);
 	UNUSED_VAR(action_context);
@@ -640,7 +638,7 @@ static int trans_writer_end(struct labcomm_writer *w,
 
 static int trans_writer_ioctl(struct labcomm_writer *w,
 		struct labcomm_writer_action_context *action_context,
-		int index, struct labcomm_signature *signature,
+		int index, const struct labcomm_signature *signature,
 		uint32_t ioctl_action, va_list arg)
 {
 	struct transport_writer_context *ctx;

@@ -132,7 +132,7 @@ int64_t pong_connection_received(
 		return firefly_connection_open(&conn_actions,
 				firefly_transport_eth_xeno_memfuncs(), event_queue,
 				firefly_transport_connection_eth_xeno_new(
-				llp, mac_addr, pong_iface));
+				llp, mac_addr, pong_iface), NULL);
 	} else {
 		fprintf(stderr, "ERROR: Received unknown connection: %s\n",
 				mac_addr);

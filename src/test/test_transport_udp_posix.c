@@ -137,7 +137,7 @@ int64_t recv_conn_recv_conn(
 	struct firefly_transport_connection *conn_udp =
 		firefly_transport_connection_udp_posix_new(llp, ipaddr, port, 1000);
 
-	int64_t res = firefly_connection_open(NULL, NULL, eq, conn_udp);
+	int64_t res = firefly_connection_open(NULL, NULL, eq, conn_udp, NULL);
 	return res;
 }
 
@@ -226,7 +226,7 @@ void test_recv_data()
 
 	struct firefly_transport_connection *conn_udp =
 		firefly_transport_connection_udp_posix_new(llp, ipaddr, port, 1000);
-	int res = firefly_connection_open(&actions, NULL, eq, conn_udp);
+	int res = firefly_connection_open(&actions, NULL, eq, conn_udp, NULL);
 	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 	conn = tmp_conn;
@@ -339,7 +339,7 @@ int64_t recv_conn_keep_two(struct firefly_transport_llp *llp,
 	struct firefly_transport_connection *conn_udp =
 		firefly_transport_connection_udp_posix_new(llp, ipaddr, port, 0);
 
-	int64_t res = firefly_connection_open(NULL, NULL, eq, conn_udp);
+	int64_t res = firefly_connection_open(NULL, NULL, eq, conn_udp, NULL);
 	return res;
 }
 
@@ -431,7 +431,7 @@ void test_conn_open_and_send()
 	struct firefly_transport_connection *conn_udp =
 		firefly_transport_connection_udp_posix_new(llp,
 				"127.0.0.1", 55550, 1000);
-	int res = firefly_connection_open(&actions, NULL, eq, conn_udp);
+	int res = firefly_connection_open(&actions, NULL, eq, conn_udp, NULL);
 	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 	conn = tmp_conn;
@@ -465,7 +465,7 @@ void test_conn_open_and_recv()
 	struct firefly_transport_connection *conn_udp =
 		firefly_transport_connection_udp_posix_new(llp,
 				"127.0.0.1", 55550, 1000);
-	int res = firefly_connection_open(&actions, NULL, eq, conn_udp);
+	int res = firefly_connection_open(&actions, NULL, eq, conn_udp, NULL);
 	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 	conn = tmp_conn;
@@ -491,7 +491,7 @@ int64_t open_and_recv_conn_recv_conn(struct firefly_transport_llp *llp,
 	struct firefly_transport_connection *conn_udp =
 		firefly_transport_connection_udp_posix_new(llp, ipaddr, port, 1000);
 
-	int res = firefly_connection_open(NULL, NULL, eq, conn_udp);
+	int res = firefly_connection_open(NULL, NULL, eq, conn_udp, NULL);
 	return res;
 }
 
@@ -516,7 +516,7 @@ void test_open_and_recv_with_two_llp()
 	struct firefly_transport_connection *conn_udp =
 		firefly_transport_connection_udp_posix_new(llp_send,
 				"127.0.0.1", local_port, 1000);
-	int res = firefly_connection_open(&actions, NULL, eq, conn_udp);
+	int res = firefly_connection_open(&actions, NULL, eq, conn_udp, NULL);
 	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 	struct firefly_connection *conn_send = tmp_conn;
@@ -624,7 +624,7 @@ void test_read_mult_threads()
 
 	struct firefly_transport_connection *conn_udp =
 		firefly_transport_connection_udp_posix_new(llp, ipaddr, port, 1000);
-	int res = firefly_connection_open(&actions, NULL, eq, conn_udp);
+	int res = firefly_connection_open(&actions, NULL, eq, conn_udp, NULL);
 	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 	conn = tmp_conn;
@@ -663,19 +663,19 @@ void test_llp_free_mult_conns()
 					local_port, recv_data_recv_conn, eq);
 	res = firefly_connection_open(&actions, NULL, eq,
 			firefly_transport_connection_udp_posix_new(llp,
-				"127.0.0.1", remote_port, 1000));
+				"127.0.0.1", remote_port, 1000), NULL);
 	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 
 	res = firefly_connection_open(&actions, NULL, eq,
 			firefly_transport_connection_udp_posix_new(llp,
-				"127.0.0.1", remote_port, 1000));
+				"127.0.0.1", remote_port, 1000), NULL);
 	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 
 	res = firefly_connection_open(&actions, NULL, eq,
 			firefly_transport_connection_udp_posix_new(llp,
-				"127.0.0.1", remote_port, 1000));
+				"127.0.0.1", remote_port, 1000), NULL);
 	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 
@@ -698,7 +698,7 @@ void test_llp_free_mult_conns_w_chans()
 
 	res = firefly_connection_open(&actions, NULL, eq,
 			firefly_transport_connection_udp_posix_new(llp,
-				"127.0.0.1", 55550, 1000));
+				"127.0.0.1", 55550, 1000), NULL);
 	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 	conn = tmp_conn;
@@ -714,7 +714,7 @@ void test_llp_free_mult_conns_w_chans()
 
 	res = firefly_connection_open(&actions, NULL, eq,
 			firefly_transport_connection_udp_posix_new(llp,
-				"127.0.0.1", 55550, 1000));
+				"127.0.0.1", 55550, 1000), NULL);
 	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 	conn = tmp_conn;
@@ -726,7 +726,7 @@ void test_llp_free_mult_conns_w_chans()
 
 	res = firefly_connection_open(&actions, NULL, eq,
 			firefly_transport_connection_udp_posix_new(llp,
-				"127.0.0.1", 55550, 1000));
+				"127.0.0.1", 55550, 1000), NULL);
 	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 	conn = tmp_conn;
@@ -799,7 +799,7 @@ void test_send_important()
 	res = firefly_connection_open(&actions, NULL, eq,
 			firefly_transport_connection_udp_posix_new(llp,
 				"127.0.0.1", 55550,
-				FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT));
+				FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT), NULL);
 	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 	conn = tmp_conn;
@@ -867,7 +867,7 @@ void test_send_important_ack()
 	res = firefly_connection_open(&actions, NULL, eq,
 			firefly_transport_connection_udp_posix_new(llp,
 				"127.0.0.1", 55550,
-				FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT));
+				FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT), NULL);
 	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 	conn = tmp_conn;
@@ -902,7 +902,7 @@ void test_send_important_id_null()
 	res = firefly_connection_open(&actions, NULL, eq,
 			firefly_transport_connection_udp_posix_new(llp,
 				"127.0.0.1", 55550,
-				FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT));
+				FIREFLY_TRANSPORT_UDP_POSIX_DEFAULT_TIMEOUT), NULL);
 	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 	conn = tmp_conn;
@@ -934,7 +934,7 @@ void test_send_important_long_timeout()
 		(struct transport_llp_udp_posix *) llp->llp_platspec;
 	res = firefly_connection_open(&actions, NULL, eq,
 			firefly_transport_connection_udp_posix_new(llp,
-				"127.0.0.1", 55550, long_timeout));
+				"127.0.0.1", 55550, long_timeout), NULL);
 	CU_ASSERT_TRUE_FATAL(res > 0);
 	event_execute_test(eq, 1);
 	conn = tmp_conn;

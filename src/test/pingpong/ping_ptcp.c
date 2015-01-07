@@ -182,7 +182,7 @@ void *ping_main_thread(void *arg)
 
 	res = firefly_connection_open(&ping_actions, NULL, event_queue,
 			firefly_transport_connection_tcp_posix_new(
-					llp, -1, PONG_ADDR, PONG_PORT));
+					llp, -1, PONG_ADDR, PONG_PORT), NULL);
 	if (res < 0) fprintf(stderr, "PING ERROR: Open connection: %d.\n", res);
 
 	res = firefly_transport_tcp_posix_run(llp);

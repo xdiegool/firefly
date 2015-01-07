@@ -197,7 +197,7 @@ int main(int argc, char **argv)
 
 	res = firefly_connection_open(&conn_actions, NULL, event_queue,
 			firefly_transport_connection_eth_posix_new(
-			llp, mac_addr, iface));
+			llp, mac_addr, iface), NULL);
 	if (res < 0) fprintf(stderr, "PING ERROR: Open connection: %d.\n", res);
 
 	firefly_transport_eth_posix_run(llp);

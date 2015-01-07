@@ -173,6 +173,7 @@ typedef bool (* firefly_connection_error_f)(struct firefly_connection *conn,
  * opened.
  *
  * @param conn The newly opened connection.
+ * @param context A user specified context.
  */
 typedef void (* firefly_connection_opened_f)(struct firefly_connection *conn);
 
@@ -211,6 +212,7 @@ struct firefly_connection_actions {
  * offered to.
  * @param tc A struct containing the transport layer specific
  * functions and data.
+ * @param context An initial value of the connection context.
  *
  * @return int Indicating error if any.
  * @retval 0 if no error, negative error number otherwise.
@@ -219,7 +221,8 @@ int firefly_connection_open(
 		struct firefly_connection_actions *actions,
 		struct firefly_memory_funcs *memory_replacements,
 		struct firefly_event_queue *event_queue,
-		struct firefly_transport_connection *tc);
+		struct firefly_transport_connection *tc,
+		void *context);
 
 /**
  * @brief Spawns an event that will close the connection specified by
@@ -339,5 +342,63 @@ void firefly_channel_restrict(struct firefly_channel *chan);
  * @param chan Channel to agree restriction upon.
  */
 void firefly_channel_unrestrict(struct firefly_channel *chan);
+
+/* Stuff for predictable type registration.  */
+
+typedef void (*firefly_labcomm_handler_function)(void *value, void *context);
+
+typedef int (*firefly_labcomm_decoder_register_function)(struct labcomm_decoder *d,
+						 firefly_labcomm_handler_function f,
+						 void *context);
+
+typedef int (*firefly_labcomm_encoder_register_function)(struct labcomm_encoder *e);
+
+struct firefly_channel_decoder_type {
+	firefly_labcomm_decoder_register_function register_func;
+	firefly_labcomm_handler_function handler;
+	void *context;
+	struct firefly_channel_decoder_type *next;
+};
+
+struct firefly_channel_encoder_type {
+	firefly_labcomm_encoder_register_function register_func;
+	struct firefly_channel_encoder_type *next;
+};
+
+struct firefly_channel_types {
+	struct firefly_channel_decoder_type *decoder_types;
+	struct firefly_channel_encoder_type *encoder_types;
+};
+
+#if 0
+struct firefly_channel_types *firefly_channel_types_new(void);
+
+void firefly_channel_types_free(struct firefly_channel_types *ct);
+#endif
+
+#define FIREFLY_CHANNEL_TYPES_INITIALIZER { NULL, NULL }
+
+void firefly_channel_types_add_decoder_type(
+	struct firefly_channel_types *types,
+	firefly_labcomm_decoder_register_function register_func,
+	firefly_labcomm_handler_function handler,
+	void *context);
+
+void firefly_channel_types_add_encoder_type(
+	struct firefly_channel_types *types,
+	firefly_labcomm_encoder_register_function register_func);
+
+/**
+ * Used to open with automatic restriction after type registration.
+ */
+void firefly_channel_open_auto_restrict(struct firefly_connection *conn,
+					struct firefly_channel_types types);
+
+/**
+ * Used in accept channel with automatic restriction after type registration.
+ * Use only in channel-accept-callback.
+ */
+void firefly_channel_set_types(struct firefly_channel *chan,
+			       struct firefly_channel_types types);
 
 #endif

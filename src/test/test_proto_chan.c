@@ -202,6 +202,7 @@ void test_chan_recv_accept()
 	firefly_protocol_channel_request chan_req;
 	chan_req.source_chan_id = REMOTE_CHAN_ID;
 	chan_req.dest_chan_id = CHANNEL_ID_NOT_SET;
+	chan_req.auto_restrict = false;
 	// Give channel request data to protocol layer.
 	labcomm_encode_firefly_protocol_channel_request(test_enc, &chan_req);
 	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
@@ -268,6 +269,7 @@ void test_chan_recv_reject()
 	firefly_protocol_channel_request chan_req;
 	chan_req.dest_chan_id = CHANNEL_ID_NOT_SET;
 	chan_req.source_chan_id = REMOTE_CHAN_ID;
+	chan_req.auto_restrict = false;
 	labcomm_encode_firefly_protocol_channel_request(test_enc, &chan_req);
 	labcomm_encoder_ioctl(test_enc, LABCOMM_IOCTL_WRITER_GET_BUFFER,
 			&buf, &buf_size);

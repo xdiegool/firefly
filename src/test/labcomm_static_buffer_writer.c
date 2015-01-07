@@ -10,11 +10,9 @@
 #define BUFFER_SIZE (512)
 
 static int statbuf_alloc(struct labcomm_writer *w,
-						 struct labcomm_writer_action_context *action_context,
-						 char *labcomm_version)
+		struct labcomm_writer_action_context *action_context)
 {
 	UNUSED_VAR(action_context);
-	UNUSED_VAR(labcomm_version);
 
 	w->data_size = BUFFER_SIZE;
 	w->count = w->data_size;
@@ -28,7 +26,7 @@ static int statbuf_alloc(struct labcomm_writer *w,
 }
 
 static int statbuf_free(struct labcomm_writer *w,
-						struct labcomm_writer_action_context *action_context)
+		struct labcomm_writer_action_context *action_context)
 {
 	free(w->data);
 	free(action_context);
@@ -41,7 +39,7 @@ static int statbuf_free(struct labcomm_writer *w,
 }
 
 static int statbuf_flush(struct labcomm_writer *w,
-						 struct labcomm_writer_action_context *action_context)
+		 struct labcomm_writer_action_context *action_context)
 {
 	UNUSED_VAR(action_context);
 
@@ -50,10 +48,10 @@ static int statbuf_flush(struct labcomm_writer *w,
 }
 
 static int statbuf_start(struct labcomm_writer *w,
-						 struct labcomm_writer_action_context *action_context,
-						 int index,
-						 struct labcomm_signature *signature,
-						 void *value)
+		 struct labcomm_writer_action_context *action_context,
+		 int index,
+		 const struct labcomm_signature *signature,
+		 void *value)
 {
 	UNUSED_VAR(action_context);
 	UNUSED_VAR(index);
@@ -65,7 +63,7 @@ static int statbuf_start(struct labcomm_writer *w,
 }
 
 static int statbuf_end(struct labcomm_writer *w,
-					   struct labcomm_writer_action_context *action_context)
+		struct labcomm_writer_action_context *action_context)
 {
 	UNUSED_VAR(w);
 	UNUSED_VAR(action_context);
@@ -74,11 +72,11 @@ static int statbuf_end(struct labcomm_writer *w,
 }
 
 static int statbuf_ioctl(struct labcomm_writer *w,
-						 struct labcomm_writer_action_context *action_context,
-						 int index,
-						 struct labcomm_signature *signature,
-						 uint32_t ioctl_action,
-						 va_list arg)
+		 struct labcomm_writer_action_context *action_context,
+		 int index,
+		 const struct labcomm_signature *signature,
+		 uint32_t ioctl_action,
+		 va_list arg)
 {
 	UNUSED_VAR(action_context);
 	UNUSED_VAR(index);

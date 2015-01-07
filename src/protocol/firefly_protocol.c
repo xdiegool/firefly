@@ -15,79 +15,23 @@
 #include "utils/cppmacros.h"
 
 /*
- * Used by reg_proto_sigs() below to "short circuit" the connection during
- * the initial registration of protocol types.
- */
-static void signature_trans_write(unsigned char *data, size_t size,
-				  struct firefly_connection *conn,
-				  bool important, unsigned char *id)
-{
-	UNUSED_VAR(important);
-	UNUSED_VAR(id);
-	unsigned char *cpy_data = FIREFLY_RUNTIME_MALLOC(conn, size);
-	memcpy(cpy_data, data, size);
-	protocol_data_received(conn, cpy_data, size);
-}
-
-static struct firefly_transport_connection sig_transport = {
-	.write = signature_trans_write,
-	.ack = NULL,
-	.open = NULL,
-	.close = NULL
-};
-
-void reg_proto_sigs(struct labcomm_encoder *enc,
-		    struct labcomm_decoder *dec,
-		    struct firefly_connection *conn)
-{
-	struct firefly_transport_connection *orig_transport = conn->transport;
-	conn->transport = &sig_transport;
-
-	labcomm_decoder_register_firefly_protocol_data_sample(dec,
-					  	  handle_data_sample, conn);
-
-	labcomm_decoder_register_firefly_protocol_channel_request(dec,
-						  handle_channel_request, conn);
-
-	labcomm_decoder_register_firefly_protocol_channel_response(dec,
-					   handle_channel_response, conn);
-
-	labcomm_decoder_register_firefly_protocol_channel_ack(dec,
-						  handle_channel_ack, conn);
-
-	labcomm_decoder_register_firefly_protocol_channel_close(dec,
-						handle_channel_close, conn);
-
-	labcomm_decoder_register_firefly_protocol_ack(dec,
-						handle_ack, conn);
-
-	labcomm_decoder_register_firefly_protocol_channel_restrict_request(
-			dec, handle_channel_restrict_request, conn);
-
-	labcomm_decoder_register_firefly_protocol_channel_restrict_ack(
-			dec, handle_channel_restrict_ack, conn);
+ * FIREFLY_PROTO_ACK_*: Used to use the existing ack-functionality
+ * working with protocol types as well. This may or may not be the
+ * right way to do this...
+ *
+ * Must be negative.
+*/
+#define FIREFLY_PROTO_ACK_RESTRICT_ACK -1
 
 
-	labcomm_encoder_register_firefly_protocol_data_sample(enc);
-	labcomm_encoder_register_firefly_protocol_channel_request(enc);
-	labcomm_encoder_register_firefly_protocol_channel_response(enc);
-	labcomm_encoder_register_firefly_protocol_channel_ack(enc);
-	labcomm_encoder_register_firefly_protocol_channel_close(enc);
-	labcomm_encoder_register_firefly_protocol_ack(enc);
-	labcomm_encoder_register_firefly_protocol_channel_restrict_request(enc);
-	labcomm_encoder_register_firefly_protocol_channel_restrict_ack(enc);
-
-	conn->transport = orig_transport;
-}
-
-void firefly_unknown_dest(struct firefly_connection *conn,
-		int src_id, int dest_id)
+static void firefly_unknown_dest(struct firefly_connection *conn,
+								 int src_id, int dest_id, const char *action)
 {
 	UNUSED_VAR(conn);
 	firefly_protocol_channel_close chan_close;
 
-	firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
-			  "Received open channel on non-existing channel");
+	firefly_error(FIREFLY_ERROR_PROTO_STATE, 2,
+				  "Received %s on a non-existent channel", action);
 
 	chan_close.dest_chan_id = src_id;
 	chan_close.source_chan_id = dest_id;
@@ -122,6 +66,7 @@ int firefly_channel_open_event(void *event_arg)
 
 	chan_req.source_chan_id = chan->local_id;
 	chan_req.dest_chan_id   = chan->remote_id;
+	chan_req.auto_restrict  = false;
 
 	labcomm_encoder_ioctl(conn->transport_encoder,
 			FIREFLY_LABCOMM_IOCTL_TRANS_SET_IMPORTANT_ID,
@@ -143,6 +88,65 @@ void firefly_channel_open(struct firefly_connection *conn)
 						conn, 0, NULL);
 	if (ret < 0)
 		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Could not add event.");
+}
+
+int firefly_channel_open_auto_restrict_event(void *event_arg)
+{
+	struct firefly_event_chan_open_auto_restrict *arg;
+	struct firefly_channel_types types;
+	struct firefly_connection        *conn;
+	struct firefly_channel           *chan;
+	firefly_protocol_channel_request chan_req;
+	arg = event_arg;
+	conn = arg->connection;
+	types = arg->types;
+	if (conn->open != FIREFLY_CONNECTION_OPEN) {
+		firefly_channel_raise(NULL, conn, FIREFLY_ERROR_CONN_STATE,
+			"Can't open new channel on closed connection.\n");
+		return -1;
+	}
+	chan = firefly_channel_new(conn);
+	if (!chan) {
+		firefly_error(FIREFLY_ERROR_ALLOC, 1,
+			      "Could not allocate channel.\n");
+		return -1;
+	}
+	chan->auto_restrict = true;
+	add_channel_to_connection(chan, conn);
+	chan_req.source_chan_id = chan->local_id;
+	chan_req.dest_chan_id   = chan->remote_id;
+	chan_req.auto_restrict  = true;
+        chan->types = types;
+	labcomm_encoder_ioctl(conn->transport_encoder,
+			      FIREFLY_LABCOMM_IOCTL_TRANS_SET_IMPORTANT_ID,
+			      &chan->important_id);
+	labcomm_encode_firefly_protocol_channel_request(conn->transport_encoder,
+							&chan_req);
+
+	FIREFLY_FREE(event_arg);
+
+	return 0;
+}
+
+void firefly_channel_open_auto_restrict( struct firefly_connection *conn,
+					struct firefly_channel_types types)
+{
+	int64_t ret;
+	struct firefly_event_chan_open_auto_restrict *ev;
+
+	ev = FIREFLY_MALLOC(sizeof(*ev));
+	if (ev) {
+		ev->connection = conn;
+		ev->types = types;
+		ret = conn->event_queue->offer_event_cb(conn->event_queue,
+				FIREFLY_PRIORITY_HIGH,
+				firefly_channel_open_auto_restrict_event,
+				ev, 0, NULL);
+		if (ret < 0)
+			firefly_error(FIREFLY_ERROR_ALLOC, 1, "Could not add event.");
+	} else {
+		firefly_error(FIREFLY_ERROR_ALLOC, 1, "Could not add event.");
+	}
 }
 
 static int64_t create_channel_closed_event(struct firefly_channel *chan,
@@ -266,6 +270,7 @@ int handle_channel_request_event(void *event_arg)
 			firefly_protocol_channel_response res;
 
 			chan->remote_id = fecrr->chan_req.source_chan_id;
+			chan->auto_restrict = fecrr->chan_req.auto_restrict;
 			add_channel_to_connection(chan, conn);
 
 			res.dest_chan_id   = chan->remote_id;
@@ -277,6 +282,7 @@ int handle_channel_request_event(void *event_arg)
 				res.source_chan_id = CHANNEL_ID_NOT_SET;
 				firefly_channel_free(remove_channel_from_connection(chan, conn));
 			} else {
+				/* TODO: Decoder registrations. */
 				labcomm_encoder_ioctl(fecrr->conn->transport_encoder,
 						FIREFLY_LABCOMM_IOCTL_TRANS_SET_IMPORTANT_ID,
 						&chan->important_id);
@@ -325,6 +331,7 @@ static void firefly_channel_send_channel_ack(
 		int dest_chan_id)
 {
 	firefly_protocol_channel_ack ack;
+
 	if (chan != NULL) {
 		ack.ack = true;
 		ack.source_chan_id = chan->local_id;
@@ -349,12 +356,13 @@ int handle_channel_response_event(void *event_arg)
 
 	if (chan == NULL) {
 		firefly_unknown_dest(fecrr->conn, fecrr->chan_res.source_chan_id,
-				fecrr->chan_res.dest_chan_id);
+                                     fecrr->chan_res.dest_chan_id, "channel_response");
 	} else if (fecrr->chan_res.ack) {
 		if (chan->remote_id == CHANNEL_ID_NOT_SET) {
 			chan->remote_id = fecrr->chan_res.source_chan_id;
 			firefly_channel_ack(chan);
 			firefly_channel_internal_opened(chan);
+			firefly_channel_set_types(chan, chan->types);
 		}
 		firefly_channel_send_channel_ack(fecrr->conn, chan,
 				fecrr->chan_res.source_chan_id);
@@ -406,10 +414,10 @@ int handle_channel_ack_event(void *event_arg)
 					fecar->chan_ack.dest_chan_id);
 	if (chan != NULL) {
 		firefly_channel_ack(chan);
-		firefly_channel_internal_opened(chan);
+		firefly_channel_internal_opened(chan); /* TODO: Why? */
 	} else {
 		firefly_unknown_dest(fecar->conn, fecar->chan_ack.source_chan_id,
-				fecar->chan_ack.dest_chan_id);
+							 fecar->chan_ack.dest_chan_id, "channel_ack");
 	}
 	FIREFLY_FREE(event_arg);
 
@@ -473,29 +481,15 @@ int handle_data_sample_event(void *event_arg)
 	struct firefly_channel *chan;
 
 	fers = event_arg;
+
 	chan = find_channel_by_local_id(fers->conn, fers->data.dest_chan_id);
 
 	if (chan != NULL) {
+                /* FIXME: Undefined wrapping behaviour. */
 		int expected_seqno = chan->remote_seqno + 1;
 
 		if (expected_seqno <= 0) {
 			expected_seqno = 1;
-		}
-		if (!fers->data.important ||
-		    expected_seqno == fers->data.seqno)
-		{
-			size_t size;
-
-			size = fers->data.app_enc_data.n_0;
-			labcomm_decoder_ioctl(chan->proto_decoder,
-					FIREFLY_LABCOMM_IOCTL_READER_SET_BUFFER,
-					fers->data.app_enc_data.a,
-					size);
-
-			labcomm_decoder_decode_one(chan->proto_decoder);
-			if (fers->data.important) {
-				chan->remote_seqno = fers->data.seqno;
-			}
 		}
 		if (fers->data.important) {
 			firefly_protocol_ack ack_pkt;
@@ -507,9 +501,64 @@ int handle_data_sample_event(void *event_arg)
 					chan->conn->transport_encoder,
 					&ack_pkt);
 		}
+		if (!fers->data.important ||
+		    expected_seqno == fers->data.seqno)
+		{
+			size_t size;
+			int id;
+
+			size = fers->data.app_enc_data.n_0;
+			labcomm_decoder_ioctl(chan->proto_decoder,
+					FIREFLY_LABCOMM_IOCTL_READER_SET_BUFFER,
+					fers->data.app_enc_data.a,
+					size);
+
+			id = labcomm_decoder_decode_one(chan->proto_decoder);
+			if (fers->data.important) {
+				chan->remote_seqno = fers->data.seqno;
+			}
+			if (id == -ENOENT) {
+#if 0
+				if (!chan->auto_restrict) {
+					firefly_error(FIREFLY_ERROR_LABCOMM, 1,
+						      "Unkn. type. Use autorestr.");
+				} else {
+					firefly_error(FIREFLY_ERROR_LABCOMM, 1,
+						      "Wait for restr.");
+				}
+#endif
+			} else if (!chan->restricted_local &&
+				   chan->auto_restrict)
+			{
+				size_t n = 0;
+
+				for (; n < chan->n_decoder_types; n++) {
+					if (chan->seen_decoder_ids[n] == -1 ||
+					    chan->seen_decoder_ids[n] == id)
+					{
+						break;
+					}
+				}
+				chan->seen_decoder_ids[n] = id;
+				if (n == chan->n_decoder_types-1) {
+					FIREFLY_FREE(chan->seen_decoder_ids);
+					chan->seen_decoder_ids = NULL;
+					chan->n_decoder_types = 0; /* State-ish */
+					channel_auto_restr_send_ack(chan);
+				}
+			}
+		} else if (fers->data.important &&
+			   expected_seqno != fers->data.seqno)
+		{
+#if 0	/* This would probably be a good idea, but it breaks existing tests. */
+			firefly_error(FIREFLY_ERROR_PROTO_STATE, 1,
+				      "Received data flagged important with "
+				      "unexpected sequence number.");
+#endif
+		}
 	} else {
 		firefly_unknown_dest(fers->conn, fers->data.src_chan_id,
-				fers->data.dest_chan_id);
+							 fers->data.dest_chan_id, "data_sample");
 	}
 
 	FIREFLY_RUNTIME_FREE(fers->conn, fers->data.app_enc_data.a);
@@ -526,8 +575,11 @@ void handle_ack(firefly_protocol_ack *ack, void *context)
 	conn = context;
 	chan = find_channel_by_local_id(conn, ack->dest_chan_id);
 	if (chan == NULL) {
-		firefly_unknown_dest(conn, ack->src_chan_id, ack->dest_chan_id);
-	} else if (chan->current_seqno == ack->seqno && ack->seqno > 0) {
+		firefly_unknown_dest(conn, ack->src_chan_id, ack->dest_chan_id, "ack");
+	} else if ((chan->current_seqno == ack->seqno && ack->seqno > 0) ||
+		   (chan->auto_restrict && chan->restricted_local &&
+		    ack->seqno == FIREFLY_PROTO_ACK_RESTRICT_ACK))
+	{
 		firefly_channel_ack(chan);
 	}
 }
@@ -643,7 +695,7 @@ int channel_restrict_request_event(void *context)
 	chan = find_channel_by_local_id(conn, earg->rreq.dest_chan_id);
 	if (!chan) {
 		firefly_unknown_dest(conn, earg->rreq.source_chan_id,
-				earg->rreq.dest_chan_id);
+							 earg->rreq.dest_chan_id, "channel_restrict_request");
 		FIREFLY_FREE(earg);
 		return -1;
 	}
@@ -721,30 +773,108 @@ int channel_restrict_ack_event(void *context)
 	chan = find_channel_by_local_id(conn, earg->rack.dest_chan_id);
 	if (!chan) {
 		firefly_unknown_dest(conn, earg->rack.source_chan_id,
-				earg->rack.dest_chan_id);
+							 earg->rack.dest_chan_id, "restrict_ack");
 		FIREFLY_FREE(context);
 		return -1;
 	}
-	if (earg->rack.restricted) {
-		if (!chan->restricted_remote && chan->restricted_local &&
-				chan->conn->actions &&
-				chan->conn->actions->channel_restrict_info) {
-			conn->actions->channel_restrict_info(chan, RESTRICTED);
-		} else if (!chan->restricted_local) {
-			firefly_channel_raise(chan, NULL,
-					FIREFLY_ERROR_PROTO_STATE, "Inconsistent restrict state.");
-		}
-	} else {
-		enum restriction_transition t;
+	if (chan->auto_restrict) {
+		firefly_protocol_ack ack_pkt;
 
-		t = chan->restricted_local ? RESTRICTION_DENIED : UNRESTRICTED;
-		if (conn->actions && conn->actions->channel_restrict_info)
-			conn->actions->channel_restrict_info(chan, t);
-		chan->restricted_local = false;
+		/* TODO: Make sure user is not notified ico duplicate. */
+		chan->restricted_remote = true; /* TODO: Use member. */
+		channel_auto_restr_check_complete(chan);
+
+		ack_pkt.dest_chan_id = chan->remote_id;
+		ack_pkt.src_chan_id = chan->local_id;
+		ack_pkt.seqno = FIREFLY_PROTO_ACK_RESTRICT_ACK;
+		labcomm_encode_firefly_protocol_ack(
+			chan->conn->transport_encoder,
+			&ack_pkt);
+	} else {
+		if (earg->rack.restricted) {
+			if (!chan->restricted_remote && chan->restricted_local &&
+			    chan->conn->actions &&
+			    chan->conn->actions->channel_restrict_info)
+			{
+				conn->actions->channel_restrict_info(chan,
+								     RESTRICTED);
+			} else if (!chan->restricted_local) {
+				firefly_channel_raise(chan, NULL,
+					FIREFLY_ERROR_PROTO_STATE,
+					"Inconsistent restrict state.");
+			}
+		} else {
+			enum restriction_transition t;
+
+			t = chan->restricted_local ?
+				RESTRICTION_DENIED : UNRESTRICTED;
+			if (conn->actions && conn->actions->channel_restrict_info)
+				conn->actions->channel_restrict_info(chan, t);
+			chan->restricted_local = false;
+		}
 	}
 	chan->restricted_remote = earg->rack.restricted;
 	firefly_channel_ack(chan);
 	FIREFLY_FREE(earg);
 
 	return 0;
+}
+
+#if 0
+struct firefly_channel_types *firefly_channel_types_new(void)
+{
+	struct firefly_channel_types *ct;
+
+	ct = FIREFLY_MALLOC(sizeof(*ct));
+	if (ct) {
+		ct->decoder_types = NULL;
+		ct->encoder_types = NULL;
+	}
+	return ct;
+}
+
+void firefly_channel_types_free(struct firefly_channel_types *ct)
+{
+	FIREFLY_FREE(ct);
+}
+#endif
+
+void firefly_channel_types_add_decoder_type(
+	struct firefly_channel_types *types,
+	firefly_labcomm_decoder_register_function register_func,
+	firefly_labcomm_handler_function handler,
+	void *context)
+{
+	struct firefly_channel_decoder_type *dt;
+
+	dt = FIREFLY_MALLOC(sizeof(*dt));
+	if (dt) {
+		dt->register_func = register_func;
+		dt->handler = handler;
+		dt->context = context;
+		dt->next = types->decoder_types;
+		types->decoder_types = dt;
+	}
+	/* TODO: Error handl. */
+}
+
+void firefly_channel_types_add_encoder_type(
+	struct firefly_channel_types *types,
+	firefly_labcomm_encoder_register_function register_func)
+{
+	struct firefly_channel_encoder_type *et;
+
+	et = FIREFLY_MALLOC(sizeof(*et));
+	if (et) {
+		et->register_func = register_func;
+		et->next = types->encoder_types;
+		types->encoder_types = et;
+	}
+	/* TODO: Error handl. */
+}
+
+void firefly_channel_set_types(struct firefly_channel *chan,
+			       struct firefly_channel_types types)
+{
+        chan->types = types;
 }

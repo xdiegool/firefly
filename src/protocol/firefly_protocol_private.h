@@ -18,7 +18,7 @@
 /**
  * @brief The size of the writer buffer used by Labcomm.
  */
-#define BUFFER_SIZE			(128)
+#define BUFFER_SIZE			(1500)
 
 /**
  * @defgroup conn_state Connection State Values
@@ -307,6 +307,11 @@ struct firefly_channel {
 					   			channel. */
 	bool restricted_local;		/**< Neg. initiated locally.   */
 	bool restricted_remote;	/**< Neg. initiated remotely.  */
+	bool auto_restrict;
+	struct firefly_channel_encoder_type *enc_types;
+	size_t n_decoder_types;
+	int *seen_decoder_ids;
+	struct firefly_channel_types types; /**< Holds types until after channel handshake. */
 };
 
 /**
@@ -822,5 +827,30 @@ bool firefly_channel_enqueue_important(struct firefly_channel *chan,
 
 struct labcomm_memory *firefly_labcomm_memory_new(
 		struct firefly_connection *conn);
+
 void firefly_labcomm_memory_free(struct labcomm_memory *mem);
+
+/**
+ * @brief The event argument of firefly_channel_open_auto_restrict_event.
+ */
+struct firefly_event_chan_open_auto_restrict {
+	struct firefly_connection *connection;
+	struct firefly_channel_types types;
+};
+
+/**
+ * @brief The event performing the opening of a channel on the
+ * connection, with automatic restrict for race-free type registration.
+ *
+ * @param event_arg A firefly_event_chan_open.
+ * @return Integer idicating the resutlt of the event.
+ * @retval Negative integer upon error.
+ * @see #firefly_channel_open_auto_restrict
+ */
+int firefly_channel_open_auto_restrict_event(void *event_arg);
+
+void channel_auto_restr_send_ack(struct firefly_channel *chan);
+
+void channel_auto_restr_check_complete(struct firefly_channel *chan);
+
 #endif

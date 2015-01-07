@@ -22,7 +22,8 @@ set_source_files_properties(${Firefly_PROJECT_DIR}/gen/firefly_protocol.c PROPER
 add_library(firefly ${firefly_src_files})
 
 # If not cross compiling, add firefly with error lib target:
-if (NOT CMAKE_CROSSCOMPILING)
+#if (NOT CMAKE_CROSSCOMPILING)
+if (NOT ARM_COMPILING)
 	add_library(firefly-werr
 		${firefly_src_files}
 		${Firefly_SOURCE_DIR}/utils/firefly_errors.c
@@ -32,7 +33,8 @@ if (NOT CMAKE_CROSSCOMPILING)
 	set(firefly_install_werr
 		firefly-werr
 	)
-endif (NOT CMAKE_CROSSCOMPILING)
+#endif (NOT CMAKE_CROSSCOMPILING)
+endif (NOT ARM_COMPILING)
 
 # Add libs to install target:
 install(TARGETS ${firefly_install_werr} firefly
