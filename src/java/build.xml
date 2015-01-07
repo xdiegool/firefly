@@ -36,6 +36,7 @@
 		  <classpath>
 			<pathelement location="${labcomm}" />
 		  </classpath>
+		  <compilerarg value="-Xlint"/>
 		</javac>
 	</target>
 

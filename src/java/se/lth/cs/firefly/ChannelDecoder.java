@@ -9,10 +9,13 @@ import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
 
+/**
+ * Subclass of {@link se.lth.control.labcomm.DecoderChannel} to the
+ * decode data unpacked from a Firefly data_sample.
+ */
 class ChannelDecoder extends DecoderChannel {
 	private ReplaceableByteArrayInputStream is;
 
-	// Used to decode the datagram unpacked from an firefly data_sample.
 	public ChannelDecoder() throws IOException {
 		// Bypass version assert. TODO: What does this mean?
 		this(new ReplaceableByteArrayInputStream(Constant.CURRENT_VERSION.getBytes()));

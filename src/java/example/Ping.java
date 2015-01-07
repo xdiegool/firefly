@@ -9,58 +9,94 @@ import lc_gen.data;
 
 import java.io.IOException;
 
-public class Ping
-	implements Runnable, FireflyApplication, data.Handler
-{
-	// private boolean connOpen;
-	// private boolean chanOpen;
+public class Ping implements Runnable, FireflyApplication, data.Handler {
+	/**
+	 * The channel used to communicate with Pong.
+	 */
 	private Channel chan;
-	private Connection conn;
-	private int echo = -1;
 
-	// Callbacks
+	/**
+	 * Flag to indicate whether we've received data back from Pong or not.
+	 */
+	private boolean echoed;
 
+	/* BEGIN FIREFLY CHANNEL CALLBACKS */
 	// TODO: Enforce convention regarding channel set up in
 	//       client-server scenario?
-	public boolean channelAccept(Connection connection) { return false; }
-	public void channelOpened(Channel chan) { setChan(chan); }
-	public void channelClosed(Channel chan) { setChan(null); }
-	public void channelRestrict(Channel chan) {} // Not used.
-	public void channelStatus(Channel chan) {}	 // Not used.
-	public void channelError(Channel chan) { Debug.errx("Chan. err."); }
-	public void connectionError(Connection conn) { Debug.errx("Conn. err."); }
 
+	@Override
+	public boolean channelAccept(Connection connection) {
+		return false;
+	}
 
+	@Override
+	public synchronized void channelOpened(Channel chan) {
+		this.chan = chan;
+		notifyAll();
+	}
+
+	@Override
+	public void channelClosed(Channel chan) {
+		this.chan = null;
+	}
+
+	@Override
+	public void channelRestrict(Channel chan) {
+		// Not used.
+	}
+
+	@Override
+	public void channelStatus(Channel chan) {
+		// Not used.
+	}
+
+	@Override
+	public void channelError(Channel chan) {
+		Debug.errx("Chan. err.");
+	}
+
+	@Override
+	public void connectionError(Connection conn) {
+		Debug.errx("Conn. err.");
+	}
+	/* END FIREFLY CHANNEL CALLBACKS */
+
+	/**
+	 * Callback for LabComm data.
+	 */
+	@Override
+	public synchronized void handle_data(int value) {
+		System.out.println("Got data:" + value);
+		echoed = true;
+		notifyAll();
+	}
+
+	@Override
 	public void run() {
 		try {
-			reallyRun();
+			internalRun();
 		} catch (InterruptedException e) {
 		} catch (IOException e) {
 		}
 	}
 
-	private synchronized void setChan(Channel chan) {
-		this.chan = chan;
-		notifyAll();
-	}
-
 	private synchronized void waitForChan() throws InterruptedException {
-		while (this.chan == null) wait();
+		while (chan == null) {
+			wait();
+		}
 	}
 
 	private synchronized void waitForEcho() throws InterruptedException {
-		while (this.echo == -1) wait();
+		while (!echoed){
+			wait();
+		}
 	}
 
-
-	public synchronized void handle_data(int value) {
-		System.out.println("Got data:" + value);
-		notifyAll();
-	}
-
-	private void reallyRun() throws InterruptedException, IOException {
+	private void internalRun() throws InterruptedException, IOException {
 		TCPConnectionMultiplexer connMux = new TCPConnectionMultiplexer(this);
 		Connection conn = connMux.openConnection(null, 8080); // Loopback
+
+		/* Open the channel and wait for it to complete. */
 		conn.openChannel();
 		waitForChan();
 
@@ -68,13 +104,18 @@ public class Ping
 		Encoder enc = chan.getEncoder();
 		Decoder dec = chan.getDecoder();
 
+		/* Register the data type on the encoder and decoder. */
 		data.register(enc);
-		data.register(dec, this); // Reg. handler above.
+		data.register(dec, this);
+
+		/* Send some data on the channel and wait for reply. */
 		data.encode(enc, 123);
 		waitForEcho();
-		this.chan.close();
 
+		/* Close the channel since we're done. */
+		chan.close();
 	}
+
 	public static void main(String[] args) {
 		new Ping().run();
 	}

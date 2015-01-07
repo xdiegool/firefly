@@ -13,8 +13,7 @@ class ConnectionDecoder extends DecoderChannel {
 	}
 
 	public void shortCircuit(int index, SampleDispatcher d)
-		throws IOException
-	{
+		throws IOException {
 		def_registry.add(index, d.getName(), d.getSignature());
 	}
 }
