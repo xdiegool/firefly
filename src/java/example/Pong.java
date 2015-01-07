@@ -2,8 +2,8 @@ package example;
 
 import se.lth.cs.firefly.*;
 
-import se.lth.control.labcomm.LabCommEncoder;
-import se.lth.control.labcomm.LabCommDecoder;
+import se.lth.control.labcomm.Encoder;
+import se.lth.control.labcomm.Decoder;
 
 import lc_gen.data;
 
@@ -60,8 +60,11 @@ public class Pong implements Runnable, FireflyApplication, FireflyServer, data.H
 		TCPConnectionMultiplexer connMux = new TCPConnectionMultiplexer(this, 8080);
 		waitForChannel();
 		System.out.println("Got chan");
-		LabCommDecoder dec = chan.getDecoder();
-		LabCommEncoder enc = chan.getEncoder();
+
+        /* Get encoder and decoder from channel. */
+		final Decoder dec = chan.getDecoder();
+		final Encoder enc = chan.getEncoder();
+
 		data.register(enc);
 		data.register(dec, this); // Reg. handler above.
 		waitForData();

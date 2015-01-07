@@ -2,8 +2,8 @@ package se.lth.cs.firefly;
 
 import genproto.*;
 
-import se.lth.control.labcomm.LabCommEncoderChannel;
-import se.lth.control.labcomm.LabCommDecoderChannel;
+import se.lth.control.labcomm.EncoderChannel;
+import se.lth.control.labcomm.DecoderChannel;
 
 import java.net.Socket;
 import java.io.OutputStream;

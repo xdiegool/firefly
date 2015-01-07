@@ -1,20 +1,20 @@
 package se.lth.cs.firefly;
 
-import se.lth.control.labcomm.LabCommDecoderChannel;
-import se.lth.control.labcomm.LabCommDispatcher;
+import se.lth.control.labcomm.DecoderChannel;
+import se.lth.control.labcomm.SampleDispatcher;
 
 import java.io.InputStream;
 import java.io.IOException;
 
-class ConnectionDecoder extends LabCommDecoderChannel {
+class ConnectionDecoder extends DecoderChannel {
 
 	public ConnectionDecoder(InputStream in) throws IOException {
 		super(in);
 	}
 
-	public void shortCircuit(int index, LabCommDispatcher d)
+	public void shortCircuit(int index, SampleDispatcher d)
 		throws IOException
 	{
-		registry.add(index, d.getName(), d.getSignature());
+		def_registry.add(index, d.getName(), d.getSignature());
 	}
 }

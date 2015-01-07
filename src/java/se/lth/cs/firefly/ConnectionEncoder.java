@@ -1,12 +1,12 @@
 package se.lth.cs.firefly;
 
-import se.lth.control.labcomm.LabCommEncoderChannel;
-import se.lth.control.labcomm.LabCommDispatcher;
+import se.lth.control.labcomm.EncoderChannel;
+import se.lth.control.labcomm.SampleDispatcher;
 
 import java.io.OutputStream;
 import java.io.IOException;
 
-class ConnectionEncoder extends LabCommEncoderChannel {
+class ConnectionEncoder extends EncoderChannel {
 	ConnectionDecoder dec;	// Decoder to short circuit registration to.
 
 	public ConnectionEncoder(OutputStream out, ConnectionDecoder dec)
@@ -16,9 +16,9 @@ class ConnectionEncoder extends LabCommEncoderChannel {
 		this.dec = dec;
 	}
 
-	public void register(LabCommDispatcher d) throws IOException
+	public void register(SampleDispatcher d) throws IOException
 	{
-		int index = registry.add(d);
+		int index = def_registry.add(d);
 		dec.shortCircuit(index, d);
 	}
 }

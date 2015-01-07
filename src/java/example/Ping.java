@@ -2,8 +2,8 @@ package example;
 
 import se.lth.cs.firefly.*;
 
-import se.lth.control.labcomm.LabCommEncoder;
-import se.lth.control.labcomm.LabCommDecoder;
+import se.lth.control.labcomm.Encoder;
+import se.lth.control.labcomm.Decoder;
 
 import lc_gen.data;
 
@@ -63,8 +63,11 @@ public class Ping
 		Connection conn = connMux.openConnection(null, 8080); // Loopback
 		conn.openChannel();
 		waitForChan();
-		LabCommEncoder enc = this.chan.getEncoder();
-		LabCommDecoder dec = this.chan.getDecoder();
+
+		/* Get encoder and decoder from the channel. */
+		Encoder enc = chan.getEncoder();
+		Decoder dec = chan.getDecoder();
+
 		data.register(enc);
 		data.register(dec, this); // Reg. handler above.
 		data.encode(enc, 123);

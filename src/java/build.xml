@@ -7,8 +7,8 @@
 	<property name="pingjar" value="${dist}/ping.jar" />
 
 	<!-- TODO: Include these files later. -->
-	<property name="labcomm" value="../../../labcomm.devel/lib/java/labcomm.jar" />
-	<property name="labcommc" value="../../../labcomm.devel/compiler/labComm.jar" />
+	<property name="labcomm" value="lib/labcomm-ebc255b.jar" />
+	<property name="labcommc" value="../../tools/labcomm_2014_compiler.jar" />
 
 	<property name="lcproto" value=" ../../lc/firefly_protocol.lc" />
 	<property name="gendir" value="genproto" />
@@ -23,6 +23,7 @@
 		<delete dir="${build}" />
 		<delete dir="${dist}" />
 		<delete dir="${gendir}" />
+		<delete dir="${gendir_pp}" />
 	</target>
 
 	<target name="init">

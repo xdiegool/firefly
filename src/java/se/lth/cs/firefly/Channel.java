@@ -12,7 +12,7 @@ public class Channel {
 	private static final int ERROR				= -1;
 
 	private int state;
-	private LabCommEncoder encoder;
+	private Encoder encoder;
 	private ChannelDecoder decoder;
 	private Connection conn;
 
@@ -25,10 +25,10 @@ public class Channel {
 		this.conn = conn;
 	}
 
-	public LabCommEncoder getEncoder()	{ return encoder;  }
-	public LabCommDecoder getDecoder()	{ return decoder;  }
-	public int            getLocalID()	{ return localID;  }
-	public int            getRemoteID()	{ return remoteID; }
+	public Encoder getEncoder()	{ return encoder;  }
+	public Decoder getDecoder()	{ return decoder;  }
+	public int     getLocalID()	{ return localID;  }
+	public int     getRemoteID()	{ return remoteID; }
 
 	public void receivedData(byte[] data) throws Exception {
 		decoder.decodeData(data);
