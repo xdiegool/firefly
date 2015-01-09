@@ -1,4 +1,8 @@
-package se.lth.cs.firefly;
+package se.lth.cs.firefly.transport;
+
+import se.lth.cs.firefly.FireflyApplication;
+import se.lth.cs.firefly.FireflyServer;
+import se.lth.cs.firefly.util.Debug;
 
 import java.net.ServerSocket;
 import java.util.ArrayList;

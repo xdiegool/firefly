@@ -1,4 +1,6 @@
-package se.lth.cs.firefly;
+package se.lth.cs.firefly.protocol;
+
+import se.lth.cs.firefly.transport.Connection;
 
 import se.lth.control.labcomm.*;
 

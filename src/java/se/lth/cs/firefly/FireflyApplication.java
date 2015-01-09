@@ -1,5 +1,8 @@
 package se.lth.cs.firefly;
 
+import se.lth.cs.firefly.protocol.Channel;
+import se.lth.cs.firefly.transport.Connection;
+
 public interface FireflyApplication {
 	// Reduce.
 	// Want blocking ops?

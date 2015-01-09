@@ -1,6 +1,10 @@
 package example;
 
-import se.lth.cs.firefly.*;
+import se.lth.cs.firefly.FireflyApplication;
+import se.lth.cs.firefly.protocol.Channel;
+import se.lth.cs.firefly.transport.Connection;
+import se.lth.cs.firefly.transport.TCPConnectionMultiplexer;
+import se.lth.cs.firefly.util.Debug;
 
 import se.lth.control.labcomm.Encoder;
 import se.lth.control.labcomm.Decoder;

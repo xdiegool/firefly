@@ -1,4 +1,6 @@
-package se.lth.cs.firefly;
+package se.lth.cs.firefly.transport;
+
+import se.lth.cs.firefly.protocol.Channel;
 
 import se.lth.control.labcomm.*;
 

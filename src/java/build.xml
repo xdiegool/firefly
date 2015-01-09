@@ -32,11 +32,11 @@
 	</target>
 
 	<target name="compile" depends="init,lcProtoGen,lcPingPongGen">
-		<javac srcdir=".:" destdir="${build}" includeantruntime="false">
+		<javac srcdir=".:" destdir="${build}" includeantruntime="false" debug="true" debuglevel="lines,vars,source">
 		  <classpath>
 			<pathelement location="${labcomm}" />
 		  </classpath>
-		  <compilerarg value="-Xlint"/>
+		  <!-- <compilerarg value="-Xlint"/>-->
 		</javac>
 	</target>
 

@@ -1,4 +1,4 @@
-package se.lth.cs.firefly;
+package se.lth.cs.firefly.util;
 
 public class Debug {
 	public static void log(String msg) {

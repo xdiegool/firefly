@@ -1,6 +1,10 @@
 package example;
 
-import se.lth.cs.firefly.*;
+import se.lth.cs.firefly.FireflyServer;
+import se.lth.cs.firefly.protocol.Channel;
+import se.lth.cs.firefly.transport.Connection;
+import se.lth.cs.firefly.transport.TCPConnectionMultiplexer;
+import se.lth.cs.firefly.util.Debug;
 
 import se.lth.control.labcomm.Encoder;
 import se.lth.control.labcomm.Decoder;
@@ -9,7 +13,7 @@ import lc_gen.data;
 
 import java.io.IOException;
 
-public class Pong implements Runnable, FireflyApplication, FireflyServer, data.Handler {
+public class Pong implements Runnable, FireflyServer, data.Handler {
 	/**
 	 * The channel used to communicate with Ping.
 	 */

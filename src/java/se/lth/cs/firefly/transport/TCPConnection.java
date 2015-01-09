@@ -1,6 +1,10 @@
-package se.lth.cs.firefly;
+package se.lth.cs.firefly.transport;
 
 import genproto.*;
+
+import se.lth.cs.firefly.FireflyApplication;
+import se.lth.cs.firefly.protocol.Channel;
+import se.lth.cs.firefly.util.Debug;
 
 import se.lth.control.labcomm.EncoderChannel;
 import se.lth.control.labcomm.DecoderChannel;
@@ -152,6 +156,7 @@ public class TCPConnection extends Connection implements
 		chan.receivedData(ds.app_enc_data);
 	}
 
+	// TODO: Should Reader exist in the common Connection super class?
 	private class Reader extends Thread {
 		private ConnectionDecoder dec;
 
@@ -164,6 +169,7 @@ public class TCPConnection extends Connection implements
 			while (!interrupted()) {
 				try {
 					dec.runOne();
+					Debug.log("Got data");
 					} catch (java.io.EOFException e) {
 						System.out.println("Decoder reached end of file.");
 					} catch (Exception e) {

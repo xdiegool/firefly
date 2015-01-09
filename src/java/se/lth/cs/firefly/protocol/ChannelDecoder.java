@@ -1,4 +1,4 @@
-package se.lth.cs.firefly;
+package se.lth.cs.firefly.protocol;
 
 import se.lth.cs.firefly.util.ReplaceableByteArrayInputStream;
 

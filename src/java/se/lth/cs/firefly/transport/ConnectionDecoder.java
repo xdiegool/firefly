@@ -1,4 +1,4 @@
-package se.lth.cs.firefly;
+package se.lth.cs.firefly.transport;
 
 import se.lth.control.labcomm.DecoderChannel;
 import se.lth.control.labcomm.SampleDispatcher;
