@@ -2,50 +2,68 @@ package example;
 
 import se.lth.cs.firefly.FireflyApplication;
 import se.lth.cs.firefly.protocol.Channel;
+import se.lth.cs.firefly.protocol.TypeList;
 import se.lth.cs.firefly.transport.Connection;
 import se.lth.cs.firefly.transport.TCPConnectionMultiplexer;
 import se.lth.cs.firefly.util.Debug;
-
-import se.lth.control.labcomm.Encoder;
-import se.lth.control.labcomm.Decoder;
 
 import lc_gen.data;
 
 import java.io.IOException;
 
-public class Ping implements Runnable, FireflyApplication, data.Handler {
-	/**
-	 * The channel used to communicate with Pong.
-	 */
-	private Channel chan;
-
-	/**
-	 * Flag to indicate whether we've received data back from Pong or not.
-	 */
-	private boolean echoed;
+public class Ping extends AbstractPingPong implements FireflyApplication, data.Handler {
+	private static final int TEST_CHAN_OPENED     = 0;
+	private static final int TEST_CHAN_RESTRICTED = TEST_CHAN_OPENED     + 1;
+	private static final int TEST_DATA_SEND       = TEST_CHAN_RESTRICTED + 1;
+	private static final int TEST_DATA_RECEIVE    = TEST_DATA_SEND       + 1;
+	private static final int TEST_CHAN_CLOSE      = TEST_DATA_RECEIVE    + 1;
+	private static final int PING_TEST_DONE       = TEST_CHAN_CLOSE      + 1;
+	private static final int PING_NBR_TESTS       = PING_TEST_DONE       + 1;
 
 	/* BEGIN FIREFLY CHANNEL CALLBACKS */
 	// TODO: Enforce convention regarding channel set up in
 	//       client-server scenario?
 
+	public Ping() {
+		TEST_NAMES = new String[]{
+			"Open channel (requesting party)",
+			"Restrict channel (requesting party)",
+			"Send data",
+			"Receive data",
+			"Close channel",
+			"Ping done"
+		};
+		testResults = new boolean[PING_NBR_TESTS];
+	}
+
 	@Override
-	public boolean channelAccept(Connection connection) {
+	public boolean channelAccept(Channel chan) {
+		System.err.println("Someone tried to open channel to ping, shouldn't happen!");
+		System.exit(1);
 		return false;
 	}
 
 	@Override
 	public synchronized void channelOpened(Channel chan) {
+		testResults[TEST_CHAN_OPENED] = true;
 		this.chan = chan;
-		notifyAll();
 	}
 
 	@Override
 	public void channelClosed(Channel chan) {
+		testResults[TEST_CHAN_CLOSE] = true;
 		this.chan = null;
 	}
 
 	@Override
-	public void channelRestrict(Channel chan) {
+	public boolean channelRestricted(Channel chan) {
+		return true;
+	}
+
+	@Override
+	public synchronized void channelRestrictInfo(Channel chan) {
+		testResults[TEST_CHAN_RESTRICTED] = chan.isRestricted();
+		notifyAll();
 		// Not used.
 	}
 
@@ -70,54 +88,35 @@ public class Ping implements Runnable, FireflyApplication, data.Handler {
 	 */
 	@Override
 	public synchronized void handle_data(int value) {
-		System.out.println("Got data:" + value);
-		echoed = true;
+		System.out.println("PING: Got data: " + value);
+		testResults[TEST_DATA_RECEIVE] = value == PONG_DATA;
+		dataReceived = true;
 		notifyAll();
 	}
 
 	@Override
-	public void run() {
-		try {
-			internalRun();
-		} catch (InterruptedException e) {
-		} catch (IOException e) {
-		}
-	}
+	protected void internalRun() throws InterruptedException, IOException {
+		final TCPConnectionMultiplexer connMux = new TCPConnectionMultiplexer(this);
+		final Connection conn = connMux.openConnection(null, 8080); // Loopback
 
-	private synchronized void waitForChan() throws InterruptedException {
-		while (chan == null) {
-			wait();
-		}
-	}
-
-	private synchronized void waitForEcho() throws InterruptedException {
-		while (!echoed){
-			wait();
-		}
-	}
-
-	private void internalRun() throws InterruptedException, IOException {
-		TCPConnectionMultiplexer connMux = new TCPConnectionMultiplexer(this);
-		Connection conn = connMux.openConnection(null, 8080); // Loopback
+		final TypeList types = new TypeList();
+		types.addEncoderType(new data());
+		types.addDecoderType(new data(), this);
 
 		/* Open the channel and wait for it to complete. */
-		conn.openChannel();
-		waitForChan();
-
-		/* Get encoder and decoder from the channel. */
-		Encoder enc = chan.getEncoder();
-		Decoder dec = chan.getDecoder();
-
-		/* Register the data type on the encoder and decoder. */
-		data.register(enc);
-		data.register(dec, this);
+		conn.openChannel(types);
+		waitForRestrict();
 
 		/* Send some data on the channel and wait for reply. */
-		data.encode(enc, 123);
-		waitForEcho();
+		data.encode(chan.getEncoder(), PING_DATA);
+		testResults[TEST_DATA_SEND] = true;
+		waitForData();
 
 		/* Close the channel since we're done. */
 		chan.close();
+		conn.close();
+
+		testResults[PING_TEST_DONE] = true;
 	}
 
 	public static void main(String[] args) {

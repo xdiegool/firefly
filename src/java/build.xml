@@ -1,5 +1,6 @@
 <project name="Firefly" basedir="." default="jar">
 	<property name="build" value="build" />
+	<property name="doc" value="${build}/doc" />
 	<property name="dist" value="dist" />
 	<property name="ffjar" value="${dist}/firefly.jar" />
 
@@ -28,6 +29,7 @@
 
 	<target name="init">
 		<mkdir dir="${build}" />
+		<mkdir dir="${doc}" />
 		<mkdir dir="${dist}" />
 	</target>
 
@@ -52,6 +54,14 @@
         <java jar="${labcommc}" fork="true">
 		  <arg line="--java=${gendir} --javapackage=${genpkg} ${lcproto}" />
 		</java>
+	</target>
+
+	<target name="doc">
+		<javadoc sourcepath="." destdir="${doc}"
+			packagenames="se.lth.cs.firefly,se.lth.cs.firefly.*,genproto"
+			classpath="${labcomm}">
+			<link href="http://docs.oracle.com/javase/7/docs/api/" />
+		</javadoc>
 	</target>
 
 	<!-- Example application -->

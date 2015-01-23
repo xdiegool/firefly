@@ -1,5 +1,7 @@
 package se.lth.cs.firefly.transport;
 
+import se.lth.cs.firefly.util.Debug;
+
 import se.lth.control.labcomm.DecoderChannel;
 import se.lth.control.labcomm.SampleDispatcher;
 
@@ -12,8 +14,7 @@ class ConnectionDecoder extends DecoderChannel {
 		super(in);
 	}
 
-	public void shortCircuit(int index, SampleDispatcher d)
-		throws IOException {
+	public void shortCircuit(int index, SampleDispatcher d) throws IOException {
 		def_registry.add(index, d.getName(), d.getSignature());
 	}
 }

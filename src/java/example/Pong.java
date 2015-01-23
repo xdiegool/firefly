@@ -2,47 +2,78 @@ package example;
 
 import se.lth.cs.firefly.FireflyServer;
 import se.lth.cs.firefly.protocol.Channel;
+import se.lth.cs.firefly.protocol.TypeList;
 import se.lth.cs.firefly.transport.Connection;
 import se.lth.cs.firefly.transport.TCPConnectionMultiplexer;
 import se.lth.cs.firefly.util.Debug;
-
-import se.lth.control.labcomm.Encoder;
-import se.lth.control.labcomm.Decoder;
 
 import lc_gen.data;
 
 import java.io.IOException;
 
-public class Pong implements Runnable, FireflyServer, data.Handler {
-	/**
-	 * The channel used to communicate with Ping.
-	 */
-	private Channel chan;
+public class Pong extends AbstractPingPong implements FireflyServer, data.Handler {
+	private static final int TEST_CONNECTION_OPENED = 0;
+	private static final int TEST_CHAN_RECEIVED     = TEST_CONNECTION_OPENED + 1;
+	private static final int TEST_CHAN_OPENED       = TEST_CHAN_RECEIVED     + 1;
+	private static final int TEST_CHAN_RESTRICTED   = TEST_CHAN_OPENED       + 1;
+	private static final int TEST_DATA_RECEIVED     = TEST_CHAN_RESTRICTED   + 1;
+	private static final int TEST_DATA_SEND         = TEST_DATA_RECEIVED     + 1;
+	private static final int TEST_CHAN_CLOSED       = TEST_DATA_SEND         + 1;
+	private static final int PONG_TEST_DONE         = TEST_CHAN_CLOSED       + 1;
+	private static final int PONG_NBR_TESTS         = PONG_TEST_DONE         + 1;
 
-	/**
-	 * Flag to indicate whether we've received data from Ping or not.
-	 */
-	private boolean dataReceived;
+	private TCPConnectionMultiplexer connMux;
+
+	public Pong() {
+		TEST_NAMES = new String[]{
+			"Connection opened",
+			"Received channel (responding party)",
+			"Opened channel (responding party)",
+			"Restricted channel (responding party)",
+			"Received data",
+			"Send data",
+			"Channel closed",
+			"Pong done"
+		};
+		testResults = new boolean[PONG_NBR_TESTS];
+	}
 
 	/* BEGIN FIREFLY CHANNEL CALLBACKS */
 	@Override
-	public boolean channelAccept(Connection connection) {
+	public boolean channelAccept(Channel chan) {
+		final TypeList types = new TypeList();
+		types.addEncoderType(new data());
+		types.addDecoderType(new data(), this);
+
+		chan.setChannelTypes(types);
+
+		testResults[TEST_CHAN_RECEIVED] = true;
+
 		return true;
 	}
 
 	@Override
 	public synchronized void channelOpened(Channel chan) {
 		this.chan = chan;
-		Debug.log("Got channel.");
+		testResults[TEST_CHAN_OPENED] = true;
 		notifyAll();
 	}
 
 	@Override
-	public void channelClosed(Channel chan) {
+	public synchronized void channelClosed(Channel chan) {
+		this.chan = null;
+		testResults[TEST_CHAN_CLOSED] = true;
+		notifyAll();
 	}
 
 	@Override
-	public void channelRestrict(Channel chan) {
+	public boolean channelRestricted(Channel chan) {
+		return true;
+	}
+
+	@Override
+	public void channelRestrictInfo(Channel chan) {
+		testResults[TEST_CHAN_RESTRICTED] = chan.isRestricted();
 	}
 
 	@Override
@@ -65,54 +96,47 @@ public class Pong implements Runnable, FireflyServer, data.Handler {
 	}
 
 	@Override
-	public void connectionOpened() {
+	public void connectionOpened(Connection conn) {
+		testResults[TEST_CONNECTION_OPENED] = true;
 	}
 	/* END FIREFLY CONNECTION CALLBACKS */
-
-	@Override
-	public void run() {
-		try {
-			internalRun();
-		} catch (IOException e) {
-			Debug.errx("IO broke: " + e);
-		} catch (InterruptedException e) {
-		}
-	}
 
 	private synchronized void waitForChannel() throws InterruptedException {
 		while (chan == null) wait();
 	}
 
+	private synchronized void waitForClose() throws InterruptedException {
+		while (chan != null) wait();
+	}
+
 	@Override
 	public synchronized void handle_data(int value) throws IOException {
-		data.encode(chan.getEncoder(), value);
+		Debug.log("Got data! " + value);
+		testResults[TEST_DATA_RECEIVED] = value == PING_DATA;
+		data.encode(chan.getEncoder(), PONG_DATA);
+		testResults[TEST_DATA_SEND] = true;
 		dataReceived = true;
 		notifyAll();
 	}
 
-	private synchronized void waitForData() throws InterruptedException {
-		while (!dataReceived) wait();
-	}
-
-	private void internalRun() throws IOException, InterruptedException {
+	protected void internalRun() throws IOException, InterruptedException {
 		/* Start listening for connections. */
-		final TCPConnectionMultiplexer connMux = new TCPConnectionMultiplexer(this, 8080);
+		connMux = new TCPConnectionMultiplexer(this, 8080);
 
 		/* Wait for a channel to be opened. */
 		waitForChannel();
-		System.out.println("Got chan");
-
-		/* Get encoder and decoder from channel. */
-		final Decoder dec = chan.getDecoder();
-		final Encoder enc = chan.getEncoder();
-
-		/* Register data type on encoder and decoder. */
-		data.register(enc);
-		data.register(dec, this); // Reg. handler above.
 
 		/* Wait for some data to arrive. */
 		waitForData();
-		System.out.println("Got data");
+
+		waitForClose();
+		try {
+			connMux.close();
+		} catch (IOException e) {
+			Debug.log(e.toString());
+		}
+
+		testResults[PONG_TEST_DONE] = true;
 	}
 
 	public static void main(String[] args) {
